@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pour Choices</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="favicon.ico">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <!-- Welcome Screen -->
+    <div id="welcome-screen" class="screen active">
+        <div class="welcome-background"></div>
+        <div class="welcome-overlay">
+            <div class="welcome-content">
+                <div class="logo">🥃</div>
+                <h1>Pour Choices</h1>
+                <p class="tagline">Your Personal Whiskey Cellar</p>
+                <div class="welcome-buttons">
+                    <button id="signup-btn" class="btn btn-primary">Sign Up</button>
+                    <button id="login-btn" class="btn btn-secondary">Log In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Screen -->
+    <div id="search-screen" class="screen">
+        <div class="search-header">
+            <h1>Search Database</h1>
+            <div class="search-controls">
+                <div class="search-bar">
+                    <input type="text" id="search-input" placeholder="Search whiskies...">
+                    <button id="search-btn" class="search-icon">🔍</button>
+                    <button id="barcode-scanner" class="search-icon barcode-btn">📱</button>
+                </div>
+                <div class="search-filters">
+                    <select id="search-sort">
+                        <option value="your">Sort by Your Ranking</option>
+                        <option value="global">Sort by Global Ranking</option>
+                    </select>
+                    <button id="search-filter-btn" class="filter-btn">⚙️</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="pre-search-overlay" class="pre-search-overlay">
+            <div class="empty-glass">🥃</div>
+            <h2>Find Your Next Favorite</h2>
+            <p>Search our database of whiskies or scan a barcode</p>
+        </div>
+
+        <div id="search-results" class="search-results"></div>
+
+        <div id="no-results" class="no-results hidden">
+            <div class="empty-glass">🥃</div>
+            <h2>No Results Found</h2>
+            <p>Try adjusting your search or filters</p>
+        </div>
+
+        <div id="loading-spinner" class="loading-spinner hidden">
+            <div class="spinner"></div>
+        </div>
+
+        <div class="search-prompt">
+            <button id="add-new-bottle" class="prompt-btn">+ Add New Bottle</button>
+        </div>
+    </div>
+
+    <!-- My Bar Screen -->
+    <div id="mybar-screen" class="screen">
+        <div class="mybar-header">
+            <h1>My Bar</h1>
+            <div class="bar-count">0 Bottles</div>
+        </div>
+
+        <div class="mybar-controls">
+            <input type="text" id="mybar-search" placeholder="Search your collection...">
+        </div>
+
+        <div id="mybar-empty" class="no-results hidden">
+            <div class="empty-glass">🥃</div>
+            <h2>Your Bar is Empty</h2>
+            <p>Start building your collection!</p>
+            <button id="build-bar-btn" class="btn btn-primary">Build Your Bar</button>
+        </div>
+
+        <div id="mybar-results" class="mybar-results"></div>
+
+        <button id="add-bottle-fab" class="fab">+</button>
+    </div>
+
+    <!-- Profile Screen -->
+    <div id="profile-screen" class="screen">
+        <div class="profile-content">
+            <div class="profile-info">
+                <div id="profile-pic-display" class="profile-pic-large">🥃</div>
+                <h1 id="profile-username">Username</h1>
+                <p id="profile-email">email@example.com</p>
+            </div>
+
+            <div class="profile-stats">
+                <div class="stat-item">
+                    <div id="total-tastings" class="stat-number">--</div>
+                    <div class="stat-label">Tastings</div>
+                </div>
+                <div class="stat-item">
+                    <div id="total-bottles" class="stat-number">--</div>
+                    <div class="stat-label">Bottles</div>
+                </div>
+                <div class="stat-item">
+                    <div id="avg-rating" class="stat-number">--</div>
+                    <div class="stat-label">Avg Rating</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tasting Screen -->
+    <div id="tasting-screen" class="screen">
+        <div class="tasting-header">
+            <h1>Blind Tasting</h1>
+            <p>Compare whiskies without knowing their identity</p>
+        </div>
+
+        <!-- Selection Subscreen -->
+        <div id="selection-screen" class="tasting-subscreen active">
+            <div class="selection-tray">
+                <div class="tray-header">
+                    <div class="progress-info">
+                        <span id="bottles-ready">0/5 Bottles Ready</span>
+                        <div class="progress-bar">
+                            <div id="tray-progress" class="progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="selected-bottles" class="selected-bottles"></div>
+                <div class="tray-actions">
+                    <button id="add-bottles-btn" class="btn btn-secondary">Add Bottles</button>
+                    <button id="start-tasting-btn" class="btn btn-primary" disabled>Start Tasting</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pourer Subscreen -->
+        <div id="pourer-screen" class="tasting-subscreen">
+            <div class="pourer-shelf">
+                <h2>Assign Bottles to Glasses</h2>
+                <div class="drop-zones">
+                    <div class="drop-zone" data-slot="A">
+                        <div class="glass-icon">🥃</div>
+                        <span class="slot-label">A</span>
+                    </div>
+                    <div class="drop-zone" data-slot="B">
+                        <div class="glass-icon">🥃</div>
+                        <span class="slot-label">B</span>
+                    </div>
+                    <div class="drop-zone" data-slot="C">
+                        <div class="glass-icon">🥃</div>
+                        <span class="slot-label">C</span>
+                    </div>
+                    <div class="drop-zone" data-slot="D">
+                        <div class="glass-icon">🥃</div>
+                        <span class="slot-label">D</span>
+                    </div>
+                    <div class="drop-zone" data-slot="E">
+                        <div class="glass-icon">🥃</div>
+                        <span class="slot-label">E</span>
+                    </div>
+                </div>
+                <div id="draggable-bottles" class="draggable-bottles"></div>
+            </div>
+            <div class="pourer-actions">
+                <button id="randomize-btn" class="btn btn-secondary">Randomize</button>
+                <button id="complete-pourer-btn" class="btn btn-primary" disabled>Complete Setup</button>
+            </div>
+        </div>
+
+        <!-- Taster Subscreen -->
+        <div id="taster-screen" class="tasting-subscreen">
+            <div class="taster-shelf">
+                <h2>Select a Glass to Taste</h2>
+                <div class="bottle-silhouettes">
+                    <div class="bottle-silhouette" data-bottle="A">
+                        <div class="silhouette-icon">🥃</div>
+                        <span class="bottle-label">A</span>
+                    </div>
+                    <div class="bottle-silhouette" data-bottle="B">
+                        <div class="silhouette-icon">🥃</div>
+                        <span class="bottle-label">B</span>
+                    </div>
+                    <div class="bottle-silhouette" data-bottle="C">
+                        <div class="silhouette-icon">🥃</div>
+                        <span class="bottle-label">C</span>
+                    </div>
+                    <div class="bottle-silhouette" data-bottle="D">
+                        <div class="silhouette-icon">🥃</div>
+                        <span class="bottle-label">D</span>
+                    </div>
+                    <div class="bottle-silhouette" data-bottle="E">
+                        <div class="silhouette-icon">🥃</div>
+                        <span class="bottle-label">E</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tasting-notes">
+                <div class="note-section">
+                    <div class="section-header" data-section="nose">
+                        <h3>Nose</h3>
+                        <span class="expand-icon">▼</span>
+                    </div>
+                    <div id="nose-content" class="section-content">
+                        <button class="add-flavor-btn" data-section="nose">+ Add Flavor Notes</button>
+                        <div class="selected-flavors">
+                            <h5>Selected Flavors:</h5>
+                            <div id="nose-selected" class="flavor-chips"></div>
+                        </div>
+                        <div class="custom-note">
+                            <textarea id="nose-custom" placeholder="Custom notes..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="note-section">
+                    <div class="section-header" data-section="taste">
+                        <h3>Taste</h3>
+                        <span class="expand-icon">▼</span>
+                    </div>
+                    <div id="taste-content" class="section-content">
+                        <button class="add-flavor-btn" data-section="taste">+ Add Flavor Notes</button>
+                        <div class="selected-flavors">
+                            <h5>Selected Flavors:</h5>
+                            <div id="taste-selected" class="flavor-chips"></div>
+                        </div>
+                        <div class="custom-note">
+                            <textarea id="taste-custom" placeholder="Custom notes..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="note-section">
+                    <div class="section-header" data-section="finish">
+                        <h3>Finish</h3>
+                        <span class="expand-icon">▼</span>
+                    </div>
+                    <div id="finish-content" class="section-content">
+                        <button class="add-flavor-btn" data-section="finish">+ Add Flavor Notes</button>
+                        <div class="selected-flavors">
+                            <h5>Selected Flavors:</h5>
+                            <div id="finish-selected" class="flavor-chips"></div>
+                        </div>
+                        <div class="custom-note">
+                            <textarea id="finish-custom" placeholder="Custom notes..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ranking-section">
+                <h3>Rank the Bottles</h3>
+                <div class="ranking-controls">
+                    <div class="rank-item" data-rank="1">
+                        <span class="rank-number">1st:</span>
+                        <select class="rank-select">
+                            <option value="">Select bottle</option>
+                        </select>
+                    </div>
+                    <div class="rank-item" data-rank="2">
+                        <span class="rank-number">2nd:</span>
+                        <select class="rank-select">
+                            <option value="">Select bottle</option>
+                        </select>
+                    </div>
+                    <div class="rank-item" data-rank="3">
+                        <span class="rank-number">3rd:</span>
+                        <select class="rank-select">
+                            <option value="">Select bottle</option>
+                        </select>
+                    </div>
+                    <div class="rank-item" data-rank="4">
+                        <span class="rank-number">4th:</span>
+                        <select class="rank-select">
+                            <option value="">Select bottle</option>
+                        </select>
+                    </div>
+                    <div class="rank-item" data-rank="5">
+                        <span class="rank-number">5th:</span>
+                        <select class="rank-select">
+                            <option value="">Select bottle</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="taster-actions">
+                <button id="finish-tasting-btn" class="btn btn-primary" disabled>Finish Tasting</button>
+            </div>
+        </div>
+
+        <!-- Reveal Subscreen -->
+        <div id="reveal-screen" class="tasting-subscreen">
+            <div class="sparkle-burst">✨</div>
+            <h2>Tasting Complete!</h2>
+
+            <div class="reveal-sequence">
+                <h3>Your Rankings Revealed</h3>
+                <div class="reveal-bottles"></div>
+            </div>
+
+            <div class="reveal-scores">
+                <div class="score-comparison">
+                    <div class="personal-scores">
+                        <h3>Your Rankings</h3>
+                        <div id="personal-scores" class="score-list"></div>
+                    </div>
+                    <div class="global-scores">
+                        <h3>Global Rankings</h3>
+                        <div id="global-scores" class="score-list"></div>
+                    </div>
+                </div>
+
+                <div id="upset-alert" class="upset-alert hidden">
+                    <div class="crown-icon">👑</div>
+                    <h3>You Found an Upset!</h3>
+                    <p>Your top pick ranks higher than expected globally</p>
+                </div>
+            </div>
+
+            <div class="reveal-actions">
+                <button id="save-tasting-btn" class="btn btn-primary">Save Tasting</button>
+                <p class="share-teaser">Sharing coming soon...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coming Soon Screen -->
+    <div id="coming-soon-screen" class="screen">
+        <div class="coming-soon-content">
+            <div class="barrel-poster">
+                <div class="caution-tape">🚧</div>
+                <h1>Coming Soon</h1>
+                <p>This feature is aging in the barrel. Check back later!</p>
+            </div>
+            <button id="back-from-coming-soon" class="btn btn-primary">Back</button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Signup Modal -->
+    <div id="signup-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Join the Cellar</h2>
+                <button id="close-signup" class="close-btn">×</button>
+            </div>
+
+            <div class="progress-bar">
+                <div id="signup-progress" class="progress-fill"></div>
+            </div>
+            <div id="signup-step" class="progress-text">Step 1/2</div>
+
+            <!-- Step 1: Basic Info -->
+            <div id="signup-step1" class="signup-step active">
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Choose a username">
+                    <span id="username-validation" class="validation-icon"></span>
+                    <div class="tooltip">3-20 characters, letters and numbers only</div>
+                </div>
+
+                <div class="input-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="your@email.com">
+                    <span id="email-validation" class="validation-icon"></span>
+                </div>
+
+                <div class="signup-actions">
+                    <button id="next-step" class="btn btn-primary" disabled>Next</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Profile Setup -->
+            <div id="signup-step2" class="signup-step">
+                <div class="profile-pic-section">
+                    <label>Choose Your Profile Picture</label>
+                    <div class="profile-pic-carousel">
+                        <div class="profile-pic-option selected" data-type="whiskey-glass">
+                            <div class="pic-icon">🥃</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="oak-barrel">
+                            <div class="pic-icon">🛢️</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="rye-stalk">
+                            <div class="pic-icon">🌾</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="cork-popper">
+                            <div class="pic-icon">🍾</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="tumbler">
+                            <div class="pic-icon">🥃</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="copper-still">
+                            <div class="pic-icon">⚗️</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="amber-bottle">
+                            <div class="pic-icon">🍯</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="ice-cube">
+                            <div class="pic-icon">🧊</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="cigar-smoke">
+                            <div class="pic-icon">💨</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="lime-wedge">
+                            <div class="pic-icon">🍋</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="distillery-machine">
+                            <div class="pic-icon">⚙️</div>
+                        </div>
+                        <div class="profile-pic-option" data-type="barrel-tap">
+                            <div class="pic-icon">🚰</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="phone">Phone (Optional)</label>
+                    <input type="tel" id="phone" placeholder="(555) 123-4567">
+                </div>
+
+                <div class="toggle-group">
+                    <div class="toggle-item">
+                        <div class="toggle-label">
+                            <span class="toggle-icon">📱</span>
+                            <div>
+                                <strong>Add to Home Screen</strong>
+                                <div>Install as app for quick access</div>
+                            </div>
+                            <input type="checkbox" id="add-to-home" checked>
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
+                    <div class="toggle-item">
+                        <div class="toggle-label">
+                            <span class="toggle-icon">🔒</span>
+                            <div>
+                                <strong>Stay Logged In</strong>
+                                <div>Remember me on this device</div>
+                            </div>
+                            <input type="checkbox" id="stay-logged-in" checked>
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="signup-actions">
+                    <button id="skip-step2" class="skip-btn">Skip</button>
+                    <button id="complete-signup" class="btn btn-primary">Complete Setup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Welcome Back</h2>
+                <button id="close-login" class="close-btn">×</button>
+            </div>
+
+            <div class="input-group">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" placeholder="your@email.com">
+                <span id="login-email-validation" class="validation-icon"></span>
+            </div>
+
+            <button id="login-submit" class="btn btn-primary">Log In</button>
+        </div>
+    </div>
+
+    <!-- Bottle Details Modal -->
+    <div id="bottle-details-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <button id="close-details" class="close-btn">×</button>
+            </div>
+
+            <div class="bottle-details">
+                <div class="bottle-images">
+                    <img id="bottle-image" class="bottle-image" src="" alt="">
+                </div>
+
+                <h2 class="bottle-name">Bottle Name</h2>
+                <p class="bottle-distillery">Distillery Name</p>
+
+                <div class="ranking-badges">
+                    <div class="ranking-badge">
+                        <h4>Your Ranking</h4>
+                        <div class="your-rank">
+                            <span class="rank-value">--/100</span>
+                        </div>
+                    </div>
+                    <div class="ranking-badge">
+                        <h4>Global Ranking</h4>
+                        <div class="global-rank">
+                            <span class="rank-value">--/100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottle-actions">
+                    <button id="start-tasting" class="btn btn-secondary">Start Blind Tasting</button>
+                    <button id="add-to-collection" class="btn btn-primary">Add to My Bar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Bottle Modal -->
+    <div id="add-bottle-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Bottle</h2>
+                <button id="close-add-bottle" class="close-btn">×</button>
+            </div>
+
+            <form class="add-bottle-form">
+                <div class="input-group">
+                    <label for="bottle-name">Bottle Name</label>
+                    <input type="text" id="bottle-name" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="bottle-distillery">Distillery</label>
+                    <input type="text" id="bottle-distillery" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="bottle-type">Type</label>
+                    <select id="bottle-type" required>
+                        <option value="">Select type...</option>
+                        <option value="Single Malt">Single Malt</option>
+                        <option value="Blended">Blended</option>
+                        <option value="Bourbon">Bourbon</option>
+                        <option value="Rye">Rye</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div id="bottle-type-other" class="input-group hidden">
+                    <label for="bottle-type-custom">Specify Type</label>
+                    <input type="text" id="bottle-type-custom">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Add Bottle</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Bottle Modal -->
+    <div id="edit-bottle-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <button id="close-edit-bottle" class="close-btn">×</button>
+            </div>
+
+            <div class="edit-bottle-content">
+                <img id="edit-bottle-image" class="bottle-image" src="" alt="">
+                <h2 class="edit-bottle-name">Bottle Name</h2>
+                <p class="bottle-distillery">Distillery Name</p>
+                <p class="bottle-type">Bottle Type</p>
+
+                <div class="edit-fields">
+                    <div class="input-group">
+                        <label for="edit-volume">Volume (%)</label>
+                        <input type="range" id="edit-volume" min="0" max="100" value="100">
+                        <div class="slider-ticks">
+                            <span>0%</span>
+                            <span>25%</span>
+                            <span>50%</span>
+                            <span>75%</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="edit-number-owned">Number Owned</label>
+                        <div class="number-owned-container">
+                            <button id="decrease-owned" class="number-btn">-</button>
+                            <input type="number" id="edit-number-owned" min="0" max="999" value="1">
+                            <button id="increase-owned" class="number-btn">+</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="edit-notes">Notes</label>
+                        <textarea id="edit-notes" maxlength="250" placeholder="Tasting notes, purchase info, etc."></textarea>
+                        <div class="char-counter">0/250</div>
+                    </div>
+                </div>
+
+                <div class="edit-actions">
+                    <button id="cancel-edit" class="btn btn-secondary">Cancel</button>
+                    <button id="save-edit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Filter Modal -->
+    <div id="search-filter-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Filter Results</h2>
+                <button id="close-search-filter" class="close-btn">×</button>
+            </div>
+
+            <div class="filter-form">
+                <div class="input-group">
+                    <label for="filter-name">Name Contains</label>
+                    <input type="text" id="filter-name" placeholder="Filter by name">
+                </div>
+
+                <div class="input-group">
+                    <label for="filter-distillery">Distillery Contains</label>
+                    <input type="text" id="filter-distillery" placeholder="Filter by distillery">
+                </div>
+
+                <div class="input-group">
+                    <label for="filter-type">Type</label>
+                    <select id="filter-type">
+                        <option value="">All Types</option>
+                        <option value="Single Malt">Single Malt</option>
+                        <option value="Blended">Blended</option>
+                        <option value="Bourbon">Bourbon</option>
+                        <option value="Rye">Rye</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="range-slider-container">
+                    <label>Your Ranking Range</label>
+                    <input type="range" id="filter-your-rank-min" min="0" max="100" value="0" class="range-slider">
+                    <input type="range" id="filter-your-rank-max" min="0" max="100" value="100" class="range-slider">
+                    <div class="range-labels">
+                        <span id="your-rank-min-label">0</span>
+                        <span id="your-rank-max-label">100</span>
+                    </div>
+                </div>
+
+                <div class="range-slider-container">
+                    <label>Global Ranking Range</label>
+                    <input type="range" id="filter-global-rank-min" min="0" max="100" value="0" class="range-slider">
+                    <input type="range" id="filter-global-rank-max" min="0" max="100" value="100" class="range-slider">
+                    <div class="range-labels">
+                        <span id="global-rank-min-label">0</span>
+                        <span id="global-rank-max-label">100</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button id="clear-filters" class="btn btn-secondary">Clear All</button>
+                <button id="apply-filters" class="btn btn-primary">Apply Filters</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Photo Modal -->
+    <div id="ai-photo-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content ai-photo-content">
+            <div class="modal-header">
+                <h2>Add Bottle via Photo</h2>
+                <button id="close-ai-photo" class="close-btn">×</button>
+            </div>
+
+            <!-- Camera Overlay -->
+            <div id="camera-overlay" class="camera-overlay">
+                <div class="camera-frame">
+                    <p>Position bottle label in frame</p>
+                </div>
+                <button id="capture-photo" class="btn btn-primary">Capture Photo</button>
+            </div>
+
+            <!-- Processing -->
+            <div id="recognition-processing" class="recognition-processing hidden">
+                <div class="spinner"></div>
+                <h3>Analyzing Photo...</h3>
+                <p>AI is identifying your bottle</p>
+            </div>
+
+            <!-- Success -->
+            <div id="recognition-success" class="recognition-success hidden">
+                <h3>Bottle Recognized!</h3>
+                <form id="ai-bottle-form" class="ai-bottle-form">
+                    <div class="input-group">
+                        <label for="ai-bottle-name">Bottle Name</label>
+                        <input type="text" id="ai-bottle-name" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="ai-bottle-distillery">Distillery</label>
+                        <input type="text" id="ai-bottle-distillery" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="ai-bottle-type">Type</label>
+                        <select id="ai-bottle-type" required>
+                            <option value="Single Malt">Single Malt</option>
+                            <option value="Blended">Blended</option>
+                            <option value="Bourbon">Bourbon</option>
+                            <option value="Rye">Rye</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </form>
+                <div class="ai-actions">
+                    <button id="retake-photo" class="btn btn-secondary">Retake Photo</button>
+                    <button id="retry-recognition" class="btn btn-secondary">Retry Recognition</button>
+                    <button id="manual-add" class="btn btn-primary">Add Manually</button>
+                    <button type="submit" form="ai-bottle-form" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+
+            <!-- Fail -->
+            <div id="recognition-fail" class="recognition-fail hidden">
+                <div class="fail-icon">📷</div>
+                <h3>Recognition Failed</h3>
+                <p>We couldn't identify this bottle from the photo.</p>
+                <div class="fail-actions">
+                    <button id="fail-retake" class="btn btn-secondary">Try Again</button>
+                    <button id="fail-manual" class="btn btn-primary">Add Manually</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-item active" data-screen="search">
+            <div class="nav-icon">🔍</div>
+            <div class="nav-label">Search</div>
+        </button>
+        <button class="nav-item" data-screen="mybar">
+            <div class="nav-icon">🏠</div>
+            <div class="nav-label">My Bar</div>
+        </button>
+        <button class="nav-item" data-screen="profile">
+            <div class="nav-icon">👤</div>
+            <div class="nav-label">Profile</div>
+        </button>
+    </div>
+
+    <!-- Flavor Panel (for tasting notes) -->
+    <div id="nose-panel" class="flavor-panel">
+        <div class="panel-header">
+            <button class="back-btn">←</button>
+            <h3>Nose Flavors</h3>
+        </div>
+        <div class="flavor-search">
+            <input type="text" id="nose-search" placeholder="Search flavors...">
+        </div>
+        <div id="nose-suggestions" class="flavor-suggestions"></div>
+    </div>
+
+    <div id="taste-panel" class="flavor-panel">
+        <div class="panel-header">
+            <button class="back-btn">←</button>
+            <h3>Taste Flavors</h3>
+        </div>
+        <div class="flavor-search">
+            <input type="text" id="taste-search" placeholder="Search flavors...">
+        </div>
+        <div id="taste-suggestions" class="flavor-suggestions"></div>
+    </div>
+
+    <div id="finish-panel" class="flavor-panel">
+        <div class="panel-header">
+            <button class="back-btn">←</button>
+            <h3>Finish Flavors</h3>
+        </div>
+        <div class="flavor-search">
+            <input type="text" id="finish-search" placeholder="Search flavors...">
+        </div>
+        <div id="finish-suggestions" class="flavor-suggestions"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Load JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
