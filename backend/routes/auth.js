@@ -4,7 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
-const db = require('../database/connection');
+const supabase = require('../database/connection');
 
 // Validation schemas
 const signupSchema = Joi.object({
@@ -31,13 +31,19 @@ router.post('/signup', async (req, res) => {
         const { username, email, phone, profilePic, addToHome, stayLoggedIn } = value;
 
         // Check if user already exists
-        const existingUser = await db.query(
-            'SELECT id FROM users WHERE email = $1 OR username = $2',
-            [email, username]
-        );
+        const { data: existingUser, error: userError } = await supabase
+            .from('users')
+            .select('id')
+            .or(`email.eq.${email},username.eq.${username}`)
+            .maybeSingle();
 
-        if (existingUser.rows.length > 0) {
-            return res.status(409).json({ 
+        if (userError) {
+            console.error('User check error:', userError);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (existingUser) {
+            return res.status(409).json({
                 error: 'User already exists',
                 duplicate: true
             });
@@ -49,14 +55,22 @@ router.post('/signup', async (req, res) => {
             stayLoggedIn: stayLoggedIn || false
         };
 
-        const result = await db.query(
-            `INSERT INTO users (username, email, phone, profile_pic_url, toggles) 
-             VALUES ($1, $2, $3, $4, $5) 
-             RETURNING id, username, email, profile_pic_url, toggles, created_at`,
-            [username, email, phone, profilePic, JSON.stringify(toggles)]
-        );
+        const { data: user, error: insertError } = await supabase
+            .from('users')
+            .insert({
+                username,
+                email,
+                phone,
+                profile_pic_url: profilePic,
+                toggles: JSON.stringify(toggles)
+            })
+            .select('id, username, email, profile_pic_url, toggles, created_at')
+            .single();
 
-        const user = result.rows[0];
+        if (insertError) {
+            console.error('Signup insert error:', insertError);
+            return res.status(500).json({ error: 'Failed to create user' });
+        }
 
         // Generate JWT token
         const token = jwt.sign(
@@ -94,16 +108,20 @@ router.post('/login', async (req, res) => {
         const { email } = value;
 
         // Find user
-        const result = await db.query(
-            'SELECT id, username, email, profile_pic_url, toggles FROM users WHERE email = $1',
-            [email]
-        );
+        const { data: user, error: loginError } = await supabase
+            .from('users')
+            .select('id, username, email, profile_pic_url, toggles')
+            .eq('email', email)
+            .maybeSingle();
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
+        if (loginError) {
+            console.error('Login query error:', loginError);
+            return res.status(500).json({ error: 'Database error' });
         }
 
-        const user = result.rows[0];
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
         const toggles = JSON.parse(user.toggles);
 
         // Generate JWT token
@@ -134,16 +152,20 @@ router.post('/login', async (req, res) => {
 // GET /api/auth/verify
 router.get('/verify', authenticateToken, async (req, res) => {
     try {
-        const result = await db.query(
-            'SELECT id, username, email, profile_pic_url, toggles FROM users WHERE id = $1',
-            [req.user.userId]
-        );
+        const { data: user, error: verifyError } = await supabase
+            .from('users')
+            .select('id, username, email, profile_pic_url, toggles')
+            .eq('id', req.user.userId)
+            .maybeSingle();
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
+        if (verifyError) {
+            console.error('Verify query error:', verifyError);
+            return res.status(500).json({ error: 'Database error' });
         }
 
-        const user = result.rows[0];
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
 
         res.json({
             user: {

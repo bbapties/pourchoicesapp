@@ -8,25 +8,31 @@ function App() {
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         <div className="p-8">
           <div className="uppercase tracking-wide text-sm text-indigo-500 font-semibold">
-            Vite + React + Tailwind
+            Welcome to Pour Choices
           </div>
           <h1 className="block mt-1 text-lg leading-tight font-medium text-black">
-            Hello World
+            Whisky Tasting App
           </h1>
           <p className="mt-2 text-gray-500">
-            This is a Vite React app with Tailwind CSS.
+            Your personal whisky collection and tasting companion.
           </p>
-          <div className="mt-4">
+          <div className="mt-4 flex gap-2">
             <button
               onClick={() => setCount((count) => count + 1)}
-              className="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+              className="bg-amber-500 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded"
             >
-              Count is {count}
+              Bottles: {count}
+            </button>
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Start Tasting
             </button>
           </div>
-          <p className="mt-4 text-sm text-gray-400">
-            Edit <code className="bg-gray-200 px-1 rounded">src/App.jsx</code> and save to test HMR
-          </p>
+          <div className="mt-4 text-sm text-gray-400">
+            <p>The backend is running on port 3001</p>
+            <p>Connected to Supabase database</p>
+          </div>
         </div>
       </div>
     </div>

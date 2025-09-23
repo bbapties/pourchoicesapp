@@ -1,12 +1,14 @@
 // Pour Choices MVP Backend Server
 // Version: 2.0 | Date: September 17, 2025
 
+require('dotenv').config();
+console.log('dotenv loaded', process.env.SUPABASE_URL);
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -48,6 +50,38 @@ app.get('/api/health', (req, res) => {
         timestamp: new Date().toISOString(),
         version: '2.0.0'
     });
+});
+
+// Database connection test endpoint
+app.get('/api/test-db', async (req, res) => {
+    try {
+        const supabase = require('./database/connection');
+
+        // Test query to check connection
+        const { data, error } = await supabase
+            .from('users')
+            .select('count', { count: 'exact', head: true });
+
+        if (error) {
+            throw error;
+        }
+
+        res.json({
+            status: 'connected',
+            message: 'Supabase database connection successful',
+            userCount: data,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('Database test error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Database connection failed',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
 });
 
 // Error handling middleware

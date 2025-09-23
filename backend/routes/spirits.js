@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const db = require('../database/connection');
+const supabase = require('../database/connection');
 
 // Validation schemas
 const searchSchema = Joi.object({
@@ -43,44 +43,32 @@ router.get('/search', async (req, res) => {
         const { query, page, limit } = value;
         const offset = (page - 1) * limit;
 
-        // Full-text search with ranking
-        const result = await db.query(`
-            SELECT 
-                s.id,
-                s.name,
-                s.distillery,
-                s.type,
-                s.images,
-                s.status,
-                ts_rank(to_tsvector('english', s.name || ' ' || s.distillery || ' ' || s.type), 
-                       plainto_tsquery('english', $1)) as rank
-            FROM spirits s
-            WHERE to_tsvector('english', s.name || ' ' || s.distillery || ' ' || s.type) 
-                  @@ plainto_tsquery('english', $1)
-            AND s.status = 'approved'
-            ORDER BY rank DESC, s.name ASC
-            LIMIT $2 OFFSET $3
-        `, [query, limit, offset]);
+        // Search using ILIKE for name and distillery, exact match for type
+        let supabaseQuery = supabase
+            .from('spirits')
+            .select('id, name, distillery, type, images, status', { count: 'exact' })
+            .eq('status', 'approved')
+            .or(`name.ilike.%${query}%,distillery.ilike.%${query}%,type.ilike.%${query}%`)
+            .range(offset, offset + limit - 1)
+            .order('name');
 
-        // Get total count
-        const countResult = await db.query(`
-            SELECT COUNT(*) as total
-            FROM spirits s
-            WHERE to_tsvector('english', s.name || ' ' || s.distillery || ' ' || s.type) 
-                  @@ plainto_tsquery('english', $1)
-            AND s.status = 'approved'
-        `, [query]);
+        const { data: results, error: searchError, count } = await supabaseQuery;
 
-        const total = parseInt(countResult.rows[0].total);
+        if (searchError) {
+            console.error('Search error:', searchError);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        const total = count;
         const totalPages = Math.ceil(total / limit);
 
         res.json({
-            results: result.rows.map(row => ({
+            results: results.map(row => ({
                 id: row.id,
                 name: row.name,
                 distillery: row.distillery,
                 type: row.type,
-                images: JSON.parse(row.images || '[]'),
+                images: row.images || [],
                 status: row.status,
                 emoji: getBottleEmoji(row.type)
             })),
@@ -105,23 +93,55 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await db.query(`
-            SELECT 
-                s.*,
-                br.elo_raw as user_ranking,
-                br.global_elo as global_ranking
-            FROM spirits s
-            LEFT JOIN bottle_ratings br ON s.id = br.bottle_id AND br.user_id = $2
-            WHERE s.id = $1 AND s.status = 'approved'
-        `, [id, req.user?.userId]);
+        // Get bottle details
+        const { data: bottle, error: bottleError } = await supabase
+            .from('spirits')
+            .select('*')
+            .eq('id', id)
+            .eq('status', 'approved')
+            .maybeSingle();
 
-        if (result.rows.length === 0) {
+        if (bottleError) {
+            console.error('Bottle query error:', bottleError);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (!bottle) {
             return res.status(404).json({ error: 'Bottle not found' });
         }
 
-        const bottle = result.rows[0];
-        const userRank = bottle.user_ranking ? Math.round(calculatePercentile(bottle.user_ranking)) : 50;
-        const globalRank = bottle.global_ranking ? Math.round(calculatePercentile(bottle.global_ranking)) : 50;
+        let userRank = 50;
+        let globalRank = 50;
+
+        if (req.user?.userId) {
+            // Get user-specific rating
+            const { data: userRating, error: userRatingError } = await supabase
+                .from('bottle_ratings')
+                .select('elo_raw, global_elo')
+                .eq('bottle_id', id)
+                .eq('user_id', req.user.userId)
+                .maybeSingle();
+
+            if (userRatingError) {
+                console.error('User rating query error:', userRatingError);
+            } else if (userRating) {
+                userRank = Math.round(calculatePercentile(userRating.elo_raw));
+                globalRank = Math.round(calculatePercentile(userRating.global_elo));
+            }
+        } else {
+            // Get global average rating
+            const { data: globalRating, error: globalRatingError } = await supabase
+                .from('bottle_ratings')
+                .select('global_elo')
+                .eq('bottle_id', id);
+
+            if (globalRatingError) {
+                console.error('Global rating query error:', globalRatingError);
+            } else if (globalRating.length > 0) {
+                const avgGlobalElo = globalRating.reduce((sum, r) => sum + r.global_elo, 0) / globalRating.length;
+                globalRank = Math.round(calculatePercentile(avgGlobalElo));
+            }
+        }
 
         res.json({
             id: bottle.id,
@@ -129,7 +149,7 @@ router.get('/:id', async (req, res) => {
             distillery: bottle.distillery,
             type: bottle.type,
             barcode: bottle.barcode,
-            images: JSON.parse(bottle.images || '[]'),
+            images: bottle.images || [],
             status: bottle.status,
             emoji: getBottleEmoji(bottle.type),
             rankings: {
@@ -154,33 +174,47 @@ router.post('/', async (req, res) => {
 
         const { name, distillery, type, barcode, images } = value;
 
-        // Check for duplicates using similarity
-        const duplicateCheck = await db.query(`
-            SELECT id, name, distillery, similarity(name || ' ' || distillery, $1 || ' ' || $2) as sim
-            FROM spirits 
-            WHERE similarity(name || ' ' || distillery, $1 || ' ' || $2) > 0.8
-        `, [name, distillery]);
+        // Check for duplicates (simplified - exact name/distillery match)
+        const { data: existingBottles, error: duplicateError } = await supabase
+            .from('spirits')
+            .select('id, name, distillery')
+            .ilike('name', name)
+            .ilike('distillery', distillery);
 
-        if (duplicateCheck.rows.length > 0) {
+        if (duplicateError) {
+            console.error('Duplicate check error:', duplicateError);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (existingBottles && existingBottles.length > 0) {
             return res.status(409).json({
                 error: 'Similar bottle already exists',
-                duplicates: duplicateCheck.rows.map(row => ({
+                duplicates: existingBottles.map(row => ({
                     id: row.id,
                     name: row.name,
-                    distillery: row.distillery,
-                    similarity: row.sim
+                    distillery: row.distillery
                 }))
             });
         }
 
         // Create new bottle
-        const result = await db.query(`
-            INSERT INTO spirits (name, distillery, type, barcode, images, added_by)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, name, distillery, type, status, created_at
-        `, [name, distillery, type, barcode, JSON.stringify(images || []), req.user?.userId]);
+        const { data: bottle, error: insertError } = await supabase
+            .from('spirits')
+            .insert({
+                name,
+                distillery,
+                type,
+                barcode,
+                images: images || [],
+                added_by: req.user?.userId
+            })
+            .select('id, name, distillery, type, status, created_at')
+            .single();
 
-        const bottle = result.rows[0];
+        if (insertError) {
+            console.error('Add bottle insert error:', insertError);
+            return res.status(500).json({ error: 'Failed to create bottle' });
+        }
 
         res.status(201).json({
             message: 'Bottle added successfully',
@@ -209,86 +243,122 @@ router.get('/filter', async (req, res) => {
         }
 
         const { name, distillery, type, yourRankMin, yourRankMax, globalRankMin, globalRankMax, sort, page, limit } = value;
-        const offset = (page - 1) * limit;
 
-        // Build dynamic query
-        let whereConditions = ["s.status = 'approved'"];
-        let queryParams = [];
-        let paramIndex = 1;
+        // First, get all bottles with basic filtering (but no rating filters yet)
+        let spiritsQuery = supabase
+            .from('spirits')
+            .select('id, name, distillery, type, images, status')
+            .eq('status', 'approved');
 
         if (name) {
-            whereConditions.push(`s.name ILIKE $${paramIndex}`);
-            queryParams.push(`%${name}%`);
-            paramIndex++;
+            spiritsQuery = spiritsQuery.ilike('name', `%${name}%`);
         }
-
         if (distillery) {
-            whereConditions.push(`s.distillery ILIKE $${paramIndex}`);
-            queryParams.push(`%${distillery}%`);
-            paramIndex++;
+            spiritsQuery = spiritsQuery.ilike('distillery', `%${distillery}%`);
         }
-
         if (type) {
-            whereConditions.push(`s.type = $${paramIndex}`);
-            queryParams.push(type);
-            paramIndex++;
+            spiritsQuery = spiritsQuery.ilike('type', `%${type}%`);
         }
 
-        // Add ranking filters
+        const { data: allSpirits, error: spiritsError } = await spiritsQuery;
+
+        if (spiritsError) {
+            console.error('Spirits query error:', spiritsError);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (!allSpirits || allSpirits.length === 0) {
+            return res.json({ results: [] });
+        }
+
+        // Get ratings for these bottles
+        const bottleIds = allSpirits.map(s => s.id);
+
+        let ratingsData = {};
+        let globalRatingsData = {};
+
+        // Get user ratings if authenticated
         if (req.user?.userId) {
-            whereConditions.push(`(br.elo_raw IS NULL OR (br.elo_raw >= $${paramIndex} AND br.elo_raw <= $${paramIndex + 1}))`);
-            queryParams.push(yourRankMin, yourRankMax);
-            paramIndex += 2;
+            const { data: userRatings, error: userRatingsError } = await supabase
+                .from('bottle_ratings')
+                .select('bottle_id, elo_raw, global_elo')
+                .in('bottle_id', bottleIds)
+                .eq('user_id', req.user.userId);
+
+            if (!userRatingsError && userRatings) {
+                userRatings.forEach(rating => {
+                    ratingsData[rating.bottle_id] = rating;
+                });
+            }
         }
 
-        whereConditions.push(`(br_global.global_elo IS NULL OR (br_global.global_elo >= $${paramIndex} AND br_global.global_elo <= $${paramIndex + 1}))`);
-        queryParams.push(globalRankMin, globalRankMax);
-        paramIndex += 2;
+        // Get global ratings (average)
+        const { data: allGlobalRatings, error: globalRatingsError } = await supabase
+            .from('bottle_ratings')
+            .select('bottle_id, global_elo')
+            .in('bottle_id', bottleIds);
 
-        // Add pagination params
-        queryParams.push(limit, offset);
-
-        const query = `
-            SELECT 
-                s.id,
-                s.name,
-                s.distillery,
-                s.type,
-                s.images,
-                s.status,
-                br.elo_raw as user_ranking,
-                br_global.global_elo as global_ranking
-            FROM spirits s
-            LEFT JOIN bottle_ratings br ON s.id = br.bottle_id AND br.user_id = $${paramIndex + 1}
-            LEFT JOIN (
-                SELECT bottle_id, AVG(global_elo) as global_elo
-                FROM bottle_ratings
-                GROUP BY bottle_id
-            ) br_global ON s.id = br_global.bottle_id
-            WHERE ${whereConditions.join(' AND ')}
-            ORDER BY ${sort === 'your' ? 'br.elo_raw DESC NULLS LAST' : 'br_global.global_elo DESC NULLS LAST'}, s.name ASC
-            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-        `;
-
-        // Add user_id to params for the LEFT JOIN
-        queryParams.push(req.user?.userId);
-
-        const result = await db.query(query, queryParams);
-
-        res.json({
-            results: result.rows.map(row => ({
-                id: row.id,
-                name: row.name,
-                distillery: row.distillery,
-                type: row.type,
-                images: JSON.parse(row.images || '[]'),
-                status: row.status,
-                emoji: getBottleEmoji(row.type),
-                rankings: {
-                    your: row.user_ranking ? Math.round(calculatePercentile(row.user_ranking)) : 50,
-                    global: row.global_ranking ? Math.round(calculatePercentile(row.global_ranking)) : 50
+        if (!globalRatingsError && allGlobalRatings) {
+            const globalRatingMap = {};
+            allGlobalRatings.forEach(rating => {
+                if (!globalRatingMap[rating.bottle_id]) {
+                    globalRatingMap[rating.bottle_id] = [];
                 }
-            }))
+                globalRatingMap[rating.bottle_id].push(rating.global_elo);
+            });
+
+            Object.keys(globalRatingMap).forEach(bottleId => {
+                const ratings = globalRatingMap[bottleId];
+                const avgGlobalElo = ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+                globalRatingsData[bottleId] = avgGlobalElo;
+            });
+        }
+
+        // Filter by ratings and build results
+        let filteredResults = allSpirits.map(spirit => {
+            const userRating = ratingsData[spirit.id];
+            const globalAvg = globalRatingsData[spirit.id];
+
+            const userRank = userRating ? Math.round(calculatePercentile(userRating.elo_raw)) : 50;
+            const globalRank = globalAvg ? Math.round(calculatePercentile(globalAvg)) : 50;
+
+            // Apply rating filters
+            if (req.user?.userId && (userRank < yourRankMin || userRank > yourRankMax)) {
+                return null;
+            }
+            if (globalRank < globalRankMin || globalRank > globalRankMax) {
+                return null;
+            }
+
+            return {
+                id: spirit.id,
+                name: spirit.name,
+                distillery: spirit.distillery,
+                type: spirit.type,
+                images: spirit.images || [],
+                status: spirit.status,
+                emoji: getBottleEmoji(spirit.type),
+                rankings: {
+                    your: userRank,
+                    global: globalRank
+                }
+            };
+        }).filter(result => result !== null);
+
+        // Sort results
+        if (sort === 'your' && req.user?.userId) {
+            filteredResults.sort((a, b) => b.rankings.your - a.rankings.your || a.name.localeCompare(b.name));
+        } else {
+            filteredResults.sort((a, b) => b.rankings.global - a.rankings.global || a.name.localeCompare(b.name));
+        }
+
+        // Apply pagination
+        const offset = (page - 1) * limit;
+        const paginatedResults = filteredResults.slice(offset, offset + limit);
+
+        // For simplicity, return results without detailed pagination stats
+        res.json({
+            results: paginatedResults
         });
 
     } catch (error) {
