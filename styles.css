@@ -234,10 +234,10 @@ p, span, div {
     position: relative;
     background: var(--bg-charcoal);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
-    max-width: 90%;
-    width: 375px;
-    max-height: 90vh;
+    padding: var(--spacing-lg);
+    max-width: 95%;
+    width: 450px;
+    max-height: 95vh;
     overflow-y: auto;
     border: 2px solid var(--accent-amber);
     box-shadow: var(--shadow-lg);
@@ -361,43 +361,96 @@ p, span, div {
 }
 
 .tooltip {
-    display: block;
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-charcoal);
+    color: var(--text-ivory);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
     font-size: 12px;
-    color: var(--placeholder-gray);
-    margin-top: var(--spacing-xs);
+    z-index: 1000;
+    border: 1px solid var(--accent-amber);
+    box-shadow: var(--shadow-md);
+    text-align: center;
 }
 
-/* Profile Picture Carousel */
+.input-group:focus-within .tooltip {
+    display: block;
+}
+
+/* Profile Picture Selector */
 .profile-pic-section {
     margin-bottom: var(--spacing-lg);
 }
 
+.profile-pic-selector {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.current-profile-pic {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.current-pic-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid var(--highlight-gold);
+    box-shadow: 0 0 0 3px var(--accent-amber);
+    cursor: default;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--accent-amber);
+    color: var(--bg-charcoal);
+    font-size: 24px;
+}
+
+.current-label {
+    font-size: 12px;
+    color: var(--text-gold);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 .profile-pic-carousel {
     display: flex;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     overflow-x: auto;
     padding: var(--spacing-sm) 0;
     scroll-snap-type: x mandatory;
+    flex: 1;
 }
 
 .profile-pic-option {
     flex-shrink: 0;
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
     transition: var(--transition-normal);
     scroll-snap-align: center;
-}
-
-.profile-pic-option.selected {
-    border-color: var(--highlight-gold);
-    box-shadow: 0 0 0 2px var(--accent-amber);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--accent-amber);
+    color: var(--bg-charcoal);
+    font-size: 18px;
 }
 
 .profile-pic-option:hover {
     transform: scale(1.1);
+    border-color: var(--highlight-gold);
 }
 
 .pic-upload,

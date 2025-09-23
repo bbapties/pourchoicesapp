@@ -29,6 +29,9 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Serve static files from root directory
+app.use(express.static('../'));
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/spirits', require('./routes/spirits'));
@@ -40,8 +43,8 @@ app.use('/api/spirits', require('./routes/spirits'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'healthy', 
+    res.json({
+        status: 'healthy',
         timestamp: new Date().toISOString(),
         version: '2.0.0'
     });

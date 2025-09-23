@@ -85,14 +85,8 @@ class PourChoicesApp {
         }
 
         // Signup modal - add null checks
-        const closeSignup = document.getElementById('close-signup');
-        if (closeSignup) closeSignup.addEventListener('click', () => this.closeModal('signup-modal'));
-
-        const nextStep = document.getElementById('next-step');
-        if (nextStep) nextStep.addEventListener('click', () => this.nextSignupStep());
-
-        const skipStep2 = document.getElementById('skip-step2');
-        if (skipStep2) skipStep2.addEventListener('click', () => this.skipStep2());
+        const cancelSignup = document.getElementById('cancel-signup');
+        if (cancelSignup) cancelSignup.addEventListener('click', () => this.closeModal('signup-modal'));
 
         const completeSignup = document.getElementById('complete-signup');
         if (completeSignup) completeSignup.addEventListener('click', () => this.completeSignup());
@@ -306,8 +300,6 @@ class PourChoicesApp {
     // Workflow 1: User Profile Creation
     showSignupModal() {
         this.showModal('signup-modal');
-        this.signupStep = 1;
-        this.updateSignupProgress();
         this.analytics.logEvent('signup', 'modal_open');
     }
 
@@ -327,21 +319,14 @@ class PourChoicesApp {
         this.analytics.logEvent('modal', 'close', { modal: modalId });
     }
 
-    updateSignupProgress() {
-        const progress = (this.signupStep / 2) * 100;
-        document.getElementById('signup-progress').style.width = `${progress}%`;
-        document.getElementById('signup-step').textContent = `Step ${this.signupStep}/2`;
-    }
-
     validateUsername() {
         const username = document.getElementById('username').value;
         const validation = document.getElementById('username-validation');
         const isValid = /^[a-zA-Z0-9]{3,20}$/.test(username);
-        
+
         validation.className = `validation-icon ${isValid ? 'valid' : 'invalid'}`;
         validation.textContent = isValid ? '✓' : '✗';
-        
-        this.updateNextButton();
+
         this.analytics.logEvent('signup', 'username_validate', { valid: isValid });
     }
 
@@ -349,11 +334,10 @@ class PourChoicesApp {
         const email = document.getElementById('email').value;
         const validation = document.getElementById('email-validation');
         const isValid = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
-        
+
         validation.className = `validation-icon ${isValid ? 'valid' : 'invalid'}`;
         validation.textContent = isValid ? '✓' : '✗';
-        
-        this.updateNextButton();
+
         this.analytics.logEvent('signup', 'email_validate', { valid: isValid });
     }
 
@@ -361,36 +345,11 @@ class PourChoicesApp {
         const email = document.getElementById('login-email').value;
         const validation = document.getElementById('login-email-validation');
         const isValid = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
-        
+
         validation.className = `validation-icon ${isValid ? 'valid' : 'invalid'}`;
         validation.textContent = isValid ? '✓' : '✗';
-        
+
         this.analytics.logEvent('login', 'email_validate', { valid: isValid });
-    }
-
-    updateNextButton() {
-        const username = document.getElementById('username').value;
-        const email = document.getElementById('email').value;
-        const usernameValid = /^[a-zA-Z0-9]{3,20}$/.test(username);
-        const emailValid = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
-        
-        document.getElementById('next-step').disabled = !(usernameValid && emailValid);
-    }
-
-    nextSignupStep() {
-        this.signupStep = 2;
-        this.updateSignupProgress();
-        
-        // Hide step 1, show step 2
-        document.getElementById('signup-step1').classList.remove('active');
-        document.getElementById('signup-step2').classList.add('active');
-        
-        // Update initials preview
-        const username = document.getElementById('username').value;
-        const initials = username.substring(0, 2).toUpperCase();
-        document.getElementById('initials-preview').textContent = initials;
-        
-        this.analytics.logEvent('signup', 'step_complete', { step: 1 });
     }
 
     selectProfilePic(option) {
@@ -398,17 +357,18 @@ class PourChoicesApp {
         document.querySelectorAll('.profile-pic-option').forEach(opt => {
             opt.classList.remove('selected');
         });
-        
+
         // Add selection to clicked option
         option.classList.add('selected');
         this.selectedProfilePic = option.dataset.type;
-        
-        this.analytics.logEvent('signup', 'profile_pic_select', { type: this.selectedProfilePic });
-    }
 
-    skipStep2() {
-        this.completeSignup();
-        this.analytics.logEvent('signup', 'step_skip', { step: 2 });
+        // Update the current profile pic display
+        const currentPicIcon = document.querySelector('.current-pic-icon .pic-icon');
+        if (currentPicIcon) {
+            currentPicIcon.textContent = option.querySelector('.pic-icon').textContent;
+        }
+
+        this.analytics.logEvent('signup', 'profile_pic_select', { type: this.selectedProfilePic });
     }
 
     completeSignup() {

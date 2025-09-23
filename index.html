@@ -351,16 +351,10 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Join the Cellar</h2>
-                <button id="close-signup" class="close-btn">×</button>
             </div>
 
-            <div class="progress-bar">
-                <div id="signup-progress" class="progress-fill"></div>
-            </div>
-            <div id="signup-step" class="progress-text">Step 1/2</div>
-
-            <!-- Step 1: Basic Info -->
-            <div id="signup-step1" class="signup-step active">
+            <!-- Signup Form -->
+            <div id="signup-form" class="signup-step active">
                 <div class="input-group">
                     <label for="username">Username</label>
                     <input type="text" id="username" placeholder="Choose a username">
@@ -374,51 +368,52 @@
                     <span id="email-validation" class="validation-icon"></span>
                 </div>
 
-                <div class="signup-actions">
-                    <button id="next-step" class="btn btn-primary" disabled>Next</button>
-                </div>
-            </div>
-
-            <!-- Step 2: Profile Setup -->
-            <div id="signup-step2" class="signup-step">
                 <div class="profile-pic-section">
                     <label>Choose Your Profile Picture</label>
-                    <div class="profile-pic-carousel">
-                        <div class="profile-pic-option selected" data-type="whiskey-glass">
-                            <div class="pic-icon">🥃</div>
+                    <div class="profile-pic-selector">
+                        <div class="current-profile-pic">
+                            <div class="current-pic-icon selected" data-type="whiskey-glass">
+                                <div class="pic-icon">🥃</div>
+                            </div>
+                            <div class="current-label">Current</div>
                         </div>
-                        <div class="profile-pic-option" data-type="oak-barrel">
-                            <div class="pic-icon">🛢️</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="rye-stalk">
-                            <div class="pic-icon">🌾</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="cork-popper">
-                            <div class="pic-icon">🍾</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="tumbler">
-                            <div class="pic-icon">🥃</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="copper-still">
-                            <div class="pic-icon">⚗️</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="amber-bottle">
-                            <div class="pic-icon">🍯</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="ice-cube">
-                            <div class="pic-icon">🧊</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="cigar-smoke">
-                            <div class="pic-icon">💨</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="lime-wedge">
-                            <div class="pic-icon">🍋</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="distillery-machine">
-                            <div class="pic-icon">⚙️</div>
-                        </div>
-                        <div class="profile-pic-option" data-type="barrel-tap">
-                            <div class="pic-icon">🚰</div>
+                        <div class="profile-pic-carousel">
+                            <div class="profile-pic-option" data-type="whiskey-glass">
+                                <div class="pic-icon">🥃</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="oak-barrel">
+                                <div class="pic-icon">🛢️</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="rye-stalk">
+                                <div class="pic-icon">🌾</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="cork-popper">
+                                <div class="pic-icon">🍾</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="tumbler">
+                                <div class="pic-icon">🥃</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="copper-still">
+                                <div class="pic-icon">⚗️</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="amber-bottle">
+                                <div class="pic-icon">🍯</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="ice-cube">
+                                <div class="pic-icon">🧊</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="cigar-smoke">
+                                <div class="pic-icon">💨</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="lime-wedge">
+                                <div class="pic-icon">🍋</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="distillery-machine">
+                                <div class="pic-icon">⚙️</div>
+                            </div>
+                            <div class="profile-pic-option" data-type="barrel-tap">
+                                <div class="pic-icon">🚰</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -455,8 +450,8 @@
                 </div>
 
                 <div class="signup-actions">
-                    <button id="skip-step2" class="skip-btn">Skip</button>
-                    <button id="complete-signup" class="btn btn-primary">Complete Setup</button>
+                    <button id="cancel-signup" class="btn btn-secondary">Cancel</button>
+                    <button id="complete-signup" class="btn btn-primary">Complete</button>
                 </div>
             </div>
         </div>
