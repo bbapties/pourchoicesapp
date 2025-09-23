@@ -66,7 +66,7 @@ class PourChoicesApp {
 
     setupEventListeners() {
         console.log('Setting up event listeners...');
-        
+
         // Welcome screen
         const signupBtn = document.getElementById('signup-btn');
         if (signupBtn) {
@@ -75,7 +75,7 @@ class PourChoicesApp {
                 this.showSignupModal();
             });
         }
-        
+
         const loginBtn = document.getElementById('login-btn');
         if (loginBtn) {
             loginBtn.addEventListener('click', () => this.showLoginModal());
@@ -84,20 +84,35 @@ class PourChoicesApp {
             console.error('Login button not found!');
         }
 
-        // Signup modal
-        document.getElementById('close-signup').addEventListener('click', () => this.closeModal('signup-modal'));
-        document.getElementById('next-step').addEventListener('click', () => this.nextSignupStep());
-        document.getElementById('skip-step2').addEventListener('click', () => this.skipStep2());
-        document.getElementById('complete-signup').addEventListener('click', () => this.completeSignup());
+        // Signup modal - add null checks
+        const closeSignup = document.getElementById('close-signup');
+        if (closeSignup) closeSignup.addEventListener('click', () => this.closeModal('signup-modal'));
 
-        // Login modal
-        document.getElementById('close-login').addEventListener('click', () => this.closeModal('login-modal'));
-        document.getElementById('login-submit').addEventListener('click', () => this.submitLogin());
+        const nextStep = document.getElementById('next-step');
+        if (nextStep) nextStep.addEventListener('click', () => this.nextSignupStep());
 
-        // Form validation
-        document.getElementById('username').addEventListener('input', () => this.validateUsername());
-        document.getElementById('email').addEventListener('input', () => this.validateEmail());
-        document.getElementById('login-email').addEventListener('input', () => this.validateLoginEmail());
+        const skipStep2 = document.getElementById('skip-step2');
+        if (skipStep2) skipStep2.addEventListener('click', () => this.skipStep2());
+
+        const completeSignup = document.getElementById('complete-signup');
+        if (completeSignup) completeSignup.addEventListener('click', () => this.completeSignup());
+
+        // Login modal - add null checks
+        const closeLogin = document.getElementById('close-login');
+        if (closeLogin) closeLogin.addEventListener('click', () => this.closeModal('login-modal'));
+
+        const loginSubmit = document.getElementById('login-submit');
+        if (loginSubmit) loginSubmit.addEventListener('click', () => this.submitLogin());
+
+        // Form validation - add null checks
+        const username = document.getElementById('username');
+        if (username) username.addEventListener('input', () => this.validateUsername());
+
+        const email = document.getElementById('email');
+        if (email) email.addEventListener('input', () => this.validateEmail());
+
+        const loginEmail = document.getElementById('login-email');
+        if (loginEmail) loginEmail.addEventListener('input', () => this.validateLoginEmail());
 
         // Profile picture selection
         document.querySelectorAll('.profile-pic-option').forEach(option => {
@@ -109,60 +124,120 @@ class PourChoicesApp {
             item.addEventListener('click', () => this.navigateToScreen(item.dataset.screen));
         });
 
-        // Search functionality
-        document.getElementById('search-btn').addEventListener('click', () => this.performSearch());
-        document.getElementById('search-input').addEventListener('keypress', (e) => {
+        // Search functionality - add null checks
+        const searchBtn = document.getElementById('search-btn');
+        if (searchBtn) searchBtn.addEventListener('click', () => this.performSearch());
+
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.performSearch();
         });
-        document.getElementById('barcode-scanner').addEventListener('click', () => this.showComingSoon('Barcode scanning'));
-        document.getElementById('search-sort').addEventListener('change', () => this.sortSearchResults());
-        document.getElementById('search-filter-btn').addEventListener('click', () => this.showSearchFilterModal());
 
-        // Bottle actions
-        document.getElementById('add-new-bottle').addEventListener('click', () => this.showAddBottleModal());
-        document.getElementById('add-bottle-prompt').addEventListener('click', () => this.showAddBottleModal());
-        document.getElementById('start-tasting').addEventListener('click', () => this.startTasting());
-        document.getElementById('add-to-collection').addEventListener('click', () => this.addToCollection());
+        const barcodeScanner = document.getElementById('barcode-scanner');
+        if (barcodeScanner) barcodeScanner.addEventListener('click', () => this.showComingSoon('Barcode scanning'));
 
-        // Modals
-        document.getElementById('close-details').addEventListener('click', () => this.closeModal('bottle-details-modal'));
-        document.getElementById('close-add-bottle').addEventListener('click', () => this.closeModal('add-bottle-modal'));
-        document.getElementById('close-edit-bottle').addEventListener('click', () => this.closeModal('edit-bottle-modal'));
-        document.getElementById('close-search-filter').addEventListener('click', () => this.closeModal('search-filter-modal'));
-        document.getElementById('close-ai-photo').addEventListener('click', () => this.closeModal('ai-photo-modal'));
+        const searchSort = document.getElementById('search-sort');
+        if (searchSort) searchSort.addEventListener('change', () => this.sortSearchResults());
+
+        const searchFilterBtn = document.getElementById('search-filter-btn');
+        if (searchFilterBtn) searchFilterBtn.addEventListener('click', () => this.showSearchFilterModal());
+
+        // Bottle actions - add null checks
+        const addNewBottle = document.getElementById('add-new-bottle');
+        if (addNewBottle) addNewBottle.addEventListener('click', () => this.showAddBottleModal());
+
+        const addBottlePrompt = document.getElementById('add-bottle-prompt');
+        if (addBottlePrompt) addBottlePrompt.addEventListener('click', () => this.showAddBottleModal());
+
+        const startTasting = document.getElementById('start-tasting');
+        if (startTasting) startTasting.addEventListener('click', () => this.startTasting());
+
+        const addToCollection = document.getElementById('add-to-collection');
+        if (addToCollection) addToCollection.addEventListener('click', () => this.addToCollection());
+
+        // Modals - add null checks
+        const closeDetails = document.getElementById('close-details');
+        if (closeDetails) closeDetails.addEventListener('click', () => this.closeModal('bottle-details-modal'));
+
+        const closeAddBottle = document.getElementById('close-add-bottle');
+        if (closeAddBottle) closeAddBottle.addEventListener('click', () => this.closeModal('add-bottle-modal'));
+
+        const closeEditBottle = document.getElementById('close-edit-bottle');
+        if (closeEditBottle) closeEditBottle.addEventListener('click', () => this.closeModal('edit-bottle-modal'));
+
+        const closeSearchFilter = document.getElementById('close-search-filter');
+        if (closeSearchFilter) closeSearchFilter.addEventListener('click', () => this.closeModal('search-filter-modal'));
+
+        const closeAiPhoto = document.getElementById('close-ai-photo');
+        if (closeAiPhoto) closeAiPhoto.addEventListener('click', () => this.closeModal('ai-photo-modal'));
 
         // Add bottle form
-        document.querySelector('.add-bottle-form').addEventListener('submit', (e) => this.submitAddBottle(e));
-        document.getElementById('bottle-type').addEventListener('change', () => this.handleBottleTypeChange());
-        document.getElementById('scan-barcode').addEventListener('click', () => this.showComingSoon('Barcode scanning'));
+        const addBottleForm = document.querySelector('.add-bottle-form');
+        if (addBottleForm) addBottleForm.addEventListener('submit', (e) => this.submitAddBottle(e));
 
-        // My Bar functionality
-        document.getElementById('add-bottle-fab').addEventListener('click', () => this.showAddBottleOptions());
-        document.getElementById('build-bar-btn').addEventListener('click', () => this.navigateToScreen('search'));
-        document.getElementById('mybar-search').addEventListener('input', () => this.searchMyBar());
+        const bottleType = document.getElementById('bottle-type');
+        if (bottleType) bottleType.addEventListener('change', () => this.handleBottleTypeChange());
 
-        // Edit bottle functionality
-        document.getElementById('save-edit').addEventListener('click', () => this.saveBottleEdit());
-        document.getElementById('cancel-edit').addEventListener('click', () => this.closeModal('edit-bottle-modal'));
-        document.getElementById('edit-volume').addEventListener('input', () => this.updateVolumeDisplay());
-        document.getElementById('decrease-owned').addEventListener('click', () => this.adjustNumberOwned(-1));
-        document.getElementById('increase-owned').addEventListener('click', () => this.adjustNumberOwned(1));
-        document.getElementById('edit-notes').addEventListener('input', () => this.updateCharCounter());
+        const scanBarcode = document.getElementById('scan-barcode');
+        if (scanBarcode) scanBarcode.addEventListener('click', () => this.showComingSoon('Barcode scanning'));
 
-        // Coming soon
-        document.getElementById('back-from-coming-soon').addEventListener('click', () => this.hideComingSoon());
+        // My Bar functionality - add null checks
+        const addBottleFab = document.getElementById('add-bottle-fab');
+        if (addBottleFab) addBottleFab.addEventListener('click', () => this.showAddBottleOptions());
 
-        // Filter functionality
-        document.getElementById('apply-filters').addEventListener('click', () => this.applySearchFilters());
-        document.getElementById('clear-filters').addEventListener('click', () => this.clearSearchFilters());
+        const buildBarBtn = document.getElementById('build-bar-btn');
+        if (buildBarBtn) buildBarBtn.addEventListener('click', () => this.navigateToScreen('search'));
+
+        const mybarSearch = document.getElementById('mybar-search');
+        if (mybarSearch) mybarSearch.addEventListener('input', () => this.searchMyBar());
+
+        // Edit bottle functionality - add null checks
+        const saveEdit = document.getElementById('save-edit');
+        if (saveEdit) saveEdit.addEventListener('click', () => this.saveBottleEdit());
+
+        const cancelEdit = document.getElementById('cancel-edit');
+        if (cancelEdit) cancelEdit.addEventListener('click', () => this.closeModal('edit-bottle-modal'));
+
+        const editVolume = document.getElementById('edit-volume');
+        if (editVolume) editVolume.addEventListener('input', () => this.updateVolumeDisplay());
+
+        const decreaseOwned = document.getElementById('decrease-owned');
+        if (decreaseOwned) decreaseOwned.addEventListener('click', () => this.adjustNumberOwned(-1));
+
+        const increaseOwned = document.getElementById('increase-owned');
+        if (increaseOwned) increaseOwned.addEventListener('click', () => this.adjustNumberOwned(1));
+
+        const editNotes = document.getElementById('edit-notes');
+        if (editNotes) editNotes.addEventListener('input', () => this.updateCharCounter());
+
+        // Coming soon - add null check
+        const backFromComingSoon = document.getElementById('back-from-coming-soon');
+        if (backFromComingSoon) backFromComingSoon.addEventListener('click', () => this.hideComingSoon());
+
+        // Filter functionality - add null checks
+        const applyFilters = document.getElementById('apply-filters');
+        if (applyFilters) applyFilters.addEventListener('click', () => this.applySearchFilters());
+
+        const clearFilters = document.getElementById('clear-filters');
+        if (clearFilters) clearFilters.addEventListener('click', () => this.clearSearchFilters());
+
         this.setupRangeSliders();
 
-        // AI Photo Recognition
-        document.getElementById('capture-photo').addEventListener('click', () => this.capturePhoto());
-        document.getElementById('retake-photo').addEventListener('click', () => this.resetPhotoRecognition());
-        document.getElementById('retry-recognition').addEventListener('click', () => this.resetPhotoRecognition());
-        document.getElementById('manual-add').addEventListener('click', () => this.switchToManualAdd());
-        document.querySelector('.ai-bottle-form').addEventListener('submit', (e) => this.submitAIBottle(e));
+        // AI Photo Recognition - add null checks
+        const capturePhoto = document.getElementById('capture-photo');
+        if (capturePhoto) capturePhoto.addEventListener('click', () => this.capturePhoto());
+
+        const retakePhoto = document.getElementById('retake-photo');
+        if (retakePhoto) retakePhoto.addEventListener('click', () => this.resetPhotoRecognition());
+
+        const retryRecognition = document.getElementById('retry-recognition');
+        if (retryRecognition) retryRecognition.addEventListener('click', () => this.resetPhotoRecognition());
+
+        const manualAdd = document.getElementById('manual-add');
+        if (manualAdd) manualAdd.addEventListener('click', () => this.switchToManualAdd());
+
+        const aiBottleForm = document.querySelector('.ai-bottle-form');
+        if (aiBottleForm) aiBottleForm.addEventListener('submit', (e) => this.submitAIBottle(e));
 
         // Blind Tastings
         this.setupTastingEventListeners();

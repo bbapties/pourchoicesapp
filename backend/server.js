@@ -32,10 +32,11 @@ app.use('/api/', limiter);
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/spirits', require('./routes/spirits'));
-app.use('/api/collections', require('./routes/collections'));
-app.use('/api/tastings', require('./routes/tastings'));
-app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/ai', require('./routes/ai'));
+// TODO: Implement missing routes
+// app.use('/api/collections', require('./routes/collections'));
+// app.use('/api/tastings', require('./routes/tastings'));
+// app.use('/api/analytics', require('./routes/analytics'));
+// app.use('/api/ai', require('./routes/ai'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

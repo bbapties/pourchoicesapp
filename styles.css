@@ -12,7 +12,7 @@
     --success-green: #556B2F;
     --placeholder-gray: #A9A9A9;
     --white: #FFFFFF;
-    --semi-transparent: rgba(47, 47, 47, 0.9);
+    /* Removed --semi-transparent variable */
     --overlay-bg: rgba(47, 47, 47, 0.9);
     
     /* Typography */
@@ -47,6 +47,11 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
 }
 
 body {
@@ -96,11 +101,11 @@ p, span, div {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, var(--bg-charcoal) 0%, #1a1a1a 100%);
-    background-image: 
-        radial-gradient(circle at 20% 80%, var(--accent-amber) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, var(--highlight-gold) 0%, transparent 50%);
+    height: calc(100vh - 60px);
+    background-image: url('frontend/assets/cellar-bg.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
     z-index: -1;
     pointer-events: none;
 }
@@ -111,14 +116,20 @@ p, span, div {
     left: 0;
     width: 100%;
     height: 100%;
-    background: var(--semi-transparent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    /* Removed dark overlay background to show image fully */
+    /* background: var(--semi-transparent); */
+    /* Removed flex centering to position buttons at bottom */
+    /* display: flex; */
+    /* align-items: center; */
+    /* justify-content: center; */
     pointer-events: none;
 }
 
 .welcome-content {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
     text-align: center;
     padding: var(--spacing-xl);
     max-width: 375px;
@@ -176,7 +187,7 @@ p, span, div {
 }
 
 .btn-secondary {
-    background-color: transparent;
+    background-color: var(--bg-charcoal);
     color: var(--text-ivory);
     border: 2px solid var(--accent-amber);
 }
@@ -1027,9 +1038,9 @@ p, span, div {
 /* Toast System */
 .toast-container {
     position: fixed;
-    top: var(--spacing-md);
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     z-index: 2000;
     display: flex;
     flex-direction: column;
@@ -1044,8 +1055,10 @@ p, span, div {
     font-weight: 500;
     box-shadow: var(--shadow-lg);
     animation: toastSlideIn 0.3s ease-out;
-    max-width: 300px;
-    word-wrap: break-word;
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .toast.success {

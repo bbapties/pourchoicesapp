@@ -36,8 +36,8 @@ async function testConnection() {
     }
 }
 
-// Initialize connection
-testConnection();
+// Initialize connection (commented out to allow server to start without DB)
+// testConnection();
 
 // Export query function for use in routes
 const db = {
