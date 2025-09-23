@@ -111,6 +111,10 @@
                     <div class="stat-label">Avg Rating</div>
                 </div>
             </div>
+
+            <div class="profile-actions">
+                <button id="logout-btn" class="btn btn-secondary">Log Out</button>
+            </div>
         </div>
     </div>
 
@@ -732,6 +736,23 @@
                     <button id="fail-retake" class="btn btn-secondary">Try Again</button>
                     <button id="fail-manual" class="btn btn-primary">Add Manually</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logout-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Logout</h2>
+            </div>
+
+            <p>Are you sure you want to log out? This will clear your login information and return you to the welcome screen.</p>
+
+            <div class="modal-actions">
+                <button id="cancel-logout" class="btn btn-secondary">No, Stay Logged In</button>
+                <button id="confirm-logout" class="btn btn-primary">Yes, Log Out</button>
             </div>
         </div>
     </div>

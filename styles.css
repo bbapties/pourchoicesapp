@@ -360,30 +360,19 @@ p, span, div {
     color: var(--error-red);
 }
 
-.tooltip {
-    display: none;
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    right: 0;
-    background-color: var(--bg-charcoal);
-    color: var(--text-ivory);
-    padding: var(--spacing-sm);
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    z-index: 1000;
-    border: 1px solid var(--accent-amber);
-    box-shadow: var(--shadow-md);
-    text-align: center;
-}
 
-.input-group:focus-within .tooltip {
-    display: block;
-}
 
 /* Profile Picture Selector */
 .profile-pic-section {
     margin-bottom: var(--spacing-lg);
+}
+
+.profile-pic-section label {
+    display: block;
+    text-align: center;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-ivory);
+    font-weight: 500;
 }
 
 .profile-pic-selector {
@@ -400,8 +389,8 @@ p, span, div {
 }
 
 .current-pic-icon {
-    width: 80px;
-    height: 80px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     border: 3px solid var(--highlight-gold);
     box-shadow: 0 0 0 3px var(--accent-amber);
@@ -433,8 +422,8 @@ p, span, div {
 
 .profile-pic-option {
     flex-shrink: 0;
-    width: 56px;
-    height: 56px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
@@ -509,6 +498,7 @@ p, span, div {
     border-radius: 10px;
     position: relative;
     transition: var(--transition-normal);
+    margin-left: auto;
 }
 
 .toggle-slider::before {
@@ -2153,7 +2143,7 @@ textarea:focus {
 
 .tooltip {
     position: absolute;
-    bottom: 125%;
+    top: calc(100% + 4px);
     left: 50%;
     transform: translateX(-50%);
     background-color: var(--bg-charcoal);
@@ -2161,20 +2151,28 @@ textarea:focus {
     padding: var(--spacing-sm);
     border-radius: var(--radius-sm);
     font-size: 12px;
-    white-space: nowrap;
     z-index: 1000;
     border: 1px solid var(--accent-amber);
     box-shadow: var(--shadow-md);
+    text-align: center;
+    white-space: nowrap;
+    width: max-content;
+    max-width: 340px;
+    display: none;
+}
+
+.input-group input:focus ~ .tooltip {
+    display: block;
 }
 
 .tooltip::after {
     content: '';
     position: absolute;
-    top: 100%;
+    bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
     border: 5px solid transparent;
-    border-top-color: var(--accent-amber);
+    border-bottom-color: var(--accent-amber);
 }
 
 /* High contrast mode support */

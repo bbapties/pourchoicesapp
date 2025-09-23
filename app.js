@@ -113,6 +113,26 @@ class PourChoicesApp {
             option.addEventListener('click', () => this.selectProfilePic(option));
         });
 
+        // Toggle switches
+        document.querySelectorAll('.toggle-label').forEach(label => {
+            label.addEventListener('click', (e) => {
+                if (e.target.closest('.toggle-slider')) return; // Don't double-trigger
+                const checkbox = label.querySelector('input[type="checkbox"]');
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        });
+
+        document.querySelectorAll('.toggle-slider').forEach(slider => {
+            slider.addEventListener('click', () => {
+                const checkbox = slider.previousElementSibling;
+                if (checkbox && checkbox.type === 'checkbox') {
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        });
+
         // Navigation
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => this.navigateToScreen(item.dataset.screen));
@@ -236,6 +256,16 @@ class PourChoicesApp {
         // Blind Tastings
         this.setupTastingEventListeners();
 
+        // Logout functionality
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) logoutBtn.addEventListener('click', () => this.showLogoutModal());
+
+        const cancelLogout = document.getElementById('cancel-logout');
+        if (cancelLogout) cancelLogout.addEventListener('click', () => this.closeModal('logout-modal'));
+
+        const confirmLogout = document.getElementById('confirm-logout');
+        if (confirmLogout) confirmLogout.addEventListener('click', () => this.logoutUser());
+
         // Modal overlay clicks
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
@@ -306,6 +336,30 @@ class PourChoicesApp {
     showLoginModal() {
         this.showModal('login-modal');
         this.analytics.logEvent('login', 'modal_open');
+    }
+
+    showLogoutModal() {
+        this.showModal('logout-modal');
+        this.analytics.logEvent('logout', 'modal_open');
+    }
+
+    logoutUser() {
+        // Clear user data and remember me preference
+        localStorage.removeItem('pourChoicesUser');
+        localStorage.removeItem('pourChoicesRemember');
+
+        // Reset app state
+        this.currentUser = null;
+        this.currentScreen = 'welcome';
+        this.userCollection = [];
+        this.tastings = [];
+
+        // Close modal and redirect to welcome screen
+        this.closeModal('logout-modal');
+        this.showScreen('welcome');
+
+        this.showToast('You have been logged out', 'info');
+        this.analytics.logEvent('logout', 'success');
     }
 
     showModal(modalId) {
