@@ -1,4 +1,9 @@
 {
+  "name": "pour-choices",
+  "version": "1.0.0",
+  "scripts": {
+    "vercel-build": "cd frontend && npm ci && npm run build && mv dist/* ../ && mv dist/.* ../ 2>/dev/null || true && rm -rf frontend/dist"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4"
   }
