@@ -565,11 +565,6 @@ class PourChoicesApp {
                 body: JSON.stringify(signupData)
             });
 
-            // Check if response is actually JSON (API available)
-            if (!response.headers.get('content-type')?.includes('application/json')) {
-                throw new Error('API not available');
-            }
-
             const result = await response.json();
 
             if (!response.ok) {
@@ -590,43 +585,19 @@ class PourChoicesApp {
             this.currentUser = result.user;
             localStorage.setItem('pourChoicesUser', JSON.stringify(result.user));
             localStorage.setItem('pourChoicesToken', result.token);
-            localStorage.setItem('pourChoicesRemember', stayLoggedIn.toString());
+            localStorage.setItem('pourChoicesRemember', signupData.stayLoggedIn.toString());
 
             // Close modal and show search screen
             this.closeModal('signup-modal');
             this.showScreen('search');
             this.showToast('Welcome to the cellar!', 'success');
 
-            this.analytics.logEvent('signup', 'complete', {
-                method: 'api'
-            });
+            this.analytics.logEvent('signup', 'complete', { email });
 
         } catch (error) {
-            // Fallback: API not available, create local account for testing
-            console.log('API not available, creating local account:', error);
-
-            const localUser = {
-                id: this.generateUserId(),
-                username,
-                email,
-                profilePic: this.selectedProfilePic,
-                toggles: {
-                    addToHome: signupData.addToHome,
-                    stayLoggedIn: signupData.stayLoggedIn
-                }
-            };
-
-            this.currentUser = localUser;
-            localStorage.setItem('pourChoicesUser', JSON.stringify(localUser));
-            localStorage.setItem('pourChoicesRemember', signupData.stayLoggedIn.toString());
-
-            this.closeModal('signup-modal');
-            this.showScreen('search');
-            this.showToast('Welcome to the cellar! (Local mode)', 'success');
-
-            this.analytics.logEvent('signup', 'complete_local', {
-                method: 'local'
-            });
+            console.error('Signup error:', error);
+            this.showToast(error.message || 'Signup failed', 'error');
+            this.analytics.logEvent('signup', 'error', { email, error: error.message });
         }
     }
 
@@ -695,32 +666,12 @@ class PourChoicesApp {
             this.showScreen('search');
             this.showToast('Welcome back!', 'success');
 
-            this.analytics.logEvent('login', 'success', { method: 'api' });
+            this.analytics.logEvent('login', 'success', { email });
 
         } catch (error) {
-            // Fallback: API not available, check local user
-            console.log('API not available, checking local account:', error);
-
-            const savedUser = localStorage.getItem('pourChoicesUser');
-            if (savedUser) {
-                let user = JSON.parse(savedUser);
-                if (user.email === email) {
-                    this.currentUser = user;
-                    localStorage.setItem('pourChoicesRemember', 'true');
-
-                    this.closeModal('login-modal');
-                    this.showScreen('search');
-                    this.showToast('Welcome back! (Local mode)', 'success');
-
-                    this.analytics.logEvent('login', 'success_local', { method: 'local' });
-                } else {
-                    this.showToast('Local user not found', 'error');
-                    this.analytics.logEvent('login', 'local_mismatch', { email });
-                }
-            } else {
-                this.showToast('No local account - sign up first', 'error');
-                this.analytics.logEvent('login', 'no_local_account', { email });
-            }
+            console.error('Login error:', error);
+            this.showToast(error.message || 'Login failed', 'error');
+            this.analytics.logEvent('login', 'error', { email, error: error.message });
         }
     }
 

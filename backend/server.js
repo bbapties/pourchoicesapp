@@ -17,7 +17,11 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(compression());
 app.use(cors({
-    origin: true, // reflect the request origin for development
+    origin: [
+        'http://localhost:8080', // local development
+        'https://pourchoicesapp.vercel.app', // Vercel subdomain
+        'https://www.pourchoicesapp.com' // custom domain
+    ],
     credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
