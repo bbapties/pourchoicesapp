@@ -10,7 +10,7 @@ const supabase = require('../database/connection');
 const signupSchema = Joi.object({
     username: Joi.string().alphanum().min(3).max(20).required(),
     email: Joi.string().email().required(),
-    phone: Joi.string().pattern(/^\+1 \(\d{3}\) \d{3}-\d{4}$/).optional(),
+    phone: Joi.string().max(25).allow(null, '').optional(),
     profilePic: Joi.string().optional(),
     addToHome: Joi.boolean().optional(),
     stayLoggedIn: Joi.boolean().optional()

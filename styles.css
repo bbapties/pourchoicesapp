@@ -2135,6 +2135,61 @@ textarea:focus {
     width: 100%;
 }
 
+/* Phone Input Container */
+.phone-input-container {
+    display: flex;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+}
+
+.phone-country-wrapper {
+    flex: 0 0 25%;
+    min-width: 70px;
+}
+
+.phone-input-wrapper {
+    flex: 1;
+}
+
+.phone-country-select {
+    width: 100%;
+    padding: 12px var(--spacing-xs);
+    border: 2px solid var(--placeholder-gray);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-charcoal);
+    color: var(--text-ivory);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    transition: var(--transition-normal);
+    cursor: pointer;
+    text-align: center;
+}
+
+.phone-country-select:focus {
+    outline: none;
+    border-color: var(--accent-amber);
+    box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.1);
+}
+
+.phone-input-wrapper input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--placeholder-gray);
+    border-radius: var(--radius-md);
+    background-color: var(--white);
+    color: var(--bg-charcoal);
+    font-family: var(--font-body);
+    font-size: 14px;
+    transition: var(--transition-normal);
+}
+
+.phone-input-wrapper input:focus {
+    outline: none;
+    border-color: var(--accent-amber);
+    box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.1);
+}
+
 /* Tooltip Styles */
 .tooltip-container {
     position: relative;

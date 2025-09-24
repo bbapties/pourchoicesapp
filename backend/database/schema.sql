@@ -10,7 +10,7 @@ CREATE TABLE users (
     username VARCHAR(20) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     profile_pic_url TEXT,
-    phone VARCHAR(15),
+    phone VARCHAR(25),
     toggles JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

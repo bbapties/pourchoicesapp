@@ -422,9 +422,26 @@
                     </div>
                 </div>
 
-                <div class="input-group">
+                <div class="input-group phone-group">
                     <label for="phone">Phone (Optional)</label>
-                    <input type="tel" id="phone" placeholder="(555) 123-4567">
+                    <div class="phone-input-container">
+                        <div class="phone-country-wrapper">
+                            <select id="phone-country" class="phone-country-select">
+                                <option value="US" data-format="US" data-code="+1">🇺🇸 +1</option>
+                                <option value="CA" data-format="US" data-code="+1">🇨🇦 +1</option>
+                                <option value="UK" data-format="UK" data-code="+44">🇬🇧 +44</option>
+                                <option value="DE" data-format="INT" data-code="+49">🇩🇪 +49</option>
+                                <option value="FR" data-format="INT" data-code="+33">🇫🇷 +33</option>
+                                <option value="ES" data-format="INT" data-code="+34">🇪🇸 +34</option>
+                                <option value="IT" data-format="INT" data-code="+39">🇮🇹 +39</option>
+                                <option value="AU" data-format="INT" data-code="+61">🇦🇺 +61</option>
+                                <option value="JP" data-format="INT" data-code="+81">🇯🇵 +81</option>
+                            </select>
+                        </div>
+                        <div class="phone-input-wrapper">
+                            <input type="tel" id="phone" placeholder="(555) 123-4567">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="toggle-group">
@@ -753,6 +770,23 @@
             <div class="modal-actions">
                 <button id="cancel-logout" class="btn btn-secondary">No, Stay Logged In</button>
                 <button id="confirm-logout" class="btn btn-primary">Yes, Log Out</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Exists Modal -->
+    <div id="user-exists-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Account Already Exists</h2>
+            </div>
+
+            <p>User already exists, please sign in instead.</p>
+
+            <div class="modal-actions">
+                <button id="cancel-duplicate-signup" class="btn btn-secondary">Cancel</button>
+                <button id="proceed-to-login" class="btn btn-primary">OK</button>
             </div>
         </div>
     </div>

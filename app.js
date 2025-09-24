@@ -59,6 +59,7 @@ class PourChoicesApp {
 
     init() {
         this.setupEventListeners();
+        this.setupPhoneInput(); // Setup phone formatting
         this.checkAuthStatus();
         this.loadSampleData();
         this.analytics.logEvent('app', 'init');
@@ -266,6 +267,13 @@ class PourChoicesApp {
         const confirmLogout = document.getElementById('confirm-logout');
         if (confirmLogout) confirmLogout.addEventListener('click', () => this.logoutUser());
 
+        // User exists modal
+        const cancelDuplicateSignup = document.getElementById('cancel-duplicate-signup');
+        if (cancelDuplicateSignup) cancelDuplicateSignup.addEventListener('click', () => this.handleDuplicateCancel());
+
+        const proceedToLogin = document.getElementById('proceed-to-login');
+        if (proceedToLogin) proceedToLogin.addEventListener('click', () => this.handleDuplicateProceedToLogin());
+
         // Modal overlay clicks
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
@@ -425,56 +433,262 @@ class PourChoicesApp {
         this.analytics.logEvent('signup', 'profile_pic_select', { type: this.selectedProfilePic });
     }
 
-    completeSignup() {
+    // Phone number formatting
+    setupPhoneInput() {
+        const phoneInput = document.getElementById('phone');
+        const countrySelect = document.getElementById('phone-country');
+
+        if (!phoneInput || !countrySelect) return;
+
+        // Update placeholder when country changes
+        countrySelect.addEventListener('change', () => {
+            const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+            const format = selectedOption.dataset.format;
+            const code = selectedOption.dataset.code;
+
+            // Update placeholder based on country format
+            switch (format) {
+                case 'US':
+                    phoneInput.placeholder = '(555) 123-4567';
+                    break;
+                case 'UK':
+                    phoneInput.placeholder = '07123 456789';
+                    break;
+                default:
+                    phoneInput.placeholder = 'Phone number';
+            }
+
+            this.updatePhoneInputRestriction(format);
+        });
+
+        // Format phone number as user types
+        phoneInput.addEventListener('input', (e) => {
+            const format = countrySelect.options[countrySelect.selectedIndex].dataset.format;
+            const formatted = this.formatPhoneNumber(e.target.value, format);
+            if (formatted !== e.target.value) {
+                e.target.value = formatted;
+            }
+        });
+
+        // Set default US formatting
+        this.updatePhoneInputRestriction('US');
+    }
+
+    formatPhoneNumber(value, format) {
+        // Remove all non-numeric characters
+        const numbers = value.replace(/\D/g, '');
+
+        switch (format) {
+            case 'US':
+                // Format as (XXX) XXX-XXXX for exactly 10 digits
+                if (numbers.length >= 10) {
+                    const areaCode = numbers.substr(0, 3);
+                    const firstThree = numbers.substr(3, 3);
+                    const lastFour = numbers.substr(6, 4);
+                    return `(${areaCode}) ${firstThree}-${lastFour}`;
+                } else if (numbers.length >= 6) {
+                    const areaCode = numbers.substr(0, 3);
+                    const firstThree = numbers.substr(3, 3);
+                    const last = numbers.substr(6);
+                    return `(${areaCode}) ${firstThree}-${last}`;
+                } else if (numbers.length >= 3) {
+                    const areaCode = numbers.substr(0, 3);
+                    const rest = numbers.substr(3);
+                    return `(${areaCode}) ${rest}`;
+                } else if (numbers.length > 0) {
+                    return `(${numbers}`;
+                }
+                break;
+
+            case 'UK':
+                // Format as XXXX XXXXXX for UK mobile (11 digits) or 0XXXX XXXXXX
+                if (numbers.length === 11) {
+                    // Mobile: XXXXX XXXXXX
+                    const firstFive = numbers.substr(1, 5);
+                    const lastSix = numbers.substr(6);
+                    return `${numbers[0]}${firstFive} ${lastSix}`;
+                } else if (numbers.length >= 10) {
+                    const firstFive = numbers.substr(0, 5);
+                    const last = numbers.substr(5);
+                    return `${firstFive} ${last}`;
+                }
+                break;
+
+            default:
+                // No special formatting for international
+                return value;
+        }
+        return value;
+    }
+
+    updatePhoneInputRestriction(format) {
+        const phoneInput = document.getElementById('phone');
+        if (!phoneInput) return;
+
+        // Remove existing pattern if any
+        phoneInput.removeAttribute('pattern');
+
+        switch (format) {
+            case 'US':
+                phoneInput.setAttribute('pattern', '^\\+1 \\(\\d{3}\\) \\d{3}-\\d{4}$');
+                phoneInput.setAttribute('maxlength', '14'); // (123) 456-7890
+                break;
+            case 'UK':
+                phoneInput.setAttribute('pattern', '^\\+44 \\d{4} \\d{6}$');
+                phoneInput.setAttribute('maxlength', '13'); // 07123 456789
+                break;
+            default:
+                phoneInput.removeAttribute('maxlength');
+                phoneInput.removeAttribute('pattern');
+        }
+    }
+
+    async completeSignup() {
         const username = document.getElementById('username').value;
         const email = document.getElementById('email').value;
-        const phone = document.getElementById('phone').value;
+        const rawPhone = document.getElementById('phone').value;
         const addToHome = document.getElementById('add-to-home').checked;
         const stayLoggedIn = document.getElementById('stay-logged-in').checked;
 
-        // Create user object
-        this.currentUser = {
-            id: this.generateUserId(),
+        // Combine country code with phone number if phone is provided
+        let phone = null;
+        if (rawPhone.trim()) {
+            const countrySelect = document.getElementById('phone-country');
+            const countryCode = countrySelect.options[countrySelect.selectedIndex].dataset.code;
+            phone = `${countryCode} ${rawPhone}`;
+        }
+
+        const signupData = {
             username,
             email,
             phone,
             profilePic: this.selectedProfilePic,
             addToHome,
-            stayLoggedIn,
-            createdAt: new Date().toISOString()
+            stayLoggedIn
         };
 
-        // Save to localStorage
-        localStorage.setItem('pourChoicesUser', JSON.stringify(this.currentUser));
-        localStorage.setItem('pourChoicesRemember', stayLoggedIn.toString());
+        try {
+            const response = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(signupData)
+            });
 
-        // Close modal and show search screen
-        this.closeModal('signup-modal');
-        this.showScreen('search');
-        this.showToast('Welcome to the cellar!', 'success');
-        
-        this.analytics.logEvent('signup', 'complete', { 
-            username, 
-            hasPhone: !!phone,
-            addToHome,
-            stayLoggedIn 
-        });
+            const result = await response.json();
+
+            if (!response.ok) {
+                // Check if user already exists (duplicate)
+                if (response.status === 409 && result.duplicate) {
+                    // Store the attempted signup data for later use
+                    this.attemptedSignup = { email };
+
+                    // Show the duplicate user modal instead of error
+                    this.showModal('user-exists-modal');
+                    this.analytics.logEvent('signup', 'duplicate_user', { email });
+                    return;
+                }
+                throw new Error(result.error || 'Signup failed');
+            }
+
+            // Store user data and token
+            this.currentUser = result.user;
+            localStorage.setItem('pourChoicesUser', JSON.stringify(result.user));
+            localStorage.setItem('pourChoicesToken', result.token);
+            localStorage.setItem('pourChoicesRemember', stayLoggedIn.toString());
+
+            // Close modal and show search screen
+            this.closeModal('signup-modal');
+            this.showScreen('search');
+            this.showToast('Welcome to the cellar!', 'success');
+
+            this.analytics.logEvent('signup', 'complete', {
+                username,
+                hasPhone: !!phone,
+                addToHome,
+                stayLoggedIn
+            });
+
+        } catch (error) {
+            console.error('Signup error:', error);
+            this.showToast(error.message || 'Signup failed', 'error');
+            this.analytics.logEvent('signup', 'error', { error: error.message });
+        }
     }
 
-    submitLogin() {
+    // Handle duplicate signup modal actions
+    handleDuplicateCancel() {
+        // Clear all signup form fields
+        document.getElementById('username').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('phone').value = '';
+
+        // Reset profile picture
+        this.selectedProfilePic = 'whiskey-glass';
+        document.querySelectorAll('.profile-pic-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        document.querySelector('.current-pic-icon').textContent = this.getProfilePicEmoji('whiskey-glass');
+
+        // Reset toggles
+        document.getElementById('add-to-home').checked = true;
+        document.getElementById('stay-logged-in').checked = true;
+
+        // Close modal and keep signup modal open
+        this.closeModal('user-exists-modal');
+        this.analytics.logEvent('signup_duplicate', 'cancel');
+    }
+
+    handleDuplicateProceedToLogin() {
+        // Pre-fill login form with the email from attempted signup
+        if (this.attemptedSignup) {
+            document.getElementById('login-email').value = this.attemptedSignup.email;
+        }
+
+        // Close both modals and show login modal
+        this.closeModal('user-exists-modal');
+        this.closeModal('signup-modal');
+        this.showModal('login-modal');
+
+        this.analytics.logEvent('signup_duplicate', 'proceed_to_login');
+    }
+
+    async submitLogin() {
         const email = document.getElementById('login-email').value;
-        
-        // Check if user exists (in real app, this would be API call)
-        const savedUser = localStorage.getItem('pourChoicesUser');
-        if (savedUser) {
-            this.currentUser = JSON.parse(savedUser);
+        const loginData = { email };
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(loginData)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Login failed');
+            }
+
+            // Store user data and token
+            this.currentUser = result.user;
+            localStorage.setItem('pourChoicesUser', JSON.stringify(result.user));
+            localStorage.setItem('pourChoicesToken', result.token);
+            localStorage.setItem('pourChoicesRemember', 'true'); // API sets a default
+
             this.closeModal('login-modal');
             this.showScreen('search');
             this.showToast('Welcome back!', 'success');
+
             this.analytics.logEvent('login', 'success', { email });
-        } else {
-            this.showToast('Account not found. Please sign up first.', 'error');
-            this.analytics.logEvent('login', 'fail', { email, reason: 'not_found' });
+
+        } catch (error) {
+            console.error('Login error:', error);
+            this.showToast(error.message || 'Login failed', 'error');
+            this.analytics.logEvent('login', 'error', { email, error: error.message });
         }
     }
 
