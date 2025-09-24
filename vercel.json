@@ -31,10 +31,9 @@
           "key": "X-XSS-Protection",
           "value": "1; mode=block"
         }
-      ]
+      }
     }
   ],
-  "domain": "www.pourchoicesapp.com",
   "redirects": [
     {
       "source": "/(.*)",
