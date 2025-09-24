@@ -1048,13 +1048,13 @@ p, span, div {
     border: none;
     color: var(--accent-amber);
     cursor: pointer;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-sm);
     transition: var(--transition-normal);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: 0;
     min-width: 44px;
     min-height: 44px;
 }
