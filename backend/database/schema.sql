@@ -6,14 +6,13 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users table
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username VARCHAR(20) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    profile_pic_url TEXT,
-    phone VARCHAR(25),
-    toggles JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+id SERIAL PRIMARY KEY,
+username VARCHAR(20) NOT NULL UNIQUE,
+email VARCHAR(255) NOT NULL UNIQUE,
+phone VARCHAR(25),
+profile_pic_url VARCHAR(255),
+toggles JSONB,
+created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Spirits/Bottles table

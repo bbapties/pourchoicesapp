@@ -5,6 +5,7 @@ class PourChoicesApp {
     constructor() {
         this.currentUser = null;
         this.currentScreen = 'welcome';
+        this.previousScreen = null;
         this.signupStep = 1;
         this.selectedProfilePic = 'whiskey-glass';
         this.bottles = [];
@@ -622,7 +623,6 @@ class PourChoicesApp {
         // Clear all signup form fields
         document.getElementById('username').value = '';
         document.getElementById('email').value = '';
-        document.getElementById('phone').value = '';
 
         // Reset profile picture
         this.selectedProfilePic = 'whiskey-glass';
@@ -1212,13 +1212,16 @@ class PourChoicesApp {
 
     // Coming Soon functionality
     showComingSoon(feature) {
+        this.previousScreen = this.currentScreen;
         this.showScreen('coming-soon');
         this.showToast(`Feature aging in the barrel—check back soon!`, 'warning');
         this.analytics.logEvent('coming_soon', 'view', { feature });
     }
 
     hideComingSoon() {
-        this.showScreen(this.currentScreen);
+        const targetScreen = this.previousScreen || 'search';
+        this.showScreen(targetScreen);
+        this.previousScreen = null;
     }
 
     // Utility functions
