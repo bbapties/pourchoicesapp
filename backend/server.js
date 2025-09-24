@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(compression());
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+    origin: true, // reflect the request origin for development
     credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
