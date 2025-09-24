@@ -565,6 +565,11 @@ class PourChoicesApp {
                 body: JSON.stringify(signupData)
             });
 
+            // Check if response is actually JSON (API available)
+            if (!response.headers.get('content-type')?.includes('application/json')) {
+                throw new Error('API not available');
+            }
+
             const result = await response.json();
 
             if (!response.ok) {
