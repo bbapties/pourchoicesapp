@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 
 const profilePicOptions = [
@@ -19,11 +19,75 @@ const profilePicOptions = [
 export function SignupModal({ signupData, setSignupData, onClose, showToast, setCurrentUser, setCurrentScreen, setCurrentModal }) {
   const [usernameValidation, setUsernameValidation] = useState('')
   const [emailValidation, setEmailValidation] = useState('')
-  const [phone, setPhone] = useState('')
   const [username, setUsername] = useState(signupData.username)
   const [email, setEmail] = useState(signupData.email)
   const [addToHome, setAddToHome] = useState(signupData.addToHome)
   const [stayLoggedIn, setStayLoggedIn] = useState(signupData.stayLoggedIn)
+  const [phoneCountry, setPhoneCountry] = useState('US')
+  const [phoneRaw, setPhoneRaw] = useState('')
+  const [phoneFormatted, setPhoneFormatted] = useState('')
+
+  const getCountryCode = (country) => {
+    const codes = {
+      US: '+1',
+      CA: '+1',
+      UK: '+44',
+      DE: '+49',
+      FR: '+33',
+      ES: '+34',
+      IT: '+39',
+      AU: '+61',
+      JP: '+81'
+    }
+    return codes[country] || '+1'
+  }
+
+  const getPhoneFormat = (country) => {
+    switch (country) {
+      case 'US':
+      case 'CA':
+        return (raw) => {
+          if (!raw) return ''
+          const len = raw.length
+          if (len === 0) return ''
+          if (len <= 3) return `(${raw}`
+          if (len <= 6) return `(${raw.slice(0, 3)}) ${raw.slice(3)}`
+          return `(${raw.slice(0, 3)}) ${raw.slice(3, 6)}-${raw.slice(6, 10)}`
+        }
+      case 'UK':
+        return (raw) => {
+          if (!raw) return ''
+          const len = raw.length
+          if (len === 0) return ''
+          if (len <= 4) return raw
+          return `${raw.slice(0, 4)} ${raw.slice(4)}`
+        }
+      case 'DE':
+      case 'FR':
+        return (raw) => {
+          if (!raw) return ''
+          const len = raw.length
+          if (len <= 3) return raw
+          if (len <= 6) return `${raw.slice(0, 3)} ${raw.slice(3)}`
+          return `${raw.slice(0, 3)} ${raw.slice(3, 6)} ${raw.slice(6)}`
+        }
+      case 'AU':
+        return (raw) => {
+          if (!raw) return ''
+          const len = raw.length
+          if (len <= 4) return raw
+          if (len <= 7) return `${raw.slice(0, 4)} ${raw.slice(4)}`
+          return `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7)}`
+        }
+      default:
+        return (raw) => raw
+    }
+  }
+
+  useEffect(() => {
+    const formatFunc = getPhoneFormat(phoneCountry)
+    setPhoneFormatted(formatFunc(phoneRaw))
+  }, [phoneCountry, phoneRaw])
 
   const checkUniqueness = async (username, email) => {
     try {
@@ -107,6 +171,11 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
     validateEmail(value)
   }
 
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '') // keep only digits
+    setPhoneRaw(value)
+  }
+
   const selectProfilePic = (type) => {
     setSignupData(prev => ({ ...prev, profilePic: type }))
     // Update current display
@@ -138,7 +207,7 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
       const userData = {
         username,
         email,
-        phone: phone.trim() || null,
+        phone: phoneFormatted ? `${getCountryCode(phoneCountry)} ${phoneFormatted}` : null,
         profilePic: signupData.profilePic,
         addToHome,
         stayLoggedIn
@@ -178,29 +247,31 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
         </div>
 
         <div className="signup-step active">
-          <div className="input-group">
+          <div className="input-group relative">
             <label htmlFor="username">Username</label>
             <input
               type="text"
               id="username"
               placeholder="Choose a username"
+              className="px-3 pr-8"
               value={username}
               onChange={handleUsernameChange}
             />
-            <span className={`validation-icon ${usernameValidation}`}></span>
+            <span className={`validation-icon absolute right-2 top-1/2 transform ${usernameValidation === 'valid' ? 'text-green-500' : usernameValidation === 'invalid' ? 'text-red-500' : 'hidden'}`}>{usernameValidation ? (usernameValidation === 'valid' ? '✓' : '✗') : ''}</span>
             <div className="tooltip">3-20 characters, letters and numbers only</div>
           </div>
 
-          <div className="input-group">
+          <div className="input-group relative">
             <label htmlFor="email">Email</label>
             <input
               type="email"
               id="email"
               placeholder="your@email.com"
+              className="px-3 pr-8"
               value={email}
               onChange={handleEmailChange}
             />
-            <span className={`validation-icon ${emailValidation}`}></span>
+            <span className={`validation-icon absolute right-2 top-1/2 transform ${emailValidation === 'valid' ? 'text-green-500' : emailValidation === 'invalid' ? 'text-red-500' : 'hidden'}`}>{emailValidation ? (emailValidation === 'valid' ? '✓' : '✗') : ''}</span>
           </div>
 
           <div className="profile-pic-section">
@@ -231,7 +302,7 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
             <label htmlFor="phone">Phone (Optional)</label>
             <div className="phone-input-container">
               <div className="phone-country-wrapper">
-                <select id="phone-country" className="phone-country-select">
+                <select id="phone-country" className="phone-country-select" value={phoneCountry} onChange={(e) => setPhoneCountry(e.target.value)}>
                   <option value="US">🇺🇸 +1</option>
                   <option value="CA">🇨🇦 +1</option>
                   <option value="UK">🇬🇧 +44</option>
@@ -248,8 +319,8 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
                   type="tel"
                   id="phone"
                   placeholder="(555) 123-4567"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  value={phoneFormatted}
+                  onChange={handlePhoneChange}
                 />
               </div>
             </div>
