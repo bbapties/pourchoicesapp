@@ -53,52 +53,28 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
     // Update current display
   }
 
-  const completeSignup = async () => {
+  const completeSignup = () => {
     if (!validateUsername(username) || !validateEmail(email)) {
       showToast('Please fix the validation errors', 'error')
       return
     }
 
-    const completeData = {
-      ...signupData,
+    const mockUser = {
+      id: 'user_' + Date.now(),
       username,
       email,
-      addToHome,
-      stayLoggedIn,
-      phone // optional
+      profilePic: signupData.profilePic,
+      joined: new Date().toISOString()
     }
 
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(completeData)
-      })
+    setCurrentUser(mockUser)
+    localStorage.setItem('pourChoicesUser', JSON.stringify(mockUser))
+    localStorage.setItem('pourChoicesToken', 'mock_token_' + Date.now())
+    localStorage.setItem('pourChoicesRemember', stayLoggedIn.toString())
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        if (response.status === 409) {
-          showToast('User already exists, please sign in instead.', 'warning')
-          // Could switch to login modal
-          return
-        }
-        throw new Error(result.error || 'Signup failed')
-      }
-
-      setCurrentUser(result.user)
-      localStorage.setItem('pourChoicesUser', JSON.stringify(result.user))
-      localStorage.setItem('pourChoicesToken', result.token)
-      localStorage.setItem('pourChoicesRemember', stayLoggedIn.toString())
-
-      onClose()
-      setCurrentScreen('search')
-      showToast('Welcome to the cellar!', 'success')
-
-    } catch (error) {
-      console.error('Signup error:', error)
-      showToast(error.message || 'Signup failed', 'error')
-    }
+    onClose()
+    setCurrentScreen('search')
+    showToast('Welcome to the cellar!', 'success')
   }
 
   return (

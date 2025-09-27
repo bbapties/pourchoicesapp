@@ -15,38 +15,28 @@ export function LoginModal({ email, setEmail, onClose, showToast, setCurrentUser
     validateEmail(value)
   }
 
-  const submitLogin = async () => {
+  const submitLogin = () => {
     if (!validateEmail(email)) {
       showToast('Please enter a valid email', 'error')
       return
     }
 
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Login failed')
-      }
-
-      setCurrentUser(result.user)
-      localStorage.setItem('pourChoicesUser', JSON.stringify(result.user))
-      localStorage.setItem('pourChoicesToken', result.token)
-      localStorage.setItem('pourChoicesRemember', 'true')
-
-      onClose()
-      setCurrentScreen('search')
-      showToast('Welcome back!', 'success')
-
-    } catch (error) {
-      console.error('Login error:', error)
-      showToast(error.message || 'Login failed', 'error')
+    const mockUser = {
+      id: 'user_login_' + Date.now(),
+      username: email.split('@')[0],
+      email,
+      profilePic: 'whiskey-glass',
+      joined: new Date().toISOString()
     }
+
+    setCurrentUser(mockUser)
+    localStorage.setItem('pourChoicesUser', JSON.stringify(mockUser))
+    localStorage.setItem('pourChoicesToken', 'mock_token_' + Date.now())
+    localStorage.setItem('pourChoicesRemember', 'true')
+
+    onClose()
+    setCurrentScreen('search')
+    showToast('Welcome back!', 'success')
   }
 
   const handleKeyPress = (e) => {
