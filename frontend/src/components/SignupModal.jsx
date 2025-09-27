@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { supabase } from '../supabase'
 
 const profilePicOptions = [
   { type: 'whiskey-glass', emoji: '🥃' },
@@ -23,6 +24,64 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
   const [email, setEmail] = useState(signupData.email)
   const [addToHome, setAddToHome] = useState(signupData.addToHome)
   const [stayLoggedIn, setStayLoggedIn] = useState(signupData.stayLoggedIn)
+
+  const checkUniqueness = async (username, email) => {
+    try {
+      // Check username uniqueness
+      const { data: usernameData, error: usernameError } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', username)
+        .limit(1)
+
+      if (usernameError) throw usernameError
+
+      // Check email uniqueness
+      const { data: emailData, error: emailError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .limit(1)
+
+      if (emailError) throw emailError
+
+      return {
+        usernameTaken: usernameData && usernameData.length > 0,
+        emailTaken: emailData && emailData.length > 0
+      }
+    } catch (error) {
+      console.error('Error checking uniqueness:', error)
+      throw error
+    }
+  }
+
+  const createUser = async (userData) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .insert([
+          {
+            username: userData.username,
+            email: userData.email,
+            phone: userData.phone || null,
+            profile_pic_url: userData.profilePic,
+            toggles: {
+              addToHome: userData.addToHome,
+              stayLoggedIn: userData.stayLoggedIn
+            }
+          }
+        ])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      return data
+    } catch (error) {
+      console.error('Error creating user:', error)
+      throw error
+    }
+  }
 
   const validateUsername = (value) => {
     const isValid = /^[a-zA-Z0-9]{3,20}$/.test(value)
@@ -53,28 +112,61 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
     // Update current display
   }
 
-  const completeSignup = () => {
+  const completeSignup = async () => {
     if (!validateUsername(username) || !validateEmail(email)) {
       showToast('Please fix the validation errors', 'error')
       return
     }
 
-    const mockUser = {
-      id: 'user_' + Date.now(),
-      username,
-      email,
-      profilePic: signupData.profilePic,
-      joined: new Date().toISOString()
+    try {
+      // Check username and email uniqueness
+      const uniquenessCheck = await checkUniqueness(username, email)
+
+      if (uniquenessCheck.usernameTaken) {
+        setUsernameValidation('invalid')
+        showToast('Username is already taken. Please choose another.', 'error')
+        return
+      }
+
+      if (uniquenessCheck.emailTaken) {
+        setEmailValidation('invalid')
+        showToast('Email is already registered. Please use a different email.', 'error')
+        return
+      }
+
+      // Create user in database
+      const userData = {
+        username,
+        email,
+        phone: phone.trim() || null,
+        profilePic: signupData.profilePic,
+        addToHome,
+        stayLoggedIn
+      }
+
+      const newUser = await createUser(userData)
+
+      // Set user in app state
+      const appUser = {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        profilePic: newUser.profile_pic_url,
+        joined: newUser.created_at
+      }
+
+      setCurrentUser(appUser)
+      localStorage.setItem('pourChoicesUser', JSON.stringify(appUser))
+      localStorage.setItem('pourChoicesRemember', stayLoggedIn.toString())
+
+      onClose()
+      setCurrentScreen('search')
+      showToast('Welcome to the cellar!', 'success')
+
+    } catch (error) {
+      console.error('Signup error:', error)
+      showToast('Failed to create account. Please try again.', 'error')
     }
-
-    setCurrentUser(mockUser)
-    localStorage.setItem('pourChoicesUser', JSON.stringify(mockUser))
-    localStorage.setItem('pourChoicesToken', 'mock_token_' + Date.now())
-    localStorage.setItem('pourChoicesRemember', stayLoggedIn.toString())
-
-    onClose()
-    setCurrentScreen('search')
-    showToast('Welcome to the cellar!', 'success')
   }
 
   return (
