@@ -1,7 +1,6 @@
 {
   "version": 2,
   "framework": null,
-  "functions": {},
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
   "devCommand": "cd frontend && npm run dev",
