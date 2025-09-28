@@ -19,6 +19,7 @@ app.use(compression());
 app.use(cors({
     origin: [
         'http://localhost:8080', // local development
+        'http://localhost:5173', // Vite dev server
         'https://pourchoicesapp.vercel.app', // Vercel subdomain
         'https://www.pourchoicesapp.com' // custom domain
     ],

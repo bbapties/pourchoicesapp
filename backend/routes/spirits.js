@@ -3,10 +3,11 @@ const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 const supabase = require('../database/connection');
+const levenshtein = require('fast-levenshtein');
 
 // Validation schemas
 const searchSchema = Joi.object({
-    query: Joi.string().min(1).max(100).required(),
+    query: Joi.string().max(100).allow('').default(''),
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(50).default(20)
 });
@@ -36,6 +37,7 @@ const filterSchema = Joi.object({
 router.get('/search', async (req, res) => {
     try {
         const { error, value } = searchSchema.validate(req.query);
+        console.log('Search validation:', req.query, error, value);
         if (error) {
             return res.status(400).json({ error: error.details[0].message });
         }
@@ -43,14 +45,21 @@ router.get('/search', async (req, res) => {
         const { query, page, limit } = value;
         const offset = (page - 1) * limit;
 
-        // Search using ILIKE for name and distillery, exact match for type
+        // If no query, get all bottles sorted by newest first
         let supabaseQuery = supabase
             .from('spirits')
             .select('id, name, distillery, type, images, status', { count: 'exact' })
-            .eq('status', 'approved')
-            .or(`name.ilike.%${query}%,distillery.ilike.%${query}%,type.ilike.%${query}%`)
+            .eq('status', 'approved');
+
+        if (query && query.trim()) {
+            // Search using ILIKE for name and distillery, exact match for type
+            supabaseQuery = supabaseQuery
+                .or(`name.ilike.%${query}%,distillery.ilike.%${query}%,type.ilike.%${query}%`);
+        }
+
+        supabaseQuery = supabaseQuery
             .range(offset, offset + limit - 1)
-            .order('name');
+            .order('created_at', { ascending: false }); // Newest first
 
         const { data: results, error: searchError, count } = await supabaseQuery;
 
@@ -174,26 +183,38 @@ router.post('/', async (req, res) => {
 
         const { name, distillery, type, barcode, images } = value;
 
-        // Check for duplicates (simplified - exact name/distillery match)
+        // Check for duplicates using Levenshtein similarity
+        const newCombined = `${name} ${distillery}`.toLowerCase();
         const { data: existingBottles, error: duplicateError } = await supabase
             .from('spirits')
             .select('id, name, distillery')
-            .ilike('name', name)
-            .ilike('distillery', distillery);
+            .eq('status', 'approved'); // Only check against approved bottles
 
         if (duplicateError) {
             console.error('Duplicate check error:', duplicateError);
             return res.status(500).json({ error: 'Database error' });
         }
 
+        const duplicates = [];
         if (existingBottles && existingBottles.length > 0) {
+            existingBottles.forEach(bottle => {
+                const existingCombined = `${bottle.name} ${bottle.distillery}`.toLowerCase();
+                const distance = levenshtein.get(newCombined, existingCombined);
+                const maxLength = Math.max(newCombined.length, existingCombined.length);
+                const similarity = maxLength > 0 ? 1 - (distance / maxLength) : 0;
+
+                // If similarity >= 80%, consider it a duplicate
+                if (similarity >= 0.8) {
+                    duplicates.push({ id: bottle.id, name: bottle.name, distillery: bottle.distillery, similarity });
+                }
+            });
+        }
+
+        if (duplicates.length > 0) {
             return res.status(409).json({
                 error: 'Similar bottle already exists',
-                duplicates: existingBottles.map(row => ({
-                    id: row.id,
-                    name: row.name,
-                    distillery: row.distillery
-                }))
+                explain: 'Admin will review this addition',
+                duplicates: duplicates.map(d => ({ id: d.id, name: d.name, distillery: d.distillery }))
             });
         }
 

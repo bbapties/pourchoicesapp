@@ -23,16 +23,25 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - serve from cache when offline, but exclude API calls
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      }
-    )
-  );
+  // Don't intercept API requests - let them go to the network
+  if (event.request.url.includes('/api/') ||
+      event.request.url.includes('localhost:3000') ||
+      event.request.url.includes('localhost:3001')) {
+    return;
+  }
+
+  // Only cache GET requests for same-origin assets
+  if (event.request.method === 'GET' &&
+      new URL(event.request.url).origin === location.origin) {
+    event.respondWith(
+      caches.match(event.request)
+        .then((response) => {
+          return response || fetch(event.request);
+        })
+    );
+  }
 });
 
 // Activate event - clean up old caches

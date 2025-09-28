@@ -2,9 +2,12 @@
   "name": "pour-choices",
   "version": "1.0.0",
   "scripts": {
-  "vercel-build": "cd frontend && npm ci && npm run build"
-},
+    "vercel-build": "cd frontend && npm ci && npm run build"
+  },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4"
+    "@supabase/supabase-js": "^2.57.4",
+    "browser-image-compression": "^2.0.2",
+    "fast-levenshtein": "^3.0.0",
+    "react-qr-barcode-scanner": "^2.1.14"
   }
 }
