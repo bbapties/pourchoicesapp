@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 
-const isIOS = () => {
-  const userAgent = window.navigator.userAgent.toLowerCase()
-  return /iphone|ipad|ipod/.test(userAgent)
-}
+
 
 const profilePicOptions = [
   { type: 'whiskey-glass', emoji: '🥃' },
@@ -26,13 +23,10 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
   const [emailValidation, setEmailValidation] = useState('')
   const [username, setUsername] = useState(signupData.username)
   const [email, setEmail] = useState(signupData.email)
-  const [addToHome, setAddToHome] = useState(signupData.addToHome)
   const [stayLoggedIn, setStayLoggedIn] = useState(signupData.stayLoggedIn)
   const [phoneCountry, setPhoneCountry] = useState('US')
   const [phoneRaw, setPhoneRaw] = useState('')
   const [phoneFormatted, setPhoneFormatted] = useState('')
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
-  const [showIOSInstructions, setShowIOSInstructions] = useState(false)
 
   const getCountryCode = (country) => {
     const codes = {
@@ -96,16 +90,6 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
     setPhoneFormatted(formatFunc(phoneRaw))
   }, [phoneCountry, phoneRaw])
 
-  useEffect(() => {
-    const handler = (e) => {
-      console.log('beforeinstallprompt event fired')
-      e.preventDefault()
-      setDeferredPrompt(e)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
-
   const checkUniqueness = async (username, email) => {
     try {
       // Check username uniqueness
@@ -147,7 +131,6 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
             phone: userData.phone || null,
             profile_pic_url: userData.profilePic,
             toggles: {
-              addToHome: userData.addToHome,
               stayLoggedIn: userData.stayLoggedIn
             }
           }
@@ -226,7 +209,6 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
         email,
         phone: phoneFormatted ? `${getCountryCode(phoneCountry)} ${phoneFormatted}` : null,
         profilePic: signupData.profilePic,
-        addToHome,
         stayLoggedIn
       }
 
@@ -249,33 +231,6 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
       onClose()
       setCurrentScreen('search')
       showToast('Welcome to the cellar!', 'success')
-
-      if (addToHome) {
-        console.log('Processing addToHome, isIOS:', isIOS(), 'deferredPrompt:', !!deferredPrompt, 'userAgent:', navigator.userAgent)
-        setTimeout(() => {
-          console.log('In timeout, isIOS:', isIOS(), 'deferredPrompt:', !!deferredPrompt)
-          if (isIOS()) {
-            console.log('Showing iOS instructions modal')
-            setShowIOSInstructions(true)
-          } else if (deferredPrompt) {
-            console.log('Prompting install on Android')
-            deferredPrompt.prompt()
-            deferredPrompt.userChoice.then((choiceResult) => {
-              console.log('Install choice:', choiceResult.outcome)
-              if (choiceResult.outcome === 'accepted') {
-                showToast('App added to Home Screen!', 'success')
-              }
-              setDeferredPrompt(null)
-            }).catch((err) => {
-              console.log('Install prompt error:', err)
-              setDeferredPrompt(null)
-            })
-          } else {
-            console.log('No install method available (not iOS and no deferred prompt)')
-            // Maybe show a manual install button or something
-          }
-        }, 1000)  // Shortened to 1 second
-      }
 
     } catch (error) {
       console.error('Signup error:', error)
@@ -374,18 +329,6 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
           <div className="toggle-group">
             <div className="toggle-item">
               <div className="toggle-label">
-                <span className="toggle-icon">📱</span>
-                <div>
-                  <strong>Add to Home Screen</strong>
-                  <div>Install as app for quick access</div>
-                </div>
-                <input type="checkbox" checked={addToHome} onChange={(e) => setAddToHome(e.target.checked)} />
-                <div className="toggle-slider"></div>
-              </div>
-            </div>
-
-            <div className="toggle-item">
-              <div className="toggle-label">
                 <span className="toggle-icon">🔒</span>
                 <div>
                   <strong>Stay Logged In</strong>
@@ -403,28 +346,6 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
           </div>
         </div>
       </div>
-      {showIOSInstructions && (
-        <div className="modal ios-instructions-modal active">
-          <div className="modal-overlay"></div>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Add to Home Screen</h3>
-            </div>
-            <div className="modal-body">
-              <p>To install the app on your iPhone/iPad:</p>
-              <ol style={{ textAlign: 'left', paddingLeft: '20px' }}>
-                <li>Tap the Share button at the bottom of Safari (looks like a square with an arrow)</li>
-                <li>Scroll down and tap "Add to Home Screen" (square with upward arrow icon)</li>
-                <li>Tap "Add" in the top right corner</li>
-              </ol>
-              <p>This will create a shortcut to the app on your home screen.</p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-primary" onClick={() => setShowIOSInstructions(false)}>Got it</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
