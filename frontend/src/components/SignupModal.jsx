@@ -251,21 +251,30 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
       showToast('Welcome to the cellar!', 'success')
 
       if (addToHome) {
+        console.log('Processing addToHome, isIOS:', isIOS(), 'deferredPrompt:', !!deferredPrompt, 'userAgent:', navigator.userAgent)
         setTimeout(() => {
+          console.log('In timeout, isIOS:', isIOS(), 'deferredPrompt:', !!deferredPrompt)
           if (isIOS()) {
+            console.log('Showing iOS instructions modal')
             setShowIOSInstructions(true)
           } else if (deferredPrompt) {
+            console.log('Prompting install on Android')
             deferredPrompt.prompt()
             deferredPrompt.userChoice.then((choiceResult) => {
+              console.log('Install choice:', choiceResult.outcome)
               if (choiceResult.outcome === 'accepted') {
                 showToast('App added to Home Screen!', 'success')
               }
               setDeferredPrompt(null)
             }).catch((err) => {
+              console.log('Install prompt error:', err)
               setDeferredPrompt(null)
             })
+          } else {
+            console.log('No install method available (not iOS and no deferred prompt)')
+            // Maybe show a manual install button or something
           }
-        }, 2000)
+        }, 1000)  // Shortened to 1 second
       }
 
     } catch (error) {
@@ -396,7 +405,7 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
       </div>
       {showIOSInstructions && (
         <div className="modal ios-instructions-modal active">
-          <div className="modal-overlay" onClick={() => setShowIOSInstructions(false)}></div>
+          <div className="modal-overlay"></div>
           <div className="modal-content">
             <div className="modal-header">
               <h3>Add to Home Screen</h3>
