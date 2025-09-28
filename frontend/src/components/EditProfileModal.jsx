@@ -16,16 +16,50 @@ const profilePicOptions = [
   { type: 'barrel-tap', emoji: '🚰' }
 ]
 
-export function SignupModal({ signupData, setSignupData, onClose, showToast, setCurrentUser, setCurrentScreen, setCurrentModal }) {
-  const [usernameValidation, setUsernameValidation] = useState('')
-  const [emailValidation, setEmailValidation] = useState('')
-  const [username, setUsername] = useState(signupData.username)
-  const [email, setEmail] = useState(signupData.email)
-  const [addToHome, setAddToHome] = useState(signupData.addToHome)
-  const [stayLoggedIn, setStayLoggedIn] = useState(signupData.stayLoggedIn)
+export function EditProfileModal({ currentUser, setCurrentUser, onClose, showToast }) {
+  const [usernameValidation, setUsernameValidation] = useState('valid')
+  const [emailValidation, setEmailValidation] = useState('valid')
+  const [username, setUsername] = useState(currentUser?.username || '')
+  const [email, setEmail] = useState(currentUser?.email || '')
+  const [profilePic, setProfilePic] = useState(currentUser?.profilePic || 'whiskey-glass')
   const [phoneCountry, setPhoneCountry] = useState('US')
   const [phoneRaw, setPhoneRaw] = useState('')
   const [phoneFormatted, setPhoneFormatted] = useState('')
+
+  const parsePhone = (phoneString) => {
+    if (!phoneString) return { country: 'US', raw: '', formatted: '' }
+
+    // Remove spaces and then parse
+    const clean = phoneString.replace(/\s/g, '')
+    if (clean.startsWith('+1')) {
+      const raw = clean.slice(2).replace(/\D/g, '')
+      return { country: 'US', raw, formatted: formatPhone('US', raw) }
+    } else if (clean.startsWith('+44')) {
+      const raw = clean.slice(3).replace(/\D/g, '')
+      return { country: 'UK', raw, formatted: formatPhone('UK', raw) }
+    } else if (clean.startsWith('+49')) {
+      const raw = clean.slice(3).replace(/\D/g, '')
+      return { country: 'DE', raw, formatted: formatPhone('DE', raw) }
+    } else if (clean.startsWith('+33')) {
+      const raw = clean.slice(3).replace(/\D/g, '')
+      return { country: 'FR', raw, formatted: formatPhone('FR', raw) }
+    } else if (clean.startsWith('+34')) {
+      const raw = clean.slice(3).replace(/\D/g, '')
+      return { country: 'ES', raw, formatted: formatPhone('ES', raw) }
+    } else if (clean.startsWith('+39')) {
+      const raw = clean.slice(3).replace(/\D/g, '')
+      return { country: 'IT', raw, formatted: formatPhone('IT', raw) }
+    } else if (clean.startsWith('+61')) {
+      const raw = clean.slice(3).replace(/\D/g, '')
+      return { country: 'AU', raw, formatted: formatPhone('AU', raw) }
+    } else if (clean.startsWith('+81')) {
+      const raw = clean.slice(3).replace(/\D/g, '')
+      return { country: 'JP', raw, formatted: formatPhone('JP', raw) }
+    }
+    // Default to US if not recognized
+    const raw = clean.replace(/\D/g, '')
+    return { country: 'US', raw, formatted: formatPhone('US', raw) }
+  }
 
   const getCountryCode = (country) => {
     const codes = {
@@ -42,107 +76,136 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
     return codes[country] || '+1'
   }
 
-  const getPhoneFormat = (country) => {
+  const formatPhone = (country, raw) => {
     switch (country) {
       case 'US':
       case 'CA':
-        return (raw) => {
-          if (!raw) return ''
-          const len = raw.length
-          if (len === 0) return ''
-          if (len <= 3) return `(${raw}`
-          if (len <= 6) return `(${raw.slice(0, 3)}) ${raw.slice(3)}`
-          return `(${raw.slice(0, 3)}) ${raw.slice(3, 6)}-${raw.slice(6, 10)}`
-        }
+        if (!raw) return ''
+        const len = raw.length
+        if (len === 0) return ''
+        if (len <= 3) return `(${raw}`
+        if (len <= 6) return `(${raw.slice(0, 3)}) ${raw.slice(3)}`
+        return `(${raw.slice(0, 3)}) ${raw.slice(3, 6)}-${raw.slice(6, 10)}`
       case 'UK':
-        return (raw) => {
-          if (!raw) return ''
-          const len = raw.length
-          if (len === 0) return ''
-          if (len <= 4) return raw
-          return `${raw.slice(0, 4)} ${raw.slice(4)}`
-        }
+        if (!raw) return ''
+        const lenUK = raw.length
+        if (lenUK === 0) return ''
+        if (lenUK <= 4) return raw
+        return `${raw.slice(0, 4)} ${raw.slice(4)}`
       case 'DE':
       case 'FR':
-        return (raw) => {
-          if (!raw) return ''
-          const len = raw.length
-          if (len <= 3) return raw
-          if (len <= 6) return `${raw.slice(0, 3)} ${raw.slice(3)}`
-          return `${raw.slice(0, 3)} ${raw.slice(3, 6)} ${raw.slice(6)}`
-        }
+        if (!raw) return ''
+        const lenDE = raw.length
+        if (lenDE <= 3) return raw
+        if (lenDE <= 6) return `${raw.slice(0, 3)} ${raw.slice(3)}`
+        return `${raw.slice(0, 3)} ${raw.slice(3, 6)} ${raw.slice(6)}`
       case 'AU':
-        return (raw) => {
-          if (!raw) return ''
-          const len = raw.length
-          if (len <= 4) return raw
-          if (len <= 7) return `${raw.slice(0, 4)} ${raw.slice(4)}`
-          return `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7)}`
-        }
+        if (!raw) return ''
+        const lenAU = raw.length
+        if (lenAU <= 4) return raw
+        if (lenAU <= 7) return `${raw.slice(0, 4)} ${raw.slice(4)}`
+        return `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7)}`
       default:
-        return (raw) => raw
+        return raw
     }
   }
 
   useEffect(() => {
-    const formatFunc = getPhoneFormat(phoneCountry)
-    setPhoneFormatted(formatFunc(phoneRaw))
+    const fetchUserData = async () => {
+      if (!currentUser) return
+
+      try {
+        // Try to get from database to ensure we have latest data
+        const { data, error } = await supabase
+          .from('users')
+          .select('username, email, phone, profile_pic_url')
+          .eq('id', currentUser.id)
+          .single()
+
+        if (error) throw error
+
+        setUsername(data.username || currentUser.username || '')
+        setEmail(data.email || currentUser.email || '')
+        setProfilePic(data.profile_pic_url || currentUser.profilePic || 'whiskey-glass')
+
+        // Parse phone if exists
+        const phoneData = parsePhone(data.phone || currentUser.phone || '')
+        setPhoneCountry(phoneData.country)
+        setPhoneRaw(phoneData.raw)
+      } catch (err) {
+        console.warn('Could not fetch user data from DB, using local data:', err)
+        // Fallback to currentUser data
+        setUsername(currentUser.username || '')
+        setEmail(currentUser.email || '')
+        setProfilePic(currentUser.profilePic || 'whiskey-glass')
+
+        const phoneData = parsePhone(currentUser.phone || '')
+        setPhoneCountry(phoneData.country)
+        setPhoneRaw(phoneData.raw)
+      }
+    }
+
+    fetchUserData()
+  }, [currentUser])
+
+  useEffect(() => {
+    setPhoneFormatted(formatPhone(phoneCountry, phoneRaw))
   }, [phoneCountry, phoneRaw])
 
   const checkUniqueness = async (username, email) => {
     try {
-      // Check username uniqueness
-      const { data: usernameData, error: usernameError } = await supabase
-        .from('users')
-        .select('username')
-        .eq('username', username)
-        .limit(1)
+      let usernameTaken = false
+      let emailTaken = false
 
-      if (usernameError) throw usernameError
+      // Check username only if changed
+      if (username !== currentUser.username) {
+        const { data: usernameData, error: usernameError } = await supabase
+          .from('users')
+          .select('username')
+          .eq('username', username)
+          .limit(1)
 
-      // Check email uniqueness
-      const { data: emailData, error: emailError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', email)
-        .limit(1)
-
-      if (emailError) throw emailError
-
-      return {
-        usernameTaken: usernameData && usernameData.length > 0,
-        emailTaken: emailData && emailData.length > 0
+        if (usernameError) throw usernameError
+        usernameTaken = usernameData && usernameData.length > 0
       }
+
+      // Check email only if changed
+      if (email !== currentUser.email) {
+        const { data: emailData, error: emailError } = await supabase
+          .from('users')
+          .select('email')
+          .eq('email', email)
+          .limit(1)
+
+        if (emailError) throw emailError
+        emailTaken = emailData && emailData.length > 0
+      }
+
+      return { usernameTaken, emailTaken }
     } catch (error) {
       console.error('Error checking uniqueness:', error)
       throw error
     }
   }
 
-  const createUser = async (userData) => {
+  const updateUser = async (userData) => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .insert([
-          {
-            username: userData.username,
-            email: userData.email,
-            phone: userData.phone || null,
-            profile_pic_url: userData.profilePic,
-            toggles: {
-              addToHome: userData.addToHome,
-              stayLoggedIn: userData.stayLoggedIn
-            }
-          }
-        ])
+        .update({
+          username: userData.username,
+          email: userData.email,
+          phone: userData.phone || null,
+          profile_pic_url: userData.profilePic
+        })
+        .eq('id', currentUser.id)
         .select()
         .single()
 
       if (error) throw error
-
       return data
     } catch (error) {
-      console.error('Error creating user:', error)
+      console.error('Error updating user:', error)
       throw error
     }
   }
@@ -177,11 +240,10 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
   }
 
   const selectProfilePic = (type) => {
-    setSignupData(prev => ({ ...prev, profilePic: type }))
-    // Update current display
+    setProfilePic(type)
   }
 
-  const completeSignup = async () => {
+  const saveProfile = async () => {
     if (!validateUsername(username) || !validateEmail(email)) {
       showToast('Please fix the validation errors', 'error')
       return
@@ -203,48 +265,43 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
         return
       }
 
-      // Create user in database
+      // Update user in database
       const userData = {
         username,
         email,
         phone: phoneFormatted ? `${getCountryCode(phoneCountry)} ${phoneFormatted}` : null,
-        profilePic: signupData.profilePic,
-        addToHome,
-        stayLoggedIn
+        profilePic
       }
 
-      const newUser = await createUser(userData)
+      const updatedUser = await updateUser(userData)
 
-      // Set user in app state
+      // Update app state
       const appUser = {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        phone: newUser.phone,
-        profilePic: newUser.profile_pic_url,
-        joined: newUser.created_at
+        ...currentUser,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        profilePic: updatedUser.profile_pic_url,
+        phone: updatedUser.phone
       }
 
       setCurrentUser(appUser)
       localStorage.setItem('pourChoicesUser', JSON.stringify(appUser))
-      localStorage.setItem('pourChoicesRemember', stayLoggedIn.toString())
 
       onClose()
-      setCurrentScreen('search')
-      showToast('Welcome to the cellar!', 'success')
+      showToast('Profile updated successfully!', 'success')
 
     } catch (error) {
-      console.error('Signup error:', error)
-      showToast('Failed to create account. Please try again.', 'error')
+      console.error('Update error:', error)
+      showToast('Failed to update profile. Please try again.', 'error')
     }
   }
 
   return (
-    <div id="signup-modal" className="modal active">
+    <div id="edit-profile-modal" className="modal active">
       <div className="modal-overlay" onClick={onClose}></div>
       <div className="modal-content">
         <div className="modal-header">
-          <h2>Join the Cellar</h2>
+          <h2>Edit Profile</h2>
         </div>
 
         <div className="signup-step active">
@@ -280,7 +337,7 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
             <div className="profile-pic-selector">
               <div className="current-profile-pic">
                 <div className="current-pic-icon selected">
-                  <div className="pic-icon">{profilePicOptions.find(p => p.type === signupData.profilePic)?.emoji}</div>
+                  <div className="pic-icon">{profilePicOptions.find(p => p.type === profilePic)?.emoji}</div>
                 </div>
                 <div className="current-label">Current</div>
               </div>
@@ -288,7 +345,7 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
                 {profilePicOptions.map(option => (
                   <div
                     key={option.type}
-                    className={`profile-pic-option ${signupData.profilePic === option.type ? 'selected' : ''}`}
+                    className={`profile-pic-option ${profilePic === option.type ? 'selected' : ''}`}
                     data-type={option.type}
                     onClick={() => selectProfilePic(option.type)}
                   >
@@ -327,35 +384,9 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
             </div>
           </div>
 
-          <div className="toggle-group">
-            <div className="toggle-item">
-              <div className="toggle-label">
-                <span className="toggle-icon">📱</span>
-                <div>
-                  <strong>Add to Home Screen</strong>
-                  <div>Install as app for quick access</div>
-                </div>
-                <input type="checkbox" checked={addToHome} onChange={(e) => setAddToHome(e.target.checked)} />
-                <div className="toggle-slider"></div>
-              </div>
-            </div>
-
-            <div className="toggle-item">
-              <div className="toggle-label">
-                <span className="toggle-icon">🔒</span>
-                <div>
-                  <strong>Stay Logged In</strong>
-                  <div>Remember me on this device</div>
-                </div>
-                <input type="checkbox" checked={stayLoggedIn} onChange={(e) => setStayLoggedIn(e.target.checked)} />
-                <div className="toggle-slider"></div>
-              </div>
-            </div>
-          </div>
-
           <div className="signup-actions">
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={completeSignup}>Complete</button>
+            <button className="btn btn-primary" onClick={saveProfile}>Save</button>
           </div>
         </div>
       </div>
