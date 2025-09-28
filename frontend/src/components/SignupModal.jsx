@@ -32,6 +32,7 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
   const [phoneRaw, setPhoneRaw] = useState('')
   const [phoneFormatted, setPhoneFormatted] = useState('')
   const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false)
 
   const getCountryCode = (country) => {
     const codes = {
@@ -97,6 +98,7 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
 
   useEffect(() => {
     const handler = (e) => {
+      console.log('beforeinstallprompt event fired')
       e.preventDefault()
       setDeferredPrompt(e)
     }
@@ -251,7 +253,7 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
       if (addToHome) {
         setTimeout(() => {
           if (isIOS()) {
-            showToast('To add to Home Screen: Open the Share menu and tap "Add to Home Screen"', 'info')
+            setShowIOSInstructions(true)
           } else if (deferredPrompt) {
             deferredPrompt.prompt()
             deferredPrompt.userChoice.then((choiceResult) => {
@@ -392,6 +394,28 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
           </div>
         </div>
       </div>
+      {showIOSInstructions && (
+        <div className="modal ios-instructions-modal active">
+          <div className="modal-overlay" onClick={() => setShowIOSInstructions(false)}></div>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Add to Home Screen</h3>
+            </div>
+            <div className="modal-body">
+              <p>To install the app on your iPhone/iPad:</p>
+              <ol style={{ textAlign: 'left', paddingLeft: '20px' }}>
+                <li>Tap the Share button at the bottom of Safari (looks like a square with an arrow)</li>
+                <li>Scroll down and tap "Add to Home Screen" (square with upward arrow icon)</li>
+                <li>Tap "Add" in the top right corner</li>
+              </ol>
+              <p>This will create a shortcut to the app on your home screen.</p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => setShowIOSInstructions(false)}>Got it</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
