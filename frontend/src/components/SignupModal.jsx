@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 
+const isIOS = () => {
+  const userAgent = window.navigator.userAgent.toLowerCase()
+  return /iphone|ipad|ipod/.test(userAgent)
+}
+
 const profilePicOptions = [
   { type: 'whiskey-glass', emoji: '🥃' },
   { type: 'oak-barrel', emoji: '🛢️' },
@@ -26,6 +31,7 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
   const [phoneCountry, setPhoneCountry] = useState('US')
   const [phoneRaw, setPhoneRaw] = useState('')
   const [phoneFormatted, setPhoneFormatted] = useState('')
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
 
   const getCountryCode = (country) => {
     const codes = {
@@ -88,6 +94,15 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
     const formatFunc = getPhoneFormat(phoneCountry)
     setPhoneFormatted(formatFunc(phoneRaw))
   }, [phoneCountry, phoneRaw])
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
 
   const checkUniqueness = async (username, email) => {
     try {
@@ -232,6 +247,24 @@ export function SignupModal({ signupData, setSignupData, onClose, showToast, set
       onClose()
       setCurrentScreen('search')
       showToast('Welcome to the cellar!', 'success')
+
+      if (addToHome) {
+        setTimeout(() => {
+          if (isIOS()) {
+            showToast('To add to Home Screen: Open the Share menu and tap "Add to Home Screen"', 'info')
+          } else if (deferredPrompt) {
+            deferredPrompt.prompt()
+            deferredPrompt.userChoice.then((choiceResult) => {
+              if (choiceResult.outcome === 'accepted') {
+                showToast('App added to Home Screen!', 'success')
+              }
+              setDeferredPrompt(null)
+            }).catch((err) => {
+              setDeferredPrompt(null)
+            })
+          }
+        }, 2000)
+      }
 
     } catch (error) {
       console.error('Signup error:', error)
