@@ -81,6 +81,10 @@ Text-based discovery with provisional adds to grow DB.
   [Scrollable List: Slim cards]
     - [Thumbnail left | Name | Type | Elo Badge | Indicator]
   [Bottom-Right FAB: "+"]
+
+## Backend APIs
+
+- `GET /api/test-supabase` - Test Supabase connection, fetch 5 bottles
   ```
 
 ### Blind Tastings
