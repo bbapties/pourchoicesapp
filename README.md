@@ -84,8 +84,59 @@ Text-based discovery with provisional adds to grow DB.
 
 ## Backend APIs
 
+### Users
+- `POST /api/users` - Create a new user
+  - Payload: `{ "name": "string", "email": "string" }`
+  - Response: User object with id, name, email, created_at
+  - Example: `curl -X POST http://localhost:3000/api/users -H "Content-Type: application/json" -d '{"name":"John Doe","email":"john@example.com"}'`
+
+- `GET /api/users` - List all users (for testing)
+  - Response: Array of user objects
+  - Example: `curl http://localhost:3000/api/users`
+
+### Bottles
+- `POST /api/bottles` - Add a new bottle
+  - Payload: `{ "name": "string", "type": "string" }`
+  - Response: Bottle object with id, name, type, provisional=true, created_at
+  - Example: `curl -X POST http://localhost:3000/api/bottles -H "Content-Type: application/json" -d '{"name":"Macallan 12","type":"Single Malt Scotch"}'`
+
+- `GET /api/bottles` - Search bottles by name
+  - Query params: `?q=search_term` (optional)
+  - Response: Array of bottle objects
+  - Example: `curl "http://localhost:3000/api/bottles?q=macallan"`
+
+### Tastings
+- `POST /api/tastings` - Record a tasting session
+  - Payload: `{ "user_id": "string", "bottle_ids": ["string"], "notes": "string", "winner_bottle_id": "string" }`
+  - Response: Tasting object with id, user_id, bottle_ids, notes, winner_bottle_id, created_at
+  - Example: `curl -X POST http://localhost:3000/api/tastings -H "Content-Type: application/json" -d '{"user_id":"123","bottle_ids":["456","789"],"notes":"Great tasting!","winner_bottle_id":"456"}'`
+
+- `GET /api/tastings` - Get user's tastings
+  - Query params: `?user_id=user_id` (required)
+  - Response: Array of tasting objects
+  - Example: `curl "http://localhost:3000/api/tastings?user_id=123"`
+
+### Test Route
 - `GET /api/test-supabase` - Test Supabase connection, fetch 5 bottles
-  ```
+
+### Authentication
+- `POST /api/auth/signup` - Create a new user account
+  - Payload: `{ "username": "string", "email": "string", "password": "string" }`
+  - Response: User object with user_id, username, email
+  - Example: `curl -X POST http://localhost:3000/api/auth/signup -H "Content-Type: application/json" -d '{"username":"johndoe","email":"john@example.com","password":"securepassword"}'`
+
+- `POST /api/auth/login` - Sign in an existing user
+  - Payload: `{ "email": "string", "password": "string" }`
+  - Response: User object with id, username, email
+  - Example: `curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"john@example.com","password":"securepassword"}'`
+
+- `POST /api/auth/logout` - Sign out the current user
+  - Response: Success message
+  - Example: `curl -X POST http://localhost:3000/api/auth/logout`
+
+- `GET /api/auth/me` - Get current user information
+  - Response: User object or null if not authenticated
+  - Example: `curl http://localhost:3000/api/auth/me`
 
 ### Blind Tastings
 Unbiased 2-5 bottle comparisons with notes and ranking.
