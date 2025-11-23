@@ -1,14 +1,15 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { type User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
-import { Home, Search, Wine, GlassWater, User } from "lucide-react";
+import { Home, Search, Wine, GlassWater, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Toaster } from "@/components/ui/sonner";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -24,10 +25,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => listener?.subscription?.unsubscribe();
   }, []);
 
-  if (!user && pathname !== "/") {
-    router.replace("/");
-    return null;
-  }
+  useEffect(() => {
+    if (!user && pathname !== "/") {
+      router.replace("/");
+    }
+  }, [user, pathname, router]);
 
   return (
     <>
@@ -51,7 +53,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-xs">My Bar</span>
         </Link>
         <Link href="/profile" className={`flex flex-col items-center gap-1 ${pathname === "/profile" ? "text-black font-semibold" : ""}`}>
-          <User size={28} />
+          <UserIcon size={28} />
           <span className="text-xs">Profile</span>
         </Link>
       </nav>

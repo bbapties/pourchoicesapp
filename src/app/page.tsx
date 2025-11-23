@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { type User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,8 +10,10 @@ import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -76,7 +79,6 @@ export default function Home() {
         <Button onClick={() => supabase.auth.signOut()} size="lg">
           Sign Out
         </Button>
-        <Toaster />
       </div>
     );
   }
