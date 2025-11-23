@@ -9,8 +9,6 @@ export const metadata = {
   description: "Picture Your Next Sip",
 };
 
-export const dynamic = "force-dynamic"; // Keeps auth dynamic, skips prerender bugs
-
 export default function RootLayout({
   children,
 }: {

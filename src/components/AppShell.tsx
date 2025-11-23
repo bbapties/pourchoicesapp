@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { Home, Search, Wine, GlassWater, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Toaster } from "@/components/ui/sonner";
 
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -35,7 +34,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <Toaster />
       <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-300 flex items-center justify-around text-gray-600">
         <Link href="/" className={`flex flex-col items-center gap-1 ${pathname === "/" ? "text-black font-semibold" : ""}`}>
           <Home size={28} />
