@@ -112,11 +112,11 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+* {
+  border-color: var(--color-border);
+  outline-color: color-mix(in srgb, var(--color-ring), transparent 50%);
+}
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
 }
