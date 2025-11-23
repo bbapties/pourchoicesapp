@@ -143,7 +143,6 @@ export default function Home() {
             {isSignUp ? "Already have an account? Log in" : "Need an account? Sign up"}
           </Button>
         </div>
-        <Toaster />
       </Card>
     </div>
   );
