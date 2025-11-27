@@ -38,7 +38,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         .from("all_bottle_details")
         .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_age, attr_batch, attr_store_pick_name, attr_notes, attr_extras")
         .ilike("bottle_name", `%${searchTerm}%`)
-        .or(`bottle_distillery.ilike.%${searchTerm}%,bottle_category.ilike.%${searchTerm}%,bottle_style.ilike.%${searchTerm}%,bottle_barcode.ilike.%${searchTerm}%,attr_age.ilike.%${searchTerm}%,attr_batch.ilike.%${searchTerm}%,attr_store_pick_name.ilike.%${searchTerm}%,attr_notes.ilike.%${searchTerm}%,attr_extras.ilike.%${searchTerm}%`)
+        .or(`bottle_distillery.ilike.%${searchTerm}%,bottle_category.ilike.%${searchTerm}%,bottle_style.ilike.%${searchTerm}%,bottle_barcode.ilike.%${searchTerm}%,attr_age.ilike.%${searchTerm}%,attr_batch.ilike.%${searchTerm}%,attr_store_pick_name.ilike.%${searchTerm}%,attr_notes.ilike.%${searchTerm}%`)
         .order("bottle_elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
 
