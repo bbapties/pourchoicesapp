@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -39,7 +39,7 @@ type FormData = z.infer<typeof formSchema>;
 interface ProvisionalSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onBottleAdded?: () => void;
+  onBottleAdded?: (bottle?: any) => void;
 }
 
 export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: ProvisionalSheetProps) {
@@ -85,10 +85,16 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         return;
       }
 
+      // Create the bottle object for optimistic update
+      const newBottle = {
+        id: crypto.randomUUID(), // Proper UUID for key
+        ...bottleData,
+      };
+
       toast.success("Bottle added successfully!");
       form.reset();
       onOpenChange(false);
-      onBottleAdded?.();
+      onBottleAdded?.(newBottle);
     } catch (error) {
       console.error("Error:", error);
       toast.error("An unexpected error occurred");

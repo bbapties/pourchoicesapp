@@ -13,31 +13,16 @@ import { Toaster } from "@/components/ui/sonner";
 import BottleCard, { type Bottle } from "@/components/BottleCard";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
 
-export default function SearchClient() {
+interface SearchClientProps {
+  initialBottles: Array<{ elo_global?: number }>;
+  totalBottleCount: number;
+}
+
+export default function SearchClient({ initialBottles, totalBottleCount }: SearchClientProps) {
   const [query, setQuery] = useState("");
   const [bottles, setBottles] = useState<Bottle[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showAddSheet, setShowAddSheet] = useState(false);
-  const [totalBottleCount, setTotalBottleCount] = useState<number>(0);
-
-  // Fetch total bottle count on mount for percentile calculation
-  useEffect(() => {
-    const fetchTotalCount = async () => {
-      try {
-        const { count, error } = await supabase
-          .from("bottles")
-          .select("*", { count: "exact", head: true });
-
-        if (!error && count !== null) {
-          setTotalBottleCount(count);
-        }
-      } catch (error) {
-        console.error("Error fetching total count:", error);
-      }
-    };
-
-    fetchTotalCount();
-  }, []);
 
   const searchBottles = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
@@ -53,7 +38,8 @@ export default function SearchClient() {
         .from("bottles")
         .select("id, name, distillery, category, image_url, elo_global, provisional")
         .ilike("name", `%${searchTerm}%`)
-        .or(`distillery.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+        .or(`distillery.ilike.%${searchTerm}%, category.ilike.%${searchTerm}%`)
+        .order("elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
 
       if (error) {
@@ -62,19 +48,21 @@ export default function SearchClient() {
         return;
       }
 
-      // Calculate percentiles based on rank
+      // Calculate global ranks and percentiles using initialBottles
       let rankedBottles: Bottle[] = [];
       if (searchResults && searchResults.length > 0) {
-        // Get ranks for these bottles by sorting by elo_global DESC
-        const sortedResults = searchResults.sort((a, b) =>
-          (b.elo_global || 0) - (a.elo_global || 0)
-        );
+        rankedBottles = searchResults.map((bottle) => {
+          // Find the global rank by finding this bottle's elo_global in the sorted list
+          const globalRank = initialBottles.findIndex(
+            (globalBottle) => globalBottle.elo_global === bottle.elo_global
+          ) + 1;
 
-        rankedBottles = sortedResults.map((bottle, index) => ({
-          ...bottle,
-          rank: index + 1,
-          total_count: totalBottleCount,
-        }));
+          return {
+            ...bottle,
+            rank: globalRank,
+            total_count: totalBottleCount,
+          };
+        });
       }
 
       setBottles(rankedBottles);
@@ -85,7 +73,7 @@ export default function SearchClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [totalBottleCount]);
+  }, [totalBottleCount, initialBottles]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -95,46 +83,34 @@ export default function SearchClient() {
     return () => clearTimeout(debounceTimer);
   }, [query, searchBottles]);
 
-  const handleBottleAdded = useCallback(() => {
-    // Refresh search after adding a bottle
-    searchBottles(query);
-    // Also refresh total count
-    const fetchTotalCount = async () => {
-      try {
-        const { count, error } = await supabase
-          .from("bottles")
-          .select("*", { count: "exact", head: true });
-
-        if (!error && count !== null) {
-          setTotalBottleCount(count);
-        }
-      } catch (error) {
-        console.error("Error fetching total count:", error);
+  const handleBottleAdded = useCallback((newBottle?: any) => {
+    // Optimistic update: add the new bottle to results after success
+    if (newBottle) {
+      newBottle.rank = totalBottleCount + 1;
+      newBottle.total_count = totalBottleCount + 1;
+      if (query.trim()) {
+        setBottles((prev) => [newBottle, ...prev]);
       }
-    };
-    fetchTotalCount();
-  }, [query, searchBottles]);
+    }
+
+    // Refresh search after adding a bottle
+    if (query.trim()) {
+      searchBottles(query);
+    }
+  }, [query, searchBottles, totalBottleCount]);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#2F2F2F" }}>
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* Fixed Search Bar */}
-      <div className="bg-[#FDF6E3] border-b border-gray-300 px-4 py-3 sticky top-0 z-10 shadow-sm">
+      <div className="bg-gray-50 border-b border-gray-300 px-4 py-3 sticky top-0 z-10 shadow-sm">
         <div className="relative max-w-md mx-auto">
-          <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 w-5 h-5"
-            style={{ color: "#2F2F2F" }}
-          />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 w-5 h-5" />
           <Input
             type="text"
             placeholder="Search bottles, distilleries, categories..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="pl-10 h-12 text-base border-gray-300 focus:border-[#DAA520] focus:ring-[#DAA520]"
-            style={{
-              backgroundColor: "#FDF6E3",
-              color: "#2F2F2F",
-              borderColor: "gray-300"
-            }}
+            className="pl-10 h-12 text-base border-gray-300 focus:border-gray-400 bg-gray-50 text-gray-900"
           />
         </div>
       </div>
@@ -145,16 +121,13 @@ export default function SearchClient() {
           // Loading skeletons
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center p-3 border-b" style={{ borderColor: "gray-300" }}>
-                <Skeleton
-                  className="w-12 h-12 rounded flex-shrink-0"
-                  style={{ backgroundColor: "#FDF6E3/20" }}
-                />
+              <div key={i} className="flex items-center p-3 border-b border-gray-300">
+                <Skeleton className="w-12 h-12 rounded flex-shrink-0 bg-gray-200" />
                 <div className="ml-3 flex-1 space-y-1">
-                  <Skeleton className="h-4 w-3/4" style={{ backgroundColor: "#FDF6E3/20" }} />
-                  <Skeleton className="h-3 w-1/2" style={{ backgroundColor: "#FDF6E3/20" }} />
+                  <Skeleton className="h-4 w-3/4 bg-gray-200" />
+                  <Skeleton className="h-3 w-1/2 bg-gray-200" />
                 </div>
-                <Skeleton className="w-8 h-5" style={{ backgroundColor: "#FDF6E3/20" }} />
+                <Skeleton className="w-8 h-5 bg-gray-200" />
               </div>
             ))}
           </div>
@@ -162,19 +135,15 @@ export default function SearchClient() {
           // No results
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🥃</div>
-            <h3 className="text-lg font-semibold mb-2" style={{ color: "#FDF6E3" }}>
+            <h3 className="text-lg font-semibold mb-2 text-gray-900">
               Bottle not found?
             </h3>
-            <p className="mb-6" style={{ color: "#FDF6E3/80" }}>
-              Help us expand our collection by adding new bottles.
+            <p className="mb-6 text-gray-600">
+              Add it!
             </p>
             <Button
               onClick={() => setShowAddSheet(true)}
-              className="gap-2 hover:bg-[#DAA520]/80"
-              style={{
-                backgroundColor: "#DAA520",
-                color: "#FDF6E3"
-              }}
+              className="gap-2 bg-gray-900 text-gray-50 hover:bg-gray-800"
             >
               <Plus className="w-4 h-4" />
               Add Bottle
@@ -184,13 +153,13 @@ export default function SearchClient() {
           // Results
           <div>
             {bottles.length > 0 && (
-              <div className="text-sm mb-3" style={{ color: "#FDF6E3/60" }}>
+              <div className="text-sm mb-3 text-gray-600">
                 Found {bottles.length} bottle{bottles.length !== 1 ? 's' : ''}
               </div>
             )}
             <div className="space-y-0">
               {bottles.map((bottle) => (
-                <BottleCard key={bottle.id} bottle={bottle} />
+                <BottleCard key={bottle.id || bottle.name} bottle={bottle} />
               ))}
             </div>
           </div>

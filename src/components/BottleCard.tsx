@@ -23,7 +23,7 @@ export default function BottleCard({ bottle }: BottleCardProps) {
     : 50;
 
   return (
-    <div className={`flex items-center p-3 border-b border-gray-300 hover:bg-[#DAA520]/10 transition-colors ${bottle.provisional ? 'opacity-80' : ''}`}>
+    <div className={`flex items-center p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
       <div className="w-12 h-12 bg-gray-300 rounded flex-shrink-0 mr-3 flex items-center justify-center">
         {bottle.image_url ? (
           <img
@@ -32,21 +32,21 @@ export default function BottleCard({ bottle }: BottleCardProps) {
             className="w-full h-full object-cover rounded"
           />
         ) : (
-          <div className="w-6 h-6 text-[#2F2F2F]/60">🍾</div>
+          <div className="w-6 h-6 text-gray-600">🍾</div>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-[#FDF6E3] truncate">{bottle.name}</h3>
+          <h3 className="font-semibold text-gray-900 truncate">{bottle.name}</h3>
           {bottle.provisional && (
-            <Badge variant="outline" className="text-xs border-[#DAA520] text-[#DAA520]">
+            <Badge variant="outline" className="text-xs border-gray-600 text-gray-600">
               Provisional
             </Badge>
           )}
         </div>
         {(bottle.distillery || bottle.category) && (
-          <p className="text-[#FDF6E3]/80 text-sm truncate">
+          <p className="text-gray-600 text-sm truncate">
             {bottle.distillery && bottle.distillery}
             {bottle.distillery && bottle.category && " • "}
             {bottle.category}
@@ -54,7 +54,7 @@ export default function BottleCard({ bottle }: BottleCardProps) {
         )}
       </div>
 
-      <Badge variant="outline" className="ml-2 text-xs border-[#DAA520] text-[#DAA520]">
+      <Badge variant="outline" className="ml-2 text-xs border-gray-600 text-gray-600">
         {percentile}th
       </Badge>
     </div>
