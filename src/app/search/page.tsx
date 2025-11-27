@@ -14,7 +14,7 @@ export default async function SearchPage() {
 
   return (
     <SearchClient
-      initialBottles={allBottles || []}
+      allBottlesElo={allBottles || []}
       totalBottleCount={totalBottleCount}
     />
   );

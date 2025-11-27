@@ -69,19 +69,38 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         name: data.name,
         distillery: data.distillery || null,
         category: data.category,
-        provisional: true,
+        bottle_verified: false,
         elo_global: 1500, // Default ELO
         created_by: user.id,
-        image_url: null, // TODO: Handle image upload
       };
 
-      const { error } = await supabase
+      const { data: insertedBottle, error: bottleError } = await supabase
         .from("bottles")
-        .insert([bottleData]);
+        .insert([bottleData])
+        .select()
+        .single();
 
-      if (error) {
-        console.error("Error inserting bottle:", error);
+      if (bottleError) {
+        console.error("Error inserting bottle:", bottleError);
         toast.error("Failed to add bottle");
+        return;
+      }
+
+      // Insert into bottle_attr table
+      const attrData = {
+        bottles_id: insertedBottle.id,
+        default: true,
+        created_by: user.id,
+        frontimage_url: null, // TODO: Handle image upload
+      };
+
+      const { error: attrError } = await supabase
+        .from("bottle_attr")
+        .insert([attrData]);
+
+      if (attrError) {
+        console.error("Error inserting bottle attributes:", attrError);
+        toast.error("Failed to add bottle attributes");
         return;
       }
 

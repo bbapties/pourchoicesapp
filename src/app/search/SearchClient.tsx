@@ -14,11 +14,11 @@ import BottleCard, { type Bottle } from "@/components/BottleCard";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
 
 interface SearchClientProps {
-  initialBottles: Array<{ elo_global?: number }>;
+  allBottlesElo: Array<{ elo_global?: number }>;
   totalBottleCount: number;
 }
 
-export default function SearchClient({ initialBottles, totalBottleCount }: SearchClientProps) {
+export default function SearchClient({ allBottlesElo, totalBottleCount }: SearchClientProps) {
   const [query, setQuery] = useState("");
   const [bottles, setBottles] = useState<Bottle[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,13 +33,13 @@ export default function SearchClient({ initialBottles, totalBottleCount }: Searc
 
     setIsLoading(true);
     try {
-      // Search for bottles matching the query
+      // Search for bottles matching the query using all_bottle_details view
       const { data: searchResults, error } = await supabase
-        .from("bottles")
-        .select("id, name, distillery, category, image_url, elo_global, provisional")
-        .ilike("name", `%${searchTerm}%`)
-        .or(`distillery.ilike.%${searchTerm}%, category.ilike.%${searchTerm}%`)
-        .order("elo_global", { ascending: false, nullsFirst: false })
+        .from("all_bottle_details")
+        .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_age, attr_proof, attr_batch, attr_release_year, attr_store_pick_name, attr_notes, attr_extras")
+        .ilike("bottle_name", `%${searchTerm}%`)
+        .or(`bottle_distillery.ilike.%${searchTerm}%, bottle_category.ilike.%${searchTerm}%, bottle_style.ilike.%${searchTerm}%, bottle_barcode.ilike.%${searchTerm}%, attr_age.ilike.%${searchTerm}%, attr_proof.ilike.%${searchTerm}%, attr_batch.ilike.%${searchTerm}%, attr_release_year.ilike.%${searchTerm}%, attr_store_pick_name.ilike.%${searchTerm}%, attr_notes.ilike.%${searchTerm}%, attr_extras.ilike.%${searchTerm}%`)
+        .order("bottle_elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
 
       if (error) {
@@ -48,17 +48,23 @@ export default function SearchClient({ initialBottles, totalBottleCount }: Searc
         return;
       }
 
-      // Calculate global ranks and percentiles using initialBottles
+      // Transform to our Bottle interface and calculate global ranks
       let rankedBottles: Bottle[] = [];
       if (searchResults && searchResults.length > 0) {
-        rankedBottles = searchResults.map((bottle) => {
+        rankedBottles = searchResults.map((result) => {
           // Find the global rank by finding this bottle's elo_global in the sorted list
-          const globalRank = initialBottles.findIndex(
-            (globalBottle) => globalBottle.elo_global === bottle.elo_global
+          const globalRank = allBottlesElo.findIndex(
+            (globalBottle) => globalBottle.elo_global === result.bottle_elo_global
           ) + 1;
 
           return {
-            ...bottle,
+            id: result.bottle_id,
+            name: result.bottle_name,
+            distillery: result.bottle_distillery,
+            category: result.bottle_category,
+            image_url: result.attr_frontimage_url,
+            elo_global: result.bottle_elo_global,
+            provisional: !result.bottle_verified,
             rank: globalRank,
             total_count: totalBottleCount,
           };
@@ -73,7 +79,7 @@ export default function SearchClient({ initialBottles, totalBottleCount }: Searc
     } finally {
       setIsLoading(false);
     }
-  }, [totalBottleCount, initialBottles]);
+  }, [totalBottleCount, allBottlesElo]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
