@@ -58,8 +58,8 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         const termLower = searchTerm.toLowerCase();
         let hasValidMatch = false;
 
-        if (bottle.bottle_name?.toLowerCase().startsWith(termLower)) hasValidMatch = true;
-        if (bottle.bottle_distillery?.toLowerCase().startsWith(termLower)) hasValidMatch = true;
+        if (bottle.bottle_name?.toLowerCase().includes(termLower)) hasValidMatch = true;
+        if (bottle.bottle_distillery?.toLowerCase().includes(termLower)) hasValidMatch = true;
         if (bottle.bottle_category?.toLowerCase().includes(termLower)) hasValidMatch = true;
         if (bottle.bottle_style?.toLowerCase().includes(termLower)) hasValidMatch = true;
         if (bottle.bottle_barcode?.toLowerCase().includes(termLower)) hasValidMatch = true;
@@ -85,8 +85,8 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       filteredResults.forEach((bottle) => {
         const matches = [];
         const termLower = searchTerm.toLowerCase();
-        if (bottle.bottle_name?.toLowerCase().startsWith(termLower)) matches.push(`bottle_name start: "${bottle.bottle_name}"`);
-        if (bottle.bottle_distillery?.toLowerCase().startsWith(termLower)) matches.push(`bottle_distillery start: "${bottle.bottle_distillery}"`);
+        if (bottle.bottle_name?.toLowerCase().includes(termLower)) matches.push(`bottle_name: "${bottle.bottle_name}"`);
+        if (bottle.bottle_distillery?.toLowerCase().includes(termLower)) matches.push(`bottle_distillery: "${bottle.bottle_distillery}"`);
         if (bottle.bottle_category?.toLowerCase().includes(termLower)) matches.push(`bottle_category: "${bottle.bottle_category}"`);
         if (bottle.bottle_style?.toLowerCase().includes(termLower)) matches.push(`bottle_style: "${bottle.bottle_style}"`);
         if (bottle.bottle_barcode?.toLowerCase().includes(termLower)) matches.push(`bottle_barcode: "${bottle.bottle_barcode}"`);
