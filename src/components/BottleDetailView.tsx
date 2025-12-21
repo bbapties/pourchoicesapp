@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { type BottleDetails } from "@/app/bottle/[id]/page";
+import { type BottleDetails } from "@/lib/types";
 
 interface BottleDetailViewProps {
   bottle: BottleDetails;
+  onClose: () => void;
 }
 
-export default function BottleDetailView({ bottle }: BottleDetailViewProps) {
+export default function BottleDetailView({ bottle, onClose }: BottleDetailViewProps) {
   const [imageSide, setImageSide] = useState<'front' | 'back'>('front');
   const [variantIndex, setVariantIndex] = useState(0);
   const [openSections, setOpenSections] = useState({
@@ -50,17 +50,18 @@ export default function BottleDetailView({ bottle }: BottleDetailViewProps) {
   ].filter(item => item.value); // Skip null values
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200 p-4">
-      {/* Header with back button */}
-      <div className="relative mb-4">
-        <Link href="/search" className="absolute left-0 top-0 p-2 bg-gray-800 border border-gray-500 rounded hover:bg-gray-700">
-          <ChevronLeft className="w-6 h-6" />
-        </Link>
-        <h1 className="text-2xl font-bold text-center">Bottle Details</h1>
-      </div>
-
-      {/* Card-like container */}
-      <div className="bg-gray-800 border border-gray-500 rounded-lg p-4 max-w-4xl mx-auto">
+    <div className="fixed inset-0 bg-gray-900/90 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 text-gray-200 border border-gray-500 rounded-lg p-4 max-w-4xl mx-auto max-h-full overflow-auto relative">
+        {/* Header with close button */}
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">Bottle Details</h1>
+          <button
+            onClick={onClose}
+            className="p-2 bg-gray-800 border border-gray-500 rounded hover:bg-gray-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
         {/* Image and Stats Section */}
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           {/* Image Section */}

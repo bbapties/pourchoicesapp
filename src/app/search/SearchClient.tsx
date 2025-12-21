@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -13,6 +12,8 @@ import { Toaster } from "@/components/ui/sonner";
 
 import BottleCard, { type Bottle } from "@/components/BottleCard";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
+import { type BottleDetails } from "@/lib/types";
+import BottleDetailView from "@/components/BottleDetailView";
 
 interface SearchClientProps {
   allBottlesElo: Array<{ bottle_elo_global?: number }>;
@@ -21,9 +22,12 @@ interface SearchClientProps {
 
 export default function SearchClient({ allBottlesElo, totalBottleCount }: SearchClientProps) {
   const [query, setQuery] = useState("");
-  const [bottles, setBottles] = useState<Bottle[]>([]);
+  const [bottles, setBottles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showAddSheet, setShowAddSheet] = useState(false);
+  const [selectedBottle, setSelectedBottle] = useState<BottleDetails | null>(null);
+
+  const handleBottleClick = (bottle: any) => setSelectedBottle(bottle);
 
   const searchBottles = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
@@ -38,7 +42,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       // Partial for others
       const { data: searchResults, error } = await supabase
         .from("all_bottle_details")
-        .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_age, attr_batch, attr_store_pick_name, attr_notes, attr_extras")
+        .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_release_year, attr_batch, attr_store_pick_name, attr_notes, attr_extras")
         .or(`bottle_name.ilike.%${searchTerm}%,bottle_distillery.ilike.%${searchTerm}%,bottle_category.ilike.%${searchTerm}%,bottle_style.ilike.%${searchTerm}%,bottle_barcode.ilike.%${searchTerm}%,attr_age.ilike.%${searchTerm}%,attr_batch.ilike.%${searchTerm}%,attr_store_pick_name.ilike.%${searchTerm}%,attr_notes.ilike.%${searchTerm}%`)
         .order("bottle_elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
@@ -107,7 +111,6 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       });
 
       if (error) {
-        console.error("Search error:", error);
         setBottles([]);
         return;
       }
@@ -121,6 +124,11 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
             (globalBottle) => globalBottle.bottle_elo_global === result.bottle_elo_global
           ) + 1;
 
+          const notes = result.attr_notes || '';
+          const noseMatch = notes.match(/Nose:\s*(.*?)(?=(Palate:|Finish:|$))/is);
+          const palateMatch = notes.match(/Palate:\s*(.*?)(?=(Finish:|$))/is);
+          const finishMatch = notes.match(/Finish:\s*(.*?)$/is);
+
           return {
             id: result.bottle_id,
             name: result.bottle_name,
@@ -131,6 +139,20 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
             provisional: !result.bottle_verified,
             rank: globalRank,
             total_count: totalBottleCount,
+            // BottleDetails fields
+            style: result.bottle_style,
+            age: result.attr_age,
+            proof: result.attr_proof,
+            volume: result.attr_volume,
+            verified: result.bottle_verified,
+            barcode: result.bottle_barcode,
+            lastActivity: "Never",
+            frontImageUrl: result.attr_frontimage_url,
+            backImageUrl: result.attr_backimage_url,
+            variants: [{ releaseYear: result.attr_release_year, batch: result.attr_batch, storePickName: result.attr_store_pick_name }].filter(v => v.releaseYear || v.batch || v.storePickName),
+            nose: noseMatch?.[1]?.trim(),
+            palate: palateMatch?.[1]?.trim(),
+            finish: finishMatch?.[1]?.trim(),
           };
         });
       }
@@ -227,9 +249,9 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
           <div>
             <div className="space-y-0">
               {bottles.map((bottle) => (
-                <Link key={bottle.id || bottle.name} href={`/bottle/${bottle.id}`} style={{ textDecoration: 'none' }}>
+                <div key={bottle.id || bottle.name} onClick={() => handleBottleClick(bottle)} className="cursor-pointer">
                   <BottleCard bottle={bottle} />
-                </Link>
+                </div>
               ))}
             </div>
           </div>
@@ -258,6 +280,8 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       )}
 
       <Toaster />
+
+      {selectedBottle && <BottleDetailView bottle={selectedBottle} onClose={() => setSelectedBottle(null)} />}
     </>
   );
 }
