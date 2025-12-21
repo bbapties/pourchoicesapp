@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Search, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -226,7 +227,9 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
           <div>
             <div className="space-y-0">
               {bottles.map((bottle) => (
-                <BottleCard key={bottle.id || bottle.name} bottle={bottle} />
+                <Link key={bottle.id || bottle.name} href={`/bottle/${bottle.id}`} style={{ textDecoration: 'none' }}>
+                  <BottleCard bottle={bottle} />
+                </Link>
               ))}
             </div>
           </div>
