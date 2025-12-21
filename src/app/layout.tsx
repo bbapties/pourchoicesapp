@@ -16,7 +16,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+      <body className={`${inter.className} h-screen flex flex-col bg-ivory`}>
+        {/* Implemented fixed header/footer with scrollable middle per user spec */}
         <AppShell>{children}</AppShell>
       </body>
     </html>

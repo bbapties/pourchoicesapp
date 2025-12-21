@@ -74,6 +74,7 @@
   border-color: var(--border);
   outline-color: color-mix(in srgb, var(--ring), transparent 50%);
 }
+
 body {
   background-color: var(--background);
   color: var(--foreground);

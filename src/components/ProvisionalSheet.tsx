@@ -55,10 +55,12 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
   });
 
   const onSubmit = async (data: FormData) => {
+    console.log("Starting bottle submission with data:", data);
     setIsSubmitting(true);
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log("User auth result:", user ? { id: user.id } : null, userError);
       if (!user) {
         toast.error("You must be logged in to add a bottle");
         return;
@@ -69,10 +71,11 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         name: data.name,
         distillery: data.distillery || null,
         category: data.category,
-        bottle_verified: false,
+        verified: false, // DB column is 'verified' per schema cache error
         elo_global: 1500, // Default ELO
         created_by: user.id,
       };
+      console.log("Prepared bottleData:", bottleData);
 
       const { data: insertedBottle, error: bottleError } = await supabase
         .from("bottles")
@@ -80,9 +83,15 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         .select()
         .single();
 
+      console.log("Insert result:", { data: insertedBottle, error: bottleError });
       if (bottleError) {
-        console.error("Error inserting bottle:", bottleError);
-        toast.error("Failed to add bottle");
+        console.error("Supabase error details:");
+        console.error("- Message:", bottleError.message);
+        console.error("- Details:", bottleError.details);
+        console.error("- Hint:", bottleError.hint);
+        console.error("- Code:", bottleError.code);
+        console.error("- Full error:", bottleError);
+        toast.error(`Failed to add bottle: ${bottleError.message}`);
         return;
       }
 
@@ -93,13 +102,19 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         created_by: user.id,
         frontimage_url: null, // TODO: Handle image upload
       };
+      console.log("Prepared attrData:", attrData);
 
       const { error: attrError } = await supabase
         .from("bottle_attr")
         .insert([attrData]);
 
+      console.log("Attribute insert result:", { error: attrError });
       if (attrError) {
-        console.error("Error inserting bottle attributes:", attrError);
+        console.error("Attribute insert error details:");
+        console.error("- Message:", attrError.message);
+        console.error("- Details:", attrError.details);
+        console.error("- Hint:", attrError.hint);
+        console.error("- Code:", attrError.code);
         toast.error("Failed to add bottle attributes");
         return;
       }
@@ -115,7 +130,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
       onOpenChange(false);
       onBottleAdded?.(newBottle);
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Unexpected error:", error);
       toast.error("An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
@@ -124,10 +139,11 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[80vh]">
+      {/* Updated bg to opaque ivory per user preference, changed colors for light scheme */}
+      <SheetContent side="bottom" style={{ backgroundColor: '#FFFFFF' }} className="h-full bg-white">
         <SheetHeader>
-          <SheetTitle>Add New Bottle</SheetTitle>
-          <SheetDescription>
+          <SheetTitle className="text-charcoal">Add New Bottle</SheetTitle>
+          <SheetDescription className="text-charcoal">
             Can't find your bottle? Add it to our database. We'll review it before making it available.
           </SheetDescription>
         </SheetHeader>
@@ -139,9 +155,9 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Bottle Name *</FormLabel>
+                  <FormLabel className="text-charcoal">Bottle Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Macallan 18" {...field} />
+                    <Input className="bg-ivory text-charcoal border-charcoal" placeholder="e.g., Macallan 18" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -153,9 +169,9 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
               name="distillery"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Distillery</FormLabel>
+                  <FormLabel className="text-charcoal">Distillery</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Macallan Distillery" {...field} />
+                    <Input className="bg-ivory text-charcoal border-charcoal" placeholder="e.g., Macallan Distillery" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -167,11 +183,11 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category *</FormLabel>
+                  <FormLabel className="text-charcoal">Category *</FormLabel>
                   <FormControl>
                     <select
                       {...field}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-10 w-full rounded-md bg-ivory border border-charcoal px-3 py-2 text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-charcoal disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {categories.map((category) => (
                         <option key={category} value={category}>
@@ -190,9 +206,10 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
               name="image"
               render={({ field: { value, onChange, ...field } }) => (
                 <FormItem>
-                  <FormLabel>Image (Optional)</FormLabel>
+                  <FormLabel className="text-charcoal">Image (Optional)</FormLabel>
                   <FormControl>
                     <Input
+                      className="bg-ivory text-charcoal border-charcoal"
                       type="file"
                       accept="image/*"
                       {...field}
@@ -207,7 +224,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
               )}
             />
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="bg-gray-300 text-charcoal hover:bg-gray-400 border border-charcoal px-6 py-2" disabled={isSubmitting}>
               {isSubmitting ? "Adding Bottle..." : "Add Bottle"}
             </Button>
           </form>

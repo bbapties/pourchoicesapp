@@ -33,29 +33,38 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {children}
-      <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-300 flex items-center justify-around text-gray-600">
-        <Link href="/" className={`flex flex-col items-center gap-1 ${pathname === "/" ? "text-black font-semibold" : ""}`}>
-          <Home size={28} />
-          <span className="text-xs">Home</span>
-        </Link>
-        <Link href="/search" className={`flex flex-col items-center gap-1 ${pathname === "/search" ? "text-black font-semibold" : ""}`}>
-          <Search size={28} />
-          <span className="text-xs">Search</span>
-        </Link>
-        <Link href="/taste" className={`flex flex-col items-center gap-1 ${pathname === "/taste" ? "text-black font-semibold" : ""}`}>
-          <Wine size={28} />
-          <span className="text-xs">Taste</span>
-        </Link>
-        <Link href="/mybar" className={`flex flex-col items-center gap-1 ${pathname === "/mybar" ? "text-black font-semibold" : ""}`}>
-          <GlassWater size={28} />
-          <span className="text-xs">My Bar</span>
-        </Link>
-        <Link href="/profile" className={`flex flex-col items-center gap-1 ${pathname === "/profile" ? "text-black font-semibold" : ""}`}>
-          <UserIcon size={28} />
-          <span className="text-xs">Profile</span>
-        </Link>
-      </nav>
+      {/* Fixed viewport flex-col for contained scroll per spec */}
+      <main
+        className="flex-1 overflow-y-auto min-h-0"
+        style={{
+          marginTop: pathname === '/search' ? '84px' : '0px',
+          marginBottom: '64px',
+        }}
+      >
+        {children}
+      </main>
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-ivory opacity-100 border-t border-charcoal z-20 flex items-center justify-around text-charcoal">
+      <Link href="/" className={`flex flex-col items-center gap-1 ${pathname === "/" ? "text-charcoal font-semibold" : ""}`}>
+        <Home size={28} />
+        <span className="text-xs">Home</span>
+      </Link>
+      <Link href="/search" className={`flex flex-col items-center gap-1 ${pathname === "/search" ? "text-charcoal font-semibold" : ""}`}>
+        <Search size={28} />
+        <span className="text-xs">Search</span>
+      </Link>
+      <Link href="/taste" className={`flex flex-col items-center gap-1 ${pathname === "/taste" ? "text-charcoal font-semibold" : ""}`}>
+        <Wine size={28} />
+        <span className="text-xs">Taste</span>
+      </Link>
+      <Link href="/mybar" className={`flex flex-col items-center gap-1 ${pathname === "/mybar" ? "text-charcoal font-semibold" : ""}`}>
+        <GlassWater size={28} />
+        <span className="text-xs">My Bar</span>
+      </Link>
+      <Link href="/profile" className={`flex flex-col items-center gap-1 ${pathname === "/profile" ? "text-charcoal font-semibold" : ""}`}>
+        <UserIcon size={28} />
+        <span className="text-xs">Profile</span>
+      </Link>
+    </nav>
     </>
   );
 }
