@@ -36,39 +36,35 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
   };
 
   const statsItems = [
-    { label: 'Name', value: bottle.name, className: 'text-xl font-bold' },
-    { label: 'Distillery', value: bottle.distillery, className: 'text-lg font-semibold' },
-    { label: 'Style', value: bottle.style, className: 'text-lg font-semibold' },
-    { label: 'Category', value: bottle.category, className: 'text-lg font-semibold' },
-    { label: 'Age', value: bottle.age },
-    { label: 'Proof', value: bottle.proof ? `${bottle.proof}%` : undefined },
+    { label: 'Distillery', value: bottle.distillery },
+    { label: 'Category', value: bottle.category },
+    { label: 'Style', value: bottle.style },
+    { label: 'Proof', value: bottle.proof ? `${bottle.proof}%` : null },
     { label: 'Volume', value: bottle.volume },
-    { label: 'ELO Global', value: bottle.elo_global?.toString() },
+    { label: 'Global ELO', value: bottle.elo_global?.toString(), isSpecial: true },
     { label: 'Verified', value: bottle.verified ? 'Yes' : 'No' },
     { label: 'Barcode', value: bottle.barcode },
-    { label: 'Your Last Activity', value: bottle.lastActivity || 'Never' },
-  ].filter(item => item.value); // Skip null values
+    { label: 'Last Activity', value: bottle.lastActivity },
+  ].filter(item => item.value);
 
   return (
     <div className="fixed inset-0 bg-gray-900/90 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 text-gray-200 border border-gray-500 rounded-lg p-4 max-w-4xl mx-auto max-h-full overflow-auto relative">
-        {/* Header with close button */}
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">Bottle Details</h1>
+      <div className="bg-white text-black border border-gray-500 rounded-lg p-4 w-[375px] max-h-[812px] overflow-auto relative">
+        {/* Header with close button and name */}
+        <div className="relative mb-4">
           <button
             onClick={onClose}
-            className="p-2 bg-gray-800 border border-gray-500 rounded hover:bg-gray-700"
+            className="absolute top-0 left-0 w-11 h-11 flex items-center justify-center border border-gray-500 bg-white hover:bg-gray-200 rounded"
           >
             <X className="w-6 h-6" />
           </button>
+          <h1 className="text-center text-2xl font-bold py-4">{bottle.name}</h1>
         </div>
         {/* Image and Stats Section */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+        <div className="flex gap-4 mb-6">
           {/* Image Section */}
-          <div className="relative w-full lg:w-5/12 h-96 flex items-center justify-center bg-gray-700 rounded">
+          <div className="relative w-2/5 h-64 flex items-center justify-center bg-gray-100 border border-gray-500 rounded">
             {imageUrl ? (
-              console.log(`Debug imageUrl: ${imageUrl}`),
-              (
               <Image
                 src={imageUrl}
                 alt={`${bottle.name} ${imageSide} view`}
@@ -77,22 +73,21 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
                 className="rounded"
                 unoptimized={true}
               />
-              )
             ) : (
-              <div className="text-gray-400 text-6xl">🍾</div>
+              <div className="text-gray-600 text-6xl">🍾</div>
             )}
 
             {/* Toggle Arrows */}
             <button
               onClick={() => setImageSide('front')}
-              className={`absolute left-2 top-1/2 -translate-y-1/2 ${imageSide === 'front' ? 'text-gray-200' : 'text-gray-500'} hover:text-gray-300`}
+              className={`absolute left-2 top-1/2 -translate-y-1/2 ${imageSide === 'front' ? 'text-black' : 'text-gray-500'} hover:text-gray-600`}
               disabled={!hasBackImage}
             >
               <ChevronLeft className="w-8 h-8" />
             </button>
             <button
               onClick={() => setImageSide('back')}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 ${imageSide === 'back' ? 'text-gray-200' : 'text-gray-500'} hover:text-gray-300`}
+              className={`absolute right-2 top-1/2 -translate-y-1/2 ${imageSide === 'back' ? 'text-black' : hasBackImage ? 'text-black' : 'text-gray-500'} hover:text-gray-600`}
               disabled={!hasBackImage}
             >
               <ChevronRight className="w-8 h-8" />
@@ -100,25 +95,30 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
           </div>
 
           {/* Stats Section */}
-          <div className="flex-1">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-              {statsItems.map((item, index) => (
-                <div key={item.label} className="flex flex-col">
-                  <span className="text-gray-400 text-sm">{item.label}</span>
-                  <span className={item.className || 'text-base'}>{item.value}</span>
-                  {item.label === 'ELO Global' && (
-                    <Button
-                      onClick={addToCollection}
-                      variant="outline"
-                      className="mt-2 border-gray-500 text-gray-200 hover:bg-gray-700"
-                      style={{ minHeight: '44px' }}
-                    >
-                      Add to Collection
-                    </Button>
-                  )}
+          <div className="flex-1 flex flex-col space-y-1">
+            {statsItems.map((item) =>
+              item.isSpecial ? (
+                <div key={item.label} className="flex flex-col py-1">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-base">{item.label}</span>
+                    <span className="text-base">{item.value}</span>
+                  </div>
+                  <Button
+                    onClick={addToCollection}
+                    variant="outline"
+                    className="self-end border-gray-500 text-black hover:bg-gray-100 mt-1"
+                    style={{ minHeight: '44px' }}
+                  >
+                    Add to Collection
+                  </Button>
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div key={item.label} className="flex justify-between items-center py-1">
+                  <span className="font-medium text-base">{item.label}</span>
+                  <span className="text-base">{item.value}</span>
+                </div>
+              )
+            )}
           </div>
         </div>
 
@@ -128,13 +128,13 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
           <div className="border border-gray-500 rounded">
             <button
               onClick={() => toggleSection('variant')}
-              className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 font-semibold flex items-center justify-between"
+              className="w-full text-left p-4 bg-white hover:bg-gray-100 font-semibold flex items-center justify-between"
             >
               Variant
               <span>{openSections.variant ? '▼' : '▶'}</span>
             </button>
             {openSections.variant && (
-              <div className="p-4">
+              <div className="p-4 bg-white">
                 {bottle.variants.length > 0 ? (
                   <div className="overflow-x-auto">
                     {/* Variant dots for swiping */}
@@ -144,7 +144,7 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
                           <button
                             key={idx}
                             onClick={() => setVariantIndex(idx)}
-                            className={`w-3 h-3 rounded-full ${idx === variantIndex ? 'bg-gray-200' : 'bg-gray-600'}`}
+                            className={`w-3 h-3 rounded-full ${idx === variantIndex ? 'bg-gray-800' : 'bg-gray-300'}`}
                           />
                         ))}
                       </div>
@@ -156,7 +156,7 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-400">No variant information available.</p>
+                  <p className="text-gray-600">No variant information available.</p>
                 )}
               </div>
             )}
@@ -166,17 +166,17 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
           <div className="border border-gray-500 rounded">
             <button
               onClick={() => toggleSection('nose')}
-              className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 font-semibold flex items-center justify-between"
+              className="w-full text-left p-4 bg-white hover:bg-gray-100 font-semibold flex items-center justify-between"
             >
               Nose
               <span>{openSections.nose ? '▼' : '▶'}</span>
             </button>
             {openSections.nose && (
-              <div className="p-4">
+              <div className="p-4 bg-white">
                 {bottle.nose ? (
                   <p className="whitespace-pre-wrap">{bottle.nose}</p>
                 ) : (
-                  <p className="text-gray-400">No nose notes available.</p>
+                  <p className="text-gray-600">No nose notes available.</p>
                 )}
               </div>
             )}
@@ -186,17 +186,17 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
           <div className="border border-gray-500 rounded">
             <button
               onClick={() => toggleSection('palate')}
-              className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 font-semibold flex items-center justify-between"
+              className="w-full text-left p-4 bg-white hover:bg-gray-100 font-semibold flex items-center justify-between"
             >
               Palate
               <span>{openSections.palate ? '▼' : '▶'}</span>
             </button>
             {openSections.palate && (
-              <div className="p-4">
+              <div className="p-4 bg-white">
                 {bottle.palate ? (
                   <p className="whitespace-pre-wrap">{bottle.palate}</p>
                 ) : (
-                  <p className="text-gray-400">No palate notes available.</p>
+                  <p className="text-gray-600">No palate notes available.</p>
                 )}
               </div>
             )}
@@ -206,17 +206,17 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
           <div className="border border-gray-500 rounded">
             <button
               onClick={() => toggleSection('finish')}
-              className="w-full text-left p-4 bg-gray-700 hover:bg-gray-600 font-semibold flex items-center justify-between"
+              className="w-full text-left p-4 bg-white hover:bg-gray-100 font-semibold flex items-center justify-between"
             >
               Finish
               <span>{openSections.finish ? '▼' : '▶'}</span>
             </button>
             {openSections.finish && (
-              <div className="p-4">
+              <div className="p-4 bg-white">
                 {bottle.finish ? (
                   <p className="whitespace-pre-wrap">{bottle.finish}</p>
                 ) : (
-                  <p className="text-gray-400">No finish notes available.</p>
+                  <p className="text-gray-600">No finish notes available.</p>
                 )}
               </div>
             )}
