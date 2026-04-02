@@ -8,8 +8,35 @@ export interface Bottle {
   image_url?: string;
   elo_global?: number;
   provisional?: boolean;
-  total_count?: number; // For percentile calculation
-  rank?: number; // Rank in overall bottles list
+  stars?: number | null; // 0.00–5.00 scaled from global Elo
+}
+
+function StarRating({ value }: { value: number }) {
+  const clamped = Math.min(5, Math.max(0, value));
+  const full = Math.floor(clamped);
+  const partial = clamped - full;
+  const empty = 5 - Math.ceil(clamped);
+
+  return (
+    <div className="flex items-center gap-0">
+      {Array.from({ length: full }).map((_, i) => (
+        <span key={`f${i}`} className="text-gray-800 text-sm leading-none">★</span>
+      ))}
+      {partial > 0 && (
+        <span className="relative inline-block text-sm leading-none">
+          <span className="text-gray-300">★</span>
+          <span
+            className="absolute inset-0 overflow-hidden text-gray-800"
+            style={{ width: `${partial * 100}%` }}
+          >★</span>
+        </span>
+      )}
+      {Array.from({ length: empty }).map((_, i) => (
+        <span key={`e${i}`} className="text-gray-300 text-sm leading-none">★</span>
+      ))}
+      <span className="ml-1 text-xs text-gray-500">{clamped.toFixed(2)}</span>
+    </div>
+  );
 }
 
 interface BottleCardProps {
@@ -17,11 +44,6 @@ interface BottleCardProps {
 }
 
 export default function BottleCard({ bottle }: BottleCardProps) {
-  // Calculate percentile based on rank (higher rank = higher percentile)
-  const percentile = bottle.rank && bottle.total_count
-    ? Math.round(((bottle.total_count - bottle.rank + 1) / bottle.total_count) * 100)
-    : 50;
-
   return (
     <div className={`flex items-center p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
       <div className="w-12 h-12 bg-gray-300 rounded flex-shrink-0 mr-3 flex items-center justify-center">
@@ -54,9 +76,12 @@ export default function BottleCard({ bottle }: BottleCardProps) {
         )}
       </div>
 
-      <Badge variant="outline" className="ml-2 text-xs border-gray-600 text-gray-600">
-        {percentile}th
-      </Badge>
+      <div className="ml-2 flex-shrink-0">
+        {bottle.stars != null
+          ? <StarRating value={bottle.stars} />
+          : <span className="text-xs text-gray-400">—</span>
+        }
+      </div>
     </div>
   );
 }

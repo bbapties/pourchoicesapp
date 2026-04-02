@@ -164,7 +164,7 @@ export default function Home() {
       <>
         <div className="fixed inset-0">
           <img src="/cellar-bg.png" alt="Pour Choices" className="w-full h-full object-cover object-top" />
-          <div className="absolute inset-0 flex flex-col items-end justify-end p-8 pb-16">
+          <div className="absolute inset-0 flex flex-col items-center justify-end p-8 pb-16">
             <button
               onClick={() => setShowWizard(true)}
               className="w-full max-w-sm py-4 bg-white text-gray-900 font-semibold text-lg rounded-xl shadow-lg"

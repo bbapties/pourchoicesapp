@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react";
-import { Search, Plus, X } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Search, Plus, ChevronDown, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -26,6 +26,45 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   const [isLoading, setIsLoading] = useState(false);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [selectedBottle, setSelectedBottle] = useState<BottleDetails | null>(null);
+
+  type SortOption = 'global' | 'az' | 'yours';
+  const [sortBy, setSortBy] = useState<SortOption>('global');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+
+  // Derive Elo range from the full sorted list (server fetched DESC)
+  const { minElo, maxElo } = useMemo(() => {
+    const valid = allBottlesElo
+      .map(b => b.bottle_elo_global)
+      .filter((e): e is number => e != null);
+    return {
+      maxElo: valid[0] ?? 1500,
+      minElo: valid[valid.length - 1] ?? 1500,
+    };
+  }, [allBottlesElo]);
+
+  const calcStars = (elo: number | null | undefined): number | null => {
+    if (elo == null || maxElo === minElo) return null;
+    return Math.min(5, Math.max(0, ((elo - minElo) / (maxElo - minElo)) * 5));
+  };
+
+  const sortLabels: Record<SortOption, string> = { global: 'Global', az: 'A–Z', yours: 'Your Rank' };
+
+  const sortedBottles = useMemo(() => {
+    if (sortBy === 'az') {
+      return [...bottles].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+    return bottles;
+  }, [bottles, sortBy]);
+
+  const handleSortSelect = (option: SortOption) => {
+    if (option === 'yours') {
+      toast("Taste some bottles to unlock your personal rankings");
+      setShowSortMenu(false);
+      return;
+    }
+    setSortBy(option);
+    setShowSortMenu(false);
+  };
 
   const handleBottleClick = (bottle: any) => setSelectedBottle(bottle);
 
@@ -115,15 +154,10 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         return;
       }
 
-      // Transform to our Bottle interface and calculate global ranks
+      // Transform to our Bottle interface
       let rankedBottles: Bottle[] = [];
       if (filteredResults && filteredResults.length > 0) {
         rankedBottles = filteredResults.map((result) => {
-          // Find the global rank by finding this bottle's elo_global in the sorted list
-          const globalRank = allBottlesElo.findIndex(
-            (globalBottle) => globalBottle.bottle_elo_global === result.bottle_elo_global
-          ) + 1;
-
           const notes = result.attr_notes || '';
           const noseMatch = notes.match(/Nose:\s*(.*?)(?=(Palate:|Finish:|$))/is);
           const palateMatch = notes.match(/Palate:\s*(.*?)(?=(Finish:|$))/is);
@@ -137,8 +171,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
             image_url: result.attr_frontimage_url,
             elo_global: result.bottle_elo_global,
             provisional: !result.bottle_verified,
-            rank: globalRank,
-            total_count: totalBottleCount,
+            stars: calcStars(result.bottle_elo_global),
             // BottleDetails fields
             style: result.bottle_style,
             age: result.attr_age,
@@ -178,8 +211,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   const handleBottleAdded = useCallback((newBottle?: any) => {
     // Optimistic update: add the new bottle to results after success
     if (newBottle) {
-      newBottle.rank = totalBottleCount + 1;
-      newBottle.total_count = totalBottleCount + 1;
+      newBottle.stars = calcStars(newBottle.elo_global ?? 1500);
       if (query.trim()) {
         setBottles((prev) => [newBottle, ...prev]);
       }
@@ -208,14 +240,40 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         </div>
       </header>
 
-      {/* Sticky Sub-Header - fixed top-[56px] h-7, 90% width centered, vertically centered text */}
-      {/* Centered sub-header text, narrowed width, solidified FAB per feedback */}
-      <header className="fixed top-14 left-0 right-0 h-7 bg-ivory border-b border-charcoal z-20 flex items-center justify-start px-6">
-        {bottles.length > 0 && (
-          <div className="max-w-[90%] mx-auto">
-            <p className="text-charcoal text-sm">
-              Found {bottles.length} bottle{bottles.length !== 1 ? 's' : ''}
-            </p>
+      {/* Results banner with sort dropdown */}
+      <header className="fixed top-14 left-0 right-0 h-9 bg-ivory border-b border-charcoal z-20 flex items-center justify-between px-4">
+        <span className="text-sm text-charcoal">
+          {sortedBottles.length > 0 ? `${sortedBottles.length} Result${sortedBottles.length !== 1 ? 's' : ''}` : ''}
+        </span>
+
+        {sortedBottles.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowSortMenu(v => !v)}
+              className="flex items-center gap-1 text-sm text-charcoal border border-charcoal rounded-full px-3 py-0.5"
+            >
+              {sortLabels[sortBy]}
+              <ChevronDown size={13} />
+            </button>
+
+            {showSortMenu && (
+              <>
+                {/* Backdrop — closes menu on outside tap */}
+                <div className="fixed inset-0 z-30" onClick={() => setShowSortMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[140px] py-1 overflow-hidden">
+                  {(['global', 'az', 'yours'] as SortOption[]).map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => handleSortSelect(option)}
+                      className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-gray-50"
+                    >
+                      <span>{option === 'global' ? 'Global Rank' : option === 'az' ? 'A–Z' : 'Your Rank'}</span>
+                      {sortBy === option && <Check size={13} className="text-charcoal" />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </header>
@@ -248,7 +306,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
           // Results
           <div>
             <div className="space-y-0">
-              {bottles.map((bottle) => (
+              {sortedBottles.map((bottle) => (
                 <div key={bottle.id || bottle.name} onClick={() => handleBottleClick(bottle)} className="cursor-pointer">
                   <BottleCard bottle={bottle} />
                 </div>
@@ -279,7 +337,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         </Button>
       )}
 
-      <Toaster />
+      <Toaster position="top-center" style={{ top: '96px' }} />
 
       {selectedBottle && <BottleDetailView bottle={selectedBottle} onClose={() => setSelectedBottle(null)} />}
     </>

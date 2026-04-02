@@ -36,7 +36,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main
         className="flex-1 overflow-y-auto min-h-0"
         style={{
-          marginTop: pathname === "/search" ? "84px" : "0px",
+          marginTop: pathname === "/search" ? "92px" : "0px",
           marginBottom: isAuthPage ? "0px" : "64px",
         }}
       >
