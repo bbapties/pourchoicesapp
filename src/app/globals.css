@@ -70,6 +70,17 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@keyframes slideInFromRight {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-60px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+.slide-in-right { animation: slideInFromRight 280ms ease-out; }
+.slide-in-left  { animation: slideInFromLeft  280ms ease-out; }
+
 * {
   border-color: var(--border);
   outline-color: color-mix(in srgb, var(--ring), transparent 50%);

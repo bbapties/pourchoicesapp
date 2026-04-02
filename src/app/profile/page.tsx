@@ -1,14 +1,31 @@
-import { User } from "lucide-react";
-import { Card } from "@/components/ui/card";
+"use client";
+
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.replace("/");
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 pb-20">
-      <Card className="w-full max-w-md p-8 text-center bg-white shadow-lg">
-        <User className="w-16 h-16 mx-auto mb-6 text-gray-400" />
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Profile</h1>
-        <p className="text-gray-600">User profile coming soon</p>
-      </Card>
+    <div className="fixed top-0 left-0 right-0 bottom-16 overflow-hidden">
+      <img
+        src="/coming-soon.jpg"
+        alt="Coming Soon"
+        className="w-full h-full object-cover object-top"
+      />
+      <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 px-8">
+        <button
+          onClick={handleSignOut}
+          className="w-full max-w-sm py-3 bg-white text-gray-900 font-semibold rounded-xl shadow-lg border border-gray-200"
+        >
+          Sign Out
+        </button>
+      </div>
     </div>
   );
 }
