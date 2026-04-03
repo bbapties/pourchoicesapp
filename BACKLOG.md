@@ -12,6 +12,9 @@ Format: `- [ ] Short description — why it matters`
 - [ ] Search history / recent searches
 - [ ] Barcode scanner shortcut in the add modal
 
+## History / Activity Log
+- [ ] Shared transaction history page (accessible from My Bar + Profile) — text-based log of all activity: bottles added/finished/deleted, tastings completed, rankings changed, DB contributions. Not a visual UI, just a chronological list with timestamps.
+
 ## Bottle Detail Page
 - [ ] UX refinement pass — layout, button placement, stats section structure (defer until all functionality is working)
 

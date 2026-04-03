@@ -24,12 +24,9 @@ Goal: Make everything that exists work correctly end-to-end.
 ## Phase 2 — My Bar
 Goal: Full personal collection management.
 
-- [ ] 2.1 My Bar grid — display user's collection as card-medium list (Story 6.21)
-- [ ] 2.2 My Bar — collection count banner + sort (Stories 6.22–6.23)
-- [ ] 2.3 My Bar — edit bottle (swipe or tap, modal, save) (Story 6.24)
-- [ ] 2.4 My Bar — soft delete with confirmation (Story 6.25)
-- [ ] 2.5 My Bar — FAB redirects to search/add flow (Story 6.26)
-- [ ] 2.6 My Bar — empty state "Build Your Bar!" (Story 6.21)
+- [x] 2.1 My Bar grid — card-medium list, count banner, sort (A-Z/Global), empty state (Stories 6.21–6.23)
+- [ ] 2.2 My Bar — edit bottle (tap → detail view with toggle/delete already wired) (Story 6.24)
+- [ ] 2.3 My Bar — FAB redirects to search/add flow (Story 6.26)
 
 ## Phase 3 — Blind Tastings
 Goal: Full tasting flow with Elo calculation.

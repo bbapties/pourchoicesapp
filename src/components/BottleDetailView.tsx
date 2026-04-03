@@ -52,11 +52,10 @@ export default function BottleDetailView({
     setIsSaving(true);
     try {
       if (!inCollectionLocally) {
-        // Add to bar for the first time
+        // Add to bar for the first time — close detail view after saving
         if (!onAddToBar) return;
         await onAddToBar(bottle.id);
-        setInCollectionLocally(true);
-        setOwnedLocally(true);
+        onClose();
       } else {
         // Toggle currently_owned
         if (!onToggleOwnership) return;
@@ -80,11 +79,6 @@ export default function BottleDetailView({
       setIsDeleting(false);
     }
   };
-
-  const mainButtonLabel = isSaving ? 'Saving...'
-    : !inCollectionLocally ? 'Add to My Bar'
-    : ownedLocally ? '✓ In My Bar'
-    : 'Finished It';
 
   const statsItems = [
     { label: 'Distillery', value: bottle.distillery },
@@ -154,15 +148,39 @@ export default function BottleDetailView({
                     <span className="font-medium text-base">{item.label}</span>
                     <span className="text-base">{item.value}</span>
                   </div>
-                  <Button
-                    onClick={handleMainButton}
-                    disabled={isSaving}
-                    variant="outline"
-                    className="self-end border-gray-500 text-black hover:bg-gray-100 mt-1 disabled:opacity-60"
-                    style={{ minHeight: '44px' }}
-                  >
-                    {mainButtonLabel}
-                  </Button>
+                  {/* Not yet added: single add button */}
+                  {!inCollectionLocally && (
+                    <Button
+                      onClick={handleMainButton}
+                      disabled={isSaving}
+                      variant="outline"
+                      className="self-end border-gray-500 text-black hover:bg-gray-100 mt-1 disabled:opacity-60"
+                      style={{ minHeight: '44px' }}
+                    >
+                      {isSaving ? 'Adding...' : 'Add to My Bar'}
+                    </Button>
+                  )}
+
+                  {/* In collection: segmented toggle showing both states */}
+                  {inCollectionLocally && (
+                    <div className="flex self-end mt-1 border border-gray-400 rounded overflow-hidden" style={{ minHeight: '44px' }}>
+                      <button
+                        onClick={() => { if (!ownedLocally && !isSaving) handleMainButton(); }}
+                        disabled={isSaving}
+                        className={`px-3 text-sm font-medium transition-colors ${ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                      >
+                        ✓ In My Bar
+                      </button>
+                      <div className="w-px bg-gray-400" />
+                      <button
+                        onClick={() => { if (ownedLocally && !isSaving) handleMainButton(); }}
+                        disabled={isSaving}
+                        className={`px-3 text-sm font-medium transition-colors ${!ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                      >
+                        Finished It
+                      </button>
+                    </div>
+                  )}
 
                   {/* Hard delete — only shown once in collection */}
                   {inCollectionLocally && !showDeleteConfirm && (
