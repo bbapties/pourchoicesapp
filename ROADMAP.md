@@ -17,9 +17,9 @@ Goal: Make everything that exists work correctly end-to-end.
 - [x] 1.1 Splash/login screen — cellar-bg, 1.5s intentional pause, step-by-step auth wizard, redirect to /mybar
 - [x] 1.1 Placeholder pages — coming-soon image on mybar/taste/profile
 - [x] 1.1 AppShell — 4-tab nav (Search/Taste/My Bar/Profile), hidden on login page
-- [ ] 1.2 Search — result count banner, sort dropdown (A-Z/Yours/Global) (Stories 6.11–6.12)
-- [ ] 1.3 Search — "Add to My Bar" button on card-full actually saves to DB (Story 6.13, 6.17)
-- [ ] 1.4 Indicator earmarks on cards (provisional=yellow, owned=green, past=gray) (Story 6.18, 6.28, 6.42)
+- [x] 1.2 Search — result count banner, sort dropdown (A-Z/Yours/Global), star ratings replacing percentile
+- [x] 1.3 Search — "Add to My Bar" saves to DB; toggle "Finished It"; hard delete with confirmation (Story 6.13, 6.17)
+- [x] 1.4 Indicator earmarks on cards (provisional=dot, owned=green✓, past=grey✓, splits for dual status) (Story 6.18, 6.28, 6.42)
 
 ## Phase 2 — My Bar
 Goal: Full personal collection management.

@@ -12,6 +12,12 @@ Format: `- [ ] Short description — why it matters`
 - [ ] Search history / recent searches
 - [ ] Barcode scanner shortcut in the add modal
 
+## Bottle Detail Page
+- [ ] UX refinement pass — layout, button placement, stats section structure (defer until all functionality is working)
+
+## Data / Audit
+- [ ] Audit trail table for user_bottles — store every insert/update as a separate row (user_id, bottle_id, action, changed_at) for future reporting and tasting history
+
 ## My Bar
 - [ ] Bulk add bottles from search results
 - [ ] Filter collection by category (whiskey, gin, etc.)

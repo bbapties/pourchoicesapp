@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 
 export interface Bottle {
   id: string;
@@ -9,6 +8,8 @@ export interface Bottle {
   elo_global?: number;
   provisional?: boolean;
   stars?: number | null; // 0.00–5.00 scaled from global Elo
+  inCollection?: boolean;    // bottle_id exists in user_bottles
+  currentlyOwned?: boolean;  // user_bottles.currently_owned = true
 }
 
 function StarRating({ value }: { value: number }) {
@@ -39,13 +40,78 @@ function StarRating({ value }: { value: number }) {
   );
 }
 
+// Earmark matrix (top-right corner):
+// not in collection, not provisional  → none
+// not in collection, provisional      → subtle yellow dot
+// in collection, owned, not prov      → green triangle + white ✓
+// in collection, owned, provisional   → green triangle + yellow ✓
+// in collection, not owned, not prov  → light grey triangle + white ✓
+// in collection, not owned, prov      → light grey triangle + yellow ✓
+function EarmarkCorner({
+  inCollection,
+  currentlyOwned,
+  provisional,
+}: {
+  inCollection: boolean;
+  currentlyOwned: boolean;
+  provisional: boolean;
+}) {
+  if (!inCollection && !provisional) return null;
+
+  // Provisional only: subtle yellow dot, no triangle
+  if (!inCollection) {
+    return (
+      <div style={{
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        background: '#FFD700',
+      }} />
+    );
+  }
+
+  // In collection: triangle + checkmark
+  const triangleColor = currentlyOwned ? '#22c55e' : '#d1d5db';
+  const checkColor = provisional ? '#FFD700' : '#ffffff';
+
+  return (
+    <div style={{ position: 'absolute', top: 0, right: 0, width: 28, height: 28 }}>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: triangleColor,
+        clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
+      }} />
+      <span style={{
+        position: 'absolute',
+        top: 3,
+        right: 4,
+        fontSize: 11,
+        lineHeight: 1,
+        color: checkColor,
+        fontWeight: 'bold',
+        textShadow: provisional && !currentlyOwned ? '0 0 2px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4)' : 'none',
+      }}>✓</span>
+    </div>
+  );
+}
+
 interface BottleCardProps {
   bottle: Bottle;
 }
 
 export default function BottleCard({ bottle }: BottleCardProps) {
   return (
-    <div className={`flex items-center p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
+    <div className={`relative flex items-center p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
+      <EarmarkCorner
+        inCollection={bottle.inCollection ?? false}
+        currentlyOwned={bottle.currentlyOwned ?? false}
+        provisional={bottle.provisional ?? false}
+      />
+
       <div className="w-12 h-12 bg-gray-300 rounded flex-shrink-0 mr-3 flex items-center justify-center">
         {bottle.image_url ? (
           <img
@@ -61,11 +127,7 @@ export default function BottleCard({ bottle }: BottleCardProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold text-gray-900 truncate">{bottle.name}</h3>
-          {bottle.provisional && (
-            <Badge variant="outline" className="text-xs border-gray-600 text-gray-600">
-              Provisional
-            </Badge>
-          )}
+
         </div>
         {(bottle.distillery || bottle.category) && (
           <p className="text-gray-600 text-sm truncate">

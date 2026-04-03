@@ -9,9 +9,22 @@ import { type BottleDetails } from "@/lib/types";
 interface BottleDetailViewProps {
   bottle: BottleDetails;
   onClose: () => void;
+  inCollection?: boolean;
+  currentlyOwned?: boolean;
+  onAddToBar?: (bottleId: string) => Promise<void>;
+  onToggleOwnership?: (bottleId: string) => Promise<void>;
+  onDeleteFromBar?: (bottleId: string) => Promise<void>;
 }
 
-export default function BottleDetailView({ bottle, onClose }: BottleDetailViewProps) {
+export default function BottleDetailView({
+  bottle,
+  onClose,
+  inCollection = false,
+  currentlyOwned = false,
+  onAddToBar,
+  onToggleOwnership,
+  onDeleteFromBar,
+}: BottleDetailViewProps) {
   const [imageSide, setImageSide] = useState<'front' | 'back'>('front');
   const [variantIndex, setVariantIndex] = useState(0);
   const [openSections, setOpenSections] = useState({
@@ -20,6 +33,11 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
     palate: false,
     finish: false,
   });
+  const [inCollectionLocally, setInCollectionLocally] = useState(inCollection);
+  const [ownedLocally, setOwnedLocally] = useState(currentlyOwned);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const currentVariant = bottle.variants[variantIndex] || {};
   const hasBackImage = !!bottle.backImageUrl;
@@ -29,11 +47,44 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const addToCollection = () => {
-    // Stub: alert for now
-    alert(`Added ${bottle.name} to your collection! (Stub functionality)`);
-    // TODO: Insert into user collection via Supabase
+  const handleMainButton = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      if (!inCollectionLocally) {
+        // Add to bar for the first time
+        if (!onAddToBar) return;
+        await onAddToBar(bottle.id);
+        setInCollectionLocally(true);
+        setOwnedLocally(true);
+      } else {
+        // Toggle currently_owned
+        if (!onToggleOwnership) return;
+        await onToggleOwnership(bottle.id);
+        setOwnedLocally(prev => !prev);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const handleDelete = async () => {
+    if (isDeleting || !onDeleteFromBar) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteFromBar(bottle.id);
+      setInCollectionLocally(false);
+      setOwnedLocally(false);
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const mainButtonLabel = isSaving ? 'Saving...'
+    : !inCollectionLocally ? 'Add to My Bar'
+    : ownedLocally ? '✓ In My Bar'
+    : 'Finished It';
 
   const statsItems = [
     { label: 'Distillery', value: bottle.distillery },
@@ -104,13 +155,47 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
                     <span className="text-base">{item.value}</span>
                   </div>
                   <Button
-                    onClick={addToCollection}
+                    onClick={handleMainButton}
+                    disabled={isSaving}
                     variant="outline"
-                    className="self-end border-gray-500 text-black hover:bg-gray-100 mt-1"
+                    className="self-end border-gray-500 text-black hover:bg-gray-100 mt-1 disabled:opacity-60"
                     style={{ minHeight: '44px' }}
                   >
-                    Add to Collection
+                    {mainButtonLabel}
                   </Button>
+
+                  {/* Hard delete — only shown once in collection */}
+                  {inCollectionLocally && !showDeleteConfirm && (
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="self-end text-xs text-gray-400 hover:text-red-500 underline mt-1"
+                    >
+                      Remove from collection
+                    </button>
+                  )}
+
+                  {inCollectionLocally && showDeleteConfirm && (
+                    <div className="mt-2 border border-red-300 rounded p-2 bg-red-50 text-xs">
+                      <p className="text-gray-700 mb-2">
+                        This removes all tastings and history. Only use if added by mistake.
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                          className="text-red-600 font-semibold hover:text-red-800 disabled:opacity-50"
+                        >
+                          {isDeleting ? 'Removing...' : 'Yes, Delete'}
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div key={item.label} className="flex justify-between items-center py-1">
@@ -137,7 +222,6 @@ export default function BottleDetailView({ bottle, onClose }: BottleDetailViewPr
               <div className="p-4 bg-white">
                 {bottle.variants.length > 0 ? (
                   <div className="overflow-x-auto">
-                    {/* Variant dots for swiping */}
                     {bottle.variants.length > 1 && (
                       <div className="flex justify-center gap-2 mb-4">
                         {bottle.variants.map((_, idx) => (

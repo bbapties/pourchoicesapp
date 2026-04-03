@@ -27,6 +27,10 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [selectedBottle, setSelectedBottle] = useState<BottleDetails | null>(null);
 
+  // user_bottles map: bottle_id → { currently_owned }
+  const [userBottlesMap, setUserBottlesMap] = useState<Record<string, { currently_owned: boolean }>>({});
+  const [publicUserId, setPublicUserId] = useState<string | null>(null);
+
   type SortOption = 'global' | 'az' | 'yours';
   const [sortBy, setSortBy] = useState<SortOption>('global');
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -47,14 +51,59 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     return Math.min(5, Math.max(0, ((elo - minElo) / (maxElo - minElo)) * 5));
   };
 
+  // Fetch the current user's collection on mount
+  useEffect(() => {
+    async function fetchUserBottles() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      // Resolve public.users.id from auth_id (public.users has its own UUID PK)
+      const { data: publicUser, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_id', session.user.id)
+        .single();
+
+      if (userError || !publicUser) {
+        console.error('Failed to resolve public user:', userError?.message);
+        return;
+      }
+      setPublicUserId(publicUser.id);
+
+      const { data, error } = await supabase
+        .from('user_bottles')
+        .select('bottle_id, currently_owned')
+        .eq('user_id', publicUser.id);
+
+      if (error) {
+        console.error('Failed to fetch user collection:', error.message);
+        return;
+      }
+
+      const map: Record<string, { currently_owned: boolean }> = {};
+      (data || []).forEach(row => {
+        map[row.bottle_id] = { currently_owned: row.currently_owned };
+      });
+      setUserBottlesMap(map);
+    }
+
+    fetchUserBottles();
+  }, []);
+
   const sortLabels: Record<SortOption, string> = { global: 'Global', az: 'A–Z', yours: 'Your Rank' };
 
+  // Annotate bottles with collection state and apply sort
   const sortedBottles = useMemo(() => {
+    const annotated = bottles.map(bottle => ({
+      ...bottle,
+      inCollection: bottle.id in userBottlesMap,
+      currentlyOwned: userBottlesMap[bottle.id]?.currently_owned ?? false,
+    }));
     if (sortBy === 'az') {
-      return [...bottles].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      return [...annotated].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
-    return bottles;
-  }, [bottles, sortBy]);
+    return annotated;
+  }, [bottles, sortBy, userBottlesMap]);
 
   const handleSortSelect = (option: SortOption) => {
     if (option === 'yours') {
@@ -77,8 +126,6 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
 
     setIsLoading(true);
     try {
-      // Search with substring matching for name/distillery to catch mid-name terms like "Pete" in "St. Pete"
-      // Partial for others
       const { data: searchResults, error } = await supabase
         .from("all_bottle_details")
         .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_release_year, attr_batch, attr_store_pick_name, attr_notes, attr_extras")
@@ -86,67 +133,26 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         .order("bottle_elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
 
-      console.log("Query term:", searchTerm);
-      console.log("Raw Supabase response:", searchResults);
-      console.log("Full error if any:", error?.message, error?.details, error?.hint, error?.code);
-
-      // Log substring matches for each raw result
-      (searchResults || []).forEach((bottle, index) => {
-        const termLower = searchTerm.toLowerCase();
-        const nameIncludes = bottle.bottle_name?.toLowerCase().includes(termLower);
-        console.log(`Result ${index}: "${bottle.bottle_name}" includes "${searchTerm}": ${nameIncludes}`);
-      });
-
-      // Post-query filter: exclude bottles where only match is in attr_notes labels like "Nose:", "Palate:", "Finish:"
+      // Post-query filter: exclude bottles where only match is in attr_notes labels
       const filteredResults = (searchResults || []).filter((bottle) => {
         const termLower = searchTerm.toLowerCase();
-        let hasValidMatch = false;
-
-        if (bottle.bottle_name?.toLowerCase().includes(termLower)) hasValidMatch = true;
-        if (bottle.bottle_distillery?.toLowerCase().includes(termLower)) hasValidMatch = true;
-        if (bottle.bottle_category?.toLowerCase().includes(termLower)) hasValidMatch = true;
-        if (bottle.bottle_style?.toLowerCase().includes(termLower)) hasValidMatch = true;
-        if (bottle.bottle_barcode?.toLowerCase().includes(termLower)) hasValidMatch = true;
-        if (bottle.attr_age?.toLowerCase().includes(termLower)) hasValidMatch = true;
-        if (bottle.attr_batch?.toLowerCase().includes(termLower)) hasValidMatch = true;
-        if (bottle.attr_store_pick_name?.toLowerCase().includes(termLower)) hasValidMatch = true;
-        // For attr_notes: check if term appears in cleaned notes (labels stripped)
+        if (bottle.bottle_name?.toLowerCase().includes(termLower)) return true;
+        if (bottle.bottle_distillery?.toLowerCase().includes(termLower)) return true;
+        if (bottle.bottle_category?.toLowerCase().includes(termLower)) return true;
+        if (bottle.bottle_style?.toLowerCase().includes(termLower)) return true;
+        if (bottle.bottle_barcode?.toLowerCase().includes(termLower)) return true;
+        if (bottle.attr_age?.toLowerCase().includes(termLower)) return true;
+        if (bottle.attr_batch?.toLowerCase().includes(termLower)) return true;
+        if (bottle.attr_store_pick_name?.toLowerCase().includes(termLower)) return true;
         if (bottle.attr_notes) {
           const cleanedNotes = bottle.attr_notes
             .replace(/Nose:/gi, '')
             .replace(/Palate:/gi, '')
             .replace(/Finish:/gi, '')
             .toLowerCase();
-          if (cleanedNotes.includes(termLower)) hasValidMatch = true;
+          if (cleanedNotes.includes(termLower)) return true;
         }
-
-        return hasValidMatch;
-      });
-
-      console.log(`Filtered from ${searchResults?.length || 0} to ${filteredResults.length} results`);
-
-      // Detailed logging: why each filtered result matched (now valid matches only)
-      filteredResults.forEach((bottle) => {
-        const matches = [];
-        const termLower = searchTerm.toLowerCase();
-        if (bottle.bottle_name?.toLowerCase().includes(termLower)) matches.push(`bottle_name: "${bottle.bottle_name}"`);
-        if (bottle.bottle_distillery?.toLowerCase().includes(termLower)) matches.push(`bottle_distillery: "${bottle.bottle_distillery}"`);
-        if (bottle.bottle_category?.toLowerCase().includes(termLower)) matches.push(`bottle_category: "${bottle.bottle_category}"`);
-        if (bottle.bottle_style?.toLowerCase().includes(termLower)) matches.push(`bottle_style: "${bottle.bottle_style}"`);
-        if (bottle.bottle_barcode?.toLowerCase().includes(termLower)) matches.push(`bottle_barcode: "${bottle.bottle_barcode}"`);
-        if (bottle.attr_age?.toLowerCase().includes(termLower)) matches.push(`attr_age: "${bottle.attr_age}"`);
-        if (bottle.attr_batch?.toLowerCase().includes(termLower)) matches.push(`attr_batch: "${bottle.attr_batch}"`);
-        if (bottle.attr_store_pick_name?.toLowerCase().includes(termLower)) matches.push(`attr_store_pick_name: "${bottle.attr_store_pick_name}"`);
-        // Log cleaned notes match
-        if (bottle.attr_notes) {
-          const cleanedNotes = bottle.attr_notes
-            .replace(/Nose:/gi, '')
-            .replace(/Palate:/gi, '')
-            .replace(/Finish:/gi, '')
-            .toLowerCase();
-          if (cleanedNotes.includes(termLower)) matches.push(`attr_notes (cleaned): "${bottle.attr_notes}" -> "${cleanedNotes.substring(Math.max(0, cleanedNotes.indexOf(termLower) - 20), cleanedNotes.indexOf(termLower) + termLower.length + 20)}"`); // context snippet
-        }
-        console.log(`Bottle "${bottle.bottle_name}" included after filter, matched on: ${matches.join(", ")}`);
+        return false;
       });
 
       if (error) {
@@ -154,7 +160,6 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         return;
       }
 
-      // Transform to our Bottle interface
       let rankedBottles: Bottle[] = [];
       if (filteredResults && filteredResults.length > 0) {
         rankedBottles = filteredResults.map((result) => {
@@ -203,30 +208,129 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       searchBottles(query);
-    }, 300); // 300ms debounce
+    }, 300);
 
     return () => clearTimeout(debounceTimer);
   }, [query, searchBottles]);
 
   const handleBottleAdded = useCallback((newBottle?: any) => {
-    // Optimistic update: add the new bottle to results after success
     if (newBottle) {
       newBottle.stars = calcStars(newBottle.elo_global ?? 1500);
       if (query.trim()) {
         setBottles((prev) => [newBottle, ...prev]);
       }
     }
-
-    // Refresh search after adding a bottle
     if (query.trim()) {
       searchBottles(query);
     }
   }, [query, searchBottles, totalBottleCount]);
 
+  // Save bottle to user_bottles (insert new or re-activate existing)
+  const handleAddToBar = useCallback(async (bottleId: string) => {
+    if (!publicUserId) {
+      toast.error("Not logged in");
+      return;
+    }
+
+    const existing = userBottlesMap[bottleId];
+    const now = new Date().toISOString();
+
+    if (existing) {
+      // Row exists but currently_owned was false — re-activate
+      const { error } = await supabase
+        .from('user_bottles')
+        .update({ currently_owned: true, updated_at: now })
+        .eq('user_id', publicUserId)
+        .eq('bottle_id', bottleId);
+
+      if (error) {
+        toast.error("Failed to add to My Bar");
+        console.error('user_bottles update error:', error.message);
+        return;
+      }
+    } else {
+      // First time adding this bottle
+      const { error } = await supabase
+        .from('user_bottles')
+        .insert({
+          user_id: publicUserId,
+          bottle_id: bottleId,
+          currently_owned: true,
+          created_at: now,
+          updated_at: now,
+        });
+
+      if (error) {
+        toast.error("Failed to add to My Bar");
+        console.error('user_bottles insert error:', error.message);
+        return;
+      }
+    }
+
+    // Update local map so earmarks update immediately
+    setUserBottlesMap(prev => ({
+      ...prev,
+      [bottleId]: { currently_owned: true },
+    }));
+
+    toast.success("Added to My Bar!");
+  }, [publicUserId, userBottlesMap]);
+
+  // Flip currently_owned on an existing user_bottles row
+  const handleToggleOwnership = useCallback(async (bottleId: string) => {
+    if (!publicUserId) return;
+    const current = userBottlesMap[bottleId];
+    if (!current) return;
+
+    const newOwned = !current.currently_owned;
+    const { error } = await supabase
+      .from('user_bottles')
+      .update({ currently_owned: newOwned, updated_at: new Date().toISOString() })
+      .eq('user_id', publicUserId)
+      .eq('bottle_id', bottleId);
+
+    if (error) {
+      toast.error("Failed to update");
+      console.error('toggle ownership error:', error.message);
+      return;
+    }
+
+    setUserBottlesMap(prev => ({
+      ...prev,
+      [bottleId]: { currently_owned: newOwned },
+    }));
+
+    toast.success(newOwned ? "Back in Your Bar!" : "Marked as Finished");
+  }, [publicUserId, userBottlesMap]);
+
+  // Hard delete — removes the row entirely
+  const handleDeleteFromBar = useCallback(async (bottleId: string) => {
+    if (!publicUserId) return;
+
+    const { error } = await supabase
+      .from('user_bottles')
+      .delete()
+      .eq('user_id', publicUserId)
+      .eq('bottle_id', bottleId);
+
+    if (error) {
+      toast.error("Failed to remove from collection");
+      console.error('delete from bar error:', error.message);
+      return;
+    }
+
+    setUserBottlesMap(prev => {
+      const next = { ...prev };
+      delete next[bottleId];
+      return next;
+    });
+
+    toast.success("Removed from collection");
+  }, [publicUserId]);
+
   return (
     <>
-      {/* Fixed Header with Search Bar - h-14 ~56px fixed, full width per user spec */}
-      {/* Fixed search bar width and icon placement per feedback */}
+      {/* Fixed Header with Search Bar */}
       <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 p-2">
         <div className="relative max-w-md mx-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal w-4 h-4" />
@@ -258,7 +362,6 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
 
             {showSortMenu && (
               <>
-                {/* Backdrop — closes menu on outside tap */}
                 <div className="fixed inset-0 z-30" onClick={() => setShowSortMenu(false)} />
                 <div className="absolute right-0 top-full mt-1 z-40 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[140px] py-1 overflow-hidden">
                   {(['global', 'az', 'yours'] as SortOption[]).map((option) => (
@@ -278,10 +381,9 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         )}
       </header>
 
-      {/* Scrollable Middle Content - contained within main flex-1 area google per app shell margins */}
+      {/* Scrollable Content */}
       <div className="px-4 py-4">
         {isLoading ? (
-          // Loading skeletons
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center p-3 border-b border-gray-300">
@@ -295,7 +397,6 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
             ))}
           </div>
         ) : query.trim() && bottles.length === 0 ? (
-          // No results
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🥃</div>
             <h3 className="text-lg font-semibold mb-2 text-charcoal">
@@ -303,7 +404,6 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
             </h3>
           </div>
         ) : (
-          // Results
           <div>
             <div className="space-y-0">
               {sortedBottles.map((bottle) => (
@@ -323,8 +423,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         onBottleAdded={handleBottleAdded}
       />
 
-      {/* Persistent FAB for Add Bottle - fully solid charcoal bg */}
-      {/* Overrode Tailwind preflight transparent button bg per inspector layout.css:147 */}
+      {/* FAB for Add Bottle */}
       {query.length > 0 && (
         <Button
           onClick={() => setShowAddSheet(true)}
@@ -339,7 +438,17 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
 
       <Toaster position="top-center" style={{ top: '96px' }} />
 
-      {selectedBottle && <BottleDetailView bottle={selectedBottle} onClose={() => setSelectedBottle(null)} />}
+      {selectedBottle && (
+        <BottleDetailView
+          bottle={selectedBottle}
+          onClose={() => setSelectedBottle(null)}
+          inCollection={selectedBottle.id in userBottlesMap}
+          currentlyOwned={userBottlesMap[selectedBottle.id]?.currently_owned ?? false}
+          onAddToBar={handleAddToBar}
+          onToggleOwnership={handleToggleOwnership}
+          onDeleteFromBar={handleDeleteFromBar}
+        />
+      )}
     </>
   );
 }
