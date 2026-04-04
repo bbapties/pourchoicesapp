@@ -18,37 +18,58 @@ export default async function MyBarPage() {
   if (!publicUser) redirect('/');
 
   // Fetch currently-owned bottle IDs + add dates
-  const { data: userBottles } = await supabase
+  const { data: ownedBottles } = await supabase
     .from('user_bottles')
     .select('bottle_id, created_at')
     .eq('user_id', publicUser.id)
     .eq('currently_owned', true);
 
-  const bottleIds = (userBottles || []).map(r => r.bottle_id);
+  // Fetch finished (empty) bottle IDs
+  const { data: emptyBottles } = await supabase
+    .from('user_bottles')
+    .select('bottle_id, created_at, updated_at')
+    .eq('user_id', publicUser.id)
+    .eq('currently_owned', false);
 
-  let collection: any[] = [];
+  const ownedIds = (ownedBottles || []).map(r => r.bottle_id);
+  const emptyIds = (emptyBottles || []).map(r => r.bottle_id);
 
-  if (bottleIds.length > 0) {
+  const detailFields = `
+    bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style,
+    bottle_elo_global, bottle_verified,
+    attr_frontimage_url, attr_backimage_url,
+    attr_proof, attr_volume, attr_age,
+    attr_notes, attr_release_year, attr_batch, attr_store_pick_name
+  `;
+
+  let ownedCollection: any[] = [];
+  let emptyCollection: any[] = [];
+
+  if (ownedIds.length > 0) {
     const { data: details } = await supabase
       .from('all_bottle_details')
-      .select(`
-        bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style,
-        bottle_elo_global, bottle_verified,
-        attr_frontimage_url, attr_backimage_url,
-        attr_proof, attr_volume, attr_age,
-        attr_notes, attr_release_year, attr_batch, attr_store_pick_name
-      `)
-      .in('bottle_id', bottleIds)
+      .select(detailFields)
+      .in('bottle_id', ownedIds)
       .order('bottle_elo_global', { ascending: false, nullsFirst: false });
 
-    // Map addedAt from userBottles onto each detail record
     const addedAtMap: Record<string, string> = {};
-    (userBottles || []).forEach(r => { addedAtMap[r.bottle_id] = r.created_at; });
+    (ownedBottles || []).forEach(r => { addedAtMap[r.bottle_id] = r.created_at; });
 
-    collection = (details || []).map(d => ({
-      ...d,
-      addedAt: addedAtMap[d.bottle_id],
-    }));
+    ownedCollection = (details || []).map(d => ({ ...d, addedAt: addedAtMap[d.bottle_id] }));
+  }
+
+  if (emptyIds.length > 0) {
+    const { data: details } = await supabase
+      .from('all_bottle_details')
+      .select(detailFields)
+      .in('bottle_id', emptyIds)
+      .order('bottle_elo_global', { ascending: false, nullsFirst: false });
+
+    // Use updated_at as "finished on" date if available, else created_at
+    const finishedAtMap: Record<string, string> = {};
+    (emptyBottles || []).forEach(r => { finishedAtMap[r.bottle_id] = r.updated_at || r.created_at; });
+
+    emptyCollection = (details || []).map(d => ({ ...d, addedAt: finishedAtMap[d.bottle_id] }));
   }
 
   // Fetch all Elos for star scaling
@@ -59,7 +80,8 @@ export default async function MyBarPage() {
 
   return (
     <MyBarClient
-      collection={collection}
+      ownedCollection={ownedCollection}
+      emptyCollection={emptyCollection}
       allBottlesElo={allBottlesElo || []}
       publicUserId={publicUser.id}
     />

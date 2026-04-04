@@ -1,3 +1,4 @@
+import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 
 export interface Bottle {
   id: string;
@@ -105,30 +106,31 @@ interface BottleCardProps {
 
 export default function BottleCard({ bottle }: BottleCardProps) {
   return (
-    <div className={`relative flex items-center p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
+    <div className={`relative flex items-start p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
       <EarmarkCorner
         inCollection={bottle.inCollection ?? false}
         currentlyOwned={bottle.currentlyOwned ?? false}
         provisional={bottle.provisional ?? false}
       />
 
-      <div className="w-12 h-12 bg-gray-300 rounded flex-shrink-0 mr-3 flex items-center justify-center">
+      {/* Image */}
+      <div className="w-12 h-12 bg-gray-200 rounded flex-shrink-0 mr-3 overflow-hidden">
         {bottle.image_url ? (
           <img
             src={bottle.image_url}
             alt={bottle.name}
-            className="w-full h-full object-cover rounded"
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).querySelector('.placeholder')?.classList.remove('hidden'); }}
           />
-        ) : (
-          <div className="w-6 h-6 text-gray-600">🍾</div>
-        )}
+        ) : null}
+        <div className={`placeholder w-full h-full ${bottle.image_url ? 'hidden' : ''}`}>
+          <BottlePlaceholderImage />
+        </div>
       </div>
 
+      {/* Content: name + distillery/category + stars bottom-right */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-gray-900 truncate">{bottle.name}</h3>
-
-        </div>
+        <h3 className="font-semibold text-gray-900 truncate pr-6">{bottle.name}</h3>
         {(bottle.distillery || bottle.category) && (
           <p className="text-gray-600 text-sm truncate">
             {bottle.distillery && bottle.distillery}
@@ -136,13 +138,12 @@ export default function BottleCard({ bottle }: BottleCardProps) {
             {bottle.category}
           </p>
         )}
-      </div>
-
-      <div className="ml-2 flex-shrink-0">
-        {bottle.stars != null
-          ? <StarRating value={bottle.stars} />
-          : <span className="text-xs text-gray-400">—</span>
-        }
+        <div className="flex justify-end mt-1">
+          {bottle.stars != null
+            ? <StarRating value={bottle.stars} />
+            : <span className="text-xs text-gray-400">—</span>
+          }
+        </div>
       </div>
     </div>
   );

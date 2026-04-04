@@ -21,4 +21,5 @@ export interface BottleDetails {
   nose?: string;
   palate?: string;
   finish?: string;
+  extras?: string;
 }

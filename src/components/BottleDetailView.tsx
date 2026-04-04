@@ -2,18 +2,21 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type BottleDetails } from "@/lib/types";
+import EditVariantSheet from "@/components/EditVariantSheet";
 
 interface BottleDetailViewProps {
   bottle: BottleDetails;
   onClose: () => void;
   inCollection?: boolean;
   currentlyOwned?: boolean;
+  publicUserId?: string;
   onAddToBar?: (bottleId: string) => Promise<void>;
   onToggleOwnership?: (bottleId: string) => Promise<void>;
   onDeleteFromBar?: (bottleId: string) => Promise<void>;
+  onEditSaved?: (updated: Partial<BottleDetails>) => void;
 }
 
 export default function BottleDetailView({
@@ -21,9 +24,11 @@ export default function BottleDetailView({
   onClose,
   inCollection = false,
   currentlyOwned = false,
+  publicUserId,
   onAddToBar,
   onToggleOwnership,
   onDeleteFromBar,
+  onEditSaved,
 }: BottleDetailViewProps) {
   const [imageSide, setImageSide] = useState<'front' | 'back'>('front');
   const [variantIndex, setVariantIndex] = useState(0);
@@ -38,10 +43,12 @@ export default function BottleDetailView({
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [localBottle, setLocalBottle] = useState<BottleDetails>(bottle);
 
-  const currentVariant = bottle.variants[variantIndex] || {};
-  const hasBackImage = !!bottle.backImageUrl;
-  const imageUrl = imageSide === 'front' ? bottle.frontImageUrl : bottle.backImageUrl;
+  const currentVariant = localBottle.variants[variantIndex] || {};
+  const hasBackImage = !!localBottle.backImageUrl;
+  const imageUrl = imageSide === 'front' ? localBottle.frontImageUrl : localBottle.backImageUrl;
 
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -81,29 +88,115 @@ export default function BottleDetailView({
   };
 
   const statsItems = [
-    { label: 'Distillery', value: bottle.distillery },
-    { label: 'Category', value: bottle.category },
-    { label: 'Style', value: bottle.style },
-    { label: 'Proof', value: bottle.proof ? `${bottle.proof}%` : null },
-    { label: 'Volume', value: bottle.volume },
-    { label: 'Global ELO', value: bottle.elo_global?.toString(), isSpecial: true },
-    { label: 'Verified', value: bottle.verified ? 'Yes' : 'No' },
-    { label: 'Barcode', value: bottle.barcode },
-    { label: 'Last Activity', value: bottle.lastActivity },
+    { label: 'Distillery', value: localBottle.distillery },
+    { label: 'Category', value: localBottle.category },
+    { label: 'Style', value: localBottle.style },
+    { label: 'Age', value: localBottle.age },
+    { label: 'Proof', value: localBottle.proof ? `${localBottle.proof}%` : null },
+    { label: 'Volume', value: localBottle.volume },
+    { label: 'Global ELO', value: localBottle.elo_global?.toString() },
+    { label: 'Verified', value: localBottle.verified ? 'Yes' : 'No' },
+    { label: 'Barcode', value: localBottle.barcode },
+    { label: 'Last Activity', value: localBottle.lastActivity },
   ].filter(item => item.value);
 
   return (
     <div className="fixed inset-0 bg-gray-900/90 flex items-center justify-center z-50 p-4">
       <div className="bg-white text-black border border-gray-500 rounded-lg p-4 w-[375px] max-h-[812px] overflow-auto relative">
-        {/* Header with close button and name */}
-        <div className="relative mb-4">
-          <button
-            onClick={onClose}
-            className="absolute top-0 left-0 w-11 h-11 flex items-center justify-center border border-gray-500 bg-white hover:bg-gray-200 rounded"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          <h1 className="text-center text-2xl font-bold py-4">{bottle.name}</h1>
+        {/* Header: [X] | action buttons | [✏️ or spacer] */}
+        <div className="mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="w-11 h-11 flex-shrink-0 flex items-center justify-center border border-gray-500 bg-white hover:bg-gray-200 rounded"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Action buttons — centered */}
+            <div className="flex-1 flex justify-center">
+              {!inCollectionLocally ? (
+                <Button
+                  onClick={handleMainButton}
+                  disabled={isSaving}
+                  variant="outline"
+                  className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60"
+                  style={{ minHeight: '44px' }}
+                >
+                  {isSaving ? 'Adding...' : 'Add to My Bar'}
+                </Button>
+              ) : (
+                <div className="flex border border-gray-400 rounded overflow-hidden" style={{ minHeight: '44px' }}>
+                  <button
+                    onClick={() => { if (!ownedLocally && !isSaving) handleMainButton(); }}
+                    disabled={isSaving}
+                    className={`px-3 text-sm font-medium transition-colors ${ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    ✓ In My Bar
+                  </button>
+                  <div className="w-px bg-gray-400" />
+                  <button
+                    onClick={() => { if (ownedLocally && !isSaving) handleMainButton(); }}
+                    disabled={isSaving}
+                    className={`px-3 text-sm font-medium transition-colors ${!ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    Finished It
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Edit or spacer to balance X */}
+            {inCollectionLocally && publicUserId ? (
+              <button
+                onClick={() => setShowEditSheet(true)}
+                className="w-11 h-11 flex-shrink-0 flex items-center justify-center border border-gray-500 bg-white hover:bg-gray-200 rounded"
+                title="Edit your variant"
+              >
+                <Pencil className="w-5 h-5" />
+              </button>
+            ) : (
+              <div className="w-11 h-11 flex-shrink-0" />
+            )}
+          </div>
+
+          {/* Bottle name */}
+          <h1 className="text-center text-xl font-bold leading-tight px-2">{localBottle.name}</h1>
+
+          {/* Remove from collection / delete confirm */}
+          {inCollectionLocally && !showDeleteConfirm && (
+            <div className="text-center mt-1">
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-xs text-gray-400 hover:text-red-500 underline"
+              >
+                Remove from collection
+              </button>
+            </div>
+          )}
+          {inCollectionLocally && showDeleteConfirm && (
+            <div className="mt-2 border border-red-300 rounded p-2 bg-red-50 text-xs">
+              <p className="text-gray-700 mb-2">
+                This removes all tastings and history. Only use if added by mistake.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="text-red-600 font-semibold hover:text-red-800 disabled:opacity-50"
+                >
+                  {isDeleting ? 'Removing...' : 'Yes, Delete'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         {/* Image and Stats Section */}
         <div className="flex gap-4 mb-6">
@@ -141,87 +234,12 @@ export default function BottleDetailView({
 
           {/* Stats Section */}
           <div className="flex-1 flex flex-col space-y-1">
-            {statsItems.map((item) =>
-              item.isSpecial ? (
-                <div key={item.label} className="flex flex-col py-1">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-base">{item.label}</span>
-                    <span className="text-base">{item.value}</span>
-                  </div>
-                  {/* Not yet added: single add button */}
-                  {!inCollectionLocally && (
-                    <Button
-                      onClick={handleMainButton}
-                      disabled={isSaving}
-                      variant="outline"
-                      className="self-end border-gray-500 text-black hover:bg-gray-100 mt-1 disabled:opacity-60"
-                      style={{ minHeight: '44px' }}
-                    >
-                      {isSaving ? 'Adding...' : 'Add to My Bar'}
-                    </Button>
-                  )}
-
-                  {/* In collection: segmented toggle showing both states */}
-                  {inCollectionLocally && (
-                    <div className="flex self-end mt-1 border border-gray-400 rounded overflow-hidden" style={{ minHeight: '44px' }}>
-                      <button
-                        onClick={() => { if (!ownedLocally && !isSaving) handleMainButton(); }}
-                        disabled={isSaving}
-                        className={`px-3 text-sm font-medium transition-colors ${ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-                      >
-                        ✓ In My Bar
-                      </button>
-                      <div className="w-px bg-gray-400" />
-                      <button
-                        onClick={() => { if (ownedLocally && !isSaving) handleMainButton(); }}
-                        disabled={isSaving}
-                        className={`px-3 text-sm font-medium transition-colors ${!ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-                      >
-                        Finished It
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Hard delete — only shown once in collection */}
-                  {inCollectionLocally && !showDeleteConfirm && (
-                    <button
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="self-end text-xs text-gray-400 hover:text-red-500 underline mt-1"
-                    >
-                      Remove from collection
-                    </button>
-                  )}
-
-                  {inCollectionLocally && showDeleteConfirm && (
-                    <div className="mt-2 border border-red-300 rounded p-2 bg-red-50 text-xs">
-                      <p className="text-gray-700 mb-2">
-                        This removes all tastings and history. Only use if added by mistake.
-                      </p>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={handleDelete}
-                          disabled={isDeleting}
-                          className="text-red-600 font-semibold hover:text-red-800 disabled:opacity-50"
-                        >
-                          {isDeleting ? 'Removing...' : 'Yes, Delete'}
-                        </button>
-                        <button
-                          onClick={() => setShowDeleteConfirm(false)}
-                          className="text-gray-500 hover:text-gray-700"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div key={item.label} className="flex justify-between items-center py-1">
-                  <span className="font-medium text-base">{item.label}</span>
-                  <span className="text-base">{item.value}</span>
-                </div>
-              )
-            )}
+            {statsItems.map((item) => (
+              <div key={item.label} className="flex justify-between items-center py-1">
+                <span className="font-medium text-base">{item.label}</span>
+                <span className="text-base">{item.value}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -238,11 +256,11 @@ export default function BottleDetailView({
             </button>
             {openSections.variant && (
               <div className="p-4 bg-white">
-                {bottle.variants.length > 0 ? (
+                {localBottle.variants.length > 0 ? (
                   <div className="overflow-x-auto">
-                    {bottle.variants.length > 1 && (
+                    {localBottle.variants.length > 1 && (
                       <div className="flex justify-center gap-2 mb-4">
-                        {bottle.variants.map((_, idx) => (
+                        {localBottle.variants.map((_, idx) => (
                           <button
                             key={idx}
                             onClick={() => setVariantIndex(idx)}
@@ -275,8 +293,8 @@ export default function BottleDetailView({
             </button>
             {openSections.nose && (
               <div className="p-4 bg-white">
-                {bottle.nose ? (
-                  <p className="whitespace-pre-wrap">{bottle.nose}</p>
+                {localBottle.nose ? (
+                  <p className="whitespace-pre-wrap">{localBottle.nose}</p>
                 ) : (
                   <p className="text-gray-600">No nose notes available.</p>
                 )}
@@ -295,8 +313,8 @@ export default function BottleDetailView({
             </button>
             {openSections.palate && (
               <div className="p-4 bg-white">
-                {bottle.palate ? (
-                  <p className="whitespace-pre-wrap">{bottle.palate}</p>
+                {localBottle.palate ? (
+                  <p className="whitespace-pre-wrap">{localBottle.palate}</p>
                 ) : (
                   <p className="text-gray-600">No palate notes available.</p>
                 )}
@@ -315,8 +333,8 @@ export default function BottleDetailView({
             </button>
             {openSections.finish && (
               <div className="p-4 bg-white">
-                {bottle.finish ? (
-                  <p className="whitespace-pre-wrap">{bottle.finish}</p>
+                {localBottle.finish ? (
+                  <p className="whitespace-pre-wrap">{localBottle.finish}</p>
                 ) : (
                   <p className="text-gray-600">No finish notes available.</p>
                 )}
@@ -325,6 +343,24 @@ export default function BottleDetailView({
           </div>
         </div>
       </div>
+
+      {/* Edit variant sheet — rendered outside the modal scroll container */}
+      {publicUserId && (
+        <EditVariantSheet
+          bottle={localBottle}
+          publicUserId={publicUserId}
+          open={showEditSheet}
+          onOpenChange={setShowEditSheet}
+          onSaved={(updated) => {
+            setLocalBottle(prev => ({
+              ...prev,
+              ...updated,
+              variants: updated.variants !== undefined ? updated.variants : prev.variants,
+            }));
+            onEditSaved?.(updated);
+          }}
+        />
+      )}
     </div>
   );
 }

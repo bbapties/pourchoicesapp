@@ -1,3 +1,5 @@
+import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
+
 export interface BottleCardMediumData {
   id: string;
   name: string;
@@ -9,6 +11,7 @@ export interface BottleCardMediumData {
   image_url?: string;
   addedAt?: string;
   provisional?: boolean;
+  currentlyOwned?: boolean;
 }
 
 function StarRating({ value }: { value: number }) {
@@ -54,13 +57,15 @@ interface BottleCardMediumProps {
 
 export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
   const provisional = bottle.provisional ?? false;
+  const owned = bottle.currentlyOwned ?? true; // default true for backwards compat
   const checkColor = provisional ? '#FFD700' : '#ffffff';
+  const earmarkColor = owned ? '#22c55e' : '#9ca3af'; // green if owned, gray if empty
 
   return (
-    <div className="relative flex flex-col border-b border-gray-300 hover:bg-gray-100 transition-colors">
-      {/* Earmark — always green (currently owned), yellow ✓ if also provisional */}
+    <div className="relative flex flex-col border-b border-gray-300 hover:bg-gray-100 transition-colors pb-6">
+      {/* Earmark — green if owned, gray if finished, yellow ✓ if provisional */}
       <div style={{ position: 'absolute', top: 0, right: 0, width: 28, height: 28 }}>
-        <div style={{ position: 'absolute', inset: 0, background: '#22c55e', clipPath: 'polygon(100% 0, 100% 100%, 0 0)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: earmarkColor, clipPath: 'polygon(100% 0, 100% 100%, 0 0)' }} />
         <span style={{
           position: 'absolute', top: 3, right: 4, fontSize: 11, lineHeight: 1,
           color: checkColor, fontWeight: 'bold',
@@ -71,44 +76,52 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
       {/* Main row: image + attributes */}
       <div className="flex items-start p-3 gap-3">
         {/* Image */}
-        <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0 flex items-center justify-center overflow-hidden">
+        <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0 overflow-hidden">
           {bottle.image_url ? (
-            <img src={bottle.image_url} alt={bottle.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-2xl">🍾</span>
-          )}
+            <img src={bottle.image_url} alt={bottle.name} className="w-full h-full object-cover"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).querySelector('.placeholder')?.classList.remove('hidden'); }} />
+          ) : null}
+          <div className={`placeholder w-full h-full ${bottle.image_url ? 'hidden' : ''}`}>
+            <BottlePlaceholderImage />
+          </div>
         </div>
 
         {/* Attribute grid */}
         <div className="flex-1 min-w-0 pr-6">
           {/* Name */}
           <h3 className="font-semibold text-gray-900 truncate mb-1">{bottle.name}</h3>
-          {/* Row 1: distillery | category */}
+          {/* Row 1: distillery (2/3) | category (1/3 right-aligned) */}
           <div className="flex gap-2 mb-1">
-            <span className="flex-1 text-sm text-gray-600 truncate">{bottle.distillery || '—'}</span>
-            <span className="flex-1 text-sm text-gray-600 truncate">{bottle.category || '—'}</span>
+            <span className="flex-[2] text-sm text-gray-600 truncate">{bottle.distillery || '—'}</span>
+            <span className="flex-[1] text-sm text-gray-600 truncate text-right">{bottle.category || '—'}</span>
           </div>
-          {/* Row 2: stars | proof */}
+          {/* Row 2: stars (2/3) | proof (1/3 right-aligned) */}
           <div className="flex gap-2 items-center">
-            <span className="flex-1">
+            <span className="flex-[2]">
               {bottle.stars != null
                 ? <StarRating value={bottle.stars} />
                 : <span className="text-xs text-gray-400">No rating yet</span>
               }
             </span>
-            <span className="flex-1 text-sm text-gray-500">
+            <span className="flex-[1] text-sm text-gray-500 text-right">
               {bottle.proof ? `${bottle.proof}% ABV` : ''}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Bottom chip row */}
-      {(bottle.style || bottle.addedAt) && (
-        <div className="flex flex-wrap gap-2 px-3 pb-3 -mt-1">
-          {bottle.style && <ChipTag label={bottle.style} />}
-          {bottle.addedAt && <ChipTag label={`Added ${formatDate(bottle.addedAt)}`} />}
+      {/* Style chip (if present) */}
+      {bottle.style && (
+        <div className="flex gap-2 px-3 -mt-1">
+          <ChipTag label={bottle.style} />
         </div>
+      )}
+
+      {/* Added date — anchored bottom-right for visual balance */}
+      {bottle.addedAt && (
+        <span className="absolute bottom-1.5 right-3 text-xs text-gray-400">
+          Added {formatDate(bottle.addedAt)}
+        </span>
       )}
     </div>
   );
