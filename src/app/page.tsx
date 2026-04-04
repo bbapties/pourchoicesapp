@@ -13,8 +13,9 @@ type StepId = "email" | "username" | "password";
 export default function Home() {
   const router = useRouter();
 
-  // Splash state
-  const [splashDone, setSplashDone] = useState(false);
+  // Splash state — authChecked stays false until we confirm no session exists
+  // (if session exists we navigate away while still showing splash, avoiding flicker)
+  const [authChecked, setAuthChecked] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
 
   // Wizard state
@@ -32,15 +33,18 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // On mount: check session, hold splash for 1.5s minimum
+  // On mount: check session, hold splash for 1.5s minimum.
+  // Only set authChecked (show Get Started) if there is NO session.
+  // If session exists, navigate away while still showing the splash — no flash.
   useEffect(() => {
     const sessionCheck = supabase.auth.getSession();
     const minDelay = new Promise<void>((resolve) => setTimeout(resolve, 1500));
 
     Promise.all([sessionCheck, minDelay]).then(([{ data: { session } }]) => {
-      setSplashDone(true);
       if (session) {
         router.replace("/mybar");
+      } else {
+        setAuthChecked(true);
       }
     });
   }, [router]);
@@ -146,8 +150,8 @@ export default function Home() {
 
   const slideClass = direction === "forward" ? "slide-in-right" : "slide-in-left";
 
-  // --- SPLASH SCREEN (first 1.5s — no button, just the image) ---
-  if (!splashDone) {
+  // --- SPLASH SCREEN (while auth check is in progress, or navigating to /mybar) ---
+  if (!authChecked) {
     return (
       <>
         <div className="fixed inset-0">
