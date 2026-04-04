@@ -9,6 +9,10 @@ export const metadata = {
   description: "Picture Your Next Sip",
 };
 
+export const viewport = {
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: {
