@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, X, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type BottleDetails } from "@/lib/types";
-import EditVariantSheet from "@/components/EditVariantSheet";
+import AddVariantSheet from "@/components/AddVariantSheet";
+import VariantSelectSheet from "@/components/VariantSelectSheet";
 
 interface BottleDetailViewProps {
   bottle: BottleDetails;
@@ -13,7 +14,7 @@ interface BottleDetailViewProps {
   inCollection?: boolean;
   currentlyOwned?: boolean;
   publicUserId?: string;
-  onAddToBar?: (bottleId: string) => Promise<void>;
+  onAddToBar?: (bottleId: string, variantId?: string | null) => Promise<void>;
   onToggleOwnership?: (bottleId: string) => Promise<void>;
   onDeleteFromBar?: (bottleId: string) => Promise<void>;
   onEditSaved?: (updated: Partial<BottleDetails>) => void;
@@ -44,6 +45,7 @@ export default function BottleDetailView({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditSheet, setShowEditSheet] = useState(false);
+  const [showVariantSelect, setShowVariantSelect] = useState(false);
   const [localBottle, setLocalBottle] = useState<BottleDetails>(bottle);
 
   const currentVariant = localBottle.variants[variantIndex] || {};
@@ -59,10 +61,10 @@ export default function BottleDetailView({
     setIsSaving(true);
     try {
       if (!inCollectionLocally) {
-        // Add to bar for the first time — close detail view after saving
-        if (!onAddToBar) return;
-        await onAddToBar(bottle.id);
-        onClose();
+        // Open variant selection sheet — it handles the actual add
+        setIsSaving(false);
+        setShowVariantSelect(true);
+        return;
       } else {
         // Toggle currently_owned
         if (!onToggleOwnership) return;
@@ -152,9 +154,9 @@ export default function BottleDetailView({
               <button
                 onClick={() => setShowEditSheet(true)}
                 className="w-11 h-11 flex-shrink-0 flex items-center justify-center border border-gray-500 bg-white hover:bg-gray-200 rounded"
-                title="Edit your variant"
+                title="Update your variant details (batch, proof, store pick…)"
               >
-                <Pencil className="w-5 h-5" />
+                <GitBranch className="w-5 h-5" />
               </button>
             ) : (
               <div className="w-11 h-11 flex-shrink-0" />
@@ -273,6 +275,9 @@ export default function BottleDetailView({
                       {currentVariant.releaseYear && <p>Release Year: {currentVariant.releaseYear}</p>}
                       {currentVariant.batch && <p>Batch: {currentVariant.batch}</p>}
                       {currentVariant.storePickName && <p>Store Pick: {currentVariant.storePickName}</p>}
+                      {currentVariant.notes && (
+                        <p className="mt-2 text-sm text-gray-600 italic border-t border-gray-200 pt-2">{currentVariant.notes}</p>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -344,9 +349,25 @@ export default function BottleDetailView({
         </div>
       </div>
 
-      {/* Edit variant sheet — rendered outside the modal scroll container */}
+      {/* Variant select sheet — shown when adding to bar for the first time */}
       {publicUserId && (
-        <EditVariantSheet
+        <VariantSelectSheet
+          bottle={localBottle}
+          publicUserId={publicUserId}
+          open={showVariantSelect}
+          onOpenChange={setShowVariantSelect}
+          onAdd={async (variantId) => {
+            if (!onAddToBar) return;
+            await onAddToBar(bottle.id, variantId);
+            setShowVariantSelect(false);
+            onClose();
+          }}
+        />
+      )}
+
+      {/* Variant edit sheet — shown for bottles already in collection */}
+      {publicUserId && (
+        <AddVariantSheet
           bottle={localBottle}
           publicUserId={publicUserId}
           open={showEditSheet}
@@ -354,7 +375,6 @@ export default function BottleDetailView({
           onSaved={(updated) => {
             setLocalBottle(prev => ({
               ...prev,
-              ...updated,
               variants: updated.variants !== undefined ? updated.variants : prev.variants,
             }));
             onEditSaved?.(updated);

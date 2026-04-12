@@ -42,17 +42,6 @@ function calcStarsFromElo(elo: number | null | undefined, minElo: number, maxElo
   return Math.min(5, Math.max(0, ((elo - minElo) / (maxElo - minElo)) * 5));
 }
 
-function parseNotes(notes: string | null | undefined) {
-  if (!notes) return { nose: undefined, palate: undefined, finish: undefined };
-  const noseMatch = notes.match(/Nose:\s*(.*?)(?=(Palate:|Finish:|$))/is);
-  const palateMatch = notes.match(/Palate:\s*(.*?)(?=(Finish:|$))/is);
-  const finishMatch = notes.match(/Finish:\s*(.*?)$/is);
-  return {
-    nose: noseMatch?.[1]?.trim(),
-    palate: palateMatch?.[1]?.trim(),
-    finish: finishMatch?.[1]?.trim(),
-  };
-}
 
 function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: boolean) {
   return {
@@ -127,7 +116,10 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   const handleCardClick = (bottleId: string) => {
     const raw = activeRaw.find(r => r.bottle_id === bottleId);
     if (!raw) return;
-    const { nose, palate, finish } = parseNotes(raw.attr_notes);
+    const variantIds: string[] = raw.attr_variant_ids || [];
+    const batches: string[] = raw.attr_batch || [];
+    const releaseYears: string[] = raw.attr_release_year || [];
+    const storePickNames: string[] = raw.attr_store_pick_name || [];
     setSelectedBottle({
       id: raw.bottle_id,
       name: raw.bottle_name,
@@ -142,11 +134,18 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       lastActivity: undefined,
       frontImageUrl: raw.attr_frontimage_url,
       backImageUrl: raw.attr_backimage_url,
-      variants: [{ releaseYear: raw.attr_release_year, batch: raw.attr_batch, storePickName: raw.attr_store_pick_name }]
+      variants: variantIds
+        .map((vid, i) => ({
+          variantId: vid,
+          releaseYear: releaseYears[i],
+          batch: batches[i],
+          storePickName: storePickNames[i],
+        }))
         .filter(v => v.releaseYear || v.batch || v.storePickName),
-      nose,
-      palate,
-      finish,
+      nose: raw.attr_nose,
+      palate: raw.attr_palate,
+      finish: raw.attr_finish,
+      extras: raw.attr_extras,
     });
   };
 
@@ -415,19 +414,9 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           onToggleOwnership={handleToggleOwnership}
           onDeleteFromBar={handleDeleteFromBar}
           onEditSaved={(updated) => {
-            // Reflect edits in the open detail view and in the raw collection card
-            setSelectedBottle(prev => prev ? { ...prev, ...updated, variants: updated.variants ?? prev.variants } : prev);
-            setRawOwned(prev => prev.map(r =>
-              r.bottle_id === selectedBottle.id
-                ? {
-                    ...r,
-                    attr_proof: updated.proof ?? r.attr_proof,
-                    attr_volume: updated.volume ?? r.attr_volume,
-                    attr_age: updated.age ?? r.attr_age,
-                    attr_frontimage_url: updated.frontImageUrl ?? r.attr_frontimage_url,
-                  }
-                : r
-            ));
+            // Variant edits only update the variants array on the open detail view
+            // Canonical fields (proof, age, volume, images) live on bottles and aren't user-editable
+            setSelectedBottle(prev => prev ? { ...prev, variants: updated.variants ?? prev.variants } : prev);
           }}
         />
       )}

@@ -95,30 +95,6 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         return;
       }
 
-      // Insert into bottle_attr table
-      const attrData = {
-        bottles_id: insertedBottle.id,
-        default: true,
-        created_by: user.id,
-        frontimage_url: null, // TODO: Handle image upload
-      };
-      console.log("Prepared attrData:", attrData);
-
-      const { error: attrError } = await supabase
-        .from("bottle_attr")
-        .insert([attrData]);
-
-      console.log("Attribute insert result:", { error: attrError });
-      if (attrError) {
-        console.error("Attribute insert error details:");
-        console.error("- Message:", attrError.message);
-        console.error("- Details:", attrError.details);
-        console.error("- Hint:", attrError.hint);
-        console.error("- Code:", attrError.code);
-        toast.error("Failed to add bottle attributes");
-        return;
-      }
-
       // Create the bottle object for optimistic update
       const newBottle = {
         id: crypto.randomUUID(), // Proper UUID for key

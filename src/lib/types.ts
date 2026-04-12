@@ -14,9 +14,11 @@ export interface BottleDetails {
   frontImageUrl?: string;
   backImageUrl?: string;
   variants: Array<{
+    variantId?: string;
     releaseYear?: string;
     batch?: string;
     storePickName?: string;
+    notes?: string;
   }>;
   nose?: string;
   palate?: string;

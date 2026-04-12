@@ -20,14 +20,14 @@ export default async function MyBarPage() {
   // Fetch currently-owned bottle IDs + add dates
   const { data: ownedBottles } = await supabase
     .from('user_bottles')
-    .select('bottle_id, created_at')
+    .select('bottle_id, variant_id, created_at')
     .eq('user_id', publicUser.id)
     .eq('currently_owned', true);
 
   // Fetch finished (empty) bottle IDs
   const { data: emptyBottles } = await supabase
     .from('user_bottles')
-    .select('bottle_id, created_at, updated_at')
+    .select('bottle_id, variant_id, created_at, updated_at')
     .eq('user_id', publicUser.id)
     .eq('currently_owned', false);
 
@@ -39,7 +39,8 @@ export default async function MyBarPage() {
     bottle_elo_global, bottle_verified,
     attr_frontimage_url, attr_backimage_url,
     attr_proof, attr_volume, attr_age,
-    attr_notes, attr_release_year, attr_batch, attr_store_pick_name
+    attr_nose, attr_palate, attr_finish, attr_extras,
+    attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name
   `;
 
   let ownedCollection: any[] = [];

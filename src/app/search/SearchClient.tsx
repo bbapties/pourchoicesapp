@@ -37,8 +37,8 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   const isLoadingMoreRef = useRef(false);
   const offsetRef = useRef(0); // tracks current loaded count
 
-  // user_bottles map: bottle_id → { currently_owned }
-  const [userBottlesMap, setUserBottlesMap] = useState<Record<string, { currently_owned: boolean }>>({});
+  // user_bottles map: bottle_id → array of ownership rows (multiple variants per bottle supported)
+  const [userBottlesMap, setUserBottlesMap] = useState<Record<string, Array<{ currently_owned: boolean; variant_id: string | null }>>>({});
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
 
   type SortOption = 'global' | 'az' | 'za' | 'yours' | null;
@@ -76,10 +76,10 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   };
 
   const mapBottleResult = (result: any): Bottle => {
-    const notes = result.attr_notes || '';
-    const noseMatch = notes.match(/Nose:\s*(.*?)(?=(Palate:|Finish:|$))/is);
-    const palateMatch = notes.match(/Palate:\s*(.*?)(?=(Finish:|$))/is);
-    const finishMatch = notes.match(/Finish:\s*(.*?)$/is);
+    const variantIds: string[] = result.attr_variant_ids || [];
+    const batches: string[] = result.attr_batch || [];
+    const releaseYears: string[] = result.attr_release_year || [];
+    const storePickNames: string[] = result.attr_store_pick_name || [];
 
     return {
       id: result.bottle_id,
@@ -99,11 +99,18 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       lastActivity: "Never",
       frontImageUrl: result.attr_frontimage_url,
       backImageUrl: result.attr_backimage_url,
-      variants: [{ releaseYear: result.attr_release_year, batch: result.attr_batch, storePickName: result.attr_store_pick_name }]
-        .filter((v: any) => v.releaseYear || v.batch || v.storePickName),
-      nose: noseMatch?.[1]?.trim(),
-      palate: palateMatch?.[1]?.trim(),
-      finish: finishMatch?.[1]?.trim(),
+      variants: variantIds
+        .map((vid, i) => ({
+          variantId: vid,
+          releaseYear: releaseYears[i],
+          batch: batches[i],
+          storePickName: storePickNames[i],
+        }))
+        .filter(v => v.releaseYear || v.batch || v.storePickName),
+      nose: result.attr_nose,
+      palate: result.attr_palate,
+      finish: result.attr_finish,
+      extras: result.attr_extras,
     } as any;
   };
 
@@ -127,7 +134,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
 
       const { data, error } = await supabase
         .from('user_bottles')
-        .select('bottle_id, currently_owned')
+        .select('bottle_id, currently_owned, variant_id')
         .eq('user_id', publicUser.id);
 
       if (error) {
@@ -135,9 +142,10 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         return;
       }
 
-      const map: Record<string, { currently_owned: boolean }> = {};
+      const map: Record<string, Array<{ currently_owned: boolean; variant_id: string | null }>> = {};
       (data || []).forEach(row => {
-        map[row.bottle_id] = { currently_owned: row.currently_owned };
+        if (!map[row.bottle_id]) map[row.bottle_id] = [];
+        map[row.bottle_id].push({ currently_owned: row.currently_owned, variant_id: row.variant_id ?? null });
       });
       setUserBottlesMap(map);
     }
@@ -163,7 +171,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
 
       const { data, error } = await supabase
         .from("all_bottle_details")
-        .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_release_year, attr_batch, attr_store_pick_name, attr_notes, attr_extras")
+        .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name")
         .order("bottle_elo_global", { ascending: false, nullsFirst: false })
         .range(offset, offset + limit - 1);
 
@@ -224,7 +232,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     let annotated = base.map(bottle => ({
       ...bottle,
       inCollection: bottle.id in userBottlesMap,
-      currentlyOwned: userBottlesMap[bottle.id]?.currently_owned ?? false,
+      currentlyOwned: userBottlesMap[bottle.id]?.some(r => r.currently_owned) ?? false,
     }));
 
     // Apply filter
@@ -282,8 +290,8 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     try {
       const { data: searchResults, error } = await supabase
         .from("all_bottle_details")
-        .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_release_year, attr_batch, attr_store_pick_name, attr_notes, attr_extras")
-        .or(`bottle_name.ilike.%${searchTerm}%,bottle_distillery.ilike.%${searchTerm}%,bottle_category.ilike.%${searchTerm}%,bottle_style.ilike.%${searchTerm}%,bottle_barcode.ilike.%${searchTerm}%,attr_age.ilike.%${searchTerm}%,attr_batch.ilike.%${searchTerm}%,attr_store_pick_name.ilike.%${searchTerm}%,attr_notes.ilike.%${searchTerm}%`)
+        .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name")
+        .or(`bottle_name.ilike.%${searchTerm}%,bottle_distillery.ilike.%${searchTerm}%,bottle_category.ilike.%${searchTerm}%,bottle_style.ilike.%${searchTerm}%,bottle_barcode.ilike.%${searchTerm}%,attr_age.ilike.%${searchTerm}%,attr_nose.ilike.%${searchTerm}%,attr_palate.ilike.%${searchTerm}%,attr_finish.ilike.%${searchTerm}%`)
         .order("bottle_elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
 
@@ -295,16 +303,11 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         if (bottle.bottle_style?.toLowerCase().includes(termLower)) return true;
         if (bottle.bottle_barcode?.toLowerCase().includes(termLower)) return true;
         if (bottle.attr_age?.toLowerCase().includes(termLower)) return true;
-        if (bottle.attr_batch?.toLowerCase().includes(termLower)) return true;
-        if (bottle.attr_store_pick_name?.toLowerCase().includes(termLower)) return true;
-        if (bottle.attr_notes) {
-          const cleanedNotes = bottle.attr_notes
-            .replace(/Nose:/gi, '')
-            .replace(/Palate:/gi, '')
-            .replace(/Finish:/gi, '')
-            .toLowerCase();
-          if (cleanedNotes.includes(termLower)) return true;
-        }
+        if ((bottle.attr_batch as string[])?.some((v: string) => v?.toLowerCase().includes(termLower))) return true;
+        if ((bottle.attr_store_pick_name as string[])?.some((v: string) => v?.toLowerCase().includes(termLower))) return true;
+        if (bottle.attr_nose?.toLowerCase().includes(termLower)) return true;
+        if (bottle.attr_palate?.toLowerCase().includes(termLower)) return true;
+        if (bottle.attr_finish?.toLowerCase().includes(termLower)) return true;
         return false;
       });
 
@@ -342,47 +345,73 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     }
   }, [query, searchBottles]);
 
-  const handleAddToBar = useCallback(async (bottleId: string) => {
+  const handleAddToBar = useCallback(async (bottleId: string, variantId?: string | null) => {
     if (!publicUserId) { toast.error("Not logged in"); return; }
 
     const existing = userBottlesMap[bottleId];
     const now = new Date().toISOString();
+    const vid = variantId ?? null;
 
-    if (existing) {
-      const { error } = await supabase
-        .from('user_bottles')
-        .update({ currently_owned: true, updated_at: now })
-        .eq('user_id', publicUserId)
-        .eq('bottle_id', bottleId);
-
-      if (error) { toast.error("Failed to add to My Bar"); return; }
+    if (vid === null) {
+      // Standard (no variant) — re-activate finished row if exists, otherwise insert
+      const noVariantRow = existing?.find(r => r.variant_id === null);
+      if (noVariantRow && !noVariantRow.currently_owned) {
+        const { error } = await supabase
+          .from('user_bottles')
+          .update({ currently_owned: true, updated_at: now })
+          .eq('user_id', publicUserId)
+          .eq('bottle_id', bottleId)
+          .is('variant_id', null);
+        if (error) { toast.error("Failed to add to My Bar"); return; }
+      } else if (!noVariantRow) {
+        const { error } = await supabase
+          .from('user_bottles')
+          .insert({ user_id: publicUserId, bottle_id: bottleId, currently_owned: true, variant_id: null, created_at: now, updated_at: now });
+        if (error) { toast.error("Failed to add to My Bar"); return; }
+      }
     } else {
+      // Variant row — always insert (partial index enforces uniqueness per variant)
       const { error } = await supabase
         .from('user_bottles')
-        .insert({ user_id: publicUserId, bottle_id: bottleId, currently_owned: true, created_at: now, updated_at: now });
-
+        .insert({ user_id: publicUserId, bottle_id: bottleId, currently_owned: true, variant_id: vid, created_at: now, updated_at: now });
       if (error) { toast.error("Failed to add to My Bar"); return; }
     }
 
-    setUserBottlesMap(prev => ({ ...prev, [bottleId]: { currently_owned: true } }));
+    setUserBottlesMap(prev => {
+      const rows = prev[bottleId] ?? [];
+      const updated = vid === null
+        ? rows.some(r => r.variant_id === null)
+          ? rows.map(r => r.variant_id === null ? { ...r, currently_owned: true } : r)
+          : [...rows, { currently_owned: true, variant_id: null }]
+        : [...rows, { currently_owned: true, variant_id: vid }];
+      return { ...prev, [bottleId]: updated };
+    });
     toast.success("Added to My Bar!");
   }, [publicUserId, userBottlesMap]);
 
   const handleToggleOwnership = useCallback(async (bottleId: string) => {
     if (!publicUserId) return;
-    const current = userBottlesMap[bottleId];
-    if (!current) return;
+    const rows = userBottlesMap[bottleId];
+    if (!rows?.length) return;
 
-    const newOwned = !current.currently_owned;
+    // Toggle the first (no-variant) row as the primary ownership indicator
+    const primaryRow = rows.find(r => r.variant_id === null) ?? rows[0];
+    const newOwned = !primaryRow.currently_owned;
     const { error } = await supabase
       .from('user_bottles')
       .update({ currently_owned: newOwned, updated_at: new Date().toISOString() })
       .eq('user_id', publicUserId)
-      .eq('bottle_id', bottleId);
+      .eq('bottle_id', bottleId)
+      .is('variant_id', primaryRow.variant_id);
 
     if (error) { toast.error("Failed to update"); return; }
 
-    setUserBottlesMap(prev => ({ ...prev, [bottleId]: { currently_owned: newOwned } }));
+    setUserBottlesMap(prev => ({
+      ...prev,
+      [bottleId]: prev[bottleId].map(r =>
+        r.variant_id === primaryRow.variant_id ? { ...r, currently_owned: newOwned } : r
+      ),
+    }));
     toast.success(newOwned ? "Back in Your Bar!" : "Marked as Finished");
   }, [publicUserId, userBottlesMap]);
 
@@ -399,7 +428,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
 
     setUserBottlesMap(prev => {
       const next = { ...prev };
-      delete next[bottleId];
+      delete next[bottleId]; // removes all rows for this bottle
       return next;
     });
 
@@ -646,7 +675,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
           bottle={selectedBottle}
           onClose={() => setSelectedBottle(null)}
           inCollection={selectedBottle.id in userBottlesMap}
-          currentlyOwned={userBottlesMap[selectedBottle.id]?.currently_owned ?? false}
+          currentlyOwned={userBottlesMap[selectedBottle.id]?.some(r => r.currently_owned) ?? false}
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}
           onDeleteFromBar={handleDeleteFromBar}
