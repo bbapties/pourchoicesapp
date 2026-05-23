@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -120,7 +120,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         <SheetHeader>
           <SheetTitle className="text-charcoal">Add New Bottle</SheetTitle>
           <SheetDescription className="text-charcoal">
-            Can't find your bottle? Add it to our database. We'll review it before making it available.
+            Can&apos;t find your bottle? Add it to our database. We&apos;ll review it before making it available.
           </SheetDescription>
         </SheetHeader>
 
@@ -180,7 +180,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
             <FormField
               control={form.control}
               name="image"
-              render={({ field: { value, onChange, ...field } }) => (
+              render={({ field: { onChange, ...field } }) => (
                 <FormItem>
                   <FormLabel className="text-charcoal">Image (Optional)</FormLabel>
                   <FormControl>

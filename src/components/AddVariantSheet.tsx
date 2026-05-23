@@ -120,7 +120,7 @@ export default function AddVariantSheet({ bottle, publicUserId, open, onOpenChan
         <SheetHeader className="mb-4">
           <SheetTitle className="text-charcoal text-left">Your Variant</SheetTitle>
           <p className="text-xs text-gray-500">
-            Log the specific details of your bottle. These are saved privately and don't affect other users.
+            Log the specific details of your bottle. These are saved privately and don&apos;t affect other users.
           </p>
         </SheetHeader>
 

@@ -172,7 +172,7 @@ export default function EditVariantSheet({ bottle, publicUserId, open, onOpenCha
         <SheetHeader className="mb-4">
           <SheetTitle className="text-charcoal text-left">Edit Your Variant</SheetTitle>
           <p className="text-xs text-gray-500">
-            Changes are saved as your personal variant and don't affect other users.
+            Changes are saved as your personal variant and don&apos;t affect other users.
           </p>
         </SheetHeader>
 
