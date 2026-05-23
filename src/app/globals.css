@@ -2,10 +2,11 @@
 @import "tw-animate-css";
 
 @theme {
-  --color-ivory: #FDF6E3;
+  /* Greyscale wireframe palette — real brand colors applied in Phase 5 */
+  --color-ivory: #FFFFFF;
   --color-charcoal: #2F2F2F;
-  --color-amber: #DAA520;
-  --color-gold: #FFD700;
+  --color-amber: #888888;
+  --color-gold: #AAAAAA;
 }
 
 :root {

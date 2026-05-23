@@ -497,7 +497,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
           <button
             onClick={handleFilterButtonClick}
             className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-charcoal transition-colors"
-            style={filterActive ? { backgroundColor: '#2F2F2F', color: '#FDF6E3', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
+            style={filterActive ? { backgroundColor: '#2F2F2F', color: '#FFFFFF', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
           >
             {filterActive ? filter.value : 'Filter by'}
             {filterActive
@@ -568,7 +568,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
           <button
             onClick={() => setShowSortMenu(v => !v)}
             className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-charcoal transition-colors"
-            style={sortActive ? { backgroundColor: '#2F2F2F', color: '#FDF6E3', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
+            style={sortActive ? { backgroundColor: '#2F2F2F', color: '#FFFFFF', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
           >
             {sortBy && sortBy !== 'yours' ? SORT_LABELS[sortBy] : 'Sort by'}
             <ChevronDown size={13} />
@@ -659,7 +659,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       {query.length > 0 && (
         <Button
           onClick={() => setShowAddSheet(true)}
-          style={{ backgroundColor: '#2F2F2F', color: '#FDF6E3' }}
+          style={{ backgroundColor: '#2F2F2F', color: '#FFFFFF' }}
           className="!bg-charcoal !text-ivory !opacity-100 !hover:bg-gray-700 fixed bottom-20 left-1/2 -translate-x-1/2 rounded-full z-30 shadow-lg w-12 h-12 flex items-center justify-center"
           variant={null}
           aria-label="Add new bottle"

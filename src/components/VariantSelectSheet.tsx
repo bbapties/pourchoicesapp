@@ -220,7 +220,7 @@ export default function VariantSelectSheet({
       <SheetContent
         side="bottom"
         className="border-t border-charcoal max-h-[90vh] overflow-y-auto"
-        style={{ backgroundColor: "#FDF6E3", color: "#2F2F2F" }}
+        style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}
       >
         <SheetHeader className="mb-4">
           <SheetTitle className="text-charcoal text-left">
@@ -476,7 +476,7 @@ export default function VariantSelectSheet({
               onClick={handleAdd}
               disabled={isAddDisabled}
               className="w-full py-3 rounded border border-charcoal text-sm font-medium transition-colors disabled:opacity-50"
-              style={{ backgroundColor: "#2F2F2F", color: "#FDF6E3" }}
+              style={{ backgroundColor: "#2F2F2F", color: "#FFFFFF" }}
             >
               {isAdding ? "Adding..." : "Add to My Bar"}
             </button>
