@@ -56,6 +56,65 @@ Goal: Apply full design system from the MVP doc.
 
 ---
 
+## Phase 6 — Admin Panel
+Goal: Internal tooling — manage users, verify/clean bottles, bulk-import data.
+Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually flipped in Supabase).
+
+### 6.0 Foundation
+- [ ] Commit DB_SCHEMA.sql at repo root (reference snapshot of Supabase schema)
+- [ ] SQL to run in Supabase dashboard:
+  - `alter table users add column role text not null default 'user' check (role in ('user','admin'))`
+  - Create storage bucket `bottle-images` (public read; authenticated insert; RLS for update/delete)
+  - RPC `delete_user_cascade(target uuid)` — SECURITY DEFINER, admin-only, cascade order: tasting_results → tasting_details → tasting_sessions → user_bottles → public.users
+  - RPC `commit_bottle_import(payload jsonb)` — SECURITY DEFINER, admin-only, atomic bottles+variants insert with `(name,distillery)` dedup
+  - RLS: admins can update/delete `bottles` and `bottle_variants`
+- [ ] `src/lib/useCurrentUser.ts` — context + hook returning `{ publicUserId, role, isAdmin, loading }`
+- [ ] AppShell: conditional 5th nav item "Admin" (lucide Shield icon) when `isAdmin`
+- [ ] `src/app/admin/page.tsx` — server component re-checks role, redirects non-admins; renders AdminClient with tabs Users / Bottles / Import
+- [ ] `src/app/api/admin/delete-user/route.ts` — server route using service-role key to wipe `auth.users` row after RPC succeeds; re-checks caller is admin
+
+### 6.1 Users tab
+- [ ] List users with username, email, created_at, role, #bottles, #sessions
+- [ ] Search filter
+- [ ] Delete row → confirm modal (type username) → RPC + auth wipe → toast
+- [ ] Block self-delete
+
+### 6.2 Image upload (prereq for bottle management)
+- [ ] `src/lib/uploadBottleImage.ts` — upload to bottle-images bucket, return public URL
+- [ ] Fix ProvisionalSheet — currently `image` File field is silently dropped; wire to helper
+- [ ] EditVariantSheet — add upload button alongside URL input
+- [ ] Permission rules:
+  - Unverified bottle/variant: creator OR admin can edit images
+  - Verified with valid image: admin-only
+  - Verified with missing/broken image: any authenticated user can replace; upload auto-sets `verified=false` + shows "re-review pending" toast
+  - Broken-image detection: `<img onError>` swaps to placeholder with "Upload replacement" button
+
+### 6.3 Bottles tab
+- [ ] Queue sub-tab — merged queue, one card per unverified bottle, variants nested inside; verified bottles with unverified variants also appear
+- [ ] Row actions: Verify / Edit (reuse existing) / Delete
+- [ ] Delete confirm shows counts AND list of affected usernames (`select username from users where id in (select user_id from user_bottles where bottle_id = X)`)
+- [ ] All Bottles sub-tab — searchable table over `all_bottle_details` with same row actions
+
+### 6.4 CSV bulk import tab
+- [ ] Template: `bottle_name, distillery, category, style, age, proof, volume, barcode, nose, palate, finish, extras, variant_release_year, variant_batch, variant_store_pick_name, variant_proof, variant_age, variant_notes`
+- [ ] Parse with `papaparse`; group rows by `(bottle_name, distillery)` so duplicated bottle columns collapse into one bottle with N variants
+- [ ] Validate-then-commit preview: "Would create N new bottles, M new variants. Would attach K variants to existing bottles: [list]. Errors: [list]."
+- [ ] Existing bottle (name+distillery match) → reuse; append new variants only (dedup by release_year+batch+store_pick_name)
+- [ ] Commit button → single `commit_bottle_import(payload)` RPC, all-or-nothing
+- [ ] All new bottles + variants land `verified=false` → flow into queue
+- [ ] "Download template" link
+
+### Decisions locked (do not re-debate)
+- Role model: enum-like text column (`user`/`admin`), default `user`, no `moderator` tier yet
+- User delete: hard cascade incl. `auth.users` row (via service-role server route)
+- Bottle verify: existing `verified` flag stays; admin UI provides queue + actions
+- Bottle delete: cascade with impact preview (counts + usernames)
+- Image perms: creator+admin while unverified; admin-only when verified; any auth user when image missing/broken (silently flips verified=false, toast)
+- CSV duplicates: reuse existing bottle, append new variants
+- Auth layers: client hides nav → server gate on /admin → SECURITY DEFINER RPCs re-check role
+
+---
+
 ## Completed
 (Move items here as they're done)
 - [x] Auth — email/password signup/login
