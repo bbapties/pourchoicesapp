@@ -180,7 +180,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
             <FormField
               control={form.control}
               name="image"
-              render={({ field: { onChange, ...field } }) => (
+              render={({ field: { value: _fileValue, onChange, ...field } }) => ( // eslint-disable-line @typescript-eslint/no-unused-vars
                 <FormItem>
                   <FormLabel className="text-charcoal">Image (Optional)</FormLabel>
                   <FormControl>

@@ -61,6 +61,12 @@ export default function BottleDetailView({
     setIsSaving(true);
     try {
       if (!inCollectionLocally) {
+        if (!publicUserId) {
+          // Session not ready — delegate to parent which will surface a toast
+          if (!onAddToBar) return;
+          await onAddToBar(bottle.id, null);
+          return;
+        }
         // Open variant selection sheet — it handles the actual add
         setIsSaving(false);
         setShowVariantSelect(true);
@@ -103,8 +109,11 @@ export default function BottleDetailView({
   ].filter(item => item.value);
 
   return (
-    <div className="fixed inset-0 bg-gray-900/90 flex items-center justify-center z-50 p-4">
-      <div className="bg-white text-black border border-gray-500 rounded-lg p-4 w-[375px] max-h-[812px] overflow-auto relative">
+    <div
+      className="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white text-black border border-gray-500 rounded-lg p-4 w-full max-w-[375px] mx-auto my-4 relative">
         {/* Header: [X] | action buttons | [✏️ or spacer] */}
         <div className="mb-3">
           <div className="flex items-center gap-2 mb-2">
