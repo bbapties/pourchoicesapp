@@ -1,6 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@theme {
+  --color-ivory: #FDF6E3;
+  --color-charcoal: #2F2F2F;
+  --color-amber: #DAA520;
+  --color-gold: #FFD700;
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
