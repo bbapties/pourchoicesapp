@@ -166,7 +166,7 @@ export default function VariantSelectSheet({
     "w-full border border-charcoal rounded px-3 py-2 text-sm bg-ivory text-charcoal placeholder:text-charcoal placeholder:opacity-50 focus:outline-none focus:ring-1 focus:ring-charcoal";
   const labelClass = "block text-xs font-medium text-charcoal mb-1";
 
-  // Reusable selection row — large checkmark when selected, empty ring when not
+  // Reusable selection row — solid charcoal fill when selected, transparent/faint when not
   const SelectRow = ({
     isSelected,
     label,
@@ -180,27 +180,29 @@ export default function VariantSelectSheet({
   }) => (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 p-3 rounded border-2 cursor-pointer transition-all ${
+      className={`flex items-center gap-3 p-3 rounded border cursor-pointer transition-all ${
         isSelected
-          ? "border-charcoal bg-charcoal/10"
-          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+          ? "border-charcoal bg-charcoal"
+          : "border-gray-300 bg-transparent hover:bg-charcoal/5"
       }`}
     >
       <div className="flex-1 min-w-0">
         <div
-          className={`text-sm font-medium truncate ${
-            isSelected ? "text-charcoal" : "text-gray-700"
+          className={`text-sm font-semibold truncate ${
+            isSelected ? "text-white" : "text-charcoal"
           }`}
         >
           {label}
         </div>
         {sublabel && (
-          <div className="text-xs text-gray-500 mt-0.5">{sublabel}</div>
+          <div className={`text-xs mt-0.5 ${isSelected ? "text-white/70" : "text-gray-500"}`}>
+            {sublabel}
+          </div>
         )}
       </div>
       <div
         className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
-          isSelected ? "bg-charcoal" : "border-2 border-gray-300 bg-white"
+          isSelected ? "bg-white/20" : "border-2 border-gray-300"
         }`}
       >
         {isSelected && (
@@ -275,10 +277,10 @@ export default function VariantSelectSheet({
 
               {/* Add new variant — expands inline form */}
               <div
-                className={`rounded border-2 cursor-pointer transition-all ${
+                className={`rounded border cursor-pointer transition-all ${
                   bottleKind.kind === "new_variant"
-                    ? "border-charcoal bg-charcoal/10"
-                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                    ? "border-charcoal bg-charcoal"
+                    : "border-gray-300 bg-transparent hover:bg-charcoal/5"
                 }`}
               >
                 <div
@@ -287,23 +289,23 @@ export default function VariantSelectSheet({
                 >
                   <div className="flex-1">
                     <div
-                      className={`text-sm font-medium ${
+                      className={`text-sm font-semibold ${
                         bottleKind.kind === "new_variant"
-                          ? "text-charcoal"
-                          : "text-gray-700"
+                          ? "text-white"
+                          : "text-charcoal"
                       }`}
                     >
                       + Add new variant
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
+                    <div className={`text-xs mt-0.5 ${bottleKind.kind === "new_variant" ? "text-white/70" : "text-gray-500"}`}>
                       Custom batch, proof, or release year
                     </div>
                   </div>
                   <div
                     className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
                       bottleKind.kind === "new_variant"
-                        ? "bg-charcoal"
-                        : "border-2 border-gray-300 bg-white"
+                        ? "bg-white/20"
+                        : "border-2 border-gray-300"
                     }`}
                   >
                     {bottleKind.kind === "new_variant" && (
@@ -374,29 +376,23 @@ export default function VariantSelectSheet({
                     setIsNewStore(false);
                   }
                 }}
-                className={`flex items-center gap-3 p-3 rounded border-2 cursor-pointer transition-all ${
+                className={`flex items-center gap-3 p-3 rounded border cursor-pointer transition-all ${
                   isStorePick
-                    ? "border-charcoal bg-charcoal/10"
-                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                    ? "border-charcoal bg-charcoal"
+                    : "border-gray-300 bg-transparent hover:bg-charcoal/5"
                 }`}
               >
                 <div className="flex-1">
-                  <div
-                    className={`text-sm font-medium ${
-                      isStorePick ? "text-charcoal" : "text-gray-700"
-                    }`}
-                  >
+                  <div className={`text-sm font-semibold ${isStorePick ? "text-white" : "text-charcoal"}`}>
                     This is a store pick
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
+                  <div className={`text-xs mt-0.5 ${isStorePick ? "text-white/70" : "text-gray-500"}`}>
                     A dedicated store allocation or barrel pick
                   </div>
                 </div>
                 <div
                   className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
-                    isStorePick
-                      ? "bg-charcoal"
-                      : "border-2 border-gray-300 bg-white"
+                    isStorePick ? "bg-white/20" : "border-2 border-gray-300"
                   }`}
                 >
                   {isStorePick && (
@@ -424,10 +420,10 @@ export default function VariantSelectSheet({
 
                   {/* New store input */}
                   <div
-                    className={`rounded border-2 cursor-pointer transition-all ${
+                    className={`rounded border cursor-pointer transition-all ${
                       isNewStore
-                        ? "border-charcoal bg-charcoal/10"
-                        : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                        ? "border-charcoal bg-charcoal"
+                        : "border-gray-300 bg-transparent hover:bg-charcoal/5"
                     }`}
                   >
                     <div
@@ -438,29 +434,20 @@ export default function VariantSelectSheet({
                       }}
                     >
                       <div className="flex-1">
-                        <div
-                          className={`text-sm font-medium ${
-                            isNewStore ? "text-charcoal" : "text-gray-700"
-                          }`}
-                        >
+                        <div className={`text-sm font-semibold ${isNewStore ? "text-white" : "text-charcoal"}`}>
                           + New store
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
+                        <div className={`text-xs mt-0.5 ${isNewStore ? "text-white/70" : "text-gray-500"}`}>
                           Enter the store name
                         </div>
                       </div>
                       <div
                         className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
-                          isNewStore
-                            ? "bg-charcoal"
-                            : "border-2 border-gray-300 bg-white"
+                          isNewStore ? "bg-white/20" : "border-2 border-gray-300"
                         }`}
                       >
                         {isNewStore && (
-                          <Check
-                            className="w-4 h-4 text-white"
-                            strokeWidth={3}
-                          />
+                          <Check className="w-4 h-4 text-white" strokeWidth={3} />
                         )}
                       </div>
                     </div>
