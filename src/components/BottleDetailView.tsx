@@ -362,7 +362,6 @@ export default function BottleDetailView({
       {publicUserId && (
         <VariantSelectSheet
           bottle={localBottle}
-          publicUserId={publicUserId}
           open={showVariantSelect}
           onOpenChange={setShowVariantSelect}
           onAdd={async (variantId) => {
@@ -378,7 +377,6 @@ export default function BottleDetailView({
       {publicUserId && (
         <AddVariantSheet
           bottle={localBottle}
-          publicUserId={publicUserId}
           open={showEditSheet}
           onOpenChange={setShowEditSheet}
           onSaved={(updated) => {

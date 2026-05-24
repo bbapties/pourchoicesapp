@@ -5,16 +5,17 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { type BottleDetails } from "@/lib/types";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 interface AddVariantSheetProps {
   bottle: BottleDetails;
-  publicUserId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: (updated: Partial<BottleDetails>) => void;
 }
 
-export default function AddVariantSheet({ bottle, publicUserId, open, onOpenChange, onSaved }: AddVariantSheetProps) {
+export default function AddVariantSheet({ bottle, open, onOpenChange, onSaved }: AddVariantSheetProps) {
+  const { authId } = useCurrentUser();
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [existingVariantId, setExistingVariantId] = useState<string | null>(null);
@@ -38,13 +39,15 @@ export default function AddVariantSheet({ bottle, publicUserId, open, onOpenChan
     setNotes(bottle.variants[0]?.notes ?? '');
     setExistingVariantId(null);
 
+    if (!authId) return;
+
     // Fetch user's existing variant to override defaults
     setIsFetching(true);
     supabase
       .from('bottle_variants')
       .select('id, proof, age, batch, release_year, store_pick_name, notes')
       .eq('bottles_id', bottle.id)
-      .eq('created_by', publicUserId)
+      .eq('created_by', authId)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
@@ -58,14 +61,18 @@ export default function AddVariantSheet({ bottle, publicUserId, open, onOpenChan
         }
         setIsFetching(false);
       });
-  }, [open, bottle.id, publicUserId]);
+  }, [open, bottle.id, authId]);
 
   const handleSave = async () => {
+    if (!authId) {
+      toast.error("You must be signed in");
+      return;
+    }
     setIsSaving(true);
     try {
       const variantData = {
         bottles_id: bottle.id,
-        created_by: publicUserId,
+        created_by: authId,
         proof: proof ? parseFloat(proof) : null,
         age: age.trim() || null,
         batch: batch.trim() || null,

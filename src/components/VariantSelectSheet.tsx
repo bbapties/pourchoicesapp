@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { type BottleDetails } from "@/lib/types";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 interface BatchVariant {
   id: string;
@@ -16,7 +17,6 @@ interface BatchVariant {
 
 interface VariantSelectSheetProps {
   bottle: BottleDetails;
-  publicUserId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd: (variantId: string | null) => Promise<void>;
@@ -29,11 +29,11 @@ type BottleKind =
 
 export default function VariantSelectSheet({
   bottle,
-  publicUserId,
   open,
   onOpenChange,
   onAdd,
 }: VariantSelectSheetProps) {
+  const { authId } = useCurrentUser();
   const [isFetching, setIsFetching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [batchVariants, setBatchVariants] = useState<BatchVariant[]>([]);
@@ -60,6 +60,7 @@ export default function VariantSelectSheet({
     setStoreName("");
     setIsNewStore(false);
 
+    if (!authId) return;
     setIsFetching(true);
     Promise.all([
       supabase
@@ -71,7 +72,7 @@ export default function VariantSelectSheet({
       supabase
         .from("bottle_variants")
         .select("store_pick_name")
-        .eq("created_by", publicUserId)
+        .eq("created_by", authId)
         .not("store_pick_name", "is", null),
     ]).then(([batchRes, storeRes]) => {
       setBatchVariants(batchRes.data ?? []);
@@ -85,10 +86,14 @@ export default function VariantSelectSheet({
       setMyStores(stores);
       setIsFetching(false);
     });
-  }, [open, bottle.id, publicUserId]);
+  }, [open, bottle.id, authId]);
 
   const handleAdd = async () => {
     if (isAdding) return;
+    if (!authId) {
+      toast.error("You must be signed in");
+      return;
+    }
     if (isStorePick && !storeName.trim()) {
       toast.error("Please enter a store name");
       return;
@@ -108,7 +113,7 @@ export default function VariantSelectSheet({
       // All other paths need a user-specific variant row
       const variantData: Record<string, unknown> = {
         bottles_id: bottle.id,
-        created_by: publicUserId,
+        created_by: authId,
         store_pick_name: isStorePick ? storeName.trim() : null,
       };
 
@@ -130,7 +135,7 @@ export default function VariantSelectSheet({
           .from("bottle_variants")
           .select("id")
           .eq("bottles_id", bottle.id)
-          .eq("created_by", publicUserId)
+          .eq("created_by", authId)
           .eq("store_pick_name", storeName.trim())
           .maybeSingle();
         if (existing) {
