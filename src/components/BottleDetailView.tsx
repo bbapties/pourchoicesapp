@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type BottleDetails } from "@/lib/types";
 import AddVariantSheet from "@/components/AddVariantSheet";
 import VariantSelectSheet from "@/components/VariantSelectSheet";
+import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 
 interface BottleDetailViewProps {
   bottle: BottleDetails;
@@ -44,6 +45,7 @@ export default function BottleDetailView({
   const [variantIndex, setVariantIndex] = useState(0);
   const [notesOpen, setNotesOpen] = useState(false);
   const [showZoom, setShowZoom] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const [inCollectionLocally, setInCollectionLocally] = useState(inCollection);
   const [ownedLocally, setOwnedLocally] = useState(currentlyOwned);
   const [isSaving, setIsSaving] = useState(false);
@@ -71,6 +73,9 @@ export default function BottleDetailView({
     localBottle.volume,
   ].filter(Boolean) as string[];
   const hasNotes = !!(localBottle.nose || localBottle.palate || localBottle.finish);
+  const showImage = !!imageUrl && !imgError;
+
+  useEffect(() => { setImgError(false); }, [imageUrl]);
 
   const goVariant = (dir: number) => {
     if (!hasVariants) return;
@@ -165,22 +170,23 @@ export default function BottleDetailView({
         <div className="flex gap-4 mb-3">
           <div className="w-[116px] flex-shrink-0">
             <button
-              onClick={() => imageUrl && setShowZoom(true)}
+              onClick={() => showImage && setShowZoom(true)}
               className="relative w-full h-44 flex items-center justify-center bg-gray-100 border border-gray-500 rounded overflow-hidden"
-              style={{ cursor: imageUrl ? 'zoom-in' : 'default' }}
+              style={{ cursor: showImage ? 'zoom-in' : 'default' }}
               aria-label="Zoom image"
             >
-              {imageUrl ? (
+              {showImage ? (
                 <Image
-                  src={imageUrl}
+                  src={imageUrl!}
                   alt={`${localBottle.name} ${imageSide} view`}
                   fill
                   style={{ objectFit: 'contain' }}
                   className="rounded"
                   unoptimized
+                  onError={() => setImgError(true)}
                 />
               ) : (
-                <span className="text-gray-500 text-4xl">🍾</span>
+                <BottlePlaceholderImage />
               )}
             </button>
 
@@ -346,7 +352,7 @@ export default function BottleDetailView({
       </div>
 
       {/* Full-screen image zoom */}
-      {showZoom && imageUrl && (
+      {showZoom && showImage && (
         <div
           className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"
           onClick={() => setShowZoom(false)}
@@ -360,7 +366,7 @@ export default function BottleDetailView({
           </button>
           <div className="relative w-full h-full max-w-[500px]" onClick={(e) => e.stopPropagation()}>
             <Image
-              src={imageUrl}
+              src={imageUrl!}
               alt={`${localBottle.name} ${imageSide} view, enlarged`}
               fill
               style={{ objectFit: 'contain' }}
