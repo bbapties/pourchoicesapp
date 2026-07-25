@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, X, GitBranch } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type BottleDetails } from "@/lib/types";
 import AddVariantSheet from "@/components/AddVariantSheet";
@@ -20,6 +20,15 @@ interface BottleDetailViewProps {
   onEditSaved?: (updated: Partial<BottleDetails>) => void;
 }
 
+function variantLabel(v: { releaseYear?: string; batch?: string; storePickName?: string }): string {
+  const parts = [
+    v.storePickName,
+    v.releaseYear,
+    v.batch ? `Batch ${v.batch}` : null,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
 export default function BottleDetailView({
   bottle,
   onClose,
@@ -33,12 +42,8 @@ export default function BottleDetailView({
 }: BottleDetailViewProps) {
   const [imageSide, setImageSide] = useState<'front' | 'back'>('front');
   const [variantIndex, setVariantIndex] = useState(0);
-  const [openSections, setOpenSections] = useState({
-    variant: true,
-    nose: false,
-    palate: false,
-    finish: false,
-  });
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [showZoom, setShowZoom] = useState(false);
   const [inCollectionLocally, setInCollectionLocally] = useState(inCollection);
   const [ownedLocally, setOwnedLocally] = useState(currentlyOwned);
   const [isSaving, setIsSaving] = useState(false);
@@ -48,12 +53,28 @@ export default function BottleDetailView({
   const [showVariantSelect, setShowVariantSelect] = useState(false);
   const [localBottle, setLocalBottle] = useState<BottleDetails>(bottle);
 
-  const currentVariant = localBottle.variants[variantIndex] || {};
+  const vlist = localBottle.variants || [];
+  const hasVariants = vlist.length > 0;
+  const currentVariant = vlist[variantIndex] || {};
   const hasBackImage = !!localBottle.backImageUrl;
   const imageUrl = imageSide === 'front' ? localBottle.frontImageUrl : localBottle.backImageUrl;
 
-  const toggleSection = (section: keyof typeof openSections) => {
-    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  const subtitle = hasVariants
+    ? (variantLabel(currentVariant) || `Variant ${variantIndex + 1}`)
+    : 'Default bottle';
+  const identity = [localBottle.distillery, localBottle.category, localBottle.style]
+    .filter(Boolean)
+    .join(' · ');
+  const bareAttrs = [
+    localBottle.age,
+    localBottle.proof ? `${localBottle.proof} proof` : null,
+    localBottle.volume,
+  ].filter(Boolean) as string[];
+  const hasNotes = !!(localBottle.nose || localBottle.palate || localBottle.finish);
+
+  const goVariant = (dir: number) => {
+    if (!hasVariants) return;
+    setVariantIndex((i) => (i + dir + vlist.length) % vlist.length);
   };
 
   const handleMainButton = async () => {
@@ -62,20 +83,17 @@ export default function BottleDetailView({
     try {
       if (!inCollectionLocally) {
         if (!publicUserId) {
-          // Session not ready — delegate to parent which will surface a toast
           if (!onAddToBar) return;
           await onAddToBar(bottle.id, null);
           return;
         }
-        // Open variant selection sheet — it handles the actual add
         setIsSaving(false);
         setShowVariantSelect(true);
         return;
       } else {
-        // Toggle currently_owned
         if (!onToggleOwnership) return;
         await onToggleOwnership(bottle.id);
-        setOwnedLocally(prev => !prev);
+        setOwnedLocally((prev) => !prev);
       }
     } finally {
       setIsSaving(false);
@@ -95,270 +113,264 @@ export default function BottleDetailView({
     }
   };
 
-  const statsItems = [
-    { label: 'Distillery', value: localBottle.distillery },
-    { label: 'Category', value: localBottle.category },
-    { label: 'Style', value: localBottle.style },
-    { label: 'Age', value: localBottle.age },
-    { label: 'Proof', value: localBottle.proof ? `${localBottle.proof}%` : null },
-    { label: 'Volume', value: localBottle.volume },
-    { label: 'Global ELO', value: localBottle.elo_global?.toString() },
-    { label: 'Verified', value: localBottle.verified ? 'Yes' : 'No' },
-    { label: 'Barcode', value: localBottle.barcode },
-    { label: 'Last Activity', value: localBottle.lastActivity },
-  ].filter(item => item.value);
-
   return (
     <div
       className="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white text-black border border-gray-500 rounded-lg p-4 w-full max-w-[375px] mx-auto my-4 relative">
-        {/* Header: [X] | action buttons | [✏️ or spacer] */}
-        <div className="mb-3">
-          <div className="flex items-center gap-2 mb-2">
-            {/* Close */}
+        {/* Top bar: close + suggest-edit */}
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="w-10 h-10 flex items-center justify-center border border-gray-500 bg-white hover:bg-gray-200 rounded"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          {inCollectionLocally && publicUserId ? (
             <button
-              onClick={onClose}
-              className="w-11 h-11 flex-shrink-0 flex items-center justify-center border border-gray-500 bg-white hover:bg-gray-200 rounded"
+              onClick={() => setShowEditSheet(true)}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-black px-2 py-1"
+              title="Update your variant details (batch, proof, store pick…)"
             >
-              <X className="w-6 h-6" />
+              <GitBranch className="w-4 h-4" /> Suggest edit
+            </button>
+          ) : (
+            <div className="w-10 h-10" />
+          )}
+        </div>
+
+        {/* Name + subtitle + identity */}
+        <div className="mb-3">
+          <h1 className="text-xl font-bold leading-tight">{localBottle.name}</h1>
+          <div className="flex items-center justify-between gap-2 mt-0.5">
+            <span className="text-sm text-gray-600 truncate">{subtitle}</span>
+            {hasVariants && vlist.length > 1 && (
+              <span className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => goVariant(-1)} aria-label="Previous variant" className="text-gray-600 hover:text-black">
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-gray-500">{variantIndex + 1} / {vlist.length}</span>
+                <button onClick={() => goVariant(1)} aria-label="Next variant" className="text-gray-600 hover:text-black">
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </span>
+            )}
+          </div>
+          {identity && <div className="text-xs text-gray-400 mt-1">{identity}</div>}
+        </div>
+
+        {/* Image (portrait) + attributes beside */}
+        <div className="flex gap-4 mb-3">
+          <div className="w-[116px] flex-shrink-0">
+            <button
+              onClick={() => imageUrl && setShowZoom(true)}
+              className="relative w-full h-44 flex items-center justify-center bg-gray-100 border border-gray-500 rounded overflow-hidden"
+              style={{ cursor: imageUrl ? 'zoom-in' : 'default' }}
+              aria-label="Zoom image"
+            >
+              {imageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt={`${localBottle.name} ${imageSide} view`}
+                  fill
+                  style={{ objectFit: 'contain' }}
+                  className="rounded"
+                  unoptimized
+                />
+              ) : (
+                <span className="text-gray-500 text-4xl">🍾</span>
+              )}
             </button>
 
-            {/* Action buttons — centered */}
-            <div className="flex-1 flex justify-center">
-              {!inCollectionLocally ? (
-                <Button
-                  onClick={handleMainButton}
-                  disabled={isSaving}
-                  variant="outline"
-                  className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60"
-                  style={{ minHeight: '44px' }}
+            {/* Front/Back toggle beneath the image */}
+            <div className="flex justify-center mt-2">
+              <div className="inline-flex border border-gray-500 rounded-full overflow-hidden">
+                <button
+                  onClick={() => setImageSide('front')}
+                  className={`px-3.5 py-1 text-xs ${imageSide === 'front' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600'}`}
                 >
-                  {isSaving ? 'Adding...' : 'Add to My Bar'}
-                </Button>
-              ) : (
-                <div className="flex border border-gray-400 rounded overflow-hidden" style={{ minHeight: '44px' }}>
+                  Front
+                </button>
+                <button
+                  onClick={() => hasBackImage && setImageSide('back')}
+                  disabled={!hasBackImage}
+                  className={`px-3.5 py-1 text-xs ${imageSide === 'back' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600'} disabled:opacity-40`}
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+
+            {hasVariants && vlist.length > 1 && (
+              <div className="flex justify-center gap-1.5 mt-2">
+                {vlist.map((_, idx) => (
                   <button
-                    onClick={() => { if (!ownedLocally && !isSaving) handleMainButton(); }}
-                    disabled={isSaving}
-                    className={`px-3 text-sm font-medium transition-colors ${ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-                  >
-                    ✓ In My Bar
-                  </button>
-                  <div className="w-px bg-gray-400" />
-                  <button
-                    onClick={() => { if (ownedLocally && !isSaving) handleMainButton(); }}
-                    disabled={isSaving}
-                    className={`px-3 text-sm font-medium transition-colors ${!ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-                  >
-                    Finished It
-                  </button>
+                    key={idx}
+                    onClick={() => setVariantIndex(idx)}
+                    aria-label={`Variant ${idx + 1}`}
+                    className={`w-2 h-2 rounded-full ${idx === variantIndex ? 'bg-gray-800' : 'bg-gray-300'}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="text-[15px] leading-7">
+              {bareAttrs.map((line) => (
+                <div key={line}>{line}</div>
+              ))}
+            </div>
+            <div className="border-t border-gray-200 mt-2 pt-2 text-sm space-y-1.5">
+              <div>
+                <div className="text-[11px] text-gray-500">Global Elo</div>
+                <div>{localBottle.elo_global ?? '—'}</div>
+              </div>
+              <div>
+                <div className="text-[11px] text-gray-500">Verified</div>
+                <div className="flex items-center gap-1.5">
+                  {localBottle.verified ? (
+                    <><span className="text-green-600">✓</span> Verified</>
+                  ) : (
+                    <><span className="inline-block w-2 h-2 rounded-full" style={{ background: '#EF9F27' }} /> Unverified</>
+                  )}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* My last activity */}
+        <div className="flex items-center justify-between text-sm mb-3">
+          <span className="text-gray-500">My last activity</span>
+          <span>{localBottle.lastActivity || 'None'}</span>
+        </div>
+
+        {/* Variant note (if present) */}
+        {currentVariant.notes && (
+          <p className="text-sm text-gray-600 italic border-t border-gray-200 pt-2 mb-3">{currentVariant.notes}</p>
+        )}
+
+        {/* Characteristics and tasting notes */}
+        <div className="border border-gray-500 rounded mb-4">
+          <button
+            onClick={() => setNotesOpen((o) => !o)}
+            className="w-full text-left p-3 bg-white hover:bg-gray-100 font-medium flex items-center justify-between"
+          >
+            Characteristics and tasting notes
+            <span className="text-gray-500">{notesOpen ? '▲' : '▼'}</span>
+          </button>
+          {notesOpen && (
+            <div className="p-3 pt-1 bg-white text-sm">
+              {hasNotes ? (
+                <div className="space-y-2">
+                  {localBottle.nose && <p><span className="font-medium">Nose</span> — <span className="text-gray-700 whitespace-pre-wrap">{localBottle.nose}</span></p>}
+                  {localBottle.palate && <p><span className="font-medium">Palate</span> — <span className="text-gray-700 whitespace-pre-wrap">{localBottle.palate}</span></p>}
+                  {localBottle.finish && <p><span className="font-medium">Finish</span> — <span className="text-gray-700 whitespace-pre-wrap">{localBottle.finish}</span></p>}
+                </div>
+              ) : (
+                <p className="text-gray-500">No tasting notes yet.</p>
               )}
             </div>
+          )}
+        </div>
 
-            {/* Edit or spacer to balance X */}
-            {inCollectionLocally && publicUserId ? (
+        {/* Actions */}
+        <div className="flex justify-center">
+          {!inCollectionLocally ? (
+            <Button
+              onClick={handleMainButton}
+              disabled={isSaving}
+              variant="outline"
+              className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
+              style={{ minHeight: '44px' }}
+            >
+              {isSaving ? 'Adding...' : 'Add to My Bar'}
+            </Button>
+          ) : (
+            <div className="flex border border-gray-400 rounded overflow-hidden w-full" style={{ minHeight: '44px' }}>
               <button
-                onClick={() => setShowEditSheet(true)}
-                className="w-11 h-11 flex-shrink-0 flex items-center justify-center border border-gray-500 bg-white hover:bg-gray-200 rounded"
-                title="Update your variant details (batch, proof, store pick…)"
+                onClick={() => { if (!ownedLocally && !isSaving) handleMainButton(); }}
+                disabled={isSaving}
+                className={`flex-1 px-3 text-sm font-medium transition-colors ${ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
               >
-                <GitBranch className="w-5 h-5" />
+                ✓ In My Bar
               </button>
-            ) : (
-              <div className="w-11 h-11 flex-shrink-0" />
-            )}
-          </div>
-
-          {/* Bottle name */}
-          <h1 className="text-center text-xl font-bold leading-tight px-2">{localBottle.name}</h1>
-
-          {/* Remove from collection / delete confirm */}
-          {inCollectionLocally && !showDeleteConfirm && (
-            <div className="text-center mt-1">
+              <div className="w-px bg-gray-400" />
               <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-xs text-gray-400 hover:text-red-500 underline"
+                onClick={() => { if (ownedLocally && !isSaving) handleMainButton(); }}
+                disabled={isSaving}
+                className={`flex-1 px-3 text-sm font-medium transition-colors ${!ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
               >
-                Remove from collection
+                Finished It
               </button>
             </div>
           )}
-          {inCollectionLocally && showDeleteConfirm && (
-            <div className="mt-2 border border-red-300 rounded p-2 bg-red-50 text-xs">
-              <p className="text-gray-700 mb-2">
-                This removes all tastings and history. Only use if added by mistake.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="text-red-600 font-semibold hover:text-red-800 disabled:opacity-50"
-                >
-                  {isDeleting ? 'Removing...' : 'Yes, Delete'}
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  Cancel
-                </button>
-              </div>
+        </div>
+
+        {/* Remove from collection */}
+        {inCollectionLocally && !showDeleteConfirm && (
+          <div className="text-center mt-2">
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-xs text-gray-400 hover:text-red-500 underline"
+            >
+              Remove from collection
+            </button>
+          </div>
+        )}
+        {inCollectionLocally && showDeleteConfirm && (
+          <div className="mt-2 border border-red-300 rounded p-2 bg-red-50 text-xs">
+            <p className="text-gray-700 mb-2">
+              This removes all tastings and history. Only use if added by mistake.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="text-red-600 font-semibold hover:text-red-800 disabled:opacity-50"
+              >
+                {isDeleting ? 'Removing...' : 'Yes, Delete'}
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
             </div>
-          )}
-        </div>
-        {/* Image and Stats Section */}
-        <div className="flex gap-4 mb-6">
-          {/* Image Section */}
-          <div className="relative w-2/5 h-64 flex items-center justify-center bg-gray-100 border border-gray-500 rounded">
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={`${bottle.name} ${imageSide} view`}
-                fill
-                style={{ objectFit: 'contain' }}
-                className="rounded"
-                unoptimized={true}
-              />
-            ) : (
-              <div className="text-gray-600 text-6xl">🍾</div>
-            )}
-
-            {/* Toggle Arrows */}
-            <button
-              onClick={() => setImageSide('front')}
-              className={`absolute left-2 top-1/2 -translate-y-1/2 ${imageSide === 'front' ? 'text-black' : 'text-gray-500'} hover:text-gray-600`}
-              disabled={!hasBackImage}
-            >
-              <ChevronLeft className="w-8 h-8" />
-            </button>
-            <button
-              onClick={() => setImageSide('back')}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 ${imageSide === 'back' ? 'text-black' : hasBackImage ? 'text-black' : 'text-gray-500'} hover:text-gray-600`}
-              disabled={!hasBackImage}
-            >
-              <ChevronRight className="w-8 h-8" />
-            </button>
           </div>
-
-          {/* Stats Section */}
-          <div className="flex-1 flex flex-col space-y-1">
-            {statsItems.map((item) => (
-              <div key={item.label} className="flex justify-between items-center py-1">
-                <span className="font-medium text-base">{item.label}</span>
-                <span className="text-base">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Accordion Sections */}
-        <div className="space-y-4">
-          {/* Variant Section */}
-          <div className="border border-gray-500 rounded">
-            <button
-              onClick={() => toggleSection('variant')}
-              className="w-full text-left p-4 bg-white hover:bg-gray-100 font-semibold flex items-center justify-between"
-            >
-              Variant
-              <span>{openSections.variant ? '▼' : '▶'}</span>
-            </button>
-            {openSections.variant && (
-              <div className="p-4 bg-white">
-                {localBottle.variants.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    {localBottle.variants.length > 1 && (
-                      <div className="flex justify-center gap-2 mb-4">
-                        {localBottle.variants.map((_, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setVariantIndex(idx)}
-                            className={`w-3 h-3 rounded-full ${idx === variantIndex ? 'bg-gray-800' : 'bg-gray-300'}`}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      {currentVariant.releaseYear && <p>Release Year: {currentVariant.releaseYear}</p>}
-                      {currentVariant.batch && <p>Batch: {currentVariant.batch}</p>}
-                      {currentVariant.storePickName && <p>Store Pick: {currentVariant.storePickName}</p>}
-                      {currentVariant.notes && (
-                        <p className="mt-2 text-sm text-gray-600 italic border-t border-gray-200 pt-2">{currentVariant.notes}</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-600">No variant information available.</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Nose Section */}
-          <div className="border border-gray-500 rounded">
-            <button
-              onClick={() => toggleSection('nose')}
-              className="w-full text-left p-4 bg-white hover:bg-gray-100 font-semibold flex items-center justify-between"
-            >
-              Nose
-              <span>{openSections.nose ? '▼' : '▶'}</span>
-            </button>
-            {openSections.nose && (
-              <div className="p-4 bg-white">
-                {localBottle.nose ? (
-                  <p className="whitespace-pre-wrap">{localBottle.nose}</p>
-                ) : (
-                  <p className="text-gray-600">No nose notes available.</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Palate Section */}
-          <div className="border border-gray-500 rounded">
-            <button
-              onClick={() => toggleSection('palate')}
-              className="w-full text-left p-4 bg-white hover:bg-gray-100 font-semibold flex items-center justify-between"
-            >
-              Palate
-              <span>{openSections.palate ? '▼' : '▶'}</span>
-            </button>
-            {openSections.palate && (
-              <div className="p-4 bg-white">
-                {localBottle.palate ? (
-                  <p className="whitespace-pre-wrap">{localBottle.palate}</p>
-                ) : (
-                  <p className="text-gray-600">No palate notes available.</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Finish Section */}
-          <div className="border border-gray-500 rounded">
-            <button
-              onClick={() => toggleSection('finish')}
-              className="w-full text-left p-4 bg-white hover:bg-gray-100 font-semibold flex items-center justify-between"
-            >
-              Finish
-              <span>{openSections.finish ? '▼' : '▶'}</span>
-            </button>
-            {openSections.finish && (
-              <div className="p-4 bg-white">
-                {localBottle.finish ? (
-                  <p className="whitespace-pre-wrap">{localBottle.finish}</p>
-                ) : (
-                  <p className="text-gray-600">No finish notes available.</p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Variant select sheet — shown when adding to bar for the first time */}
+      {/* Full-screen image zoom */}
+      {showZoom && imageUrl && (
+        <div
+          className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"
+          onClick={() => setShowZoom(false)}
+        >
+          <button
+            onClick={() => setShowZoom(false)}
+            aria-label="Close zoom"
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-white/90 rounded-full text-black"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="relative w-full h-full max-w-[500px]" onClick={(e) => e.stopPropagation()}>
+            <Image
+              src={imageUrl}
+              alt={`${localBottle.name} ${imageSide} view, enlarged`}
+              fill
+              style={{ objectFit: 'contain' }}
+              unoptimized
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Variant select sheet — first add to bar */}
       {publicUserId && (
         <VariantSelectSheet
           bottle={localBottle}
@@ -373,14 +385,14 @@ export default function BottleDetailView({
         />
       )}
 
-      {/* Variant edit sheet — shown for bottles already in collection */}
+      {/* Variant edit sheet — bottles already in collection */}
       {publicUserId && (
         <AddVariantSheet
           bottle={localBottle}
           open={showEditSheet}
           onOpenChange={setShowEditSheet}
           onSaved={(updated) => {
-            setLocalBottle(prev => ({
+            setLocalBottle((prev) => ({
               ...prev,
               variants: updated.variants !== undefined ? updated.variants : prev.variants,
             }));
