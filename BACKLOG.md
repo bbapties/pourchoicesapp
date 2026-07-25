@@ -17,6 +17,8 @@ Format: `- [ ] Short description — why it matters`
 
 ## Bottle Detail Page
 - [ ] UX refinement pass — layout, button placement, stats section structure (defer until all functionality is working)
+- [ ] Personal comments on a variant — per-user notes, saved instantly, no moderation (deferred from the Phase 7 detail revamp)
+- [ ] Third image slot on variants — badge / detail close-up (the Front/Back toggle is built to extend)
 
 ## Data / Audit
 - [ ] Audit trail table for user_bottles — store every insert/update as a separate row (user_id, bottle_id, action, changed_at) for future reporting and tasting history
@@ -28,6 +30,8 @@ Format: `- [ ] Short description — why it matters`
 ## Blind Tastings
 - [ ] Share tasting results (screenshot-friendly results card)
 - [ ] Tasting history — view past sessions
+- [ ] Flavor/nuance tagging during tastings → aggregate into per-section flavor bar charts (see memory: tasting-flavor-tags-and-charts)
+- [ ] Activity feed — drink events (neat / rocks / mixed / blind) surface as "so-and-so poured X"
 
 ## Profile
 - [ ] Avatar / profile photo

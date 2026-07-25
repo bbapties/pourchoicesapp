@@ -121,6 +121,59 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 
 ---
 
+## Phase 7 — Bottle Detail Revamp & Variant-First Model
+Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
+Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
+
+### Design summary
+- **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
+- **Detail card = horizontal swipeable carousel** over [Default bottle + variants]; swiping swaps the *whole* card. Subtitle = "Default bottle" / variant name; pager + dots; "N variants" indicator.
+- **Portrait image** (left) with a **Front/Back segmented toggle beneath** (tap, not swipe; extensible to a 3rd slot); tap image = full-screen zoom + close. Short attrs **beside** the image: age, proof, size, Global Elo, Verified. **My last activity** full-width, per-user ("Drank · date" / "None"). Details label-less except Global Elo / Verified / My last activity; category+style combine ("Bourbon · Whiskey").
+- Nose/palate/finish consolidated into one **"Characteristics and tasting notes"** accordion (static text for now).
+- **Actions:** Edit = small pencil; one **state-dependent primary** (Add to My Bar / Log a Pour / Add Back) + a **More** bottom sheet. **Mark as Empty** = soft delete (hidden from My Bar, kept in history).
+- **Log a Pour** = one action branching into neat / rocks / mixed / blind tasting (feeds a future activity feed).
+- **Search** = one card per SKU (default) + "N variants" badge + persistent **[Bottles | All Variants]** toggle.
+- **Moderation:** (A) edit an existing field → *pending suggestion*, golden copy untouched, admin approves & applies. (B/C) add a variant → publishes immediately as **unverified** (yellow dot); save choice **"Save to database only"** vs **"Save and add to my bar"**; flows to the admin verify queue.
+
+### Tasks — goals & exit criteria
+
+Epic A — Variant-first data model
+- [ ] 7.1 Variant records get their own identity
+  - Goal: each variant has its own Elo, nose/palate/finish, verified flag, and front/back images; every bottle backfills a "default" variant.
+  - Exit: every bottle has ≥1 variant; each variant has independent Elo/notes/verified/images; no data lost from current bottle-level fields; a SKU can return its ordered variants (default first).
+- [ ] 7.2 Search roll-up + variant count + toggle
+  - Goal: search shows one card per SKU with an "N variants" badge and a persistent [Bottles | All Variants] toggle.
+  - Exit: default = one row per SKU (scored from the default variant); All Variants lists each variant as its own card sorted by its own Elo; badge count correct.
+
+Epic B — Detail card UI
+- [ ] 7.3 New detail-card layout
+  - Goal: rebuild `BottleDetailView` to the approved layout (portrait image + attrs beside, label-less stack, My last activity, tasting-notes accordion).
+  - Exit: matches the mockup for the default variant; nose/palate/finish in one accordion; only Global Elo / Verified / My last activity labeled; My last activity shows the user's last action or "None".
+- [ ] 7.4 Variant carousel
+  - Goal: swipeable carousel over [default + variants]; whole card swaps on swipe; subtitle + pager + dots.
+  - Exit: swiping changes every variant-specific field + subtitle; position/count shown; single-variant SKUs show no pager.
+- [ ] 7.5 Image interactions
+  - Goal: portrait image, Front/Back toggle beneath (tap), tap-to-zoom full-screen + close, per-variant images, extensible to a 3rd slot.
+  - Exit: toggle flips image without swiping; tap opens full-screen zoom + close; each variant shows its own images; missing/broken → placeholder.
+
+Epic C — Actions & moderation
+- [ ] 7.6 State-aware action control
+  - Goal: state-dependent primary (Add to My Bar / Log a Pour / Add Back) + More sheet (Add another, Blind tasting, Mark as Empty) + a separate Suggest-edit pencil.
+  - Exit: visible actions match state (not owned / owned / empty); Mark as Empty soft-deletes (hidden from My Bar, kept in history).
+- [ ] 7.7 Log a Pour branch
+  - Goal: one Log a Pour action branching into neat / rocks / mixed / blind tasting; records a drink event at the variant level.
+  - Exit: choosing a type records an activity on the variant + updates My last activity; blind tasting hands off to the tasting flow (stub until Phase 3).
+- [ ] 7.8 Suggest-an-edit (correction) flow
+  - Goal: editing existing fields creates a pending suggestion (golden copy untouched) → admin queue → approve applies.
+  - Exit: user edit doesn't change live data; appears in the admin queue as pending (before/after); approve applies; user sees "under review". (Needs a suggested-edits table.)
+- [ ] 7.9 Contribute / add-a-variant flow
+  - Goal: new variant publishes immediately as unverified with a save choice ("database only" vs "and add to my bar"); flows to the verify queue.
+  - Exit: new variant visible to all as unverified; "and add to my bar" also adds it to the user's collection (usable now); appears in the admin Bottles queue.
+
+Notes: 7.3–7.5 build against 7.1's model; 7.7's blind-tasting branch + variant-level tastings wait on Phase 3. Deferred to BACKLOG: personal comments, flavor tagging → charts, 3rd image slot, activity/social feed.
+
+---
+
 ## Completed
 (Move items here as they're done)
 - [x] Auth — email/password signup/login
