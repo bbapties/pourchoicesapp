@@ -125,6 +125,8 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
+**Progress (2026-07-25):** shipped 7.3 (new detail-card layout) and 7.5's image handling (broken/missing image → placeholder, tap-to-zoom). Both verified live, zero regression to Search/My Bar. **Next session starts at 7.1** — the variant-first data-model migration (keystone; everything else depends on it). Safe approach agreed: snapshot first → additive columns on `bottle_variants` (`elo_global`, `nose/palate/finish`) → backfill a "default" variant per bottle → phase the read-switch → verify. Needs SQL run in Supabase.
+
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
 - **Detail card = horizontal swipeable carousel** over [Default bottle + variants]; swiping swaps the *whole* card. Subtitle = "Default bottle" / variant name; pager + dots; "N variants" indicator.
@@ -146,13 +148,13 @@ Epic A — Variant-first data model
   - Exit: default = one row per SKU (scored from the default variant); All Variants lists each variant as its own card sorted by its own Elo; badge count correct.
 
 Epic B — Detail card UI
-- [ ] 7.3 New detail-card layout
+- [x] 7.3 New detail-card layout (shipped 2026-07-25, commit 66d028c)
   - Goal: rebuild `BottleDetailView` to the approved layout (portrait image + attrs beside, label-less stack, My last activity, tasting-notes accordion).
   - Exit: matches the mockup for the default variant; nose/palate/finish in one accordion; only Global Elo / Verified / My last activity labeled; My last activity shows the user's last action or "None".
 - [ ] 7.4 Variant carousel
   - Goal: swipeable carousel over [default + variants]; whole card swaps on swipe; subtitle + pager + dots.
   - Exit: swiping changes every variant-specific field + subtitle; position/count shown; single-variant SKUs show no pager.
-- [ ] 7.5 Image interactions
+- [~] 7.5 Image interactions — partial (shipped 2026-07-25, commit 573cfe3): broken/missing → placeholder + tap-to-zoom + Front/Back toggle done; **per-variant images await 7.1**.
   - Goal: portrait image, Front/Back toggle beneath (tap), tap-to-zoom full-screen + close, per-variant images, extensible to a 3rd slot.
   - Exit: toggle flips image without swiping; tap opens full-screen zoom + close; each variant shows its own images; missing/broken → placeholder.
 
