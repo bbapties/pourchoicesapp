@@ -10,7 +10,12 @@
 
 ---
 
-## Phase 1 — Polish Existing Screens ← WE ARE HERE
+## Dev / QA accounts
+- **Claude QA account** — `claude@pourchoicesapp.com` / role `admin`. Dedicated account so Claude's QA and bottle/variant adds are attributable (`created_by`) and Claude can exercise admin screens. **Temporary — delete once the app is more built.** Weak password by design; never grant it anything the account shouldn't touch beyond admin, and treat it as compromisable on public prod.
+
+---
+
+## Phase 1 — Polish Existing Screens
 Goal: Make everything that exists work correctly end-to-end.
 
 - [x] 1.0 Drop in brand assets (cellar-bg.png, coming-soon.jpg to /public)
@@ -56,8 +61,9 @@ Goal: Apply full design system from the MVP doc.
 
 ---
 
-## Phase 6 — Admin Panel
+## Phase 6 — Admin Panel ← WE ARE HERE
 Goal: Internal tooling — manage users, verify/clean bottles, bulk-import data.
+Progress: 6.0 Foundation ✅ · 6.1 Users tab ✅ · 6.2 Image upload ⏳ · 6.3 Bottles queue ⏳ · 6.4 CSV import ⬜
 Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually flipped in Supabase).
 
 ### 6.0 Foundation
