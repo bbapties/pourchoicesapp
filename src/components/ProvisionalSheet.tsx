@@ -7,6 +7,7 @@ import * as z from "zod";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
+import { uploadBottleImage } from "@/lib/uploadBottleImage";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -95,10 +96,33 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         return;
       }
 
-      // Create the bottle object for optimistic update
+      // Upload the image (if one was chosen) and attach its URL to the bottle.
+      // Non-blocking: a failed image never loses the bottle the user just added.
+      let frontimage_url: string | null = null;
+      if (data.image) {
+        const { url, error: uploadError } = await uploadBottleImage(
+          data.image,
+          insertedBottle.id
+        );
+        if (uploadError || !url) {
+          toast.warning("Bottle added, but the image failed to upload.");
+        } else {
+          const { error: updateError } = await supabase
+            .from("bottles")
+            .update({ frontimage_url: url })
+            .eq("id", insertedBottle.id);
+          if (updateError) {
+            toast.warning("Bottle added, but saving the image failed.");
+          } else {
+            frontimage_url = url;
+          }
+        }
+      }
+
+      // Build the optimistic-update object from the real inserted row.
       const newBottle = {
-        id: crypto.randomUUID(), // Proper UUID for key
-        ...bottleData,
+        ...insertedBottle,
+        ...(frontimage_url ? { frontimage_url } : {}),
       };
 
       toast.success("Bottle added successfully!");
