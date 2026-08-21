@@ -32,8 +32,9 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
 ## Branch & deploy rules — READ THIS
 - **Active branch: `MVP-v3`.** All work happens here.
 - **Production deploys from `MVP-v3`, NOT `main`.** Pushing to `MVP-v3` = a **live prod release** on Vercel.
-- Never push untested code. Run the full test checklist at the top of **ROADMAP.md** first.
-- Brian owns the push to prod. Don't push unless he says so.
+- **The agents push, not Brian.** When work is ready — committed **and** the test checklist at the top of
+  **ROADMAP.md** passes — push it to `MVP-v3` yourself. Brian does not do the push.
+- **Never push untested code.** "Ready" means the checklist passed. If it can't be tested yet, commit but don't push.
 
 ---
 
