@@ -25,8 +25,10 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
   5. Verify: every bottle has ≥1 variant; no bottle-level field lost; a SKU returns ordered variants (default first).
   - **Requires SQL in Supabase → needs Brian's approval before running. No hard-deletes.**
 
+**SQL access (both agents, as of 2026-08-21):** `DATABASE_URL` is in `.env.local` (session pooler). Run SQL with `node scripts/_psql.mjs "…"` — never pass the URI straight to `psql` (it auth-fails as user `postgres`). Full procedure in AGENTS.md. Don't print the URL or password.
+
 **Open decisions / waiting on Brian:**
-- Approval to plan + run the 7.1 migration (snapshot step first).
+- Localhost smoke-test of 7.1 app + `times_had` (Grok session in progress; not pushed yet).
 
 ---
 
@@ -43,6 +45,10 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-21 — Grok (session: 7.1 + SQL access)
+- Agents can run approved SQL via `DATABASE_URL` + `scripts/_psql.mjs`. Documented in AGENTS.md. Direct `db.*` host is IPv6-only; use the pooler URI; never pass the URI to `psql`.
+- `times_had` column applied on `user_bottles` (30 rows at 1). Brian is smoke-testing localhost; 7.1 app commits are local, not pushed.
 
 ### 2026-08-21 — Claude (session: apply Grok's protocol review)
 - Grok reviewed the relay setup and flagged real issues; all addressed:
