@@ -149,6 +149,44 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     });
   };
 
+  const handleAddToBar = useCallback(async (bottleId: string, variantId?: string | null) => {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('user_bottles')
+      .insert({
+        user_id: publicUserId,
+        bottle_id: bottleId,
+        currently_owned: true,
+        variant_id: variantId ?? null,
+        created_at: now,
+        updated_at: now,
+      });
+
+    let addedNewRow = !error;
+    if (error) {
+      // PK is still (user_id, bottle_id) for some rows — fall back to re-activating the empty one.
+      const { error: upErr } = await supabase
+        .from('user_bottles')
+        .update({ currently_owned: true, updated_at: now, variant_id: variantId ?? null })
+        .eq('user_id', publicUserId)
+        .eq('bottle_id', bottleId);
+      if (upErr) {
+        toast.error("Failed to add to My Bar");
+        return;
+      }
+      addedNewRow = false;
+    }
+
+    const row = rawEmpty.find(r => r.bottle_id === bottleId) || rawOwned.find(r => r.bottle_id === bottleId);
+    if (row) {
+      setRawOwned(prev => prev.some(r => r.bottle_id === bottleId) ? prev : [...prev, { ...row, addedAt: now }]);
+      if (!addedNewRow) {
+        setRawEmpty(prev => prev.filter(r => r.bottle_id !== bottleId));
+      }
+    }
+    toast.success("Added to My Bar!");
+  }, [publicUserId, rawEmpty, rawOwned]);
+
   const handleToggleOwnership = useCallback(async (bottleId: string) => {
     const { error } = await supabase
       .from('user_bottles')
@@ -411,6 +449,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           inCollection={true}
           currentlyOwned={activeTab === 'owned'}
           publicUserId={publicUserId}
+          onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}
           onDeleteFromBar={handleDeleteFromBar}
           onEditSaved={(updated) => {

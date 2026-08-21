@@ -353,21 +353,24 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     const vid = variantId ?? null;
 
     if (vid === null) {
-      // Standard (no variant) — re-activate finished row if exists, otherwise insert
-      const noVariantRow = existing?.find(r => r.variant_id === null);
-      if (noVariantRow && !noVariantRow.currently_owned) {
-        const { error } = await supabase
-          .from('user_bottles')
-          .update({ currently_owned: true, updated_at: now })
-          .eq('user_id', publicUserId)
-          .eq('bottle_id', bottleId)
-          .is('variant_id', null);
-        if (error) { toast.error("Failed to add to My Bar"); return; }
-      } else if (!noVariantRow) {
-        const { error } = await supabase
-          .from('user_bottles')
-          .insert({ user_id: publicUserId, bottle_id: bottleId, currently_owned: true, variant_id: null, created_at: now, updated_at: now });
-        if (error) { toast.error("Failed to add to My Bar"); return; }
+      // Prefer a new owned row (another bottle). If the unique key blocks it, re-activate the empty one.
+      const { error: insertError } = await supabase
+        .from('user_bottles')
+        .insert({ user_id: publicUserId, bottle_id: bottleId, currently_owned: true, variant_id: null, created_at: now, updated_at: now });
+      if (insertError) {
+        const noVariantRow = existing?.find(r => r.variant_id === null);
+        if (noVariantRow && !noVariantRow.currently_owned) {
+          const { error } = await supabase
+            .from('user_bottles')
+            .update({ currently_owned: true, updated_at: now })
+            .eq('user_id', publicUserId)
+            .eq('bottle_id', bottleId)
+            .is('variant_id', null);
+          if (error) { toast.error("Failed to add to My Bar"); return; }
+        } else {
+          toast.error("Failed to add to My Bar");
+          return;
+        }
       }
     } else {
       // Variant row — always insert (partial index enforces uniqueness per variant)

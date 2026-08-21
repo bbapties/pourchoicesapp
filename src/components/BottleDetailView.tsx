@@ -85,6 +85,8 @@ export default function BottleDetailView({
     setVariantIndex(0);
     setImageSide("front");
     setImgError(false);
+    setInCollectionLocally(inCollection);
+    setOwnedLocally(currentlyOwned);
     let cancelled = false;
     fetchVariantsForSku(bottle.id).then((variants) => {
       if (cancelled || !variants.length) return;
@@ -97,7 +99,7 @@ export default function BottleDetailView({
       }));
     });
     return () => { cancelled = true; };
-  }, [bottle.id]);
+  }, [bottle.id, inCollection, currentlyOwned]);
 
   const goVariant = (dir: number) => {
     if (!hasVariants) return;
@@ -108,20 +110,23 @@ export default function BottleDetailView({
     if (isSaving) return;
     setIsSaving(true);
     try {
-      if (!inCollectionLocally) {
+      // Not in collection, or already empty: add a (new) bottle to My Bar.
+      // Owned: the split control's "Finished It" calls this to mark empty.
+      if (!inCollectionLocally || !ownedLocally) {
         if (!publicUserId) {
           if (!onAddToBar) return;
           await onAddToBar(bottle.id, null);
+          setInCollectionLocally(true);
+          setOwnedLocally(true);
           return;
         }
         setIsSaving(false);
         setShowVariantSelect(true);
         return;
-      } else {
-        if (!onToggleOwnership) return;
-        await onToggleOwnership(bottle.id);
-        setOwnedLocally((prev) => !prev);
       }
+      if (!onToggleOwnership) return;
+      await onToggleOwnership(bottle.id);
+      setOwnedLocally(false);
     } finally {
       setIsSaving(false);
     }
@@ -307,10 +312,10 @@ export default function BottleDetailView({
 
         {/* Actions */}
         <div className="flex justify-center">
-          {!inCollectionLocally ? (
+          {!inCollectionLocally || !ownedLocally ? (
             <Button
               onClick={handleMainButton}
-              disabled={isSaving}
+              disabled={isSaving || !onAddToBar}
               variant="outline"
               className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
               style={{ minHeight: '44px' }}
@@ -320,17 +325,18 @@ export default function BottleDetailView({
           ) : (
             <div className="flex border border-gray-400 rounded overflow-hidden w-full" style={{ minHeight: '44px' }}>
               <button
-                onClick={() => { if (!ownedLocally && !isSaving) handleMainButton(); }}
-                disabled={isSaving}
-                className={`flex-1 px-3 text-sm font-medium transition-colors ${ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                type="button"
+                disabled
+                className="flex-1 px-3 text-sm font-medium bg-gray-800 text-white"
               >
                 ✓ In My Bar
               </button>
               <div className="w-px bg-gray-400" />
               <button
-                onClick={() => { if (ownedLocally && !isSaving) handleMainButton(); }}
+                type="button"
+                onClick={() => { if (!isSaving) handleMainButton(); }}
                 disabled={isSaving}
-                className={`flex-1 px-3 text-sm font-medium transition-colors ${!ownedLocally ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                className="flex-1 px-3 text-sm font-medium bg-white text-gray-500 hover:bg-gray-50"
               >
                 Finished It
               </button>
@@ -373,20 +379,27 @@ export default function BottleDetailView({
         )}
       </div>
 
-      {/* Full-screen image zoom */}
+      {/* Full-screen image zoom — close control must sit above the image (image used to cover the X). */}
       {showZoom && showImage && (
         <div
           className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"
           onClick={() => setShowZoom(false)}
         >
           <button
-            onClick={() => setShowZoom(false)}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowZoom(false);
+            }}
             aria-label="Close zoom"
-            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-white/90 rounded-full text-black"
+            className="absolute top-4 right-4 z-[70] w-10 h-10 flex items-center justify-center bg-white rounded-full text-black"
           >
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6 pointer-events-none" />
           </button>
-          <div className="relative w-full h-full max-w-[500px]" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative w-full max-w-[500px] h-[75vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Image
               src={imageUrl!}
               alt={`${localBottle.name} ${imageSide} view, enlarged`}
@@ -407,6 +420,8 @@ export default function BottleDetailView({
           onAdd={async (variantId) => {
             if (!onAddToBar) return;
             await onAddToBar(bottle.id, variantId);
+            setInCollectionLocally(true);
+            setOwnedLocally(true);
             setShowVariantSelect(false);
             onClose();
           }}
