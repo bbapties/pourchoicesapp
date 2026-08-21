@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
 import { uploadBottleImage } from "@/lib/uploadBottleImage";
+import { insertDefaultVariant } from "@/lib/variants";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -118,6 +119,15 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
           }
         }
       }
+
+      // 7.1: every SKU gets a default variant. Best-effort — bottle insert already succeeded.
+      await insertDefaultVariant({
+        bottleId: insertedBottle.id,
+        createdBy: user.id,
+        eloGlobal: 1500,
+        verified: false,
+        frontimageUrl: frontimage_url,
+      });
 
       // Build the optimistic-update object from the real inserted row.
       const newBottle = {

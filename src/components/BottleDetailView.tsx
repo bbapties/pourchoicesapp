@@ -8,6 +8,7 @@ import { type BottleDetails } from "@/lib/types";
 import AddVariantSheet from "@/components/AddVariantSheet";
 import VariantSelectSheet from "@/components/VariantSelectSheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
+import { applyDefaultVariant, fetchVariantsForSku } from "@/lib/variants";
 
 interface BottleDetailViewProps {
   bottle: BottleDetails;
@@ -76,6 +77,27 @@ export default function BottleDetailView({
   const showImage = !!imageUrl && !imgError;
 
   useEffect(() => { setImgError(false); }, [imageUrl]);
+
+  // 7.1 read-switch: overlay the default variant's Elo/notes/images onto the SKU card.
+  // Pager still uses labeled (non-default) variants only — carousel of the whole card is 7.4.
+  useEffect(() => {
+    setLocalBottle(bottle);
+    setVariantIndex(0);
+    setImageSide("front");
+    setImgError(false);
+    let cancelled = false;
+    fetchVariantsForSku(bottle.id).then((variants) => {
+      if (cancelled || !variants.length) return;
+      const labeled = variants.filter(
+        (v) => !v.isDefault && (v.releaseYear || v.batch || v.storePickName)
+      );
+      setLocalBottle((prev) => ({
+        ...applyDefaultVariant(prev, variants),
+        variants: labeled,
+      }));
+    });
+    return () => { cancelled = true; };
+  }, [bottle.id]);
 
   const goVariant = (dir: number) => {
     if (!hasVariants) return;

@@ -1,3 +1,21 @@
+export interface BottleVariant {
+  variantId?: string;
+  isDefault?: boolean;
+  elo_global?: number;
+  verified?: boolean;
+  frontImageUrl?: string;
+  backImageUrl?: string;
+  age?: string;
+  proof?: number;
+  releaseYear?: string;
+  batch?: string;
+  storePickName?: string;
+  notes?: string;
+  nose?: string;
+  palate?: string;
+  finish?: string;
+}
+
 export interface BottleDetails {
   id: string;
   name: string;
@@ -13,13 +31,7 @@ export interface BottleDetails {
   lastActivity?: string; // Calculated field
   frontImageUrl?: string;
   backImageUrl?: string;
-  variants: Array<{
-    variantId?: string;
-    releaseYear?: string;
-    batch?: string;
-    storePickName?: string;
-    notes?: string;
-  }>;
+  variants: BottleVariant[];
   nose?: string;
   palate?: string;
   finish?: string;
