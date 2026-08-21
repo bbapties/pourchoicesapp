@@ -127,7 +127,7 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
-**Progress (2026-07-25):** shipped 7.3 (new detail-card layout) and 7.5's image handling (broken/missing image → placeholder, tap-to-zoom). Both verified live, zero regression to Search/My Bar. **Next session starts at 7.1** — the variant-first data-model migration (keystone; everything else depends on it). Safe approach agreed: snapshot first → additive columns on `bottle_variants` (`elo_global`, `nose/palate/finish`) → backfill a "default" variant per bottle → phase the read-switch → verify. Needs SQL run in Supabase.
+**Progress (2026-08-21):** **7.1 shipped** (variant-first columns + default-variant backfill + app dual-write). 7.3 layout and 7.5 image fallback/zoom/Front-Back were already live; zoom-close bug fixed this session. My last activity now reads add/finish dates. **Next is 7.2** (search roll-up + N variants badge + Bottles/All Variants toggle).
 
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
@@ -142,9 +142,10 @@ Still greyscale/wireframe (styling = later). The blind-tasting branch depends on
 ### Tasks — goals & exit criteria
 
 Epic A — Variant-first data model
-- [ ] 7.1 Variant records get their own identity
+- [x] 7.1 Variant records get their own identity (shipped 2026-08-21; SQL + app on `MVP-v3`)
   - Goal: each variant has its own Elo, nose/palate/finish, verified flag, and front/back images; every bottle backfills a "default" variant.
   - Exit: every bottle has ≥1 variant; each variant has independent Elo/notes/verified/images; no data lost from current bottle-level fields; a SKU can return its ordered variants (default first).
+  - Live: 80 bottles, 112 variants, 0 missing default. Additive cols on `bottle_variants`; unique index one default per SKU. Search still reads `all_bottle_details` (bottle-level Elo) until 7.2.
 - [ ] 7.2 Search roll-up + variant count + toggle
   - Goal: search shows one card per SKU with an "N variants" badge and a persistent [Bottles | All Variants] toggle.
   - Exit: default = one row per SKU (scored from the default variant); All Variants lists each variant as its own card sorted by its own Elo; badge count correct.
@@ -156,7 +157,7 @@ Epic B — Detail card UI
 - [ ] 7.4 Variant carousel
   - Goal: swipeable carousel over [default + variants]; whole card swaps on swipe; subtitle + pager + dots.
   - Exit: swiping changes every variant-specific field + subtitle; position/count shown; single-variant SKUs show no pager.
-- [~] 7.5 Image interactions — partial (shipped 2026-07-25, commit 573cfe3): broken/missing → placeholder + tap-to-zoom + Front/Back toggle done; **per-variant images await 7.1**.
+- [~] 7.5 Image interactions — partial: placeholder + tap-to-zoom + Front/Back toggle done (`573cfe3`); zoom X was covered by the image — fixed `27e5702`. **Per-variant images await 7.4** (carousel).
   - Goal: portrait image, Front/Back toggle beneath (tap), tap-to-zoom full-screen + close, per-variant images, extensible to a 3rd slot.
   - Exit: toggle flips image without swiping; tap opens full-screen zoom + close; each variant shows its own images; missing/broken → placeholder.
 

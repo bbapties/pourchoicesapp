@@ -7,28 +7,31 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 
 ## Right now
 
-- **Branch:** `MVP-v3` (= production). Working tree clean except untracked `.claude/` and a weekly HTML file.
-- **Last commit:** `b231c32` — "Apply Grok's protocol review: fix 7.5 contradiction + doc nits".
-- **Current phase:** **Phase 7 — bottle detail revamp + variant-first model.**
+- **Branch:** `MVP-v3` (= production).
+- **Last commit:** `651afb2` — "END SESSION: mark 7.1 done, next is 7.2" (app tip `24f99b3`).
+- **Current phase:** **Phase 7.** **7.1 is done.** Next is **7.2**.
 
 **Done in Phase 7:**
-- 7.3 — new bottle-detail card layout (`66d028c`).
-- 7.5 — image interactions, *partial* (`573cfe3`): broken/missing → placeholder, **tap-to-zoom, and Front/Back toggle are DONE** (verified in `src/components/BottleDetailView.tsx` on 2026-08-21 — `showZoom` + `imageSide` state). Only **per-variant images** remain, blocked on 7.1.
+- **7.1** — variant-first data model (2026-08-21). Additive cols on `bottle_variants`: `elo_global`, `nose`, `palate`, `finish`, `is_default`. Every SKU has exactly one default. Live after migration: **80 bottles, 112 variants**, 0 missing default. App: `src/lib/variants.ts`; new bottles dual-write a default variant; detail overlays default Elo/notes/images. Search/My Bar still read `all_bottle_details` (one row per SKU, **bottle-level** Elo) — that switch is **7.2**.
+- 7.3 — detail-card layout (`66d028c`).
+- 7.5 — *partial*: placeholder, tap-to-zoom, Front/Back (`573cfe3`). Zoom **X was covered by the image** — fixed `27e5702`. Per-variant images wait on **7.4**.
+- Also this session: empty bottle → **Add to My Bar** (same `user_bottles` row, increment `times_had`); **My last activity** = `Added · date` / `Finished · date`. "Drank ·" is 7.7.
 
-**Next step (do NOT skip ahead to 7.2+):**
-- **7.1 — variant-first data-model migration.** This is the keystone; 7.2, 7.4, and 7.6–7.9 all depend on it.
-  Agreed approach, in order:
-  1. **Snapshot first** — no destructive schema work until Brian approves.
-  2. Additive columns on `bottle_variants`: `elo_global`, `nose`, `palate`, `finish` (keep existing `verified`/images).
-  3. Backfill a **default variant** for every bottle (≥1 variant per SKU); copy bottle-level Elo/notes/images/verified onto it.
-  4. Phase the read-switch: SKU = `bottles`, scored identity = default variant first.
-  5. Verify: every bottle has ≥1 variant; no bottle-level field lost; a SKU returns ordered variants (default first).
-  - **Requires SQL in Supabase → needs Brian's approval before running. No hard-deletes.**
+**Next step (do NOT skip to 7.4+):**
+- **7.2 — Search roll-up + variant count + [Bottles | All Variants] toggle.**
+  - Default: one card per SKU, scored from the **default variant's** Elo, "N variants" badge.
+  - All Variants: each variant is its own card, sorted by its own Elo.
+  - View `all_bottle_details` is still `GROUP BY b.id` with `b.elo_global`. 7.2 needs a view change or new query — **do not drop columns the app selects**. Arrays: `attr_variant_ids`, `attr_batch`, `attr_release_year`, `attr_store_pick_name`. SQL in `sql/` (7.1 already applied, idempotent).
 
-**SQL access (both agents, as of 2026-08-21):** `DATABASE_URL` is in `.env.local` (session pooler). Run SQL with `node scripts/_psql.mjs "…"` — never pass the URI straight to `psql` (it auth-fails as user `postgres`). Full procedure in AGENTS.md. Don't print the URL or password.
+**SQL access:** `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. Don't print secrets. See AGENTS.md.
 
 **Open decisions / waiting on Brian:**
-- Localhost smoke-test of 7.1 app + `times_had` (Grok session in progress; not pushed yet).
+- Confirm www.pourchoicesapp.com after this Vercel deploy (Search, detail, add, My Bar, zoom X, empty → Add to My Bar, Times had, last activity).
+
+**Landmines:**
+- `user_bottles` is **one row per (user, bottle)**. Restock increments `times_had`. Do not insert a second row for the same SKU.
+- Empty bottles show **Add to My Bar**, not the In My Bar / Finished It split.
+- `all_bottle_details` was **not** rewritten in 7.1.
 
 ---
 
@@ -37,18 +40,23 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
   moved to Phase 7 and Phase 6 status corrected (6.0/6.1/6.2/6.3 shipped, **6.4 CSV import is the gap**;
   `ImportTab.tsx` is a shell). Phase 6 granular sub-checkboxes were **not** individually re-audited — code is truth.
   Two spec mismatches noted in ROADMAP: no `DB_SCHEMA.sql` at root (only `DB_Schema.txt.txt`); no `src/lib/useCurrentUser.ts`.
-- ⬜ **Still open — DB_Schema.txt.txt lags the live DB:** missing `users.role`, the admin RPCs, the `all_bottle_details`
-  view (used in code), and the storage bucket. No `suggested_edits` table yet (needed for 7.8). Refresh the dump when convenient.
-- ⬜ **DB is not yet variant-first:** `bottles` is still the scored product row; `bottle_variants` is an attribute
-  sidecar (no `elo_global` / nose / palate / finish). Closing that gap *is* task **7.1** (next up).
+- ⬜ **Still open — DB_Schema.txt.txt lags the live DB:** missing `users.role`, admin RPCs, `all_bottle_details` view,
+  storage bucket, `bottle_variants.{elo_global,nose,palate,finish,is_default}`, `user_bottles.times_had`. No `suggested_edits` (7.8).
+- ✅ **7.1 data model is live** — variants have independent Elo/notes; every bottle has a default variant. Search still scores from `bottles.elo_global` until 7.2.
 
 ---
 
 ## Log (newest first)
 
+### 2026-08-21 — Grok (END SESSION: 7.1 shipped to MVP-v3)
+- Pushed `cb3de03..24f99b3` to `MVP-v3` (prod). Then this handoff/ROADMAP tick.
+- 7.1 SQL + app live. Extra: `times_had`, last-activity dates, zoom-close fix, empty-bottle Add to My Bar.
+- Localhost verified (Lakehouse / Wild Turkey 101). Prod verify still on Brian after Vercel.
+- **Next agent: 7.2** search roll-up + N variants + Bottles/All Variants toggle. Do not start 7.4+.
+
 ### 2026-08-21 — Grok (session: 7.1 + SQL access)
 - Agents can run approved SQL via `DATABASE_URL` + `scripts/_psql.mjs`. Documented in AGENTS.md. Direct `db.*` host is IPv6-only; use the pooler URI; never pass the URI to `psql`.
-- `times_had` column applied on `user_bottles` (30 rows at 1). Brian is smoke-testing localhost; 7.1 app commits are local, not pushed.
+- `times_had` column applied on `user_bottles`.
 
 ### 2026-08-21 — Claude (session: apply Grok's protocol review)
 - Grok reviewed the relay setup and flagged real issues; all addressed:
