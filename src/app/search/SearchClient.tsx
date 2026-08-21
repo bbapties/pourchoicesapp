@@ -14,7 +14,7 @@ import BottleCard, { type Bottle } from "@/components/BottleCard";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
 import { type BottleDetails } from "@/lib/types";
 import BottleDetailView from "@/components/BottleDetailView";
-import { addOrRestockUserBottle, type UserBottleRow } from "@/lib/userBottles";
+import { addOrRestockUserBottle, formatLastActivity, type UserBottleRow } from "@/lib/userBottles";
 
 const DEFAULT_PAGE_SIZE = 30;
 const LOAD_MORE_SIZE = 15;
@@ -97,7 +97,6 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       volume: result.attr_volume,
       verified: result.bottle_verified,
       barcode: result.bottle_barcode,
-      lastActivity: "Never",
       frontImageUrl: result.attr_frontimage_url,
       backImageUrl: result.attr_backimage_url,
       variants: variantIds
@@ -135,7 +134,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
 
       let { data, error } = await supabase
         .from('user_bottles')
-        .select('bottle_id, currently_owned, variant_id, times_had')
+        .select('bottle_id, currently_owned, variant_id, times_had, created_at, updated_at')
         .eq('user_id', publicUser.id);
       if (error) {
         ({ data, error } = await supabase
@@ -156,6 +155,8 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
           currently_owned: row.currently_owned,
           variant_id: row.variant_id ?? null,
           times_had: row.times_had ?? 1,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
         });
       });
       setUserBottlesMap(map);
@@ -288,11 +289,14 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     setFilter({ step: 'closed', field: null, value: null });
   };
 
-  const handleBottleClick = (bottle: any) =>
+  const handleBottleClick = (bottle: any) => {
+    const row = userBottlesMap[bottle.id]?.[0];
     setSelectedBottle({
       ...bottle,
-      timesHad: userBottlesMap[bottle.id]?.[0]?.times_had,
+      timesHad: row?.times_had,
+      lastActivity: formatLastActivity(row),
     });
+  };
 
   const searchBottles = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
@@ -375,12 +379,15 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       return;
     }
 
+    const now = new Date().toISOString();
     setUserBottlesMap(prev => ({
       ...prev,
       [bottleId]: [{
         currently_owned: true,
         variant_id: variantId ?? existing?.variant_id ?? null,
         times_had: result.timesHad,
+        created_at: existing?.created_at ?? now,
+        updated_at: now,
       }],
     }));
     toast.success("Added to My Bar!");
@@ -406,7 +413,9 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     setUserBottlesMap(prev => ({
       ...prev,
       [bottleId]: prev[bottleId].map(r =>
-        r.variant_id === primaryRow.variant_id ? { ...r, currently_owned: newOwned } : r
+        r.variant_id === primaryRow.variant_id
+          ? { ...r, currently_owned: newOwned, updated_at: new Date().toISOString() }
+          : r
       ),
     }));
     toast.success(newOwned ? "Back in Your Bar!" : "Marked as Finished");

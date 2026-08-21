@@ -17,7 +17,7 @@ export default async function MyBarPage() {
 
   if (!publicUser) redirect('/');
 
-  const ownedSelect = 'bottle_id, variant_id, created_at, times_had';
+  const ownedSelect = 'bottle_id, variant_id, created_at, updated_at, times_had';
   const emptySelect = 'bottle_id, variant_id, created_at, updated_at, times_had';
   let { data: ownedBottles, error: ownedErr } = await supabase
     .from('user_bottles')
@@ -65,15 +65,19 @@ export default async function MyBarPage() {
       .order('bottle_elo_global', { ascending: false, nullsFirst: false });
 
     const addedAtMap: Record<string, string> = {};
+    const updatedAtMap: Record<string, string> = {};
     const timesHadMap: Record<string, number> = {};
     (ownedBottles || []).forEach(r => {
       addedAtMap[r.bottle_id] = r.created_at;
+      updatedAtMap[r.bottle_id] = r.updated_at || r.created_at;
       timesHadMap[r.bottle_id] = r.times_had ?? 1;
     });
 
     ownedCollection = (details || []).map(d => ({
       ...d,
       addedAt: addedAtMap[d.bottle_id],
+      created_at: addedAtMap[d.bottle_id],
+      updated_at: updatedAtMap[d.bottle_id],
       times_had: timesHadMap[d.bottle_id],
     }));
   }
@@ -96,6 +100,8 @@ export default async function MyBarPage() {
     emptyCollection = (details || []).map(d => ({
       ...d,
       addedAt: finishedAtMap[d.bottle_id],
+      created_at: (emptyBottles || []).find(r => r.bottle_id === d.bottle_id)?.created_at,
+      updated_at: finishedAtMap[d.bottle_id],
       times_had: timesHadMap[d.bottle_id],
     }));
   }

@@ -4,7 +4,28 @@ export type UserBottleRow = {
   currently_owned: boolean;
   variant_id: string | null;
   times_had: number;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
+
+function formatActivityDate(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** Per-user last action on this SKU. Log-a-Pour ("Drank") is Phase 7.7; until then: Added / Finished. */
+export function formatLastActivity(row?: UserBottleRow | null): string | undefined {
+  if (!row) return undefined;
+  if (row.currently_owned) {
+    const ts = (row.times_had ?? 1) > 1 ? (row.updated_at || row.created_at) : (row.created_at || row.updated_at);
+    const date = formatActivityDate(ts);
+    return date ? `Added · ${date}` : undefined;
+  }
+  const date = formatActivityDate(row.updated_at || row.created_at);
+  return date ? `Finished · ${date}` : undefined;
+}
 
 /** One row per (user, bottle). Restocking an empty bottle increments times_had. */
 export async function addOrRestockUserBottle(opts: {

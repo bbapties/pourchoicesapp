@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import BottleCardMedium from "@/components/BottleCardMedium";
 import BottleDetailView from "@/components/BottleDetailView";
 import { type BottleDetails } from "@/lib/types";
-import { addOrRestockUserBottle } from "@/lib/userBottles";
+import { addOrRestockUserBottle, formatLastActivity } from "@/lib/userBottles";
 
 interface MyBarClientProps {
   ownedCollection: any[];
@@ -132,7 +132,13 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       age: raw.attr_age,
       elo_global: raw.bottle_elo_global,
       verified: raw.bottle_verified,
-      lastActivity: undefined,
+      lastActivity: formatLastActivity({
+        currently_owned: activeTab === "owned",
+        variant_id: raw.variant_id ?? null,
+        times_had: raw.times_had ?? 1,
+        created_at: raw.created_at,
+        updated_at: raw.updated_at,
+      }),
       timesHad: raw.times_had,
       frontImageUrl: raw.attr_frontimage_url,
       backImageUrl: raw.attr_backimage_url,
@@ -173,7 +179,13 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
 
     const row = existingRow;
     if (row) {
-      const next = { ...row, addedAt: now, times_had: result.timesHad };
+      const next = {
+        ...row,
+        addedAt: now,
+        times_had: result.timesHad,
+        created_at: row.created_at || now,
+        updated_at: now,
+      };
       setRawOwned(prev => prev.some(r => r.bottle_id === bottleId)
         ? prev.map(r => r.bottle_id === bottleId ? next : r)
         : [...prev, next]);
@@ -194,7 +206,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const row = rawOwned.find(r => r.bottle_id === bottleId);
     if (row) {
       setRawOwned(prev => prev.filter(r => r.bottle_id !== bottleId));
-      setRawEmpty(prev => [...prev, { ...row, addedAt: new Date().toISOString() }]);
+      setRawEmpty(prev => [...prev, { ...row, addedAt: new Date().toISOString(), updated_at: new Date().toISOString() }]);
     }
     setSelectedBottle(null);
     toast.success("Marked as Finished");
