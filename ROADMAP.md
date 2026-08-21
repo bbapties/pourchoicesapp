@@ -127,7 +127,7 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
-**Progress (2026-08-21):** **7.1 shipped** (variant-first columns + default-variant backfill + app dual-write). 7.3 layout and 7.5 image fallback/zoom/Front-Back were already live; zoom-close bug fixed this session. My last activity now reads add/finish dates. **Next is 7.2** (search roll-up + N variants badge + Bottles/All Variants toggle).
+**Progress (2026-08-21):** **7.1 and 7.2 shipped.** 7.1 = variant-first columns + default-variant backfill + app dual-write. 7.2 = search roll-up (default-variant scoring), "N variants" badge, and the [Bottles | All Variants] toggle + per-variant leaderboard. 7.3 layout and 7.5 image fallback/zoom/Front-Back were already live. **Next is 7.4** (variant carousel) — which also unblocks per-variant images (finishes 7.5).
 
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
@@ -146,9 +146,10 @@ Epic A — Variant-first data model
   - Goal: each variant has its own Elo, nose/palate/finish, verified flag, and front/back images; every bottle backfills a "default" variant.
   - Exit: every bottle has ≥1 variant; each variant has independent Elo/notes/verified/images; no data lost from current bottle-level fields; a SKU can return its ordered variants (default first).
   - Live: 80 bottles, 112 variants, 0 missing default. Additive cols on `bottle_variants`; unique index one default per SKU. Search still reads `all_bottle_details` (bottle-level Elo) until 7.2.
-- [ ] 7.2 Search roll-up + variant count + toggle
+- [x] 7.2 Search roll-up + variant count + toggle (shipped 2026-08-21; SQL + app on `MVP-v3`)
   - Goal: search shows one card per SKU with an "N variants" badge and a persistent [Bottles | All Variants] toggle.
   - Exit: default = one row per SKU (scored from the default variant); All Variants lists each variant as its own card sorted by its own Elo; badge count correct.
+  - Live: `all_bottle_details` gained `default_variant_elo`/`default_variant_id`/`variant_count` (additive); new `all_variant_details` view. Bottles view scores from the default variant + "N variants" badge (hidden at 1); All Variants = per-variant cards sorted by variant Elo with a subtitle tag. Star scaling/count/pagination/search/filters are mode-aware. 80 SKUs / 112 variants.
 
 Epic B — Detail card UI
 - [x] 7.3 New detail-card layout (shipped 2026-07-25, commit 66d028c)
