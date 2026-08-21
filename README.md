@@ -1,5 +1,10 @@
 # Pour Choices - MVP Document
 
+> ⚠️ **This README is a historical MVP spec and is stale (Dec 2025).** It predates a lot of shipped
+> work and lists features as "not implemented" that now exist. **Do not trust it for current status.**
+> Source of truth: **[ROADMAP.md](ROADMAP.md)** (what's built) · **[HANDOFF.md](HANDOFF.md)** (where we are
+> right now) · **[AGENTS.md](AGENTS.md)** (stack, rules, agent workflow).
+
 **Last Updated: December 20, 2025**
 
 ## 1. Executive Summary

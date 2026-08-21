@@ -61,9 +61,11 @@ Goal: Apply full design system from the MVP doc.
 
 ---
 
-## Phase 6 — Admin Panel ← WE ARE HERE
+## Phase 6 — Admin Panel  ·  mostly shipped (6.4 remaining)
 Goal: Internal tooling — manage users, verify/clean bottles, bulk-import data.
-Progress: 6.0 Foundation ✅ · 6.1 Users tab ✅ · 6.2 Image upload ⏳ · 6.3 Bottles queue ⏳ · 6.4 CSV import ⬜
+**Status (reconciled 2026-08-21 via git + files):** 6.0 Foundation ✅ · 6.1 Users tab ✅ · 6.2 Image upload ✅ (core) · 6.3 Bottles queue ✅ · 6.4 CSV import ⬜ — **the remaining gap**.
+Evidence: admin shell + role gate `ab9cfbb`, Users tab + cascade delete `c302164`, image upload `6e44dff`, bottles queue `3ab1ce0`. Files present: `src/app/admin/{AdminClient,UsersTab,BottlesTab,ImportTab}.tsx`, `src/lib/uploadBottleImage.ts`, `src/app/api/admin/delete-user/route.ts`. `ImportTab.tsx` is a shell — 6.4 not built.
+> ⚠️ The granular sub-checkboxes below were **not individually re-audited** — treat code + commits as source of truth. Known spec mismatches: no `DB_SCHEMA.sql` at root (only `DB_Schema.txt.txt`); no `src/lib/useCurrentUser.ts` (role logic lives elsewhere).
 Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually flipped in Supabase).
 
 ### 6.0 Foundation
@@ -121,7 +123,7 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 
 ---
 
-## Phase 7 — Bottle Detail Revamp & Variant-First Model
+## Phase 7 — Bottle Detail Revamp & Variant-First Model  ← WE ARE HERE
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
