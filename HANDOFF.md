@@ -8,7 +8,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Working tree clean except untracked `.claude/` and a weekly HTML file.
-- **Last commit:** `4197637` — "Mark Phase 7.3 done, 7.5 partial; note 7.1 as next".
+- **Last commit:** `b231c32` — "Apply Grok's protocol review: fix 7.5 contradiction + doc nits".
 - **Current phase:** **Phase 7 — bottle detail revamp + variant-first model.**
 
 **Done in Phase 7:**
