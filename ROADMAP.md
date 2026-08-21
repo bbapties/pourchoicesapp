@@ -1,6 +1,6 @@
 # Pour Choices — Build Roadmap
 
-**Philosophy:** Functionality first. Black/grey/white wireframe visuals until Phase 4.
+**Philosophy:** Functionality first. Black/grey/white wireframe visuals until Phase 5 (the design phase).
 **Commit rule:** One feature or fix per commit. Test before every commit.
 **Test checklist before every push:**
   - [ ] Works locally (localhost:3000)
@@ -68,7 +68,7 @@ Evidence: admin shell + role gate `ab9cfbb`, Users tab + cascade delete `c302164
 > ⚠️ The granular sub-checkboxes below were **not individually re-audited** — treat code + commits as source of truth. Known spec mismatches: no `DB_SCHEMA.sql` at root (only `DB_Schema.txt.txt`); no `src/lib/useCurrentUser.ts` (role logic lives elsewhere).
 Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually flipped in Supabase).
 
-### 6.0 Foundation
+### 6.0 Foundation — ✅ SHIPPED (`ab9cfbb`; admin files present) · sub-boxes below not re-audited
 - [ ] Commit DB_SCHEMA.sql at repo root (reference snapshot of Supabase schema)
 - [ ] SQL to run in Supabase dashboard:
   - `alter table users add column role text not null default 'user' check (role in ('user','admin'))`
@@ -81,13 +81,13 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 - [ ] `src/app/admin/page.tsx` — server component re-checks role, redirects non-admins; renders AdminClient with tabs Users / Bottles / Import
 - [ ] `src/app/api/admin/delete-user/route.ts` — server route using service-role key to wipe `auth.users` row after RPC succeeds; re-checks caller is admin
 
-### 6.1 Users tab
+### 6.1 Users tab — ✅ SHIPPED (`c302164`, `UsersTab.tsx`) · sub-boxes below not re-audited
 - [ ] List users with username, email, created_at, role, #bottles, #sessions
 - [ ] Search filter
 - [ ] Delete row → confirm modal (type username) → RPC + auth wipe → toast
 - [ ] Block self-delete
 
-### 6.2 Image upload (prereq for bottle management)
+### 6.2 Image upload (prereq for bottle management) — ✅ SHIPPED core (`6e44dff`, `uploadBottleImage.ts`) · EditVariantSheet button + full perm rules not re-audited
 - [ ] `src/lib/uploadBottleImage.ts` — upload to bottle-images bucket, return public URL
 - [ ] Fix ProvisionalSheet — currently `image` File field is silently dropped; wire to helper
 - [ ] EditVariantSheet — add upload button alongside URL input
@@ -97,13 +97,13 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
   - Verified with missing/broken image: any authenticated user can replace; upload auto-sets `verified=false` + shows "re-review pending" toast
   - Broken-image detection: `<img onError>` swaps to placeholder with "Upload replacement" button
 
-### 6.3 Bottles tab
+### 6.3 Bottles tab — ✅ SHIPPED queue (`3ab1ce0`, `BottlesTab.tsx`) · All-Bottles sub-tab not re-audited
 - [ ] Queue sub-tab — merged queue, one card per unverified bottle, variants nested inside; verified bottles with unverified variants also appear
 - [ ] Row actions: Verify / Edit (reuse existing) / Delete
 - [ ] Delete confirm shows counts AND list of affected usernames (`select username from users where id in (select user_id from user_bottles where bottle_id = X)`)
 - [ ] All Bottles sub-tab — searchable table over `all_bottle_details` with same row actions
 
-### 6.4 CSV bulk import tab
+### 6.4 CSV bulk import tab — ⬜ NOT BUILT (this is the Phase 6 gap; `ImportTab.tsx` is a shell)
 - [ ] Template: `bottle_name, distillery, category, style, age, proof, volume, barcode, nose, palate, finish, extras, variant_release_year, variant_batch, variant_store_pick_name, variant_proof, variant_age, variant_notes`
 - [ ] Parse with `papaparse`; group rows by `(bottle_name, distillery)` so duplicated bottle columns collapse into one bottle with N variants
 - [ ] Validate-then-commit preview: "Would create N new bottles, M new variants. Would attach K variants to existing bottles: [list]. Errors: [list]."

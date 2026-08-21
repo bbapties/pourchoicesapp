@@ -13,7 +13,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 
 **Done in Phase 7:**
 - 7.3 — new bottle-detail card layout (`66d028c`).
-- 7.5 — image fallback for broken/missing images (`573cfe3`). *Partial* — tap-to-zoom / Front-Back toggle / per-variant images still pending, blocked on 7.1.
+- 7.5 — image interactions, *partial* (`573cfe3`): broken/missing → placeholder, **tap-to-zoom, and Front/Back toggle are DONE** (verified in `src/components/BottleDetailView.tsx` on 2026-08-21 — `showZoom` + `imageSide` state). Only **per-variant images** remain, blocked on 7.1.
 
 **Next step (do NOT skip ahead to 7.2+):**
 - **7.1 — variant-first data-model migration.** This is the keystone; 7.2, 7.4, and 7.6–7.9 all depend on it.
@@ -43,6 +43,14 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-21 — Claude (session: apply Grok's protocol review)
+- Grok reviewed the relay setup and flagged real issues; all addressed:
+  - **7.5 doc contradiction** — verified against code (`BottleDetailView.tsx`): tap-to-zoom + Front/Back toggle ARE shipped; only per-variant images await 7.1. Fixed HANDOFF to match ROADMAP.
+  - **"who commits the baton"** — AGENTS.md now spells out the END SESSION sequence: the agent commits the doc updates and pushes them with the code, per the agents-push policy.
+  - **skipped END SESSION** — added a recovery procedure to AGENTS.md.
+  - **doc nits** — ROADMAP wireframe note fixed ("until Phase 5", not 4); Phase 6 subsection headings now show section-level ✅/gap so nobody "finishes" 6.0–6.3 from empty sub-boxes.
+- No app code touched. Next real work unchanged: **7.1** (variant-first migration, snapshot first, needs Brian's go).
 
 ### 2026-08-21 — Grok (session: state review, no code)
 - Read README / ROADMAP / BACKLOG / DB schema. Wrote no code.

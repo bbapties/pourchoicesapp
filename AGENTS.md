@@ -89,4 +89,19 @@ END SESSION. We're switching agents. Before you stop:
 Write for a reader with zero memory of this session.
 ```
 
+### END SESSION — exact sequence (who commits the baton)
+1. Finish the work and **commit the code** (one change per commit).
+2. Run the ROADMAP test checklist.
+3. Update **HANDOFF.md** ("Right now" + a dated log entry) and tick **ROADMAP.md**.
+4. **Commit the doc updates.**
+5. **Push everything to `MVP-v3`** (code + doc commits together) — the agent pushes, per Branch & deploy rules.
+   The doc edits are the agent's own commit, not something Brian pushes later.
+   If the work can't be tested yet, commit but **don't push** — say so in HANDOFF's "Right now".
+
+### If END SESSION got skipped
+A session may end abruptly with a stale baton. Before starting the other agent: go back to the agent
+that did the work and run END SESSION there **while it still has context**. If that context is gone, the
+incoming agent reconstructs the baton from `git log` + the code, writes a fresh "Right now" in HANDOFF,
+and confirms it with Brian **before** doing any new work.
+
 **Golden rule:** the relay only works if END SESSION runs every time. A skipped handoff = the next agent starts from a stale baton.
