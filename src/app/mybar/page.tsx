@@ -17,30 +17,17 @@ export default async function MyBarPage() {
 
   if (!publicUser) redirect('/');
 
-  const ownedSelect = 'bottle_id, variant_id, created_at, updated_at, times_had';
-  const emptySelect = 'bottle_id, variant_id, created_at, updated_at, times_had';
-  let { data: ownedBottles, error: ownedErr } = await supabase
+  const userBottleSelect = 'bottle_id, variant_id, created_at, updated_at, times_had';
+  const { data: ownedBottles } = await supabase
     .from('user_bottles')
-    .select(ownedSelect)
+    .select(userBottleSelect)
     .eq('user_id', publicUser.id)
     .eq('currently_owned', true);
-  let { data: emptyBottles, error: emptyErr } = await supabase
+  const { data: emptyBottles } = await supabase
     .from('user_bottles')
-    .select(emptySelect)
+    .select(userBottleSelect)
     .eq('user_id', publicUser.id)
     .eq('currently_owned', false);
-  if (ownedErr || emptyErr) {
-    ({ data: ownedBottles } = await supabase
-      .from('user_bottles')
-      .select('bottle_id, variant_id, created_at')
-      .eq('user_id', publicUser.id)
-      .eq('currently_owned', true));
-    ({ data: emptyBottles } = await supabase
-      .from('user_bottles')
-      .select('bottle_id, variant_id, created_at, updated_at')
-      .eq('user_id', publicUser.id)
-      .eq('currently_owned', false));
-  }
 
   const ownedIds = (ownedBottles || []).map(r => r.bottle_id);
   const emptyIds = (emptyBottles || []).map(r => r.bottle_id);

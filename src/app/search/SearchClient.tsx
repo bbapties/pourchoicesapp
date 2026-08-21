@@ -132,16 +132,10 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       }
       setPublicUserId(publicUser.id);
 
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('user_bottles')
         .select('bottle_id, currently_owned, variant_id, times_had, created_at, updated_at')
         .eq('user_id', publicUser.id);
-      if (error) {
-        ({ data, error } = await supabase
-          .from('user_bottles')
-          .select('bottle_id, currently_owned, variant_id')
-          .eq('user_id', publicUser.id));
-      }
 
       if (error) {
         console.error('Failed to fetch user collection:', error.message);
