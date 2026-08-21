@@ -11,6 +11,8 @@ export interface Bottle {
   stars?: number | null; // 0.00–5.00 scaled from global Elo
   inCollection?: boolean;    // bottle_id exists in user_bottles
   currentlyOwned?: boolean;  // user_bottles.currently_owned = true
+  variantCount?: number;     // Bottles view: SKU roll-up count; badge shown when > 1
+  variantLabel?: string;     // All Variants view: per-variant tag (Default / Batch 302 / 2021 …)
 }
 
 function StarRating({ value }: { value: number }) {
@@ -138,11 +140,21 @@ export default function BottleCard({ bottle }: BottleCardProps) {
             {bottle.category}
           </p>
         )}
-        <div className="flex justify-end mt-1">
-          {bottle.stars != null
-            ? <StarRating value={bottle.stars} />
-            : <span className="text-xs text-gray-400">—</span>
-          }
+        {bottle.variantLabel && (
+          <p className="text-xs text-gray-500 italic truncate">{bottle.variantLabel}</p>
+        )}
+        <div className="flex items-center mt-1">
+          {bottle.variantCount != null && bottle.variantCount > 1 && (
+            <span className="text-[11px] text-gray-600 bg-gray-100 border border-gray-300 rounded-full px-2 py-0.5 whitespace-nowrap">
+              {bottle.variantCount} variants
+            </span>
+          )}
+          <div className="ml-auto">
+            {bottle.stars != null
+              ? <StarRating value={bottle.stars} />
+              : <span className="text-xs text-gray-400">—</span>
+            }
+          </div>
         </div>
       </div>
     </div>

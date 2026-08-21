@@ -19,15 +19,25 @@ import { addOrRestockUserBottle, formatLastActivity, type UserBottleRow } from "
 const DEFAULT_PAGE_SIZE = 30;
 const LOAD_MORE_SIZE = 15;
 
+type ViewMode = 'bottles' | 'variants';
+
+const BOTTLE_SELECT =
+  "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, default_variant_elo, default_variant_id, variant_count";
+const VARIANT_SELECT =
+  "variant_id, bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, variant_is_default, variant_elo_global, variant_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_batch, attr_release_year, attr_store_pick_name, attr_nose, attr_palate, attr_finish, attr_notes";
+
 interface SearchClientProps {
-  allBottlesElo: Array<{ bottle_elo_global?: number }>;
+  bottlesElo: number[];       // default-variant Elo distribution (Bottles mode star scaling)
+  variantsElo: number[];      // per-variant Elo distribution (All Variants mode star scaling)
   totalBottleCount: number;
+  totalVariantCount: number;
 }
 
-export default function SearchClient({ allBottlesElo, totalBottleCount }: SearchClientProps) {
+export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount, totalVariantCount }: SearchClientProps) {
   const [query, setQuery] = useState("");
-  const [bottles, setBottles] = useState<any[]>([]);         // search results
-  const [defaultBottles, setDefaultBottles] = useState<any[]>([]); // browse results
+  const [viewMode, setViewMode] = useState<ViewMode>('bottles');
+  const [bottles, setBottles] = useState<any[]>([]);         // search results (active mode)
+  const [defaultBottles, setDefaultBottles] = useState<any[]>([]); // browse results (active mode)
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -60,37 +70,50 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [filter, setFilter] = useState<FilterState>({ step: 'closed', field: null, value: null });
 
-  // Derive Elo range from the full sorted list (server fetched DESC)
+  // Elo range for star scaling — depends on the active mode's distribution (server fetched DESC).
   const { minElo, maxElo } = useMemo(() => {
-    const valid = allBottlesElo
-      .map(b => b.bottle_elo_global)
-      .filter((e): e is number => e != null);
+    const valid = viewMode === 'bottles' ? bottlesElo : variantsElo;
     return {
       maxElo: valid[0] ?? 1500,
       minElo: valid[valid.length - 1] ?? 1500,
     };
-  }, [allBottlesElo]);
+  }, [viewMode, bottlesElo, variantsElo]);
 
   const calcStars = (elo: number | null | undefined): number | null => {
     if (elo == null || maxElo === minElo) return null;
     return Math.min(5, Math.max(0, ((elo - minElo) / (maxElo - minElo)) * 5));
   };
 
+  // Per-variant subtitle tag for the All Variants view.
+  const variantTag = (result: any): string => {
+    if (result.variant_is_default) return 'Default';
+    const parts = [
+      result.attr_store_pick_name,
+      result.attr_release_year != null ? String(result.attr_release_year) : null,
+      result.attr_batch ? `Batch ${result.attr_batch}` : null,
+    ].filter(Boolean);
+    return parts.length ? parts.join(' · ') : 'Variant';
+  };
+
+  // Bottles view: one card per SKU, scored from the default variant's Elo.
   const mapBottleResult = (result: any): Bottle => {
     const variantIds: string[] = result.attr_variant_ids || [];
     const batches: string[] = result.attr_batch || [];
     const releaseYears: string[] = result.attr_release_year || [];
     const storePickNames: string[] = result.attr_store_pick_name || [];
+    const elo = result.default_variant_elo ?? result.bottle_elo_global;
 
     return {
       id: result.bottle_id,
+      bottleId: result.bottle_id,
       name: result.bottle_name,
       distillery: result.bottle_distillery,
       category: result.bottle_category,
       image_url: result.attr_frontimage_url,
-      elo_global: result.bottle_elo_global,
+      elo_global: elo,
       provisional: !result.bottle_verified,
-      stars: calcStars(result.bottle_elo_global),
+      stars: calcStars(elo),
+      variantCount: result.variant_count ?? variantIds.length,
       style: result.bottle_style,
       age: result.attr_age,
       proof: result.attr_proof,
@@ -111,6 +134,35 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       palate: result.attr_palate,
       finish: result.attr_finish,
       extras: result.attr_extras,
+    } as any;
+  };
+
+  // All Variants view: one card per variant, scored from the variant's own Elo.
+  // id = variant_id (unique card key); bottleId = SKU id (detail + collection lookup).
+  const mapVariantResult = (result: any): Bottle => {
+    const elo = result.variant_elo_global;
+    return {
+      id: result.variant_id,
+      bottleId: result.bottle_id,
+      variantId: result.variant_id,
+      name: result.bottle_name,
+      distillery: result.bottle_distillery,
+      category: result.bottle_category,
+      image_url: result.attr_frontimage_url,
+      elo_global: elo,
+      provisional: !result.variant_verified,
+      stars: calcStars(elo),
+      variantLabel: variantTag(result),
+      style: result.bottle_style,
+      age: result.attr_age,
+      proof: result.attr_proof,
+      verified: result.variant_verified,
+      barcode: result.bottle_barcode,
+      frontImageUrl: result.attr_frontimage_url,
+      backImageUrl: result.attr_backimage_url,
+      nose: result.attr_nose,
+      palate: result.attr_palate,
+      finish: result.attr_finish,
     } as any;
   };
 
@@ -159,7 +211,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     fetchUserBottles();
   }, []);
 
-  // Load default bottles — reset=true for initial load, false for load-more
+  // Load browse results for the active mode — reset=true for initial load, false for load-more
   const loadDefaultBottles = useCallback(async (reset: boolean) => {
     if (!reset && isLoadingMoreRef.current) return;
     if (!reset) isLoadingMoreRef.current = true;
@@ -175,15 +227,17 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       const offset = offsetRef.current;
       const limit = reset ? DEFAULT_PAGE_SIZE : LOAD_MORE_SIZE;
 
-      const { data, error } = await supabase
-        .from("all_bottle_details")
-        .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name")
-        .order("bottle_elo_global", { ascending: false, nullsFirst: false })
+      const isBottles = viewMode === 'bottles';
+      // Cast to any: a union table name overflows Supabase's typed query builder.
+      const { data, error } = await (supabase.from(isBottles ? "all_bottle_details" : "all_variant_details") as any)
+        .select(isBottles ? BOTTLE_SELECT : VARIANT_SELECT)
+        .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
         .range(offset, offset + limit - 1);
 
       if (error) { console.error("Browse load error:", error.message); return; }
 
-      const mapped = (data || []).map(mapBottleResult);
+      const mapFn = isBottles ? mapBottleResult : mapVariantResult;
+      const mapped = (data || []).map(mapFn);
 
       if (reset) {
         setDefaultBottles(mapped);
@@ -203,9 +257,10 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       if (reset) setIsLoading(false);
       else { setIsLoadingMore(false); isLoadingMoreRef.current = false; }
     }
-  }, [minElo, maxElo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, minElo, maxElo]);
 
-  // Initial browse load
+  // Initial browse load (re-runs when the mode changes)
   useEffect(() => {
     loadDefaultBottles(true);
   }, [loadDefaultBottles]);
@@ -235,11 +290,14 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   const sortedBottles = useMemo(() => {
     const base = query.trim() ? bottles : defaultBottles;
 
-    let annotated = base.map(bottle => ({
-      ...bottle,
-      inCollection: bottle.id in userBottlesMap,
-      currentlyOwned: userBottlesMap[bottle.id]?.some(r => r.currently_owned) ?? false,
-    }));
+    let annotated = base.map(bottle => {
+      const skuId = bottle.bottleId ?? bottle.id; // collection is tracked at the SKU level
+      return {
+        ...bottle,
+        inCollection: skuId in userBottlesMap,
+        currentlyOwned: userBottlesMap[skuId]?.some(r => r.currently_owned) ?? false,
+      };
+    });
 
     // Apply filter
     if (filter.field && filter.value) {
@@ -283,10 +341,19 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     setFilter({ step: 'closed', field: null, value: null });
   };
 
+  const handleModeChange = (mode: ViewMode) => {
+    if (mode === viewMode) return;
+    setViewMode(mode);
+    const main = document.querySelector('main');
+    if (main) main.scrollTop = 0;
+  };
+
   const handleBottleClick = (bottle: any) => {
-    const row = userBottlesMap[bottle.id]?.[0];
+    const skuId = bottle.bottleId ?? bottle.id;
+    const row = userBottlesMap[skuId]?.[0];
     setSelectedBottle({
       ...bottle,
+      id: skuId, // detail view fetches variants + collection status by SKU id
       timesHad: row?.times_had,
       lastActivity: formatLastActivity(row),
     });
@@ -301,32 +368,46 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
 
     setIsLoading(true);
     try {
-      const { data: searchResults, error } = await supabase
-        .from("all_bottle_details")
-        .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name")
-        .or(`bottle_name.ilike.%${searchTerm}%,bottle_distillery.ilike.%${searchTerm}%,bottle_category.ilike.%${searchTerm}%,bottle_style.ilike.%${searchTerm}%,bottle_barcode.ilike.%${searchTerm}%,attr_age.ilike.%${searchTerm}%,attr_nose.ilike.%${searchTerm}%,attr_palate.ilike.%${searchTerm}%,attr_finish.ilike.%${searchTerm}%`)
-        .order("bottle_elo_global", { ascending: false, nullsFirst: false })
-        .limit(50);
+      const isBottles = viewMode === 'bottles';
+      const term = searchTerm;
+      const orClause = isBottles
+        ? `bottle_name.ilike.%${term}%,bottle_distillery.ilike.%${term}%,bottle_category.ilike.%${term}%,bottle_style.ilike.%${term}%,bottle_barcode.ilike.%${term}%,attr_age.ilike.%${term}%,attr_nose.ilike.%${term}%,attr_palate.ilike.%${term}%,attr_finish.ilike.%${term}%`
+        : `bottle_name.ilike.%${term}%,bottle_distillery.ilike.%${term}%,bottle_category.ilike.%${term}%,bottle_style.ilike.%${term}%,bottle_barcode.ilike.%${term}%,attr_age.ilike.%${term}%,attr_batch.ilike.%${term}%,attr_store_pick_name.ilike.%${term}%,attr_nose.ilike.%${term}%,attr_palate.ilike.%${term}%,attr_finish.ilike.%${term}%`;
 
-      const filteredResults = (searchResults || []).filter((bottle) => {
-        const termLower = searchTerm.toLowerCase();
-        if (bottle.bottle_name?.toLowerCase().includes(termLower)) return true;
-        if (bottle.bottle_distillery?.toLowerCase().includes(termLower)) return true;
-        if (bottle.bottle_category?.toLowerCase().includes(termLower)) return true;
-        if (bottle.bottle_style?.toLowerCase().includes(termLower)) return true;
-        if (bottle.bottle_barcode?.toLowerCase().includes(termLower)) return true;
-        if (bottle.attr_age?.toLowerCase().includes(termLower)) return true;
-        if ((bottle.attr_batch as string[])?.some((v: string) => v?.toLowerCase().includes(termLower))) return true;
-        if ((bottle.attr_store_pick_name as string[])?.some((v: string) => v?.toLowerCase().includes(termLower))) return true;
-        if (bottle.attr_nose?.toLowerCase().includes(termLower)) return true;
-        if (bottle.attr_palate?.toLowerCase().includes(termLower)) return true;
-        if (bottle.attr_finish?.toLowerCase().includes(termLower)) return true;
-        return false;
-      });
+      // Cast to any: a union table name + .or() overflows Supabase's typed query builder.
+      const { data: searchResults, error } = await (supabase.from(isBottles ? "all_bottle_details" : "all_variant_details") as any)
+        .select(isBottles ? BOTTLE_SELECT : VARIANT_SELECT)
+        .or(orClause)
+        .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
+        .limit(50);
 
       if (error) { setBottles([]); return; }
 
-      setBottles((filteredResults || []).map(mapBottleResult));
+      const termLower = searchTerm.toLowerCase();
+      const filteredResults = (searchResults || []).filter((row: any) => {
+        if (row.bottle_name?.toLowerCase().includes(termLower)) return true;
+        if (row.bottle_distillery?.toLowerCase().includes(termLower)) return true;
+        if (row.bottle_category?.toLowerCase().includes(termLower)) return true;
+        if (row.bottle_style?.toLowerCase().includes(termLower)) return true;
+        if (row.bottle_barcode?.toLowerCase().includes(termLower)) return true;
+        if (row.attr_age?.toLowerCase().includes(termLower)) return true;
+        if (row.attr_nose?.toLowerCase().includes(termLower)) return true;
+        if (row.attr_palate?.toLowerCase().includes(termLower)) return true;
+        if (row.attr_finish?.toLowerCase().includes(termLower)) return true;
+        if (isBottles) {
+          // Bottle view: batch / store-pick arrive as arrays aggregated across variants.
+          if ((row.attr_batch as string[])?.some((v: string) => v?.toLowerCase().includes(termLower))) return true;
+          if ((row.attr_store_pick_name as string[])?.some((v: string) => v?.toLowerCase().includes(termLower))) return true;
+        } else {
+          // Variant view: batch / store-pick are scalar per variant.
+          if (row.attr_batch?.toLowerCase?.().includes(termLower)) return true;
+          if (row.attr_store_pick_name?.toLowerCase?.().includes(termLower)) return true;
+        }
+        return false;
+      });
+
+      const mapFn = isBottles ? mapBottleResult : mapVariantResult;
+      setBottles(filteredResults.map(mapFn));
     } catch (error) {
       console.error("Unexpected error:", error);
       setBottles([]);
@@ -334,7 +415,8 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     } finally {
       setIsLoading(false);
     }
-  }, [allBottlesElo, minElo, maxElo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, minElo, maxElo]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -345,8 +427,11 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   }, [query, searchBottles]);
 
   const handleBottleAdded = useCallback((newBottle?: any) => {
-    if (newBottle) {
+    // ProvisionalSheet creates a SKU (bottle + default variant). Optimistically show it
+    // in Bottles mode; in Variants mode just re-run the search to pick it up cleanly.
+    if (newBottle && viewMode === 'bottles') {
       newBottle.stars = calcStars(newBottle.elo_global ?? 1500);
+      newBottle.bottleId = newBottle.bottleId ?? newBottle.id;
       if (query.trim()) {
         setBottles((prev) => [newBottle, ...prev]);
       } else {
@@ -356,7 +441,8 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     if (query.trim()) {
       searchBottles(query);
     }
-  }, [query, searchBottles]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, searchBottles, viewMode]);
 
   const handleAddToBar = useCallback(async (bottleId: string, variantId?: string | null) => {
     if (!publicUserId) { toast.error("Not logged in"); return; }
@@ -435,7 +521,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     toast.success("Removed from collection");
   }, [publicUserId]);
 
-  // DB-level count for filtered browse mode — needed because defaultBottles is paginated
+  // DB-level count for filtered browse mode — needed because the list is paginated
   const [filteredBrowseCount, setFilteredBrowseCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -446,14 +532,15 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     }
 
     async function fetchCount() {
-      let q = supabase
-        .from('all_bottle_details')
+      const isBottles = viewMode === 'bottles';
+      let q: any = (supabase.from(isBottles ? 'all_bottle_details' : 'all_variant_details') as any)
         .select('*', { count: 'exact', head: true });
 
       if (filter.field === 'category') {
-        q = (q as any).eq('bottle_category', filter.value);
+        q = q.eq('bottle_category', filter.value);
       } else if (filter.field === 'verified') {
-        q = (q as any).eq('bottle_verified', filter.value === 'Verified');
+        const col = isBottles ? 'bottle_verified' : 'variant_verified';
+        q = q.eq(col, filter.value === 'Verified');
       }
 
       const { count } = await q;
@@ -461,17 +548,18 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     }
 
     fetchCount();
-  }, [filter, query, filterActive]);
+  }, [filter, query, filterActive, viewMode]);
 
   // Count shown in banner
-  // - No query, no filter: total DB count (from server prop)
+  // - No query, no filter: total DB count for the mode (from server prop)
   // - No query, filter active: DB count for that filter (separate query)
   // - Query active: count of in-memory search results (bounded to 50)
+  const totalCount = viewMode === 'bottles' ? totalBottleCount : totalVariantCount;
   const displayCount = query.trim()
     ? sortedBottles.length
     : filterActive && filteredBrowseCount !== null
     ? filteredBrowseCount
-    : totalBottleCount;
+    : totalCount;
 
   return (
     <>
@@ -560,7 +648,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
 
         {/* Bottle count — center */}
         <span className="flex-1 text-center text-sm text-charcoal font-medium tabular-nums">
-          {displayCount.toLocaleString()} Bottles
+          {displayCount.toLocaleString()} {viewMode === 'bottles' ? 'Bottles' : 'Variants'}
         </span>
 
         {/* Sort By */}
@@ -601,6 +689,26 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
           )}
         </div>
       </header>
+
+      {/* Bottles | All Variants toggle — own row beneath the filter/sort bar */}
+      <div className="fixed top-[92px] left-0 right-0 h-9 bg-ivory border-b border-charcoal z-20 flex items-center justify-center px-4">
+        <div className="inline-flex border border-charcoal rounded-full overflow-hidden text-sm">
+          <button
+            onClick={() => handleModeChange('bottles')}
+            className="px-4 py-0.5 transition-colors"
+            style={viewMode === 'bottles' ? { backgroundColor: '#2F2F2F', color: '#FFFFFF' } : { color: '#2F2F2F' }}
+          >
+            Bottles
+          </button>
+          <button
+            onClick={() => handleModeChange('variants')}
+            className="px-4 py-0.5 border-l border-charcoal transition-colors"
+            style={viewMode === 'variants' ? { backgroundColor: '#2F2F2F', color: '#FFFFFF' } : { color: '#2F2F2F' }}
+          >
+            All Variants
+          </button>
+        </div>
+      </div>
 
       {/* Scrollable Content */}
       <div className="px-4 py-4">
@@ -668,7 +776,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
         </Button>
       )}
 
-      <Toaster position="top-center" style={{ top: '96px' }} />
+      <Toaster position="top-center" style={{ top: '132px' }} />
 
       {selectedBottle && (
         <BottleDetailView

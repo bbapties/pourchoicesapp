@@ -33,7 +33,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <main
         className="flex-1 overflow-y-auto min-h-0"
         style={{
-          marginTop: pathname === "/search" ? "92px" : pathname === "/mybar" ? "132px" : "0px",
+          marginTop: pathname === "/search" ? "128px" : pathname === "/mybar" ? "132px" : "0px",
           marginBottom: isAuthPage ? "0px" : "calc(64px + env(safe-area-inset-bottom))",
         }}
       >
