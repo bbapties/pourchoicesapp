@@ -29,6 +29,7 @@ export interface BottleDetails {
   verified: boolean;
   barcode?: string;
   lastActivity?: string; // Calculated field
+  timesHad?: number; // user_bottles.times_had — how many times this user has had this SKU
   frontImageUrl?: string;
   backImageUrl?: string;
   variants: BottleVariant[];

@@ -14,6 +14,7 @@ import BottleCard, { type Bottle } from "@/components/BottleCard";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
 import { type BottleDetails } from "@/lib/types";
 import BottleDetailView from "@/components/BottleDetailView";
+import { addOrRestockUserBottle, type UserBottleRow } from "@/lib/userBottles";
 
 const DEFAULT_PAGE_SIZE = 30;
 const LOAD_MORE_SIZE = 15;
@@ -38,7 +39,7 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   const offsetRef = useRef(0); // tracks current loaded count
 
   // user_bottles map: bottle_id → array of ownership rows (multiple variants per bottle supported)
-  const [userBottlesMap, setUserBottlesMap] = useState<Record<string, Array<{ currently_owned: boolean; variant_id: string | null }>>>({});
+  const [userBottlesMap, setUserBottlesMap] = useState<Record<string, UserBottleRow[]>>({});
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
 
   type SortOption = 'global' | 'az' | 'za' | 'yours' | null;
@@ -132,20 +133,30 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
       }
       setPublicUserId(publicUser.id);
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('user_bottles')
-        .select('bottle_id, currently_owned, variant_id')
+        .select('bottle_id, currently_owned, variant_id, times_had')
         .eq('user_id', publicUser.id);
+      if (error) {
+        ({ data, error } = await supabase
+          .from('user_bottles')
+          .select('bottle_id, currently_owned, variant_id')
+          .eq('user_id', publicUser.id));
+      }
 
       if (error) {
         console.error('Failed to fetch user collection:', error.message);
         return;
       }
 
-      const map: Record<string, Array<{ currently_owned: boolean; variant_id: string | null }>> = {};
+      const map: Record<string, UserBottleRow[]> = {};
       (data || []).forEach(row => {
         if (!map[row.bottle_id]) map[row.bottle_id] = [];
-        map[row.bottle_id].push({ currently_owned: row.currently_owned, variant_id: row.variant_id ?? null });
+        map[row.bottle_id].push({
+          currently_owned: row.currently_owned,
+          variant_id: row.variant_id ?? null,
+          times_had: row.times_had ?? 1,
+        });
       });
       setUserBottlesMap(map);
     }
@@ -277,7 +288,11 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
     setFilter({ step: 'closed', field: null, value: null });
   };
 
-  const handleBottleClick = (bottle: any) => setSelectedBottle(bottle);
+  const handleBottleClick = (bottle: any) =>
+    setSelectedBottle({
+      ...bottle,
+      timesHad: userBottlesMap[bottle.id]?.[0]?.times_had,
+    });
 
   const searchBottles = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
@@ -348,47 +363,26 @@ export default function SearchClient({ allBottlesElo, totalBottleCount }: Search
   const handleAddToBar = useCallback(async (bottleId: string, variantId?: string | null) => {
     if (!publicUserId) { toast.error("Not logged in"); return; }
 
-    const existing = userBottlesMap[bottleId];
-    const now = new Date().toISOString();
-    const vid = variantId ?? null;
-
-    if (vid === null) {
-      // Prefer a new owned row (another bottle). If the unique key blocks it, re-activate the empty one.
-      const { error: insertError } = await supabase
-        .from('user_bottles')
-        .insert({ user_id: publicUserId, bottle_id: bottleId, currently_owned: true, variant_id: null, created_at: now, updated_at: now });
-      if (insertError) {
-        const noVariantRow = existing?.find(r => r.variant_id === null);
-        if (noVariantRow && !noVariantRow.currently_owned) {
-          const { error } = await supabase
-            .from('user_bottles')
-            .update({ currently_owned: true, updated_at: now })
-            .eq('user_id', publicUserId)
-            .eq('bottle_id', bottleId)
-            .is('variant_id', null);
-          if (error) { toast.error("Failed to add to My Bar"); return; }
-        } else {
-          toast.error("Failed to add to My Bar");
-          return;
-        }
-      }
-    } else {
-      // Variant row — always insert (partial index enforces uniqueness per variant)
-      const { error } = await supabase
-        .from('user_bottles')
-        .insert({ user_id: publicUserId, bottle_id: bottleId, currently_owned: true, variant_id: vid, created_at: now, updated_at: now });
-      if (error) { toast.error("Failed to add to My Bar"); return; }
+    const existing = userBottlesMap[bottleId]?.[0] ?? null;
+    const result = await addOrRestockUserBottle({
+      userId: publicUserId,
+      bottleId,
+      variantId,
+      existing,
+    });
+    if ("error" in result) {
+      toast.error("Failed to add to My Bar");
+      return;
     }
 
-    setUserBottlesMap(prev => {
-      const rows = prev[bottleId] ?? [];
-      const updated = vid === null
-        ? rows.some(r => r.variant_id === null)
-          ? rows.map(r => r.variant_id === null ? { ...r, currently_owned: true } : r)
-          : [...rows, { currently_owned: true, variant_id: null }]
-        : [...rows, { currently_owned: true, variant_id: vid }];
-      return { ...prev, [bottleId]: updated };
-    });
+    setUserBottlesMap(prev => ({
+      ...prev,
+      [bottleId]: [{
+        currently_owned: true,
+        variant_id: variantId ?? existing?.variant_id ?? null,
+        times_had: result.timesHad,
+      }],
+    }));
     toast.success("Added to My Bar!");
   }, [publicUserId, userBottlesMap]);
 

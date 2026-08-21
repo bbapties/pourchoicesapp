@@ -17,19 +17,30 @@ export default async function MyBarPage() {
 
   if (!publicUser) redirect('/');
 
-  // Fetch currently-owned bottle IDs + add dates
-  const { data: ownedBottles } = await supabase
+  const ownedSelect = 'bottle_id, variant_id, created_at, times_had';
+  const emptySelect = 'bottle_id, variant_id, created_at, updated_at, times_had';
+  let { data: ownedBottles, error: ownedErr } = await supabase
     .from('user_bottles')
-    .select('bottle_id, variant_id, created_at')
+    .select(ownedSelect)
     .eq('user_id', publicUser.id)
     .eq('currently_owned', true);
-
-  // Fetch finished (empty) bottle IDs
-  const { data: emptyBottles } = await supabase
+  let { data: emptyBottles, error: emptyErr } = await supabase
     .from('user_bottles')
-    .select('bottle_id, variant_id, created_at, updated_at')
+    .select(emptySelect)
     .eq('user_id', publicUser.id)
     .eq('currently_owned', false);
+  if (ownedErr || emptyErr) {
+    ({ data: ownedBottles } = await supabase
+      .from('user_bottles')
+      .select('bottle_id, variant_id, created_at')
+      .eq('user_id', publicUser.id)
+      .eq('currently_owned', true));
+    ({ data: emptyBottles } = await supabase
+      .from('user_bottles')
+      .select('bottle_id, variant_id, created_at, updated_at')
+      .eq('user_id', publicUser.id)
+      .eq('currently_owned', false));
+  }
 
   const ownedIds = (ownedBottles || []).map(r => r.bottle_id);
   const emptyIds = (emptyBottles || []).map(r => r.bottle_id);
@@ -54,9 +65,17 @@ export default async function MyBarPage() {
       .order('bottle_elo_global', { ascending: false, nullsFirst: false });
 
     const addedAtMap: Record<string, string> = {};
-    (ownedBottles || []).forEach(r => { addedAtMap[r.bottle_id] = r.created_at; });
+    const timesHadMap: Record<string, number> = {};
+    (ownedBottles || []).forEach(r => {
+      addedAtMap[r.bottle_id] = r.created_at;
+      timesHadMap[r.bottle_id] = r.times_had ?? 1;
+    });
 
-    ownedCollection = (details || []).map(d => ({ ...d, addedAt: addedAtMap[d.bottle_id] }));
+    ownedCollection = (details || []).map(d => ({
+      ...d,
+      addedAt: addedAtMap[d.bottle_id],
+      times_had: timesHadMap[d.bottle_id],
+    }));
   }
 
   if (emptyIds.length > 0) {
@@ -68,9 +87,17 @@ export default async function MyBarPage() {
 
     // Use updated_at as "finished on" date if available, else created_at
     const finishedAtMap: Record<string, string> = {};
-    (emptyBottles || []).forEach(r => { finishedAtMap[r.bottle_id] = r.updated_at || r.created_at; });
+    const timesHadMap: Record<string, number> = {};
+    (emptyBottles || []).forEach(r => {
+      finishedAtMap[r.bottle_id] = r.updated_at || r.created_at;
+      timesHadMap[r.bottle_id] = r.times_had ?? 1;
+    });
 
-    emptyCollection = (details || []).map(d => ({ ...d, addedAt: finishedAtMap[d.bottle_id] }));
+    emptyCollection = (details || []).map(d => ({
+      ...d,
+      addedAt: finishedAtMap[d.bottle_id],
+      times_had: timesHadMap[d.bottle_id],
+    }));
   }
 
   // Fetch all Elos for star scaling

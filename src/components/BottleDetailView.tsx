@@ -280,6 +280,12 @@ export default function BottleDetailView({
           <span className="text-gray-500">My last activity</span>
           <span>{localBottle.lastActivity || 'None'}</span>
         </div>
+        {localBottle.timesHad != null && localBottle.timesHad > 0 && (
+          <div className="flex items-center justify-between text-sm mb-3 -mt-1">
+            <span className="text-gray-500">Times had</span>
+            <span>{localBottle.timesHad}</span>
+          </div>
+        )}
 
         {/* Variant note (if present) */}
         {currentVariant.notes && (
