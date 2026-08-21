@@ -5,7 +5,10 @@
 BEGIN;
 
 -- 1) Additive columns on bottle_variants
-ALTER TABLE public.bottle_variants ADD COLUMN IF NOT EXISTS elo_global numeric DEFAULT 1500;
+-- elo_global is added nullable with NO default so existing rows stay NULL and
+-- step 2 can copy the parent SKU score (e.g. Buffalo Trace 1547.88). A 1500
+-- default is attached afterwards for *new* rows only.
+ALTER TABLE public.bottle_variants ADD COLUMN IF NOT EXISTS elo_global numeric;
 ALTER TABLE public.bottle_variants ADD COLUMN IF NOT EXISTS nose text;
 ALTER TABLE public.bottle_variants ADD COLUMN IF NOT EXISTS palate text;
 ALTER TABLE public.bottle_variants ADD COLUMN IF NOT EXISTS finish text;
@@ -17,6 +20,8 @@ SET elo_global = COALESCE(v.elo_global, b.elo_global, 1500)
 FROM public.bottles b
 WHERE v.bottles_id = b.id
   AND v.elo_global IS NULL;
+
+ALTER TABLE public.bottle_variants ALTER COLUMN elo_global SET DEFAULT 1500;
 
 -- 3) Promote one existing "plain" variant to default (no batch / store pick / release year)
 --    so we don't insert a duplicate standard row when one already exists.
