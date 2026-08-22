@@ -31,7 +31,7 @@ Format: `- [ ] Short description — why it matters`
 - [ ] Share tasting results (screenshot-friendly results card)
 - [ ] Tasting history — view past sessions
 - [ ] Flavor/nuance tagging during tastings → aggregate into per-section flavor bar charts (see memory: tasting-flavor-tags-and-charts)
-- [ ] Activity feed — drink events (neat / rocks / mixed / blind) surface as "so-and-so poured X"
+- [x] Activity feed — drink events (neat / rocks / mixed / blind) surface as "so-and-so poured X" (shipped as Social tab, 2026-08-21; global feed, SKU-level)
 
 ## Profile
 - [ ] Avatar / profile photo

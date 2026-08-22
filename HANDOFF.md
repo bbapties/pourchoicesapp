@@ -8,31 +8,29 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production).
-- **Last commit:** doc handoff below (app tip after 7.2 UI `df13291`; SQL `b0bd17b`).
-- **Current phase:** **Phase 7. 7.1 and 7.2 are done.** Next is **7.4** (variant carousel).
+- **Last commit:** (this session) 7.7 Have a drink + Social feed. SQL for `activities` is already applied on prod Supabase.
+- **Current phase:** **Phase 7.** 7.1, 7.2, 7.7 (SKU-level), and 7.10 Social are done. Next is **7.4** (variant carousel).
 
 **Done in Phase 7:**
 - **7.1** — variant-first data model (2026-08-21). Additive cols on `bottle_variants`: `elo_global`, `nose`, `palate`, `finish`, `is_default`. Every SKU has exactly one default. **80 bottles, 112 variants**, 0 missing default. App: `src/lib/variants.ts`; new bottles dual-write a default variant; detail overlays default Elo/notes/images.
 - **7.2** — search roll-up + [Bottles | All Variants] toggle (2026-08-21, verified on localhost, pushed to `MVP-v3`). SQL (`b0bd17b`): `all_bottle_details` gained `default_variant_elo`/`default_variant_id`/`variant_count` (**additive — no columns dropped**); new `all_variant_details` view (one row per variant + SKU identity). App (`df13291`): Bottles view scores each SKU from its default variant + "N variants" badge (hidden at 1); All Variants = per-variant cards sorted by variant Elo with a subtitle tag (Default / Batch / year / store pick). Star scaling, count banner, browse pagination, search, and category/verified filters are all mode-aware. AppShell `/search` top margin 92→128px for the toggle row.
 - 7.3 — detail-card layout (`66d028c`).
 - 7.5 — *partial*: placeholder, tap-to-zoom, Front/Back (`573cfe3`); zoom-close fix `27e5702`. Per-variant images wait on **7.4**.
-- Earlier this phase: empty bottle → **Add to My Bar** (same `user_bottles` row, increment `times_had`); **My last activity** = `Added · date` / `Finished · date`. "Drank ·" is 7.7.
-
-**Also this session — Vercel deploy was broken, now fixed (prod green):**
-- TS build error: removed dead `user_bottles` column fallbacks in `mybar/page.tsx` + `SearchClient.tsx` (columns are all live now) — `b4629b5`.
-- Runtime error: Node 18 is discontinued on Vercel; pinned `engines.node` to `22.x` — `a711056`. The Vercel dashboard Node version was already 22.x.
+- **7.7 + 7.10** — Have a drink + Social feed (2026-08-21). New `activities` table (append-only; authenticated read-all / insert-own). **Have a drink** on any bottle (not gated by My Bar; does not insert `user_bottles` or bump `times_had`). Pour sheet: neat / rocks / mixed / blind. Blind logs the pour and toasts that tastings aren't live. Add / finish / restock / add-to-DB also write activities. Bottom nav is Search / Social / My Bar / Profile. `/taste` redirects to `/social`. My last activity prefers the latest `activities` row (`Drank · date` included). `suggested_edit` is schema-only until 7.8.
 
 **Next step:**
-- **7.4 — Variant carousel.** Swipeable carousel over [default + variants]; the whole card swaps on swipe; subtitle + pager + dots. `BottleDetailView` already has a `variantIndex` + pager/dots for **labeled** (non-default) variants — extend it to a full carousel that includes the default and swaps every variant-specific field. Single-variant SKUs show no pager. This also finishes 7.5 (per-variant images).
+- **7.4 — Variant carousel.** Swipeable carousel over [default + variants]; the whole card swaps on swipe; subtitle + pager + dots. `BottleDetailView` already has a `variantIndex` + pager/dots for **labeled** (non-default) variants — extend it to a full carousel that includes the default and swaps every variant-specific field. Single-variant SKUs show no pager. This also finishes 7.5 (per-variant images) and lets 7.7 attach pours to a variant.
 
 **SQL access:** `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. Don't print secrets. Keep SQL files ASCII-only (non-ASCII in a `-c` string fails with a UTF8 byte error on Windows). See AGENTS.md.
 
-**Open decisions / waiting on Brian:** none — 7.2 verified on localhost and pushed.
+**Open decisions / waiting on Brian:** none for this slice. Verify Have a drink + Social on localhost and mobile before push.
 
 **Landmines:**
 - `user_bottles` is **one row per (user, bottle)**. Restock increments `times_had`. Do not insert a second row for the same SKU.
+- A drink must **not** create a `user_bottles` row. `times_had` is collection restocks, not pours.
 - Empty bottles show **Add to My Bar**, not the In My Bar / Finished It split.
 - Search now scores from `default_variant_elo` (fallback `bottle_elo_global`); star scaling range differs per mode. `all_bottle_details` is additive-extended; `all_variant_details` is new. Rollback: `sql/7.2-snapshot.sql` (+ `DROP VIEW all_variant_details`).
+- `activities` rollback: `DROP TABLE IF EXISTS public.activities CASCADE;` (see `sql/activities-snapshot.sql`). Admin `delete_user_cascade` is unchanged; `activities.user_id` ON DELETE CASCADE covers user wipe.
 - Supabase's typed client overflows ("excessively deep") on a **union table name + `.or()`** — the dynamic-table queries in `SearchClient.tsx` are cast to `any` on purpose. Don't "fix" the casts.
 
 ---
@@ -44,13 +42,22 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
   Two spec mismatches noted in ROADMAP: no `DB_SCHEMA.sql` at root (only `DB_Schema.txt.txt`); no `src/lib/useCurrentUser.ts`.
 - ⬜ **Still open — DB_Schema.txt.txt lags the live DB:** missing `users.role`, admin RPCs, `all_bottle_details` view
   (now incl. `default_variant_elo`/`default_variant_id`/`variant_count`), the new `all_variant_details` view,
-  storage bucket, `bottle_variants.{elo_global,nose,palate,finish,is_default}`, `user_bottles.times_had`. No `suggested_edits` (7.8).
+  storage bucket, `bottle_variants.{elo_global,nose,palate,finish,is_default}`, `user_bottles.times_had`,
+  `public.activities`. No `suggested_edits` table (7.8); `activities.action` includes `suggested_edit` for later.
 - ✅ **7.2 read-switch is live** — search scores from the default variant (`all_bottle_details.default_variant_elo`) and the
   All Variants view scores from `all_variant_details.variant_elo_global`. `bottles.elo_global` is now legacy/fallback only.
 
 ---
 
 ## Log (newest first)
+
+### 2026-08-21 — Grok (7.7 Have a drink + Social feed)
+- Pulled 7.7 + the social activity feed forward (Brian: pause 7.4, SKU-level drinks, replace Taste with Social, full pour sheet).
+- SQL: `sql/activities-snapshot.sql` + `sql/activities-migration.sql` applied on live Supabase. New `activities` table, RLS (authenticated select all / insert own), indexes. Rollback: `DROP TABLE IF EXISTS public.activities CASCADE`.
+- App: `src/lib/activities.ts`; `PourSheet`; **Have a drink** on any bottle in `BottleDetailView` (neat/rocks/mixed/blind). Drink does not touch `user_bottles`. Add/finish/restock/add-to-DB also write activities (fail-open).
+- New `/social` feed. AppShell Taste tab -> Social. `/taste` redirects to `/social`.
+- My last activity reads `activities` when present (`Drank · date`).
+- **Next: 7.4 variant carousel.** Verify this slice on localhost + mobile before pushing.
 
 ### 2026-08-21 — Claude (END SESSION: 7.2 shipped + Vercel deploy fixed)
 - **Fixed a broken prod deploy first:** TS build error from dead `user_bottles` column fallbacks in `mybar/page.tsx` + `SearchClient.tsx` (removed — the columns are all live), and Node 18 discontinuation on Vercel (pinned `engines.node` to `22.x`; dashboard was already 22.x). Commits `b4629b5`, `a711056` — pushed and confirmed green by Brian.

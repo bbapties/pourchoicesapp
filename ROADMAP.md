@@ -21,7 +21,7 @@ Goal: Make everything that exists work correctly end-to-end.
 - [x] 1.0 Drop in brand assets (cellar-bg.png, coming-soon.jpg to /public)
 - [x] 1.1 Splash/login screen — cellar-bg, 1.5s intentional pause, step-by-step auth wizard, redirect to /mybar
 - [x] 1.1 Placeholder pages — coming-soon image on mybar/taste/profile
-- [x] 1.1 AppShell — 4-tab nav (Search/Taste/My Bar/Profile), hidden on login page
+- [x] 1.1 AppShell — 4-tab nav (Search/Social/My Bar/Profile; Taste replaced 2026-08-21), hidden on login page
 - [x] 1.2 Search — result count banner, sort dropdown (A-Z/Yours/Global), star ratings replacing percentile
 - [x] 1.3 Search — "Add to My Bar" saves to DB; toggle "Finished It"; hard delete with confirmation (Story 6.13, 6.17)
 - [x] 1.4 Indicator earmarks on cards (provisional=dot, owned=green✓, past=grey✓, splits for dual status) (Story 6.18, 6.28, 6.42)
@@ -127,7 +127,7 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
-**Progress (2026-08-21):** **7.1 and 7.2 shipped.** 7.1 = variant-first columns + default-variant backfill + app dual-write. 7.2 = search roll-up (default-variant scoring), "N variants" badge, and the [Bottles | All Variants] toggle + per-variant leaderboard. 7.3 layout and 7.5 image fallback/zoom/Front-Back were already live. **Next is 7.4** (variant carousel) — which also unblocks per-variant images (finishes 7.5).
+**Progress (2026-08-21):** **7.1 and 7.2 shipped.** 7.1 = variant-first columns + default-variant backfill + app dual-write. 7.2 = search roll-up (default-variant scoring), "N variants" badge, and the [Bottles | All Variants] toggle + per-variant leaderboard. 7.3 layout and 7.5 image fallback/zoom/Front-Back were already live. **7.7 + Social feed pulled forward** (SKU-level Have a drink + `/social` tab replacing Taste). **Next is still 7.4** (variant carousel) — which also unblocks per-variant images (finishes 7.5) and per-variant pours.
 
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
@@ -166,9 +166,9 @@ Epic C — Actions & moderation
 - [ ] 7.6 State-aware action control
   - Goal: state-dependent primary (Add to My Bar / Log a Pour / Add Back) + More sheet (Add another, Blind tasting, Mark as Empty) + a separate Suggest-edit pencil.
   - Exit: visible actions match state (not owned / owned / empty); Mark as Empty soft-deletes (hidden from My Bar, kept in history).
-- [ ] 7.7 Log a Pour branch
-  - Goal: one Log a Pour action branching into neat / rocks / mixed / blind tasting; records a drink event at the variant level.
-  - Exit: choosing a type records an activity on the variant + updates My last activity; blind tasting hands off to the tasting flow (stub until Phase 3).
+- [x] 7.7 Log a Pour branch (SKU-level prototype, 2026-08-21)
+  - Goal: one Have a drink action branching into neat / rocks / mixed / blind tasting; records a drink event. **Shipped at SKU level** (any bottle, owned or not). Variant-level pours wait on 7.4.
+  - Exit: choosing a type records an `activities` row + updates My last activity. Does **not** add the bottle to My Bar or increment `times_had`. Blind logs the pour and toasts that tastings aren't live (Phase 3 still a stub; `/taste` redirects to `/social`).
 - [ ] 7.8 Suggest-an-edit (correction) flow
   - Goal: editing existing fields creates a pending suggestion (golden copy untouched) → admin queue → approve applies.
   - Exit: user edit doesn't change live data; appears in the admin queue as pending (before/after); approve applies; user sees "under review". (Needs a suggested-edits table.)
@@ -176,7 +176,11 @@ Epic C — Actions & moderation
   - Goal: new variant publishes immediately as unverified with a save choice ("database only" vs "and add to my bar"); flows to the verify queue.
   - Exit: new variant visible to all as unverified; "and add to my bar" also adds it to the user's collection (usable now); appears in the admin Bottles queue.
 
-Notes: 7.3–7.5 build against 7.1's model; 7.7's blind-tasting branch + variant-level tastings wait on Phase 3. Deferred to BACKLOG: personal comments, flavor tagging → charts, 3rd image slot, activity/social feed.
+- [x] 7.10 Social activity feed (pulled forward from BACKLOG, 2026-08-21)
+  - Goal: bottom-nav Social tab; reverse-chronological global feed of bottle, username, action.
+  - Exit: Search / Social / My Bar / Profile; rows for drank / added to collection / finished / added to DB; tap opens bottle detail. `suggested_edit` is reserved in the schema until 7.8.
+
+Notes: 7.3–7.5 build against 7.1's model; 7.7's variant-level pours wait on 7.4; live blind tastings wait on Phase 3. Deferred to BACKLOG: personal comments, flavor tagging → charts, 3rd image slot, follows/likes/comments.
 
 ---
 
