@@ -8,18 +8,19 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production).
-- **Last commit:** END SESSION docs (this baton). App tip: `69f7418`.
-- **Current phase:** **Phase 7.** 7.1, 7.2, 7.3, 7.7 (SKU-level), and 7.10 Social are done. **Next is 7.4** (variant carousel).
+- **Last commit:** 7.11 coach marks (local; SQL `seen_coach_ids` already applied on prod DB).
+- **Current phase:** **Phase 7.** 7.1, 7.2, 7.3, 7.7, 7.10, and **7.11** (coach engine) are implemented. **Next is 7.4** (variant carousel) after Brian verifies 7.11.
 
 **Done in Phase 7:**
 - **7.1** — variant-first data model (2026-08-21). Additive cols on `bottle_variants`: `elo_global`, `nose`, `palate`, `finish`, `is_default`. Every SKU has exactly one default. **80 bottles, 112 variants**, 0 missing default. App: `src/lib/variants.ts`; new bottles dual-write a default variant; detail overlays default Elo/notes/images.
 - **7.2** — search roll-up + [Bottles | All Variants] toggle (2026-08-21, verified on localhost, pushed to `MVP-v3`). SQL (`b0bd17b`): `all_bottle_details` gained `default_variant_elo`/`default_variant_id`/`variant_count` (**additive — no columns dropped**); new `all_variant_details` view (one row per variant + SKU identity). App (`df13291`): Bottles view scores each SKU from its default variant + "N variants" badge (hidden at 1); All Variants = per-variant cards sorted by variant Elo with a subtitle tag (Default / Batch / year / store pick). Star scaling, count banner, browse pagination, search, and category/verified filters are all mode-aware. AppShell `/search` top margin 92→128px for the toggle row.
 - 7.3 — detail-card layout (`66d028c`).
 - 7.5 — *partial*: placeholder, tap-to-zoom, Front/Back (`573cfe3`); zoom-close fix `27e5702`. Per-variant images wait on **7.4**.
-- **7.7 + 7.10** — Have a drink + Social feed (2026-08-22, pushed to `MVP-v3`). SQL already live on prod: `activities` table + RLS + action CHECK (`drank`, `added_to_collection`, `finished`, `added_to_db`, `suggested_edit`, `verified`, `removed_from_collection`). App: `src/lib/activities.ts`, `PourSheet`, `/social`, Taste tab replaced. See log below for files and commits.
+- **7.7 + 7.10** — Have a drink + Social feed (2026-08-22, pushed to `MVP-v3`).
+- **7.11** — Coach marks (2026-08-22). `users.seen_coach_ids` (existing users seeded `core.done`). Catalog `src/lib/coaches.ts`. New users: live-UI core tour. Existing: one What's new digest / session with Show me. Future features: add one catalog row (`announce` + optional `tour[]`). Do not re-audit the whole list.
 
 **Next step:**
-- **7.4 — Variant carousel.** Swipeable carousel over [default + variants]; the whole card swaps on swipe; subtitle + pager + dots. `BottleDetailView` already has a `variantIndex` + pager/dots for **labeled** (non-default) variants — extend it to a full carousel that includes the default and swaps every variant-specific field. Single-variant SKUs show no pager. This also finishes 7.5 (per-variant images) and lets 7.7 attach pours to a variant.
+- Verify 7.11 on localhost / phone, then **7.4 — Variant carousel.** Swipeable carousel over [default + variants]; the whole card swaps on swipe; subtitle + pager + dots. `BottleDetailView` already has a `variantIndex` + pager/dots for **labeled** (non-default) variants — extend it to a full carousel that includes the default and swaps every variant-specific field. Single-variant SKUs show no pager. This also finishes 7.5 (per-variant images) and lets 7.7 attach pours to a variant.
 
 **SQL access:** `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. Don't print secrets. Keep SQL files ASCII-only (non-ASCII in a `-c` string fails with a UTF8 byte error on Windows). See AGENTS.md.
 
