@@ -1,0 +1,10 @@
+-- Snapshot before public.activities (2026-08-21).
+-- The table did not exist. Public tables at capture time:
+--   bottle_variants, bottles, tasting_details, tasting_results,
+--   tasting_sessions, user_bottles, users
+--
+-- Rollback after the migration:
+--   DROP TABLE IF EXISTS public.activities CASCADE;
+-- That also drops the indexes and RLS policies on the table.
+-- delete_user_cascade is unchanged; activities.user_id ON DELETE CASCADE
+-- removes feed rows when an admin deletes a user.

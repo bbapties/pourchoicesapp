@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { type BottleDetails } from "@/lib/types";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { logActivity } from "@/lib/activities";
 
 interface AddVariantSheetProps {
   bottle: BottleDetails;
@@ -15,7 +16,7 @@ interface AddVariantSheetProps {
 }
 
 export default function AddVariantSheet({ bottle, open, onOpenChange, onSaved }: AddVariantSheetProps) {
-  const { authId } = useCurrentUser();
+  const { authId, publicUserId } = useCurrentUser();
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [existingVariantId, setExistingVariantId] = useState<string | null>(null);
@@ -92,6 +93,13 @@ export default function AddVariantSheet({ bottle, open, onOpenChange, onSaved }:
           .from('bottle_variants')
           .insert([variantData]);
         if (error) throw error;
+        if (publicUserId) {
+          await logActivity({
+            userId: publicUserId,
+            bottleId: bottle.id,
+            action: "added_to_db",
+          });
+        }
       }
 
       onSaved({

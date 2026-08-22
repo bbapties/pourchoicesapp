@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Search, Wine, GlassWater, User as UserIcon, Shield } from "lucide-react";
+import { Search, Users, GlassWater, User as UserIcon, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CurrentUserProvider, useCurrentUser } from "@/lib/useCurrentUser";
@@ -20,7 +20,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: "/search",  icon: <Search size={24} />,      label: "Search"  },
-    { href: "/taste",   icon: <Wine size={24} />,        label: "Taste"   },
+    { href: "/social",  icon: <Users size={24} />,       label: "Social"  },
     { href: "/mybar",   icon: <GlassWater size={24} />,  label: "My Bar"  },
     { href: "/profile", icon: <UserIcon size={24} />,    label: "Profile" },
   ];
@@ -33,7 +33,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <main
         className="flex-1 overflow-y-auto min-h-0"
         style={{
-          marginTop: pathname === "/search" ? "128px" : pathname === "/mybar" ? "132px" : "0px",
+          marginTop: pathname === "/search" ? "128px" : pathname === "/mybar" ? "132px" : pathname === "/social" ? "56px" : "0px",
           marginBottom: isAuthPage ? "0px" : "calc(64px + env(safe-area-inset-bottom))",
         }}
       >

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/activities";
 
 export type UserBottleRow = {
   currently_owned: boolean;
@@ -15,7 +16,7 @@ function formatActivityDate(iso?: string | null): string | null {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Per-user last action on this SKU. Log-a-Pour ("Drank") is Phase 7.7; until then: Added / Finished. */
+/** Fallback last-action line from user_bottles when no activities row exists. */
 export function formatLastActivity(row?: UserBottleRow | null): string | undefined {
   if (!row) return undefined;
   if (row.currently_owned) {
@@ -56,8 +57,20 @@ export async function addOrRestockUserBottle(opts: {
         .eq("user_id", opts.userId)
         .eq("bottle_id", opts.bottleId);
       if (fallback.error) return { error: fallback.error.message };
+      await logActivity({
+        userId: opts.userId,
+        bottleId: opts.bottleId,
+        action: "added_to_collection",
+        variantId,
+      });
       return { timesHad: opts.existing.times_had ?? 1 };
     }
+    await logActivity({
+      userId: opts.userId,
+      bottleId: opts.bottleId,
+      action: "added_to_collection",
+      variantId,
+    });
     return { timesHad };
   }
 
@@ -70,7 +83,15 @@ export async function addOrRestockUserBottle(opts: {
     created_at: now,
     updated_at: now,
   });
-  if (!insert.error) return { timesHad: 1 };
+  if (!insert.error) {
+    await logActivity({
+      userId: opts.userId,
+      bottleId: opts.bottleId,
+      action: "added_to_collection",
+      variantId,
+    });
+    return { timesHad: 1 };
+  }
 
   const legacy = await supabase.from("user_bottles").insert({
     user_id: opts.userId,
@@ -81,5 +102,11 @@ export async function addOrRestockUserBottle(opts: {
     updated_at: now,
   });
   if (legacy.error) return { error: legacy.error.message };
+  await logActivity({
+    userId: opts.userId,
+    bottleId: opts.bottleId,
+    action: "added_to_collection",
+    variantId,
+  });
   return { timesHad: 1 };
 }

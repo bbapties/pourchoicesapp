@@ -10,6 +10,7 @@ import BottleCardMedium from "@/components/BottleCardMedium";
 import BottleDetailView from "@/components/BottleDetailView";
 import { type BottleDetails } from "@/lib/types";
 import { addOrRestockUserBottle, formatLastActivity } from "@/lib/userBottles";
+import { logActivity } from "@/lib/activities";
 
 interface MyBarClientProps {
   ownedCollection: any[];
@@ -202,6 +203,12 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       .eq('bottle_id', bottleId);
 
     if (error) { toast.error("Failed to update"); return; }
+
+    await logActivity({
+      userId: publicUserId,
+      bottleId,
+      action: "finished",
+    });
 
     const row = rawOwned.find(r => r.bottle_id === bottleId);
     if (row) {

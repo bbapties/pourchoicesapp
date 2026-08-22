@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { uploadBottleImage } from "@/lib/uploadBottleImage";
 import { insertDefaultVariant } from "@/lib/variants";
+import { logActivity } from "@/lib/activities";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -128,6 +129,19 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         verified: false,
         frontimageUrl: frontimage_url,
       });
+
+      const { data: publicUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (publicUser?.id) {
+        await logActivity({
+          userId: publicUser.id,
+          bottleId: insertedBottle.id,
+          action: "added_to_db",
+        });
+      }
 
       // Build the optimistic-update object from the real inserted row.
       const newBottle = {

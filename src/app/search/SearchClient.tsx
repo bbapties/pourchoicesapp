@@ -15,6 +15,7 @@ import ProvisionalSheet from "@/components/ProvisionalSheet";
 import { type BottleDetails } from "@/lib/types";
 import BottleDetailView from "@/components/BottleDetailView";
 import { addOrRestockUserBottle, formatLastActivity, type UserBottleRow } from "@/lib/userBottles";
+import { logActivity } from "@/lib/activities";
 
 const DEFAULT_PAGE_SIZE = 30;
 const LOAD_MORE_SIZE = 15;
@@ -489,6 +490,12 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       .is('variant_id', primaryRow.variant_id);
 
     if (error) { toast.error("Failed to update"); return; }
+
+    await logActivity({
+      userId: publicUserId,
+      bottleId,
+      action: newOwned ? "added_to_collection" : "finished",
+    });
 
     setUserBottlesMap(prev => ({
       ...prev,

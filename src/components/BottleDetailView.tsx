@@ -3,12 +3,20 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, GitBranch } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { type BottleDetails } from "@/lib/types";
 import AddVariantSheet from "@/components/AddVariantSheet";
 import VariantSelectSheet from "@/components/VariantSelectSheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
+import PourSheet from "@/components/PourSheet";
 import { applyDefaultVariant, fetchVariantsForSku } from "@/lib/variants";
+import {
+  fetchLastActivityForBottle,
+  formatActivityLine,
+  logActivity,
+  type PourType,
+} from "@/lib/activities";
 
 interface BottleDetailViewProps {
   bottle: BottleDetails;
@@ -20,6 +28,7 @@ interface BottleDetailViewProps {
   onToggleOwnership?: (bottleId: string) => Promise<void>;
   onDeleteFromBar?: (bottleId: string) => Promise<void>;
   onEditSaved?: (updated: Partial<BottleDetails>) => void;
+  onActivityLogged?: () => void;
 }
 
 function variantLabel(v: { releaseYear?: string; batch?: string; storePickName?: string }): string {
@@ -41,6 +50,7 @@ export default function BottleDetailView({
   onToggleOwnership,
   onDeleteFromBar,
   onEditSaved,
+  onActivityLogged,
 }: BottleDetailViewProps) {
   const [imageSide, setImageSide] = useState<'front' | 'back'>('front');
   const [variantIndex, setVariantIndex] = useState(0);
@@ -54,6 +64,9 @@ export default function BottleDetailView({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showVariantSelect, setShowVariantSelect] = useState(false);
+  const [showPourSheet, setShowPourSheet] = useState(false);
+  const [isPouring, setIsPouring] = useState(false);
+  const [lastActivityLabel, setLastActivityLabel] = useState<string | undefined>(bottle.lastActivity);
   const [localBottle, setLocalBottle] = useState<BottleDetails>(bottle);
 
   const vlist = localBottle.variants || [];
@@ -87,7 +100,13 @@ export default function BottleDetailView({
     setImgError(false);
     setInCollectionLocally(inCollection);
     setOwnedLocally(currentlyOwned);
+    setLastActivityLabel(bottle.lastActivity);
     let cancelled = false;
+    if (publicUserId) {
+      fetchLastActivityForBottle(publicUserId, bottle.id).then((label) => {
+        if (!cancelled && label) setLastActivityLabel(label);
+      });
+    }
     fetchVariantsForSku(bottle.id).then((variants) => {
       if (cancelled || !variants.length) return;
       const labeled = variants.filter(
@@ -99,7 +118,7 @@ export default function BottleDetailView({
       }));
     });
     return () => { cancelled = true; };
-  }, [bottle.id, inCollection, currentlyOwned]);
+  }, [bottle.id, inCollection, currentlyOwned, publicUserId]);
 
   const goVariant = (dir: number) => {
     if (!hasVariants) return;
@@ -129,6 +148,38 @@ export default function BottleDetailView({
       setOwnedLocally(false);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePour = async (pourType: PourType) => {
+    if (!publicUserId || isPouring) return;
+    setIsPouring(true);
+    try {
+      const result = await logActivity({
+        userId: publicUserId,
+        bottleId: bottle.id,
+        action: "drank",
+        pourType,
+      });
+      if (result.error) {
+        toast.error("Could not log this pour");
+        return;
+      }
+      const label = formatActivityLine({
+        action: "drank",
+        pour_type: pourType,
+        created_at: new Date().toISOString(),
+      });
+      if (label) setLastActivityLabel(label);
+      setShowPourSheet(false);
+      if (pourType === "blind") {
+        toast.success("Pour logged. Blind tastings aren't live yet.");
+      } else {
+        toast.success("Pour logged");
+      }
+      onActivityLogged?.();
+    } finally {
+      setIsPouring(false);
     }
   };
 
@@ -278,7 +329,7 @@ export default function BottleDetailView({
         {/* My last activity */}
         <div className="flex items-center justify-between text-sm mb-3">
           <span className="text-gray-500">My last activity</span>
-          <span>{localBottle.lastActivity || 'None'}</span>
+          <span>{lastActivityLabel || 'None'}</span>
         </div>
         {localBottle.timesHad != null && localBottle.timesHad > 0 && (
           <div className="flex items-center justify-between text-sm mb-3 -mt-1">
@@ -350,6 +401,21 @@ export default function BottleDetailView({
           )}
         </div>
 
+        {publicUserId && (
+          <div className="mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPouring}
+              onClick={() => setShowPourSheet(true)}
+              className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
+              style={{ minHeight: '44px' }}
+            >
+              Have a drink
+            </Button>
+          </div>
+        )}
+
         {/* Remove from collection */}
         {inCollectionLocally && !showDeleteConfirm && (
           <div className="text-center mt-2">
@@ -415,6 +481,16 @@ export default function BottleDetailView({
             />
           </div>
         </div>
+      )}
+
+      {publicUserId && (
+        <PourSheet
+          open={showPourSheet}
+          onOpenChange={setShowPourSheet}
+          bottleName={localBottle.name}
+          isSaving={isPouring}
+          onSelect={handlePour}
+        />
       )}
 
       {/* Variant select sheet — first add to bar */}
