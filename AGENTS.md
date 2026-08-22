@@ -20,7 +20,11 @@ Then summarize the current state back to Brian and confirm the next step **befor
 
 ## The app
 Pour Choices — a mobile-first spirits app to discover, rate, and collect bottles, with an
-Elo ranking system and blind tastings. Live at **www.pourchoicesapp.com**.
+Elo ranking system and (future) blind tastings. Live at **www.pourchoicesapp.com**.
+
+**Current nav (logged in):** Search / Social / My Bar / Profile (+ Admin if `users.role = 'admin'`).
+Taste is gone — `/taste` redirects to `/social`. Login lands on `/mybar`.
+Profile is still a coming-soon stub (sign out only). Blind tasting UI is not built.
 
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · shadcn/ui + Radix ·
 Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
@@ -42,6 +46,8 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
 - **One feature or fix per commit.** Small, reviewable commits.
 - **Test before every push** — see the checklist in ROADMAP.md (localhost, mobile LAN URL, prod verify).
 - Functionality first; stay **greyscale/wireframe** until Phase 5. Do not start visual polish early.
+- **Every bottle action logs an `activities` row** until Brian excludes it (`src/lib/activities.ts`). Fail-open. Current exclusion: admin hard-delete of a bottle (CASCADE would wipe the feed row).
+- **Every new user-facing surface** adds one row to the coach catalog (`src/lib/coaches.ts`) — `announce: true` plus a short `tour[]` if Show me should work. Do not re-audit the whole catalog. Set `core: true` only when the main loop actually changed. Quiet (`announce: false`) only for Admin / tiny fixes.
 
 ## Guardrails — ask Brian first
 - **No hard-deletes** of user data.

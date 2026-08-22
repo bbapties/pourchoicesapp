@@ -4,6 +4,8 @@ Add ideas here as they come up. Don't build these until core functionality is co
 Format: `- [ ] Short description — why it matters`
 
 ## UX / Quality of Life
+- [x] First-use / What's new coaches (shipped 7.11 — live-UI tour + digest; catalog `src/lib/coaches.ts`)
+- [ ] Replay tutorial from Profile (Profile is still a stub)
 - [ ] Haptic feedback on key interactions (add to bar, tasting reveal)
 - [ ] Pull-to-refresh on search and My Bar lists
 - [ ] Keyboard dismissal on mobile when tapping outside search bar

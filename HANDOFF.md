@@ -7,25 +7,23 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 
 ## Right now
 
-- **Branch:** `MVP-v3` (= production).
-- **Last commit:** 7.4 variant carousel (this session). 7.11 is on `MVP-v3`.
-- **Current phase:** **Phase 7.** 7.1–7.5, 7.7, 7.10, 7.11 done. **Next is 7.6** (state-aware action control) unless Brian redirects.
+- **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
+- **Last commit:** END SESSION docs (this baton). App tip before docs: `664d6d3` (7.4 carousel).
+- **Current phase:** **Phase 7.** Shipped: 7.1, 7.2, 7.3, 7.4, 7.5, 7.7, 7.10, 7.11. **Not shipped:** 7.6 (actions), 7.8 (real suggest-edit table), 7.9 (contribute/add-variant save choice). Phase 6.4 CSV import is still a shell.
 
-**Done in Phase 7:**
-- **7.1** — variant-first data model (2026-08-21). Additive cols on `bottle_variants`: `elo_global`, `nose`, `palate`, `finish`, `is_default`. Every SKU has exactly one default. **80 bottles, 112 variants**, 0 missing default. App: `src/lib/variants.ts`; new bottles dual-write a default variant; detail overlays default Elo/notes/images.
-- **7.2** — search roll-up + [Bottles | All Variants] toggle (2026-08-21, verified on localhost, pushed to `MVP-v3`). SQL (`b0bd17b`): `all_bottle_details` gained `default_variant_elo`/`default_variant_id`/`variant_count` (**additive — no columns dropped**); new `all_variant_details` view (one row per variant + SKU identity). App (`df13291`): Bottles view scores each SKU from its default variant + "N variants" badge (hidden at 1); All Variants = per-variant cards sorted by variant Elo with a subtitle tag (Default / Batch / year / store pick). Star scaling, count banner, browse pagination, search, and category/verified filters are all mode-aware. AppShell `/search` top margin 92→128px for the toggle row.
-- 7.3 — detail-card layout (`66d028c`).
-- 7.5 — *partial*: placeholder, tap-to-zoom, Front/Back (`573cfe3`); zoom-close fix `27e5702`. Per-variant images wait on **7.4**.
-- **7.7 + 7.10** — Have a drink + Social feed (2026-08-22, pushed to `MVP-v3`).
-- **7.11** — Coach marks (2026-08-22, pushed). Catalog `src/lib/coaches.ts`.
-- **7.4 + 7.5** — Detail carousel includes the default variant; swipe / arrows / dots swap images, Elo, verified, age, proof, notes. Single-variant SKUs have no pager. Have a drink writes `activities.variant_id` for the visible version. Coach id `bottle.variants` announced.
+**Single next step for the incoming agent:**
+- **7.6 — State-aware action control.** Primary button should match collection state (Add to My Bar / Have a drink or Log a Pour / Add Back) plus a More sheet (Add another, Blind tasting stub, Mark as Empty). Suggest-edit pencil stays separate. **Do not start Phase 3 tastings, Phase 5 polish, or 7.8/7.9 unless Brian says so.**
 
-**Next step:**
-- **7.6 — State-aware action control** (Add to My Bar / Log a Pour / Add Back + More sheet). 7.8 suggest-edit (real pending table) is still unbuilt; current pencil writes a variant + logs `suggested_edit`.
+**Product surface (so you do not rebuild what exists):**
+- Nav: Search / Social / My Bar / Profile (+ Admin). `/taste` → `/social`. Login → `/mybar`. Profile = coming-soon + Sign out.
+- Bottle detail: carousel over **default + variants** (swipe / arrows / dots). One variant → no pager. Fields that swap: images, Elo, verified, age, proof, notes, tasting notes. SKU identity (name, distillery, category) stays. Front/Back + zoom live.
+- Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / blind (blind toasts "not live"). Writes `activities` with optional `variant_id` of the visible carousel slide.
+- Social: global reverse-chrono feed from `activities`.
+- Coaches: new users get a live-UI core tour; existing users get one What's new digest per session (Show me = that feature's tour). Catalog `src/lib/coaches.ts`. Storage `users.seen_coach_ids`. Existing accounts were seeded `core.done`.
 
-**SQL access:** `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. Don't print secrets. Keep SQL files ASCII-only (non-ASCII in a `-c` string fails with a UTF8 byte error on Windows). See AGENTS.md.
+**SQL already live (do not re-run as if missing):** `activities` table + RLS; `users.seen_coach_ids` (existing users seeded). Helper: `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. SQL files ASCII-only. See AGENTS.md.
 
-**Open decisions / waiting on Brian:** none. Social slice verified locally by Brian and pushed. Prod check is www.pourchoicesapp.com (Vercel from `MVP-v3`).
+**Open decisions:** none. Brian asked to push 7.4/7.11 with light testing. Confirm prod at www.pourchoicesapp.com after Vercel.
 
 **Landmines:**
 - `user_bottles` is **one row per (user, bottle)**. Restock increments `times_had`. Do not insert a second row for the same SKU.
@@ -33,7 +31,9 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - Empty bottles show **Add to My Bar**, not the In My Bar / Finished It split.
 - Search now scores from `default_variant_elo` (fallback `bottle_elo_global`); star scaling range differs per mode. `all_bottle_details` is additive-extended; `all_variant_details` is new. Rollback: `sql/7.2-snapshot.sql` (+ `DROP VIEW all_variant_details`).
 - `activities` rollback: `DROP TABLE IF EXISTS public.activities CASCADE;` (see `sql/activities-snapshot.sql`). Admin `delete_user_cascade` is unchanged; `activities.user_id` ON DELETE CASCADE covers user wipe.
-- Activity policy: log every bottle action until Brian excludes it (`src/lib/activities.ts` header). Fail-open. Do not skip a new write without asking. Current exclusion: admin hard-delete of a bottle.
+- Activity policy: log every bottle action until Brian excludes it (`src/lib/activities.ts`). Fail-open. Exclusion: admin hard-delete of a bottle.
+- Coach policy: new user-facing surface → one `src/lib/coaches.ts` row. Pile-up = one digest per session, never 20 autoplayed tours. New vs existing = `core.done` in `seen_coach_ids`, not account age.
+- Detail carousel: `localBottle.variants` is the **full** ordered list (default first). Do not filter to labeled-only. Display via `fieldsForVariant`.
 - Supabase's typed client overflows ("excessively deep") on a **union table name + `.or()`** — the dynamic-table queries in `SearchClient.tsx` are cast to `any` on purpose. Don't "fix" the casts.
 
 ---
@@ -42,11 +42,12 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - ✅ **RECONCILED 2026-08-21** — **README.md** now carries a stale-banner pointing here; **ROADMAP** "WE ARE HERE"
   moved to Phase 7 and Phase 6 status corrected (6.0/6.1/6.2/6.3 shipped, **6.4 CSV import is the gap**;
   `ImportTab.tsx` is a shell). Phase 6 granular sub-checkboxes were **not** individually re-audited — code is truth.
-  Two spec mismatches noted in ROADMAP: no `DB_SCHEMA.sql` at root (only `DB_Schema.txt.txt`); no `src/lib/useCurrentUser.ts`.
+  Spec mismatches: no `DB_SCHEMA.sql` at root (only `DB_Schema.txt.txt`); role hook is `src/lib/useCurrentUser.tsx` (not `.ts`).
 - ⬜ **Still open — DB_Schema.txt.txt lags the live DB:** missing `users.role`, admin RPCs, `all_bottle_details` view
   (now incl. `default_variant_elo`/`default_variant_id`/`variant_count`), the new `all_variant_details` view,
   storage bucket, `bottle_variants.{elo_global,nose,palate,finish,is_default}`, `user_bottles.times_had`,
-  `public.activities` (actions: drank, added_to_collection, finished, added_to_db, suggested_edit, verified, removed_from_collection).
+  `public.activities` (actions: drank, added_to_collection, finished, added_to_db, suggested_edit, verified, removed_from_collection),
+  `users.seen_coach_ids`.
   No `suggested_edits` table (7.8 pending-suggestion flow still unbuilt; current "Suggest edit" writes a variant and logs `suggested_edit`).
 - ✅ **7.2 read-switch is live** — search scores from the default variant (`all_bottle_details.default_variant_elo`) and the
   All Variants view scores from `all_variant_details.variant_elo_global`. `bottles.elo_global` is now legacy/fallback only.
@@ -54,6 +55,14 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-22 — Grok (END SESSION: 7.11 + 7.4 pushed; next is 7.6)
+- Session pulled engagement forward then returned to 7.4. Brian: light test, push everything, end session.
+- **7.11 coaches** (already on origin before this push's 7.4): `users.seen_coach_ids`; `src/lib/coaches.ts`; `TourPlayer` + `WhatsNewSheet` + `CoachHost`. SQL `sql/coaches-migration.sql` applied on live DB (existing users seeded `core.done`). Commits `7688ce2`, `a7991ff`.
+- **7.4 carousel** `664d6d3`: `BottleDetailView` keeps default + all variants; swipe/arrows/dots swap images, Elo, verified, age, proof, notes. Single-variant = no pager. Pours write `variant_id`. Coach id `bottle.variants` announced.
+- **7.5** finished (per-variant images ride the carousel).
+- Standing rules added to AGENTS.md: log every bottle action; add a coach catalog row for new user-facing UI.
+- **Next agent: 7.6** state-aware actions. Do not start 7.8/7.9, Phase 3, or Phase 5 unless Brian says so. Prod: www.pourchoicesapp.com after Vercel.
 
 ### 2026-08-22 — Grok (END SESSION: 7.7 + Social feed pushed to MVP-v3)
 - Brian paused 7.4, pulled engagement forward: SKU-level drinks, Taste tab -> Social, full pour sheet (neat/rocks/mixed/blind).

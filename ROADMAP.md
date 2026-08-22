@@ -127,7 +127,7 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
-**Progress (2026-08-22):** **7.1, 7.2, 7.4, 7.5, 7.7, 7.10, 7.11.** 7.11 coach marks pushed to `MVP-v3`. 7.4 carousel includes the default variant; the whole detail card swaps (images, Elo, notes, proof). **Next: 7.6** state-aware actions (or 7.8 suggest-edit) unless Brian says otherwise.
+**Progress (2026-08-22):** **7.1–7.5, 7.7, 7.10, 7.11 shipped to `MVP-v3`.** 7.4 carousel includes the default; the whole detail card swaps. 7.11 coaches: core tour for new users, What's new digest for existing. **Next: 7.6** state-aware action control. 7.8/7.9 and Phase 3 tastings are not next unless Brian says so.
 
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
@@ -179,11 +179,11 @@ Epic C — Actions & moderation
 - [x] 7.10 Social activity feed (pulled forward from BACKLOG, 2026-08-21)
   - Goal: bottom-nav Social tab; reverse-chronological global feed of bottle, username, action.
   - Exit: Search / Social / My Bar / Profile; rows for drank / added to collection / finished / added to DB / verified / suggested an edit / removed from collection; tap opens bottle detail. Policy: log every bottle action until Brian excludes one. Admin hard-delete of a bottle is the current exclusion (CASCADE would wipe the feed row).
-- [x] 7.11 First-use coach marks + What's new (2026-08-22; verify locally before treating as prod-complete)
+- [x] 7.11 First-use coach marks + What's new (2026-08-22, on `MVP-v3`)
   - Goal: new users get a short **live-UI visual tour** of today's core (Search, Have a drink, Social, My Bar). Existing users get **one What's new digest per session** (Show me plays that feature's tour). Pile-up never autoplays 20 tours. Catalog in `src/lib/coaches.ts` — one row per future feature.
   - Exit: `users.seen_coach_ids`; existing accounts seeded with `core.done`; Skip/Got it persist; greyscale overlay + digest sheet. New user-facing PRs add a catalog row.
 
-Notes: 7.3–7.5 build against 7.1's model; 7.7's variant-level pours wait on 7.4; live blind tastings wait on Phase 3. Deferred to BACKLOG: personal comments, flavor tagging → charts, 3rd image slot, follows/likes/comments.
+Notes: 7.4/7.5 done (carousel + per-variant images). 7.7 pours attach `variant_id` of the visible slide. Live blind tastings wait on Phase 3. New user-facing PRs add a `src/lib/coaches.ts` row. Deferred to BACKLOG: personal comments, flavor tagging → charts, 3rd image slot, follows/likes/comments.
 
 ---
 
@@ -203,3 +203,4 @@ Notes: 7.3–7.5 build against 7.1's model; 7.7's variant-level pours wait on 7.
 - [x] 7.10 Social activity feed (Taste tab replaced; global feed)
 - [x] 7.4 Variant carousel (default included; swipe swaps the card)
 - [x] 7.5 Per-variant images on the carousel
+- [x] 7.11 First-use coaches + What's new digest
