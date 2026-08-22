@@ -46,7 +46,7 @@ export default function AdminClient({
 
       <div className="flex-1 overflow-y-auto p-4">
         {tab === "users"   && <UsersTab currentPublicUserId={publicUserId} />}
-        {tab === "bottles" && <BottlesTab />}
+        {tab === "bottles" && <BottlesTab publicUserId={publicUserId} />}
         {tab === "import"  && <ImportTab />}
       </div>
     </div>

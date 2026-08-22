@@ -5,7 +5,8 @@ export type ActivityAction =
   | "added_to_collection"
   | "finished"
   | "added_to_db"
-  | "suggested_edit";
+  | "suggested_edit"
+  | "verified";
 
 export type PourType = "neat" | "rocks" | "mixed" | "blind";
 
@@ -48,6 +49,8 @@ export function formatActivityLine(row: {
       return `Added to DB · ${date}`;
     case "suggested_edit":
       return `Suggested edit · ${date}`;
+    case "verified":
+      return `Verified · ${date}`;
     default:
       return date;
   }
@@ -66,6 +69,7 @@ export function formatFeedAction(action: ActivityAction, pourType?: PourType | n
   if (action === "finished") return "finished it";
   if (action === "added_to_db") return "added it to the DB";
   if (action === "suggested_edit") return "suggested an edit";
+  if (action === "verified") return "verified it";
   return action;
 }
 

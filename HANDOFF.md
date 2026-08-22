@@ -8,7 +8,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production).
-- **Last commit:** (this session) 7.7 Have a drink + Social feed. SQL for `activities` is already applied on prod Supabase.
+- **Last commit:** (this session) 7.7 Have a drink + Social feed, plus admin verify as a feed action. SQL for `activities` (incl. `verified`) is already applied on prod Supabase.
 - **Current phase:** **Phase 7.** 7.1, 7.2, 7.7 (SKU-level), and 7.10 Social are done. Next is **7.4** (variant carousel).
 
 **Done in Phase 7:**
@@ -16,7 +16,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - **7.2** — search roll-up + [Bottles | All Variants] toggle (2026-08-21, verified on localhost, pushed to `MVP-v3`). SQL (`b0bd17b`): `all_bottle_details` gained `default_variant_elo`/`default_variant_id`/`variant_count` (**additive — no columns dropped**); new `all_variant_details` view (one row per variant + SKU identity). App (`df13291`): Bottles view scores each SKU from its default variant + "N variants" badge (hidden at 1); All Variants = per-variant cards sorted by variant Elo with a subtitle tag (Default / Batch / year / store pick). Star scaling, count banner, browse pagination, search, and category/verified filters are all mode-aware. AppShell `/search` top margin 92→128px for the toggle row.
 - 7.3 — detail-card layout (`66d028c`).
 - 7.5 — *partial*: placeholder, tap-to-zoom, Front/Back (`573cfe3`); zoom-close fix `27e5702`. Per-variant images wait on **7.4**.
-- **7.7 + 7.10** — Have a drink + Social feed (2026-08-21). New `activities` table (append-only; authenticated read-all / insert-own). **Have a drink** on any bottle (not gated by My Bar; does not insert `user_bottles` or bump `times_had`). Pour sheet: neat / rocks / mixed / blind. Blind logs the pour and toasts that tastings aren't live. Add / finish / restock / add-to-DB also write activities. Bottom nav is Search / Social / My Bar / Profile. `/taste` redirects to `/social`. My last activity prefers the latest `activities` row (`Drank · date` included). `suggested_edit` is schema-only until 7.8.
+- **7.7 + 7.10** — Have a drink + Social feed (2026-08-21). New `activities` table (append-only; authenticated read-all / insert-own). **Have a drink** on any bottle (not gated by My Bar; does not insert `user_bottles` or bump `times_had`). Pour sheet: neat / rocks / mixed / blind. Blind logs the pour and toasts that tastings aren't live. Add / finish / restock / add-to-DB / **admin verify** also write activities. Bottom nav is Search / Social / My Bar / Profile. `/taste` redirects to `/social`. My last activity prefers the latest `activities` row (`Drank · date` included). `suggested_edit` is schema-only until 7.8.
 
 **Next step:**
 - **7.4 — Variant carousel.** Swipeable carousel over [default + variants]; the whole card swaps on swipe; subtitle + pager + dots. `BottleDetailView` already has a `variantIndex` + pager/dots for **labeled** (non-default) variants — extend it to a full carousel that includes the default and swaps every variant-specific field. Single-variant SKUs show no pager. This also finishes 7.5 (per-variant images) and lets 7.7 attach pours to a variant.
@@ -57,6 +57,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - App: `src/lib/activities.ts`; `PourSheet`; **Have a drink** on any bottle in `BottleDetailView` (neat/rocks/mixed/blind). Drink does not touch `user_bottles`. Add/finish/restock/add-to-DB also write activities (fail-open).
 - New `/social` feed. AppShell Taste tab -> Social. `/taste` redirects to `/social`.
 - My last activity reads `activities` when present (`Drank · date`).
+- Follow-up same session: admin Verify (provisional -> verified) now writes `activities.action = verified`. SQL `sql/activities-verified-action.sql`.
 - **Next: 7.4 variant carousel.** Verify this slice on localhost + mobile before pushing.
 
 ### 2026-08-21 — Claude (END SESSION: 7.2 shipped + Vercel deploy fixed)

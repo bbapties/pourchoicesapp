@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/activities";
 
 type QueueVariant = {
   id: string;
@@ -31,7 +32,7 @@ type DeleteTarget =
   | { kind: "bottle"; id: string; label: string; ownerNames: string[]; variantCount: number }
   | { kind: "variant"; id: string; label: string; ownerNames: string[] };
 
-export default function BottlesTab() {
+export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   const [queue, setQueue] = useState<QueueBottle[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -144,19 +145,35 @@ export default function BottlesTab() {
   }, [queue, search]);
 
   // ---- Verify ----
-  const verify = async (table: "bottles" | "bottle_variants", id: string, label: string) => {
-    setBusyId(id);
-    const { data, error } = await supabase.from(table).update({ verified: true }).eq("id", id).select("id");
+  const verify = async (opts: {
+    table: "bottles" | "bottle_variants";
+    id: string;
+    bottleId: string;
+    variantId?: string | null;
+    label: string;
+  }) => {
+    setBusyId(opts.id);
+    const { data, error } = await supabase
+      .from(opts.table)
+      .update({ verified: true })
+      .eq("id", opts.id)
+      .select("id");
     setBusyId(null);
     if (error) {
       toast.error(`Verify failed: ${error.message}`);
       return;
     }
     if (!data || data.length === 0) {
-      toast.error("Nothing changed — check admin permissions (RLS) on " + table + ".");
+      toast.error("Nothing changed — check admin permissions (RLS) on " + opts.table + ".");
       return;
     }
-    toast.success(`Verified ${label}`);
+    await logActivity({
+      userId: publicUserId,
+      bottleId: opts.bottleId,
+      variantId: opts.variantId ?? null,
+      action: "verified",
+    });
+    toast.success(`Verified ${opts.label}`);
     load();
   };
 
@@ -286,7 +303,7 @@ export default function BottlesTab() {
                 <div className="flex flex-col gap-1.5 shrink-0">
                   <button
                     disabled={busyId === b.id}
-                    onClick={() => verify("bottles", b.id, b.name)}
+                    onClick={() => verify({ table: "bottles", id: b.id, bottleId: b.id, label: b.name })}
                     className="text-xs px-3 py-1.5 border border-green-700 text-green-700 rounded disabled:opacity-40"
                   >
                     Verify
@@ -316,7 +333,15 @@ export default function BottlesTab() {
                     <div className="flex flex-col gap-1.5 shrink-0">
                       <button
                         disabled={busyId === v.id}
-                        onClick={() => verify("bottle_variants", v.id, variantLabel(v))}
+                        onClick={() =>
+                          verify({
+                            table: "bottle_variants",
+                            id: v.id,
+                            bottleId: b.id,
+                            variantId: v.id,
+                            label: variantLabel(v),
+                          })
+                        }
                         className="text-xs px-3 py-1.5 border border-green-700 text-green-700 rounded disabled:opacity-40"
                       >
                         Verify

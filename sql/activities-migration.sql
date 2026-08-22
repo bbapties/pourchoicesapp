@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS public.activities (
       'added_to_collection',
       'finished',
       'added_to_db',
-      'suggested_edit'
+      'suggested_edit',
+      'verified'
     )
   ),
   CONSTRAINT activities_pour_type_check CHECK (
