@@ -14,7 +14,7 @@ import BottleCard, { type Bottle } from "@/components/BottleCard";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
 import { type BottleDetails } from "@/lib/types";
 import BottleDetailView from "@/components/BottleDetailView";
-import { addOrRestockUserBottle, formatLastActivity, type UserBottleRow } from "@/lib/userBottles";
+import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, type UserBottleRow } from "@/lib/userBottles";
 import { logActivity } from "@/lib/activities";
 
 const DEFAULT_PAGE_SIZE = 30;
@@ -511,13 +511,8 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const handleDeleteFromBar = useCallback(async (bottleId: string) => {
     if (!publicUserId) return;
 
-    const { error } = await supabase
-      .from('user_bottles')
-      .delete()
-      .eq('user_id', publicUserId)
-      .eq('bottle_id', bottleId);
-
-    if (error) { toast.error("Failed to remove from collection"); return; }
+    const result = await removeUserBottle({ userId: publicUserId, bottleId });
+    if (result.error) { toast.error("Failed to remove from collection"); return; }
 
     setUserBottlesMap(prev => {
       const next = { ...prev };

@@ -178,7 +178,7 @@ Epic C — Actions & moderation
 
 - [x] 7.10 Social activity feed (pulled forward from BACKLOG, 2026-08-21)
   - Goal: bottom-nav Social tab; reverse-chronological global feed of bottle, username, action.
-  - Exit: Search / Social / My Bar / Profile; rows for drank / added to collection / finished / added to DB / verified (admin provisional -> verified); tap opens bottle detail. `suggested_edit` is reserved in the schema until 7.8.
+  - Exit: Search / Social / My Bar / Profile; rows for drank / added to collection / finished / added to DB / verified / suggested an edit / removed from collection; tap opens bottle detail. Policy: log every bottle action until Brian excludes one. Admin hard-delete of a bottle is the current exclusion (CASCADE would wipe the feed row).
 
 Notes: 7.3–7.5 build against 7.1's model; 7.7's variant-level pours wait on 7.4; live blind tastings wait on Phase 3. Deferred to BACKLOG: personal comments, flavor tagging → charts, 3rd image slot, follows/likes/comments.
 

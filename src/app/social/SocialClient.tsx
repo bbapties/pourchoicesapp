@@ -18,6 +18,7 @@ import {
 import {
   addOrRestockUserBottle,
   formatLastActivity,
+  removeUserBottle,
   type UserBottleRow,
 } from "@/lib/userBottles";
 
@@ -179,12 +180,8 @@ export default function SocialClient() {
 
   const handleDeleteFromBar = async (bottleId: string) => {
     if (!publicUserId) return;
-    const { error } = await supabase
-      .from("user_bottles")
-      .delete()
-      .eq("user_id", publicUserId)
-      .eq("bottle_id", bottleId);
-    if (error) { toast.error("Failed to remove"); return; }
+    const result = await removeUserBottle({ userId: publicUserId, bottleId });
+    if (result.error) { toast.error("Failed to remove"); return; }
     setSelectedRow(null);
     setSelectedOwned({ inCollection: false, currentlyOwned: false });
     toast.success("Removed from collection");

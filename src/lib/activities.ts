@@ -1,12 +1,18 @@
 import { supabase } from "@/lib/supabase";
 
+// Policy: every user/admin action on a bottle writes an activities row
+// until Brian explicitly excludes it. Fail-open — never block the parent action.
+// Current exclusion: admin hard-delete of a bottle (FK ON DELETE CASCADE would
+// wipe the feed row with the bottle).
+
 export type ActivityAction =
   | "drank"
   | "added_to_collection"
   | "finished"
   | "added_to_db"
   | "suggested_edit"
-  | "verified";
+  | "verified"
+  | "removed_from_collection";
 
 export type PourType = "neat" | "rocks" | "mixed" | "blind";
 
@@ -51,6 +57,8 @@ export function formatActivityLine(row: {
       return `Suggested edit · ${date}`;
     case "verified":
       return `Verified · ${date}`;
+    case "removed_from_collection":
+      return `Removed · ${date}`;
     default:
       return date;
   }
@@ -70,6 +78,7 @@ export function formatFeedAction(action: ActivityAction, pourType?: PourType | n
   if (action === "added_to_db") return "added it to the DB";
   if (action === "suggested_edit") return "suggested an edit";
   if (action === "verified") return "verified it";
+  if (action === "removed_from_collection") return "removed it from their collection";
   return action;
 }
 

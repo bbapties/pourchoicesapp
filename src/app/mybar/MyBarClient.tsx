@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import BottleCardMedium from "@/components/BottleCardMedium";
 import BottleDetailView from "@/components/BottleDetailView";
 import { type BottleDetails } from "@/lib/types";
-import { addOrRestockUserBottle, formatLastActivity } from "@/lib/userBottles";
+import { addOrRestockUserBottle, formatLastActivity, removeUserBottle } from "@/lib/userBottles";
 import { logActivity } from "@/lib/activities";
 
 interface MyBarClientProps {
@@ -220,13 +220,8 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   }, [publicUserId, rawOwned]);
 
   const handleDeleteFromBar = useCallback(async (bottleId: string) => {
-    const { error } = await supabase
-      .from('user_bottles')
-      .delete()
-      .eq('user_id', publicUserId)
-      .eq('bottle_id', bottleId);
-
-    if (error) { toast.error("Failed to remove"); return; }
+    const result = await removeUserBottle({ userId: publicUserId, bottleId });
+    if (result.error) { toast.error("Failed to remove"); return; }
 
     setRawOwned(prev => prev.filter(r => r.bottle_id !== bottleId));
     setRawEmpty(prev => prev.filter(r => r.bottle_id !== bottleId));

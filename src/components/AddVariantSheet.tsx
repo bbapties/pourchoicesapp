@@ -93,13 +93,15 @@ export default function AddVariantSheet({ bottle, open, onOpenChange, onSaved }:
           .from('bottle_variants')
           .insert([variantData]);
         if (error) throw error;
-        if (publicUserId) {
-          await logActivity({
-            userId: publicUserId,
-            bottleId: bottle.id,
-            action: "added_to_db",
-          });
-        }
+      }
+
+      if (publicUserId) {
+        await logActivity({
+          userId: publicUserId,
+          bottleId: bottle.id,
+          variantId: existingVariantId,
+          action: "suggested_edit",
+        });
       }
 
       onSaved({

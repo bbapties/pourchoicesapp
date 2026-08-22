@@ -110,3 +110,22 @@ export async function addOrRestockUserBottle(opts: {
   });
   return { timesHad: 1 };
 }
+
+/** Hard-remove the (user, bottle) collection row. Logs removed_from_collection. */
+export async function removeUserBottle(opts: {
+  userId: string;
+  bottleId: string;
+}): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from("user_bottles")
+    .delete()
+    .eq("user_id", opts.userId)
+    .eq("bottle_id", opts.bottleId);
+  if (error) return { error: error.message };
+  await logActivity({
+    userId: opts.userId,
+    bottleId: opts.bottleId,
+    action: "removed_from_collection",
+  });
+  return {};
+}

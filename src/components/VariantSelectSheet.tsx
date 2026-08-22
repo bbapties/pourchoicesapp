@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { type BottleDetails } from "@/lib/types";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { logActivity } from "@/lib/activities";
 
 interface BatchVariant {
   id: string;
@@ -33,7 +34,7 @@ export default function VariantSelectSheet({
   onOpenChange,
   onAdd,
 }: VariantSelectSheetProps) {
-  const { authId } = useCurrentUser();
+  const { authId, publicUserId } = useCurrentUser();
   const [isFetching, setIsFetching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [batchVariants, setBatchVariants] = useState<BatchVariant[]>([]);
@@ -150,6 +151,14 @@ export default function VariantSelectSheet({
         .select("id")
         .single();
       if (error) throw error;
+      if (publicUserId) {
+        await logActivity({
+          userId: publicUserId,
+          bottleId: bottle.id,
+          variantId: created.id,
+          action: "added_to_db",
+        });
+      }
       await onAdd(created.id);
     } catch (err: unknown) {
       toast.error("Failed to add bottle");
