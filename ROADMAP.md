@@ -127,7 +127,7 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
-**Progress (2026-08-22):** **7.1, 7.2, 7.7, and 7.10 shipped to `MVP-v3`.** **7.11 coach marks in progress** (core visual tour + What's new digest). 7.1 = variant-first columns + default-variant backfill + app dual-write. 7.2 = search roll-up. **Next after 7.11 is still 7.4** (variant carousel).
+**Progress (2026-08-22):** **7.1, 7.2, 7.4, 7.5, 7.7, 7.10, 7.11.** 7.11 coach marks pushed to `MVP-v3`. 7.4 carousel includes the default variant; the whole detail card swaps (images, Elo, notes, proof). **Next: 7.6** state-aware actions (or 7.8 suggest-edit) unless Brian says otherwise.
 
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
@@ -155,10 +155,10 @@ Epic B — Detail card UI
 - [x] 7.3 New detail-card layout (shipped 2026-07-25, commit 66d028c)
   - Goal: rebuild `BottleDetailView` to the approved layout (portrait image + attrs beside, label-less stack, My last activity, tasting-notes accordion).
   - Exit: matches the mockup for the default variant; nose/palate/finish in one accordion; only Global Elo / Verified / My last activity labeled; My last activity shows the user's last action or "None".
-- [ ] 7.4 Variant carousel
+- [x] 7.4 Variant carousel
   - Goal: swipeable carousel over [default + variants]; whole card swaps on swipe; subtitle + pager + dots.
   - Exit: swiping changes every variant-specific field + subtitle; position/count shown; single-variant SKUs show no pager.
-- [~] 7.5 Image interactions — partial: placeholder + tap-to-zoom + Front/Back toggle done (`573cfe3`); zoom X was covered by the image — fixed `27e5702`. **Per-variant images await 7.4** (carousel).
+- [x] 7.5 Image interactions — placeholder + tap-to-zoom + Front/Back (`573cfe3`); zoom-close `27e5702`; per-variant images via 7.4 carousel.
   - Goal: portrait image, Front/Back toggle beneath (tap), tap-to-zoom full-screen + close, per-variant images, extensible to a 3rd slot.
   - Exit: toggle flips image without swiping; tap opens full-screen zoom + close; each variant shows its own images; missing/broken → placeholder.
 
@@ -167,7 +167,7 @@ Epic C — Actions & moderation
   - Goal: state-dependent primary (Add to My Bar / Log a Pour / Add Back) + More sheet (Add another, Blind tasting, Mark as Empty) + a separate Suggest-edit pencil.
   - Exit: visible actions match state (not owned / owned / empty); Mark as Empty soft-deletes (hidden from My Bar, kept in history).
 - [x] 7.7 Log a Pour branch (SKU-level prototype, 2026-08-21)
-  - Goal: one Have a drink action branching into neat / rocks / mixed / blind tasting; records a drink event. **Shipped at SKU level** (any bottle, owned or not). Variant-level pours wait on 7.4.
+  - Goal: one Have a drink action branching into neat / rocks / mixed / blind tasting; records a drink event. **SKU-level UI; pours now attach `variant_id` when the carousel is on a specific version (7.4).**
   - Exit: choosing a type records an `activities` row + updates My last activity. Does **not** add the bottle to My Bar or increment `times_had`. Blind logs the pour and toasts that tastings aren't live (Phase 3 still a stub; `/taste` redirects to `/social`).
 - [ ] 7.8 Suggest-an-edit (correction) flow
   - Goal: editing existing fields creates a pending suggestion (golden copy untouched) → admin queue → approve applies.
@@ -201,3 +201,5 @@ Notes: 7.3–7.5 build against 7.1's model; 7.7's variant-level pours wait on 7.
 - [x] www.pourchoicesapp.com live
 - [x] 7.7 Have a drink (SKU-level pour sheet; any bottle; `activities.drank`)
 - [x] 7.10 Social activity feed (Taste tab replaced; global feed)
+- [x] 7.4 Variant carousel (default included; swipe swaps the card)
+- [x] 7.5 Per-variant images on the carousel

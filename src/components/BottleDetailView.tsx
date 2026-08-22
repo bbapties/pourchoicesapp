@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, GitBranch } from "lucide-react";
 import { toast } from "sonner";
@@ -10,7 +10,7 @@ import AddVariantSheet from "@/components/AddVariantSheet";
 import VariantSelectSheet from "@/components/VariantSelectSheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import PourSheet from "@/components/PourSheet";
-import { applyDefaultVariant, fetchVariantsForSku } from "@/lib/variants";
+import { fieldsForVariant, fetchVariantsForSku } from "@/lib/variants";
 import {
   fetchLastActivityForBottle,
   formatActivityLine,
@@ -68,31 +68,34 @@ export default function BottleDetailView({
   const [isPouring, setIsPouring] = useState(false);
   const [lastActivityLabel, setLastActivityLabel] = useState<string | undefined>(bottle.lastActivity);
   const [localBottle, setLocalBottle] = useState<BottleDetails>(bottle);
+  const swipeX = useRef<number | null>(null);
 
   const vlist = localBottle.variants || [];
-  const hasVariants = vlist.length > 0;
-  const currentVariant = vlist[variantIndex] || {};
-  const hasBackImage = !!localBottle.backImageUrl;
-  const imageUrl = imageSide === 'front' ? localBottle.frontImageUrl : localBottle.backImageUrl;
+  const showPager = vlist.length > 1;
+  const currentVariant = vlist[variantIndex];
+  const shown = fieldsForVariant(localBottle, currentVariant);
+  const hasBackImage = !!shown.backImageUrl;
+  const imageUrl = imageSide === 'front' ? shown.frontImageUrl : shown.backImageUrl;
 
-  const subtitle = hasVariants
-    ? (variantLabel(currentVariant) || `Variant ${variantIndex + 1}`)
-    : 'Default bottle';
+  const subtitle = !currentVariant
+    ? 'Default bottle'
+    : currentVariant.isDefault
+      ? 'Default bottle'
+      : (variantLabel(currentVariant) || `Variant ${variantIndex + 1}`);
   const identity = [localBottle.distillery, localBottle.category, localBottle.style]
     .filter(Boolean)
     .join(' · ');
   const bareAttrs = [
-    localBottle.age,
-    localBottle.proof ? `${localBottle.proof} proof` : null,
+    shown.age,
+    shown.proof ? `${shown.proof} proof` : null,
     localBottle.volume,
   ].filter(Boolean) as string[];
-  const hasNotes = !!(localBottle.nose || localBottle.palate || localBottle.finish);
+  const hasNotes = !!(shown.nose || shown.palate || shown.finish);
   const showImage = !!imageUrl && !imgError;
 
   useEffect(() => { setImgError(false); }, [imageUrl]);
 
-  // 7.1 read-switch: overlay the default variant's Elo/notes/images onto the SKU card.
-  // Pager still uses labeled (non-default) variants only — carousel of the whole card is 7.4.
+  // 7.4: full carousel — default first, then the rest. Whole card reads the current variant.
   useEffect(() => {
     setLocalBottle(bottle);
     setVariantIndex(0);
@@ -109,20 +112,30 @@ export default function BottleDetailView({
     }
     fetchVariantsForSku(bottle.id).then((variants) => {
       if (cancelled || !variants.length) return;
-      const labeled = variants.filter(
-        (v) => !v.isDefault && (v.releaseYear || v.batch || v.storePickName)
-      );
-      setLocalBottle((prev) => ({
-        ...applyDefaultVariant(prev, variants),
-        variants: labeled,
-      }));
+      setLocalBottle((prev) => ({ ...prev, variants }));
+      setVariantIndex(0);
     });
     return () => { cancelled = true; };
   }, [bottle.id, inCollection, currentlyOwned, publicUserId]);
 
   const goVariant = (dir: number) => {
-    if (!hasVariants) return;
+    if (!showPager) return;
     setVariantIndex((i) => (i + dir + vlist.length) % vlist.length);
+    setImageSide("front");
+    setImgError(false);
+  };
+
+  const onCardPointerDown = (e: React.PointerEvent) => {
+    if (!showPager) return;
+    if ((e.target as HTMLElement).closest("button, a, input, textarea")) return;
+    swipeX.current = e.clientX;
+  };
+  const onCardPointerUp = (e: React.PointerEvent) => {
+    if (swipeX.current == null || !showPager) return;
+    const dx = e.clientX - swipeX.current;
+    swipeX.current = null;
+    if (Math.abs(dx) < 50) return;
+    goVariant(dx < 0 ? 1 : -1);
   };
 
   const handleMainButton = async () => {
@@ -158,6 +171,7 @@ export default function BottleDetailView({
       const result = await logActivity({
         userId: publicUserId,
         bottleId: bottle.id,
+        variantId: currentVariant?.variantId ?? null,
         action: "drank",
         pourType,
       });
@@ -201,7 +215,12 @@ export default function BottleDetailView({
       className="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white text-black border border-gray-500 rounded-lg p-4 w-full max-w-[375px] mx-auto my-4 relative">
+      <div
+        className="bg-white text-black border border-gray-500 rounded-lg p-4 w-full max-w-[375px] mx-auto my-4 relative"
+        onPointerDown={onCardPointerDown}
+        onPointerUp={onCardPointerUp}
+        onPointerCancel={() => { swipeX.current = null; }}
+      >
         {/* Top bar: close + suggest-edit */}
         <div className="flex items-center justify-between mb-3">
           <button
@@ -229,13 +248,13 @@ export default function BottleDetailView({
           <h1 className="text-xl font-bold leading-tight">{localBottle.name}</h1>
           <div className="flex items-center justify-between gap-2 mt-0.5">
             <span className="text-sm text-gray-600 truncate">{subtitle}</span>
-            {hasVariants && vlist.length > 1 && (
-              <span className="flex items-center gap-1 flex-shrink-0">
-                <button onClick={() => goVariant(-1)} aria-label="Previous variant" className="text-gray-600 hover:text-black">
+            {showPager && (
+              <span className="flex items-center gap-1 flex-shrink-0" data-coach="bottle.variant.pager">
+                <button type="button" onClick={() => goVariant(-1)} aria-label="Previous variant" className="text-gray-600 hover:text-black">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="text-xs text-gray-500">{variantIndex + 1} / {vlist.length}</span>
-                <button onClick={() => goVariant(1)} aria-label="Next variant" className="text-gray-600 hover:text-black">
+                <button type="button" onClick={() => goVariant(1)} aria-label="Next variant" className="text-gray-600 hover:text-black">
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </span>
@@ -287,12 +306,13 @@ export default function BottleDetailView({
               </div>
             </div>
 
-            {hasVariants && vlist.length > 1 && (
+            {showPager && (
               <div className="flex justify-center gap-1.5 mt-2">
-                {vlist.map((_, idx) => (
+                {vlist.map((v, idx) => (
                   <button
-                    key={idx}
-                    onClick={() => setVariantIndex(idx)}
+                    key={v.variantId || idx}
+                    type="button"
+                    onClick={() => { setVariantIndex(idx); setImageSide("front"); setImgError(false); }}
                     aria-label={`Variant ${idx + 1}`}
                     className={`w-2 h-2 rounded-full ${idx === variantIndex ? 'bg-gray-800' : 'bg-gray-300'}`}
                   />
@@ -310,12 +330,12 @@ export default function BottleDetailView({
             <div className="border-t border-gray-200 mt-2 pt-2 text-sm space-y-1.5">
               <div>
                 <div className="text-[11px] text-gray-500">Global Elo</div>
-                <div>{localBottle.elo_global ?? '—'}</div>
+                <div>{shown.elo ?? '—'}</div>
               </div>
               <div>
                 <div className="text-[11px] text-gray-500">Verified</div>
                 <div className="flex items-center gap-1.5">
-                  {localBottle.verified ? (
+                  {shown.verified ? (
                     <><span className="text-green-600">✓</span> Verified</>
                   ) : (
                     <><span className="inline-block w-2 h-2 rounded-full" style={{ background: '#EF9F27' }} /> Unverified</>
@@ -339,8 +359,8 @@ export default function BottleDetailView({
         )}
 
         {/* Variant note (if present) */}
-        {currentVariant.notes && (
-          <p className="text-sm text-gray-600 italic border-t border-gray-200 pt-2 mb-3">{currentVariant.notes}</p>
+        {shown.notes && (
+          <p className="text-sm text-gray-600 italic border-t border-gray-200 pt-2 mb-3">{shown.notes}</p>
         )}
 
         {/* Characteristics and tasting notes */}
@@ -356,9 +376,9 @@ export default function BottleDetailView({
             <div className="p-3 pt-1 bg-white text-sm">
               {hasNotes ? (
                 <div className="space-y-2">
-                  {localBottle.nose && <p><span className="font-medium">Nose</span> — <span className="text-gray-700 whitespace-pre-wrap">{localBottle.nose}</span></p>}
-                  {localBottle.palate && <p><span className="font-medium">Palate</span> — <span className="text-gray-700 whitespace-pre-wrap">{localBottle.palate}</span></p>}
-                  {localBottle.finish && <p><span className="font-medium">Finish</span> — <span className="text-gray-700 whitespace-pre-wrap">{localBottle.finish}</span></p>}
+                  {shown.nose && <p><span className="font-medium">Nose</span> — <span className="text-gray-700 whitespace-pre-wrap">{shown.nose}</span></p>}
+                  {shown.palate && <p><span className="font-medium">Palate</span> — <span className="text-gray-700 whitespace-pre-wrap">{shown.palate}</span></p>}
+                  {shown.finish && <p><span className="font-medium">Finish</span> — <span className="text-gray-700 whitespace-pre-wrap">{shown.finish}</span></p>}
                 </div>
               ) : (
                 <p className="text-gray-500">No tasting notes yet.</p>

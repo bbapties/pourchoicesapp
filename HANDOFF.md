@@ -8,8 +8,8 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production).
-- **Last commit:** 7.11 coach marks (local; SQL `seen_coach_ids` already applied on prod DB).
-- **Current phase:** **Phase 7.** 7.1, 7.2, 7.3, 7.7, 7.10, and **7.11** (coach engine) are implemented. **Next is 7.4** (variant carousel) after Brian verifies 7.11.
+- **Last commit:** 7.4 variant carousel (this session). 7.11 is on `MVP-v3`.
+- **Current phase:** **Phase 7.** 7.1–7.5, 7.7, 7.10, 7.11 done. **Next is 7.6** (state-aware action control) unless Brian redirects.
 
 **Done in Phase 7:**
 - **7.1** — variant-first data model (2026-08-21). Additive cols on `bottle_variants`: `elo_global`, `nose`, `palate`, `finish`, `is_default`. Every SKU has exactly one default. **80 bottles, 112 variants**, 0 missing default. App: `src/lib/variants.ts`; new bottles dual-write a default variant; detail overlays default Elo/notes/images.
@@ -17,10 +17,11 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - 7.3 — detail-card layout (`66d028c`).
 - 7.5 — *partial*: placeholder, tap-to-zoom, Front/Back (`573cfe3`); zoom-close fix `27e5702`. Per-variant images wait on **7.4**.
 - **7.7 + 7.10** — Have a drink + Social feed (2026-08-22, pushed to `MVP-v3`).
-- **7.11** — Coach marks (2026-08-22). `users.seen_coach_ids` (existing users seeded `core.done`). Catalog `src/lib/coaches.ts`. New users: live-UI core tour. Existing: one What's new digest / session with Show me. Future features: add one catalog row (`announce` + optional `tour[]`). Do not re-audit the whole list.
+- **7.11** — Coach marks (2026-08-22, pushed). Catalog `src/lib/coaches.ts`.
+- **7.4 + 7.5** — Detail carousel includes the default variant; swipe / arrows / dots swap images, Elo, verified, age, proof, notes. Single-variant SKUs have no pager. Have a drink writes `activities.variant_id` for the visible version. Coach id `bottle.variants` announced.
 
 **Next step:**
-- Verify 7.11 on localhost / phone, then **7.4 — Variant carousel.** Swipeable carousel over [default + variants]; the whole card swaps on swipe; subtitle + pager + dots. `BottleDetailView` already has a `variantIndex` + pager/dots for **labeled** (non-default) variants — extend it to a full carousel that includes the default and swaps every variant-specific field. Single-variant SKUs show no pager. This also finishes 7.5 (per-variant images) and lets 7.7 attach pours to a variant.
+- **7.6 — State-aware action control** (Add to My Bar / Log a Pour / Add Back + More sheet). 7.8 suggest-edit (real pending table) is still unbuilt; current pencil writes a variant + logs `suggested_edit`.
 
 **SQL access:** `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. Don't print secrets. Keep SQL files ASCII-only (non-ASCII in a `-c` string fails with a UTF8 byte error on Windows). See AGENTS.md.
 

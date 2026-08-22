@@ -73,6 +73,36 @@ export async function fetchVariantsForSku(bottleId: string): Promise<BottleVaria
   return orderVariants(result.data as VariantRow[]).map(mapRow);
 }
 
+/** Fields that swap when the detail carousel moves. SKU identity (name/distillery/category) stays put. */
+export function fieldsForVariant(bottle: BottleDetails, v?: BottleVariant | null) {
+  if (!v) {
+    return {
+      elo: bottle.elo_global,
+      verified: bottle.verified,
+      nose: bottle.nose,
+      palate: bottle.palate,
+      finish: bottle.finish,
+      frontImageUrl: bottle.frontImageUrl,
+      backImageUrl: bottle.backImageUrl,
+      age: bottle.age,
+      proof: bottle.proof,
+      notes: undefined as string | undefined,
+    };
+  }
+  return {
+    elo: v.elo_global ?? bottle.elo_global,
+    verified: v.verified ?? bottle.verified,
+    nose: v.nose ?? bottle.nose,
+    palate: v.palate ?? bottle.palate,
+    finish: v.finish ?? bottle.finish,
+    frontImageUrl: v.frontImageUrl ?? bottle.frontImageUrl,
+    backImageUrl: v.backImageUrl ?? bottle.backImageUrl,
+    age: v.age ?? bottle.age,
+    proof: v.proof ?? bottle.proof,
+    notes: v.notes,
+  };
+}
+
 /** Overlay the default variant's scored/identity fields onto the SKU card. No-op until a default exists (post-7.1 SQL). */
 export function applyDefaultVariant(bottle: BottleDetails, variants: BottleVariant[]): BottleDetails {
   if (!variants.length) return { ...bottle, variants };

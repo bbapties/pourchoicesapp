@@ -81,6 +81,26 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    id: "bottle.variants",
+    title: "Variants",
+    body: "Some bottles have more than one version. Swipe the detail card to see each one.",
+    route: "/search",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/search",
+        anchor: "search.list",
+        caption: "A badge like \"2 variants\" means more than one version of that bottle.",
+      },
+      {
+        route: "/search",
+        anchor: "bottle.variant.pager",
+        caption: "Open it, then swipe the card or use the arrows. Each version has its own image, proof, and rating.",
+      },
+    ],
+  },
+  {
     id: "mybar.collection",
     title: "My Bar",
     body: "Your collection — owned now, or finished.",
