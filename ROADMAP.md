@@ -127,7 +127,7 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
-**Progress (2026-08-21):** **7.1 and 7.2 shipped.** 7.1 = variant-first columns + default-variant backfill + app dual-write. 7.2 = search roll-up (default-variant scoring), "N variants" badge, and the [Bottles | All Variants] toggle + per-variant leaderboard. 7.3 layout and 7.5 image fallback/zoom/Front-Back were already live. **7.7 + Social feed pulled forward** (SKU-level Have a drink + `/social` tab replacing Taste). **Next is still 7.4** (variant carousel) — which also unblocks per-variant images (finishes 7.5) and per-variant pours.
+**Progress (2026-08-22):** **7.1, 7.2, 7.7, and 7.10 shipped to `MVP-v3`.** 7.1 = variant-first columns + default-variant backfill + app dual-write. 7.2 = search roll-up (default-variant scoring), "N variants" badge, and the [Bottles | All Variants] toggle + per-variant leaderboard. 7.3 layout and 7.5 image fallback/zoom/Front-Back were already live. **7.7 + Social feed pulled forward** (SKU-level Have a drink + `/social` tab replacing Taste). **Next is still 7.4** (variant carousel) — which also unblocks per-variant images (finishes 7.5) and per-variant pours.
 
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
@@ -196,3 +196,5 @@ Notes: 7.3–7.5 build against 7.1's model; 7.7's variant-level pours wait on 7.
 - [x] AppShell + bottom nav
 - [x] Vercel + Supabase connected
 - [x] www.pourchoicesapp.com live
+- [x] 7.7 Have a drink (SKU-level pour sheet; any bottle; `activities.drank`)
+- [x] 7.10 Social activity feed (Taste tab replaced; global feed)

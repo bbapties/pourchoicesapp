@@ -8,22 +8,22 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production).
-- **Last commit:** (this session) 7.7 Have a drink + Social feed, plus admin verify as a feed action. SQL for `activities` (incl. `verified`) is already applied on prod Supabase.
-- **Current phase:** **Phase 7.** 7.1, 7.2, 7.7 (SKU-level), and 7.10 Social are done. Next is **7.4** (variant carousel).
+- **Last commit:** END SESSION docs (this baton). App tip: `69f7418`.
+- **Current phase:** **Phase 7.** 7.1, 7.2, 7.3, 7.7 (SKU-level), and 7.10 Social are done. **Next is 7.4** (variant carousel).
 
 **Done in Phase 7:**
 - **7.1** — variant-first data model (2026-08-21). Additive cols on `bottle_variants`: `elo_global`, `nose`, `palate`, `finish`, `is_default`. Every SKU has exactly one default. **80 bottles, 112 variants**, 0 missing default. App: `src/lib/variants.ts`; new bottles dual-write a default variant; detail overlays default Elo/notes/images.
 - **7.2** — search roll-up + [Bottles | All Variants] toggle (2026-08-21, verified on localhost, pushed to `MVP-v3`). SQL (`b0bd17b`): `all_bottle_details` gained `default_variant_elo`/`default_variant_id`/`variant_count` (**additive — no columns dropped**); new `all_variant_details` view (one row per variant + SKU identity). App (`df13291`): Bottles view scores each SKU from its default variant + "N variants" badge (hidden at 1); All Variants = per-variant cards sorted by variant Elo with a subtitle tag (Default / Batch / year / store pick). Star scaling, count banner, browse pagination, search, and category/verified filters are all mode-aware. AppShell `/search` top margin 92→128px for the toggle row.
 - 7.3 — detail-card layout (`66d028c`).
 - 7.5 — *partial*: placeholder, tap-to-zoom, Front/Back (`573cfe3`); zoom-close fix `27e5702`. Per-variant images wait on **7.4**.
-- **7.7 + 7.10** — Have a drink + Social feed (2026-08-21). New `activities` table (append-only; authenticated read-all / insert-own). **Have a drink** on any bottle (not gated by My Bar; does not insert `user_bottles` or bump `times_had`). Pour sheet: neat / rocks / mixed / blind. Blind logs the pour and toasts that tastings aren't live. Add / finish / restock / add-to-DB / admin verify / **suggest edit** / remove from collection also write activities. Policy: log every bottle action until Brian excludes one. Current exclusion: admin hard-delete of a bottle (CASCADE would wipe the row). Bottom nav is Search / Social / My Bar / Profile. `/taste` redirects to `/social`. My last activity prefers the latest `activities` row.
+- **7.7 + 7.10** — Have a drink + Social feed (2026-08-22, pushed to `MVP-v3`). SQL already live on prod: `activities` table + RLS + action CHECK (`drank`, `added_to_collection`, `finished`, `added_to_db`, `suggested_edit`, `verified`, `removed_from_collection`). App: `src/lib/activities.ts`, `PourSheet`, `/social`, Taste tab replaced. See log below for files and commits.
 
 **Next step:**
 - **7.4 — Variant carousel.** Swipeable carousel over [default + variants]; the whole card swaps on swipe; subtitle + pager + dots. `BottleDetailView` already has a `variantIndex` + pager/dots for **labeled** (non-default) variants — extend it to a full carousel that includes the default and swaps every variant-specific field. Single-variant SKUs show no pager. This also finishes 7.5 (per-variant images) and lets 7.7 attach pours to a variant.
 
 **SQL access:** `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. Don't print secrets. Keep SQL files ASCII-only (non-ASCII in a `-c` string fails with a UTF8 byte error on Windows). See AGENTS.md.
 
-**Open decisions / waiting on Brian:** none for this slice. Verify Have a drink + Social on localhost and mobile before push.
+**Open decisions / waiting on Brian:** none. Social slice verified locally by Brian and pushed. Prod check is www.pourchoicesapp.com (Vercel from `MVP-v3`).
 
 **Landmines:**
 - `user_bottles` is **one row per (user, bottle)**. Restock increments `times_had`. Do not insert a second row for the same SKU.
@@ -31,6 +31,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - Empty bottles show **Add to My Bar**, not the In My Bar / Finished It split.
 - Search now scores from `default_variant_elo` (fallback `bottle_elo_global`); star scaling range differs per mode. `all_bottle_details` is additive-extended; `all_variant_details` is new. Rollback: `sql/7.2-snapshot.sql` (+ `DROP VIEW all_variant_details`).
 - `activities` rollback: `DROP TABLE IF EXISTS public.activities CASCADE;` (see `sql/activities-snapshot.sql`). Admin `delete_user_cascade` is unchanged; `activities.user_id` ON DELETE CASCADE covers user wipe.
+- Activity policy: log every bottle action until Brian excludes it (`src/lib/activities.ts` header). Fail-open. Do not skip a new write without asking. Current exclusion: admin hard-delete of a bottle.
 - Supabase's typed client overflows ("excessively deep") on a **union table name + `.or()`** — the dynamic-table queries in `SearchClient.tsx` are cast to `any` on purpose. Don't "fix" the casts.
 
 ---
@@ -43,13 +44,30 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - ⬜ **Still open — DB_Schema.txt.txt lags the live DB:** missing `users.role`, admin RPCs, `all_bottle_details` view
   (now incl. `default_variant_elo`/`default_variant_id`/`variant_count`), the new `all_variant_details` view,
   storage bucket, `bottle_variants.{elo_global,nose,palate,finish,is_default}`, `user_bottles.times_had`,
-  `public.activities`. No `suggested_edits` table (7.8); `activities.action` includes `suggested_edit` for later.
+  `public.activities` (actions: drank, added_to_collection, finished, added_to_db, suggested_edit, verified, removed_from_collection).
+  No `suggested_edits` table (7.8 pending-suggestion flow still unbuilt; current "Suggest edit" writes a variant and logs `suggested_edit`).
 - ✅ **7.2 read-switch is live** — search scores from the default variant (`all_bottle_details.default_variant_elo`) and the
   All Variants view scores from `all_variant_details.variant_elo_global`. `bottles.elo_global` is now legacy/fallback only.
 
 ---
 
 ## Log (newest first)
+
+### 2026-08-22 — Grok (END SESSION: 7.7 + Social feed pushed to MVP-v3)
+- Brian paused 7.4, pulled engagement forward: SKU-level drinks, Taste tab -> Social, full pour sheet (neat/rocks/mixed/blind).
+- SQL applied on live Supabase this session (not just in git):
+  - `sql/activities-snapshot.sql` + `sql/activities-migration.sql` — `public.activities` + RLS (authenticated select-all / insert-own) + indexes.
+  - `sql/activities-verified-action.sql` — action `verified`.
+  - `sql/activities-more-actions.sql` — action `removed_from_collection`.
+  - Rollback: `DROP TABLE IF EXISTS public.activities CASCADE`.
+- App commits (then this doc commit), pushed to `MVP-v3`:
+  - `cfd028c` 7.7: Have a drink + Social activity feed
+  - `a56926b` docs: 7.7 Have a drink + Social feed handoff
+  - `848f387` 7.10: log admin verify as a social activity
+  - `69f7418` 7.10: log suggest-edit and remaining bottle actions
+- Behavior: **Have a drink** on any bottle (not gated by My Bar; does not insert `user_bottles` or bump `times_had`). Blind logs the pour and toasts that tastings aren't live. `/taste` redirects to `/social`. Nav: Search / Social / My Bar / Profile.
+- Activity policy: log every bottle action until Brian excludes one. Emitters: drank, added_to_collection, finished, added_to_db, suggested_edit (AddVariantSheet save), verified (admin queue), removed_from_collection. Exclusion: admin hard-delete of a bottle (CASCADE would wipe the feed row).
+- Brian verified locally ("it seems to be working") then asked to push. **Next agent: 7.4** variant carousel. Do not start 7.6/7.8/7.9 unless Brian says so.
 
 ### 2026-08-21 — Grok (7.7 Have a drink + Social feed)
 - Pulled 7.7 + the social activity feed forward (Brian: pause 7.4, SKU-level drinks, replace Taste with Social, full pour sheet).
@@ -58,7 +76,6 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - New `/social` feed. AppShell Taste tab -> Social. `/taste` redirects to `/social`.
 - My last activity reads `activities` when present (`Drank · date`).
 - Follow-up same session: admin Verify writes `verified`. Suggest edit (AddVariantSheet save) writes `suggested_edit`. Remove from collection writes `removed_from_collection`. New variant from the add-to-bar sheet writes `added_to_db`. SQL `sql/activities-more-actions.sql`.
-- **Next: 7.4 variant carousel.** Verify this slice on localhost + mobile before pushing.
 
 ### 2026-08-21 — Claude (END SESSION: 7.2 shipped + Vercel deploy fixed)
 - **Fixed a broken prod deploy first:** TS build error from dead `user_bottles` column fallbacks in `mybar/page.tsx` + `SearchClient.tsx` (removed — the columns are all live), and Node 18 discontinuation on Vercel (pinned `engines.node` to `22.x`; dashboard was already 22.x). Commits `b4629b5`, `a711056` — pushed and confirmed green by Brian.

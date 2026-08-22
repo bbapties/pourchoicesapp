@@ -13,7 +13,11 @@ Format: `- [ ] Short description — why it matters`
 - [ ] Barcode scanner shortcut in the add modal
 
 ## History / Activity Log
-- [ ] Shared transaction history page (accessible from My Bar + Profile) — text-based log of all activity: bottles added/finished/deleted, tastings completed, rankings changed, DB contributions. Not a visual UI, just a chronological list with timestamps.
+- [ ] Shared transaction history page (accessible from My Bar + Profile) — text-based log of all activity: bottles added/finished/deleted, tastings completed, rankings changed, DB contributions. Not a visual UI, just a chronological list with timestamps. (Social tab is the public feed; this item is still the personal/audit log.)
+- [ ] Follows / likes / comments on the Social feed — prototype is a global unfiltered list
+
+## Social
+- [x] Global activity feed tab (shipped 2026-08-22 as `/social`; Taste removed from nav)
 
 ## Bottle Detail Page
 - [ ] UX refinement pass — layout, button placement, stats section structure (defer until all functionality is working)
