@@ -567,7 +567,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     <>
       {/* Fixed Header with Search Bar */}
       <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 p-2">
-        <div className="relative max-w-md mx-auto">
+        <div className="relative max-w-md mx-auto" data-coach="search.input">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal w-4 h-4" />
           <Input
             type="text"
@@ -713,7 +713,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       </div>
 
       {/* Scrollable Content */}
-      <div className="px-4 py-4">
+      <div className="px-4 py-4" data-coach="search.list">
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (

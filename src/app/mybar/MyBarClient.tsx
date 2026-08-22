@@ -408,7 +408,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       </div>
 
       {/* Scrollable content — AppShell already applies marginTop: 132px */}
-      <div>
+      <div data-coach="mybar.list">
         {activeTab === 'tasted' ? (
           <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
             <div className="text-5xl mb-4">🥃</div>

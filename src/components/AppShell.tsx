@@ -5,9 +5,11 @@ import { Search, Users, GlassWater, User as UserIcon, Shield } from "lucide-reac
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CurrentUserProvider, useCurrentUser } from "@/lib/useCurrentUser";
+import CoachHost, { unseenAnnounceRoutes } from "@/components/CoachHost";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
-  const { authId, isAdmin, loading } = useCurrentUser();
+  const { authId, isAdmin, loading, seenCoachIds } = useCurrentUser();
+  const announceRoutes = unseenAnnounceRoutes(seenCoachIds);
   const pathname = usePathname();
   const router = useRouter();
   const isAuthPage = pathname === "/";
@@ -46,14 +48,25 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           <div className="h-16 flex items-center justify-around">
           {navItems.map(({ href, icon, label }) => {
             const active = pathname === href || (href === "/admin" && pathname.startsWith("/admin"));
+            const coachId =
+              href === "/search" ? "nav.search"
+              : href === "/social" ? "nav.social"
+              : href === "/mybar" ? "nav.mybar"
+              : href === "/profile" ? "nav.profile"
+              : undefined;
+            const showDot = announceRoutes.has(href) && !active;
             return (
               <Link
                 key={href}
                 href={href}
+                data-coach={coachId}
                 className={`relative flex flex-col items-center gap-0.5 px-3 py-1 ${active ? "text-black" : "text-gray-400"}`}
               >
                 {active && <span className="absolute -top-px left-0 right-0 h-0.5 bg-black rounded-b" />}
                 {icon}
+                {showDot && (
+                  <span className="absolute top-0 right-2 w-1.5 h-1.5 rounded-full bg-black" />
+                )}
                 <span className={`text-xs ${active ? "font-semibold" : ""}`}>{label}</span>
               </Link>
             );
@@ -61,6 +74,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
       )}
+      {!isAuthPage && <CoachHost />}
     </>
   );
 }

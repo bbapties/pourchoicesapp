@@ -1,0 +1,2 @@
+-- Snapshot before users.seen_coach_ids (column did not exist).
+-- Rollback: ALTER TABLE public.users DROP COLUMN IF EXISTS seen_coach_ids;

@@ -12,7 +12,11 @@ type CurrentUserState = {
   role: UserRole;
   isAdmin: boolean;
   loading: boolean;
+  seenCoachIds: string[];
+  setSeenCoachIds: (ids: string[]) => void;
 };
+
+const noop = (_ids: string[]) => {};
 
 const defaultState: CurrentUserState = {
   authId: null,
@@ -21,6 +25,8 @@ const defaultState: CurrentUserState = {
   role: "user",
   isAdmin: false,
   loading: true,
+  seenCoachIds: [],
+  setSeenCoachIds: noop,
 };
 
 const CurrentUserContext = createContext<CurrentUserState>(defaultState);
@@ -39,7 +45,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
 
       const { data } = await supabase
         .from("users")
-        .select("id, username, role")
+        .select("id, username, role, seen_coach_ids")
         .eq("auth_id", authId)
         .maybeSingle();
 
@@ -47,6 +53,9 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
 
       // role column may not exist yet (pre-migration) — default to 'user'
       const role: UserRole = data?.role === "admin" ? "admin" : "user";
+      const seenCoachIds: string[] = Array.isArray(data?.seen_coach_ids)
+        ? data.seen_coach_ids
+        : [];
 
       setState({
         authId,
@@ -55,6 +64,9 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
         role,
         isAdmin: role === "admin",
         loading: false,
+        seenCoachIds,
+        setSeenCoachIds: (ids: string[]) =>
+          setState((prev) => ({ ...prev, seenCoachIds: ids })),
       });
     };
 

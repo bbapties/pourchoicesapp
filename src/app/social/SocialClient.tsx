@@ -193,7 +193,7 @@ export default function SocialClient() {
         <h1 className="text-base font-semibold text-charcoal">Social</h1>
       </header>
 
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md mx-auto" data-coach="social.feed">
         {isLoading && rows.length === 0 ? (
           <p className="text-center text-sm text-gray-400 py-12">Loading activity...</p>
         ) : rows.length === 0 ? (

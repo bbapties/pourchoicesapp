@@ -410,6 +410,7 @@ export default function BottleDetailView({
               onClick={() => setShowPourSheet(true)}
               className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
               style={{ minHeight: '44px' }}
+              data-coach="bottle.have_a_drink"
             >
               Have a drink
             </Button>
