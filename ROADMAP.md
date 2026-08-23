@@ -123,11 +123,11 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 
 ---
 
-## Phase 7 — Bottle Detail Revamp & Variant-First Model  ← WE ARE HERE
+## Phase 7 — Bottle Detail Revamp & Variant-First Model  ✅ COMPLETE (7.1–7.11 shipped)
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
-**Progress (2026-08-23):** **7.1–7.8, 7.10, 7.11 shipped to `MVP-v3`.** 7.8 landed the suggest-an-edit correction pipeline (inline edit-mode + admin per-field review). **Only 7.9 remains in Phase 7** — add-a-variant with the global-vs-store-pick split (store picks become user-scoped, which also fixes the existing leaked personal-variant rows in shared views). Phase 3 tastings remain a stub. 7.9 is gated unless Brian says go.
+**Progress (2026-08-23):** **Phase 7 COMPLETE — 7.1–7.11 shipped to `MVP-v3`.** 7.9 landed add-a-variant (global vs private store pick) + the store-pick scoping leak fix + the carousel "+" slide. **Next major work is elsewhere** — Phase 3 Blind Tastings (big, flagship must-have, still a stub), Phase 4 Profile (coming-soon stub), Phase 6.4 CSV import (shell), or beta-prep items in BACKLOG (feedback/bug channel, generic events table). See HANDOFF for the recommendation. Ask Brian.
 
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
@@ -174,9 +174,10 @@ Epic C — Actions & moderation
   - Goal: editing existing fields creates a pending suggestion (golden copy untouched) → admin queue → approve applies.
   - Exit: user edit doesn't change live data; appears in the admin queue as pending (before/after); approve applies; user sees "under review". (Needs a suggested-edits table.)
   - Live: detail-card pencil now enters **inline edit-mode** over the visible version's fields (identity → `bottles`; proof/age/notes/images/batch/year → the shown variant); image area becomes an upload target. Gate per field: **mine (created_by==authId) AND unverified → applies directly**; else **pending** → admin. New append-only `suggested_edits` table (pending/approved/rejected/canceled/applied); revising own pending supersedes it (cancel+recreate), others' coexist. `under review` banner; per-field Approve/Reject **inside the Bottles queue** with an optional review reason; approve keeps verified. Lib `src/lib/suggestedEdits.ts`. Coach `bottle.suggest_edit`. `AddVariantSheet` retired. Store-pick user-scoping + the existing leaked personal-variant rows are **7.9**.
-- [ ] 7.9 Contribute / add-a-variant flow
+- [x] 7.9 Contribute / add-a-variant flow (2026-08-23, on `MVP-v3`)
   - Goal: new variant publishes immediately as unverified with a save choice ("database only" vs "and add to my bar"); flows to the verify queue.
   - Exit: new variant visible to all as unverified; "and add to my bar" also adds it to the user's collection (usable now); appears in the admin Bottles queue.
+  - Live: two kinds — **global variant** (batch/release-year, everyone sees, `verified=false` → admin queue) and **store pick** (private to creator). **Store-pick scoping (leak fix):** carousel/leaderboard/badge now filter `store_pick_name IS NULL OR created_by IN (my authId, my publicId)` — owner-sees-own-everywhere, others hidden. Save choice on both types (DB-only vs add-to-bar). Entry: a virtual **"+ Add a version" carousel slide** (every bottle swipeable now — retires single-variant-no-pager) + an explicit control + a More-sheet row. `VariantSelectSheet` gained `mode="contribute"`. SQL added `variant_created_by`/`attr_variant_created_by` to the two views (`sql/7.9-*.sql`). Coach `bottle.add_variant`. `AddVariantSheet` deleted.
 
 - [x] 7.10 Social activity feed (pulled forward from BACKLOG, 2026-08-21)
   - Goal: bottom-nav Social tab; reverse-chronological global feed of bottle, username, action.
@@ -208,3 +209,4 @@ Notes: 7.4/7.5 done (carousel + per-variant images). 7.7 pours attach `variant_i
 - [x] 7.11 First-use coaches + What's new digest
 - [x] 7.6 State-aware action control (primary + More sheet; Add Back via restock)
 - [x] 7.8 Suggest-an-edit (inline edit-mode; gate + append-only suggested_edits; admin per-field review)
+- [x] 7.9 Add-a-variant (global vs private store pick; store-pick scoping leak fix; carousel "+" slide)

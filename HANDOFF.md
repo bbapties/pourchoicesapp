@@ -8,23 +8,25 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** END SESSION docs (this baton). App tip before docs: `6db2748` (7.8 suggest-edit).
-- **Current phase:** **Phase 7.** Shipped: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.10, 7.11. **Not shipped: only 7.9** (add-a-variant, global vs store-pick). Phase 6.4 CSV import is still a shell.
+- **Last commit:** END SESSION docs (this baton). App tip before docs: `57e0910` (7.9 add-a-variant).
+- **Current phase:** **Phase 7 COMPLETE** (7.1–7.11 shipped). Remaining app work is in other phases / BACKLOG. Phase 6.4 CSV import is still a shell.
 
 **Single next step for the incoming agent:**
-- **7.9 — Add-a-variant, done right.** Two kinds of variant: a **global variant** (batch/release-year — everyone sees) vs a **store pick** (private to the creator, must NOT flood everyone's carousel/leaderboard). Store-pick user-scoping is also the fix for the **existing leaked personal-variant rows** (see landmine below). Save choice: "database only" vs "and add to my bar". Publishes unverified → admin Bottles queue. **Gated — do not start unless Brian says go.** Also do not start Phase 3 tastings or Phase 5 polish without Brian's word.
-- Design context from the 7.8 discovery session (Brian): from the bottle card there are exactly **two contribution actions — Suggest an edit (done, 7.8) and Add a variant (7.9)**. Personal notes/ratings are NOT a card action — they belong to the future drink/blind-tasting flow.
+- **Nothing is queued — ask Brian.** Phase 7 is done. Brian is prepping a **10–15 user beta**. The standing recommendation (given to Brian this session): the big remaining pieces are **Phase 3 Blind Tastings** (flagship must-have, large, still a stub), **Phase 4 Profile** (coming-soon stub — small: view username/email, edit username, sign out), **Phase 6.4 CSV import** (shell), and beta-prep BACKLOG items — the **user feedback/bug-report channel** and the **generic events/telemetry table** (capture beta activity for future badges; see [TELEMETRY.md](TELEMETRY.md)). Do not start any of these, or Phase 5 polish, without Brian's word.
+- Design context (Brian, 7.8 discovery): from the bottle card there are exactly **two contribution actions — Suggest an edit (7.8) and Add a variant (7.9)**, both done. Personal notes/ratings are NOT a card action — they belong to the future drink/blind-tasting flow.
 
 **Product surface (so you do not rebuild what exists):**
 - Nav: Search / Social / My Bar / Profile (+ Admin). `/taste` → `/social`. Login → `/mybar`. Profile = coming-soon + Sign out.
 - Bottle detail: carousel over **default + variants** (swipe / arrows / dots). One variant → no pager. Fields that swap: images, Elo, verified, age, proof, notes, tasting notes. SKU identity (name, distillery, category) stays. Front/Back + zoom live.
 - Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / blind (blind toasts "not live"). Writes `activities` with optional `variant_id` of the visible carousel slide.
 - Actions (7.6): one state-dependent primary + a `MoreSheet`. **none** → Add to My Bar (primary) + Have a drink. **owned** → Have a drink (primary) + More (Add another / Mark as Empty / Blind tasting stub / Remove). **empty** → Add Back (primary) + Have a drink + More (Remove). Suggest-edit pencil stays separate (top bar). Mark as Empty = soft delete (`currently_owned=false`, kept in history). Add Back = restock (`onAddToBar`), which bumps `times_had`.
-- Suggest an edit (7.8): the top-bar pencil enters **inline edit-mode** over the visible version's fields; image area = upload target. Per-field gate: mine+unverified applies directly; else pending → admin. Append-only `suggested_edits`. Under-review banner. Admin reviews **inside the Bottles queue** (`BottlesTab`) with per-field Approve/Reject + optional reason; approve keeps verified. `AddVariantSheet.tsx` is **retired/dead** (kept as reference for 7.9; nothing imports it).
+- Suggest an edit (7.8): the top-bar pencil enters **inline edit-mode** over the visible version's fields; image area = upload target. Per-field gate: mine+unverified applies directly; else pending → admin. Append-only `suggested_edits`. Under-review banner. Admin reviews **inside the Bottles queue** (`BottlesTab`) with per-field Approve/Reject + optional reason; approve keeps verified.
+- Add a variant (7.9): the card's second contribution action. **Global variant** (batch/release-year, everyone sees, `verified=false` → admin queue) vs **store pick** (private to creator). Save choice on both: **database-only** (creates the version, logs `added_to_db`, no `user_bottles`) vs **add-to-bar**. Entry points: a virtual **"+ Add a version" carousel slide** (every bottle swipeable now), an explicit "+ Add a version" control by the pager, and a More-sheet "Add a variant" row. Flow reuses `VariantSelectSheet` with `mode="contribute"`. `AddVariantSheet.tsx` is **deleted**.
+- **Store-pick scoping (7.9):** store picks are private to their creator — everywhere variants show (detail carousel `fetchVariantsForSku`, All-Variants leaderboard + count in `SearchClient`, the "N versions" badge) they filter `store_pick_name IS NULL OR created_by IN (my authId, my publicId)`. Matching **both** ids works around the `created_by` inconsistency.
 - Social: global reverse-chrono feed from `activities`.
 - Coaches: new users get a live-UI core tour; existing users get one What's new digest per session (Show me = that feature's tour). Catalog `src/lib/coaches.ts`. Storage `users.seen_coach_ids`. Existing accounts were seeded `core.done`.
 
-**SQL already live (do not re-run as if missing):** `activities` table + RLS; `users.seen_coach_ids` (existing users seeded); **`suggested_edits` table + RLS (7.8, `sql/7.8-migration.sql`)** — rollback `DROP TABLE IF EXISTS public.suggested_edits CASCADE` (`sql/7.8-snapshot.sql`). Helper: `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. SQL files ASCII-only. See AGENTS.md.
+**SQL already live (do not re-run as if missing):** `activities` table + RLS; `users.seen_coach_ids` (existing users seeded); **`suggested_edits` table + RLS (7.8, `sql/7.8-migration.sql`)** — rollback `DROP TABLE IF EXISTS public.suggested_edits CASCADE` (`sql/7.8-snapshot.sql`); **7.9 view columns (`sql/7.9-migration.sql`)** — `all_variant_details.variant_created_by` + `all_bottle_details.attr_variant_created_by` (additive; rollback = `sql/7.9-snapshot.sql` restores the prior view defs). Helper: `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. SQL files ASCII-only. See AGENTS.md.
 
 **Open decisions:** none. Brian asked to push 7.4/7.11 with light testing. Confirm prod at www.pourchoicesapp.com after Vercel.
 
@@ -36,7 +38,8 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - `activities` rollback: `DROP TABLE IF EXISTS public.activities CASCADE;` (see `sql/activities-snapshot.sql`). Admin `delete_user_cascade` is unchanged; `activities.user_id` ON DELETE CASCADE covers user wipe.
 - Activity policy: log every bottle action until Brian excludes it (`src/lib/activities.ts`). Fail-open. Exclusion: admin hard-delete of a bottle.
 - Coach policy: new user-facing surface → one `src/lib/coaches.ts` row. Pile-up = one digest per session, never 20 autoplayed tours. New vs existing = `core.done` in `seen_coach_ids`, not account age.
-- Detail carousel: `localBottle.variants` is the **full** ordered list (default first). Do not filter to labeled-only. Display via `fieldsForVariant`.
+- Detail carousel: `localBottle.variants` is the owner-scoped ordered list (default first; global variants + the viewer's own store picks). Display via `fieldsForVariant`. **7.9:** the carousel has a virtual **add-slide** at index `vlist.length` — `totalSlides = vlist.length + (addSlideEnabled ? 1 : 0)`, `onAddSlide = variantIndex >= vlist.length`. `showPager` is true whenever logged in (even single-version), so **"single variant = no pager" is retired**. The add-slide body replaces the normal card body (image/attrs/actions).
+- **`created_by` inconsistency, revisited:** store picks (and other variants) are stamped with the **auth id on some rows, the public id on others**. 7.9 handles this by matching **both** ids (`created_by IN (authId, publicId)`) in every owner-scope filter. A future cleanup could standardize `created_by`, but until then always match both.
 - **`created_by` is inconsistent across rows** — some `bottles`/`bottle_variants` rows store the **auth id** (`auth.users.id`), others store the **public `users.id`**. 7.8's gate compares `target.created_by === authId` (auth id). This works for rows stamped with the auth id (the common case), but a row stamped with a public id will read as "not mine" → routes to pending review instead of direct-apply. Harmless (worst case = an extra admin approval), but 7.9 should standardize `created_by`. Don't assume `created_by` is always an auth id.
 - **7.8 gate treats `verified IS NULL` as unverified** (`!data?.verified`). A variant with `verified=null` that displays as ✓ via the bottle-level fallback (`fieldsForVariant`) will direct-apply for its creator. Intended, but note null≠false here.
 - **MyBar `handleToggleOwnership` is one-way** (hard-codes `currently_owned=false`, always logs `finished`) — it is a "mark finished", not a real toggle. Use it only for **Mark as Empty**. For **Add Back** (empty→owned) use the restock path (`onAddToBar` → `addOrRestockUserBottle`), which sets owned=true and bumps `times_had` in both Search and MyBar. SearchClient's toggle *is* a real toggle; the divergence is why 7.6 routes Add Back through restock, not toggle.
@@ -61,6 +64,27 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-23 — Claude (END SESSION: 7.9 add-a-variant — Phase 7 COMPLETE)
+- Discovery with Brian first (store-pick privacy + the carousel entry-point UX), then built in 3 parts.
+- **7.9a leak fix** (`d218a37`): store picks are private to their creator — owner-sees-own-everywhere.
+  `fetchVariantsForSku` + SearchClient (leaderboard, count, badge) filter
+  `store_pick_name IS NULL OR created_by IN (authId, publicId)`. SQL views gained
+  `variant_created_by` / `attr_variant_created_by` (additive, applied to prod). Verified: others'
+  store picks vanish from carousel/leaderboard/badge; owner still sees own.
+- **7.9b add flow + carousel** (`57e0910`): `VariantSelectSheet` `mode="contribute"` with a save
+  choice (database-only vs add-to-bar); global variant → unverified → admin queue, store pick →
+  private. Carousel gains a virtual **"+ Add a version" slide** (every bottle swipeable; retires
+  single-variant-no-pager) + explicit control + More-sheet row. Coach `bottle.add_variant`.
+  `AddVariantSheet` deleted.
+- Verified end-to-end as Lakehouse: single-version bottle shows Version-1-of-1 + hint + control; the
+  "+" slide CTA opens the contribute sheet (Standard hidden, save choice shown); a database-only
+  global variant created `verified=false`, **0 user_bottles**, `added_to_db` logged. All test data
+  cleaned up (test variant + activity deleted; earlier proof edits restored). Typecheck + lint clean
+  (0 errors). **Caught a self-inflicted bug:** a `replace_all` had turned the contribute helper into
+  infinite recursion — fixed before commit.
+- **Phase 7 is COMPLETE.** Next work is Brian's call (Phase 3 tastings / Phase 4 profile / 6.4 CSV /
+  beta-prep). New landmines: the carousel add-slide index math; the created_by dual-id match.
 
 ### 2026-08-23 — Claude (END SESSION: 7.8 suggest-an-edit pushed to MVP-v3)
 - Long discovery Q&A with Brian first (functionality before UI). Outcome: the bottle card has exactly
