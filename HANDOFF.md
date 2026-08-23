@@ -8,21 +8,23 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** END SESSION docs (this baton). App tip before docs: `750e427` (7.6 actions).
-- **Current phase:** **Phase 7.** Shipped: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.10, 7.11. **Not shipped:** 7.8 (real suggest-edit table), 7.9 (contribute/add-variant save choice). Phase 6.4 CSV import is still a shell.
+- **Last commit:** END SESSION docs (this baton). App tip before docs: `6db2748` (7.8 suggest-edit).
+- **Current phase:** **Phase 7.** Shipped: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.10, 7.11. **Not shipped: only 7.9** (add-a-variant, global vs store-pick). Phase 6.4 CSV import is still a shell.
 
 **Single next step for the incoming agent:**
-- **Nothing is queued.** 7.6 is done. The remaining Phase-7 items are **7.8** (suggest-an-edit → needs a `suggested_edits` table + admin queue) and **7.9** (add-a-variant save choice), both **gated — do not start unless Brian says go.** Also do not start Phase 3 tastings or Phase 5 polish without Brian's word. Ask Brian what's next.
+- **7.9 — Add-a-variant, done right.** Two kinds of variant: a **global variant** (batch/release-year — everyone sees) vs a **store pick** (private to the creator, must NOT flood everyone's carousel/leaderboard). Store-pick user-scoping is also the fix for the **existing leaked personal-variant rows** (see landmine below). Save choice: "database only" vs "and add to my bar". Publishes unverified → admin Bottles queue. **Gated — do not start unless Brian says go.** Also do not start Phase 3 tastings or Phase 5 polish without Brian's word.
+- Design context from the 7.8 discovery session (Brian): from the bottle card there are exactly **two contribution actions — Suggest an edit (done, 7.8) and Add a variant (7.9)**. Personal notes/ratings are NOT a card action — they belong to the future drink/blind-tasting flow.
 
 **Product surface (so you do not rebuild what exists):**
 - Nav: Search / Social / My Bar / Profile (+ Admin). `/taste` → `/social`. Login → `/mybar`. Profile = coming-soon + Sign out.
 - Bottle detail: carousel over **default + variants** (swipe / arrows / dots). One variant → no pager. Fields that swap: images, Elo, verified, age, proof, notes, tasting notes. SKU identity (name, distillery, category) stays. Front/Back + zoom live.
 - Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / blind (blind toasts "not live"). Writes `activities` with optional `variant_id` of the visible carousel slide.
 - Actions (7.6): one state-dependent primary + a `MoreSheet`. **none** → Add to My Bar (primary) + Have a drink. **owned** → Have a drink (primary) + More (Add another / Mark as Empty / Blind tasting stub / Remove). **empty** → Add Back (primary) + Have a drink + More (Remove). Suggest-edit pencil stays separate (top bar). Mark as Empty = soft delete (`currently_owned=false`, kept in history). Add Back = restock (`onAddToBar`), which bumps `times_had`.
+- Suggest an edit (7.8): the top-bar pencil enters **inline edit-mode** over the visible version's fields; image area = upload target. Per-field gate: mine+unverified applies directly; else pending → admin. Append-only `suggested_edits`. Under-review banner. Admin reviews **inside the Bottles queue** (`BottlesTab`) with per-field Approve/Reject + optional reason; approve keeps verified. `AddVariantSheet.tsx` is **retired/dead** (kept as reference for 7.9; nothing imports it).
 - Social: global reverse-chrono feed from `activities`.
 - Coaches: new users get a live-UI core tour; existing users get one What's new digest per session (Show me = that feature's tour). Catalog `src/lib/coaches.ts`. Storage `users.seen_coach_ids`. Existing accounts were seeded `core.done`.
 
-**SQL already live (do not re-run as if missing):** `activities` table + RLS; `users.seen_coach_ids` (existing users seeded). Helper: `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. SQL files ASCII-only. See AGENTS.md.
+**SQL already live (do not re-run as if missing):** `activities` table + RLS; `users.seen_coach_ids` (existing users seeded); **`suggested_edits` table + RLS (7.8, `sql/7.8-migration.sql`)** — rollback `DROP TABLE IF EXISTS public.suggested_edits CASCADE` (`sql/7.8-snapshot.sql`). Helper: `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. SQL files ASCII-only. See AGENTS.md.
 
 **Open decisions:** none. Brian asked to push 7.4/7.11 with light testing. Confirm prod at www.pourchoicesapp.com after Vercel.
 
@@ -35,6 +37,8 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - Activity policy: log every bottle action until Brian excludes it (`src/lib/activities.ts`). Fail-open. Exclusion: admin hard-delete of a bottle.
 - Coach policy: new user-facing surface → one `src/lib/coaches.ts` row. Pile-up = one digest per session, never 20 autoplayed tours. New vs existing = `core.done` in `seen_coach_ids`, not account age.
 - Detail carousel: `localBottle.variants` is the **full** ordered list (default first). Do not filter to labeled-only. Display via `fieldsForVariant`.
+- **`created_by` is inconsistent across rows** — some `bottles`/`bottle_variants` rows store the **auth id** (`auth.users.id`), others store the **public `users.id`**. 7.8's gate compares `target.created_by === authId` (auth id). This works for rows stamped with the auth id (the common case), but a row stamped with a public id will read as "not mine" → routes to pending review instead of direct-apply. Harmless (worst case = an extra admin approval), but 7.9 should standardize `created_by`. Don't assume `created_by` is always an auth id.
+- **7.8 gate treats `verified IS NULL` as unverified** (`!data?.verified`). A variant with `verified=null` that displays as ✓ via the bottle-level fallback (`fieldsForVariant`) will direct-apply for its creator. Intended, but note null≠false here.
 - **MyBar `handleToggleOwnership` is one-way** (hard-codes `currently_owned=false`, always logs `finished`) — it is a "mark finished", not a real toggle. Use it only for **Mark as Empty**. For **Add Back** (empty→owned) use the restock path (`onAddToBar` → `addOrRestockUserBottle`), which sets owned=true and bumps `times_had` in both Search and MyBar. SearchClient's toggle *is* a real toggle; the divergence is why 7.6 routes Add Back through restock, not toggle.
 - Supabase's typed client overflows ("excessively deep") on a **union table name + `.or()`** — the dynamic-table queries in `SearchClient.tsx` are cast to `any` on purpose. Don't "fix" the casts.
 
@@ -57,6 +61,27 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-23 — Claude (END SESSION: 7.8 suggest-an-edit pushed to MVP-v3)
+- Long discovery Q&A with Brian first (functionality before UI). Outcome: the bottle card has exactly
+  **two contribution actions** — Suggest an edit (7.8) and Add a variant (7.9). Personal notes/ratings
+  leave the card (they belong to the future tasting flow). Three flows were untangled from today's
+  muddled pencil.
+- **7.8 shipped** (`6db2748`): pencil → **inline edit-mode**; per-field gate (mine+unverified applies
+  directly, else pending); append-only `suggested_edits` (pending/approved/rejected/canceled/applied);
+  submitter-supersede = cancel+recreate; under-review banner; admin per-field Approve/Reject with an
+  optional reason **inside the Bottles queue**; approve keeps verified. New `src/lib/suggestedEdits.ts`,
+  coach `bottle.suggest_edit`, `AddVariantSheet` retired.
+- **SQL:** `sql/7.8-migration.sql` (+ snapshot) — new `suggested_edits` table + RLS (insert-own,
+  select own+admin via `is_admin()`, update own/admin) — **applied to prod DB this session** (Brian's go).
+  Additive; rollback = drop the table.
+- Verified every path against the live app as an admin user (direct-apply, pending+banner, admin
+  approve keeps-verified, append-only supersede, reject) with DB checks; **all test data restored**
+  (Buffalo Trace proof back to 90; test suggestion/activity rows deleted). Typecheck clean; ESLint
+  only pre-existing warnings. **Image-replace couldn't be automated** (browsers block scripting a file
+  input) — UI is wired + reuses Phase-6 `uploadBottleImage`; eyeball it on prod.
+- **Next: 7.9** (add-a-variant: global vs store-pick user-scoping; also fixes the existing leaked
+  personal-variant rows). Gated. New landmines added: inconsistent `created_by`, null-verified gating.
 
 ### 2026-08-23 — Claude (END SESSION: 7.6 state-aware actions pushed to MVP-v3)
 - **7.6 shipped** (`750e427`): rebuilt the `BottleDetailView` action region into one state-dependent

@@ -22,6 +22,7 @@ Format: `- [ ] Short description — why it matters`
 - [x] Global activity feed tab (shipped 2026-08-22 as `/social`; Taste removed from nav)
 
 ## Bottle Detail Page
+- [ ] Notify a user when an admin approves/rejects their suggested edit — surface the admin's `review_note` (stored on `suggested_edits` as of 7.8). Needs a notification system; 7.8 only stores the note.
 - [ ] UX refinement pass — layout, button placement, stats section structure (defer until all functionality is working)
 - [ ] Personal comments on a variant — per-user notes, saved instantly, no moderation (deferred from the Phase 7 detail revamp)
 - [ ] Third image slot on variants — badge / detail close-up (the Front/Back toggle is built to extend)
