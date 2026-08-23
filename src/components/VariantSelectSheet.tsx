@@ -21,6 +21,14 @@ interface VariantSelectSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd: (variantId: string | null) => Promise<void>;
+  /**
+   * "add-to-bar" (default): choosing a version adds it to My Bar (first add / Add another).
+   * "contribute" (7.9): the "+ Add a version" flow — hides the plain "Standard bottle" option and
+   * shows a save choice (database-only vs also add to my bar).
+   */
+  mode?: "add-to-bar" | "contribute";
+  /** Contribute mode, database-only: the variant was created but not added to the bar. */
+  onContributed?: (variantId: string | null) => void;
 }
 
 type BottleKind =
@@ -33,15 +41,22 @@ export default function VariantSelectSheet({
   open,
   onOpenChange,
   onAdd,
+  mode = "add-to-bar",
+  onContributed,
 }: VariantSelectSheetProps) {
   const { authId, publicUserId } = useCurrentUser();
+  const isContribute = mode === "contribute";
   const [isFetching, setIsFetching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [batchVariants, setBatchVariants] = useState<BatchVariant[]>([]);
   const [myStores, setMyStores] = useState<string[]>([]);
+  // Contribute mode only: whether to also add the new version to the bar.
+  const [saveChoice, setSaveChoice] = useState<"database-only" | "add-to-bar">("database-only");
 
-  // Section 1: which bottle?
-  const [bottleKind, setBottleKind] = useState<BottleKind>({ kind: "standard" });
+  // Section 1: which bottle? (contribute starts on a new variant — "standard" isn't a version)
+  const [bottleKind, setBottleKind] = useState<BottleKind>(
+    mode === "contribute" ? { kind: "new_variant" } : { kind: "standard" }
+  );
   const [newProof, setNewProof] = useState("");
   const [newBatch, setNewBatch] = useState("");
   const [newReleaseYear, setNewReleaseYear] = useState("");
@@ -53,7 +68,8 @@ export default function VariantSelectSheet({
 
   useEffect(() => {
     if (!open) return;
-    setBottleKind({ kind: "standard" });
+    setBottleKind(isContribute ? { kind: "new_variant" } : { kind: "standard" });
+    setSaveChoice("database-only");
     setNewProof("");
     setNewBatch("");
     setNewReleaseYear("");
@@ -100,14 +116,23 @@ export default function VariantSelectSheet({
       return;
     }
     setIsAdding(true);
+    // Route completion: contribute + database-only creates the version without adding to the bar;
+    // otherwise add it to My Bar via onAdd.
+    const complete = async (variantId: string | null) => {
+      if (isContribute && saveChoice === "database-only") {
+        onContributed?.(variantId);
+      } else {
+        await onAdd(variantId);
+      }
+    };
     try {
       // Simple paths — no variant row needed
       if (bottleKind.kind === "standard" && !isStorePick) {
-        await onAdd(null);
+        await complete(null);
         return;
       }
       if (bottleKind.kind === "batch" && !isStorePick) {
-        await onAdd(bottleKind.variantId);
+        await complete(bottleKind.variantId);
         return;
       }
 
@@ -140,7 +165,7 @@ export default function VariantSelectSheet({
           .eq("store_pick_name", storeName.trim())
           .maybeSingle();
         if (existing) {
-          await onAdd(existing.id);
+          await complete(existing.id);
           return;
         }
       }
@@ -159,7 +184,7 @@ export default function VariantSelectSheet({
           action: "added_to_db",
         });
       }
-      await onAdd(created.id);
+      await complete(created.id);
     } catch (err: unknown) {
       toast.error("Failed to add bottle");
       console.error(err);
@@ -238,10 +263,12 @@ export default function VariantSelectSheet({
       >
         <SheetHeader className="mb-4">
           <SheetTitle className="text-charcoal text-left">
-            Add {bottle.name}
+            {isContribute ? `Add a version of ${bottle.name}` : `Add ${bottle.name}`}
           </SheetTitle>
           <p className="text-xs text-gray-500">
-            Which version of this bottle are you adding?
+            {isContribute
+              ? "A new batch, release, or your store pick. Store picks are private to you."
+              : "Which version of this bottle are you adding?"}
           </p>
         </SheetHeader>
 
@@ -258,20 +285,22 @@ export default function VariantSelectSheet({
                 Which bottle?
               </p>
 
-              {/* Standard */}
-              <SelectRow
-                isSelected={bottleKind.kind === "standard"}
-                label="Standard bottle"
-                sublabel={
-                  [
-                    bottle.proof ? `${bottle.proof} proof` : null,
-                    bottle.age,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "Default version"
-                }
-                onClick={() => setBottleKind({ kind: "standard" })}
-              />
+              {/* Standard — only in add-to-bar mode (it's not a new *version*) */}
+              {!isContribute && (
+                <SelectRow
+                  isSelected={bottleKind.kind === "standard"}
+                  label="Standard bottle"
+                  sublabel={
+                    [
+                      bottle.proof ? `${bottle.proof} proof` : null,
+                      bottle.age,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "Default version"
+                  }
+                  onClick={() => setBottleKind({ kind: "standard" })}
+                />
+              )}
 
               {/* Known batch variants */}
               {batchVariants.map((v) => (
@@ -485,6 +514,25 @@ export default function VariantSelectSheet({
               )}
             </div>
 
+            {/* ── Section 3: Save choice (contribute only) ── */}
+            {isContribute && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Save</p>
+                <SelectRow
+                  isSelected={saveChoice === "database-only"}
+                  label="Save to database only"
+                  sublabel="Add the version to the catalog — don't add it to your bar"
+                  onClick={() => setSaveChoice("database-only")}
+                />
+                <SelectRow
+                  isSelected={saveChoice === "add-to-bar"}
+                  label="Save and add to my bar"
+                  sublabel="Also add it to My Bar as a bottle you own"
+                  onClick={() => setSaveChoice("add-to-bar")}
+                />
+              </div>
+            )}
+
             {/* ── Add button ── */}
             <button
               onClick={handleAdd}
@@ -492,7 +540,11 @@ export default function VariantSelectSheet({
               className="w-full py-3 rounded border border-charcoal text-sm font-medium transition-colors disabled:opacity-50"
               style={{ backgroundColor: "#2F2F2F", color: "#FFFFFF" }}
             >
-              {isAdding ? "Adding..." : "Add to My Bar"}
+              {isAdding
+                ? "Saving..."
+                : isContribute
+                  ? saveChoice === "database-only" ? "Add version" : "Add & add to my bar"
+                  : "Add to My Bar"}
             </button>
           </div>
         )}

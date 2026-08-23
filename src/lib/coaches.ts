@@ -141,6 +141,26 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    id: "bottle.add_variant",
+    title: "Add a version",
+    body: "Missing a batch, release, or store pick? Add it — swipe to the + at the end of a bottle's versions.",
+    route: "/search",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/search",
+        anchor: "search.list",
+        caption: "Open any bottle.",
+      },
+      {
+        route: "/search",
+        anchor: "bottle.add_variant",
+        caption: "Swipe to the + at the end of the versions, or tap here, to add a batch/release (everyone sees it) or your own store pick (private to you).",
+      },
+    ],
+  },
+  {
     id: "mybar.collection",
     title: "My Bar",
     body: "Your collection — owned now, or finished.",

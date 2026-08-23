@@ -78,6 +78,7 @@ export default function BottleDetailView({
   const [uploadingSide, setUploadingSide] = useState<null | 'front' | 'back'>(null);
   const [hasPending, setHasPending] = useState(false);
   const [showVariantSelect, setShowVariantSelect] = useState(false);
+  const [showAddVariant, setShowAddVariant] = useState(false);
   const [showPourSheet, setShowPourSheet] = useState(false);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [isPouring, setIsPouring] = useState(false);
@@ -87,16 +88,20 @@ export default function BottleDetailView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { authId } = useCurrentUser();
 
+  // 7.9: carousel = variants + a virtual "+ Add a version" slide at the end (logged in, not editing).
   const vlist = localBottle.variants || [];
-  const showPager = vlist.length > 1;
-  const currentVariant = vlist[variantIndex];
+  const addSlideEnabled = !!publicUserId && !isEditing;
+  const totalSlides = vlist.length + (addSlideEnabled ? 1 : 0);
+  const showPager = totalSlides > 1;
+  const onAddSlide = addSlideEnabled && variantIndex >= vlist.length;
+  const currentVariant = onAddSlide ? undefined : vlist[variantIndex];
   const shown = fieldsForVariant(localBottle, currentVariant);
   const hasBackImage = !!shown.backImageUrl;
   const imageUrl = imageSide === 'front' ? shown.frontImageUrl : shown.backImageUrl;
 
-  const subtitle = !currentVariant
-    ? 'Default bottle'
-    : currentVariant.isDefault
+  const subtitle = onAddSlide
+    ? 'Add a version'
+    : !currentVariant || currentVariant.isDefault
       ? 'Default bottle'
       : (variantLabel(currentVariant) || `Variant ${variantIndex + 1}`);
   const identity = [localBottle.distillery, localBottle.category, localBottle.style]
@@ -155,9 +160,21 @@ export default function BottleDetailView({
 
   const goVariant = (dir: number) => {
     if (!showPager || isEditing) return;
-    setVariantIndex((i) => (i + dir + vlist.length) % vlist.length);
+    setVariantIndex((i) => (i + dir + totalSlides) % totalSlides);
     setImageSide("front");
     setImgError(false);
+  };
+
+  const openAddVariant = () => {
+    setShowMoreSheet(false);
+    setShowAddVariant(true);
+  };
+
+  // Refetch the owner-scoped variant list after a contribution so the new version appears.
+  const refetchVariants = () => {
+    fetchVariantsForSku(bottle.id, [authId, publicUserId]).then((variants) => {
+      if (variants.length) setLocalBottle((prev) => ({ ...prev, variants }));
+    });
   };
 
   const onCardPointerDown = (e: React.PointerEvent) => {
@@ -447,7 +464,7 @@ export default function BottleDetailView({
                 <button type="button" onClick={() => goVariant(-1)} aria-label="Previous variant" className="text-gray-600 hover:text-black">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-xs text-gray-500">{variantIndex + 1} / {vlist.length}</span>
+                <span className="text-xs text-gray-500">{onAddSlide ? 'Add a version' : `Version ${variantIndex + 1} of ${vlist.length}`}</span>
                 <button type="button" onClick={() => goVariant(1)} aria-label="Next variant" className="text-gray-600 hover:text-black">
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -463,8 +480,51 @@ export default function BottleDetailView({
           ) : (
             identity && <div className="text-xs text-gray-400 mt-1">{identity}</div>
           )}
+          {/* 7.9: swipe hint + explicit add-a-version door */}
+          {!isEditing && showPager && (
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-[11px] text-gray-400">
+                {onAddSlide ? 'Swipe back to the versions ‹' : 'Swipe or tap ‹ › to see versions'}
+              </span>
+              {!onAddSlide && (
+                <button
+                  type="button"
+                  onClick={openAddVariant}
+                  className="text-[11px] text-gray-600 hover:text-black underline flex-shrink-0"
+                  data-coach="bottle.add_variant"
+                >
+                  + Add a version
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
+        {onAddSlide ? (
+          <div className="border-2 border-dashed border-gray-400 rounded-lg p-6 text-center my-4">
+            <div className="text-4xl text-gray-400 mb-2 leading-none">+</div>
+            <div className="font-medium mb-1">Add a version</div>
+            <p className="text-xs text-gray-500 mb-4">
+              A new batch or release everyone can see, or your own store pick (private to you).
+            </p>
+            <Button
+              type="button"
+              onClick={openAddVariant}
+              className="bg-gray-800 text-white hover:bg-gray-900 w-full"
+              style={{ minHeight: '44px' }}
+            >
+              Add a version
+            </Button>
+            <button
+              type="button"
+              onClick={() => goVariant(-1)}
+              className="block mx-auto mt-3 text-xs text-gray-500 underline"
+            >
+              Back to versions
+            </button>
+          </div>
+        ) : (
+        <>
         {/* Image (portrait) + attributes beside */}
         <div className="flex gap-4 mb-3">
           <div className="w-[116px] flex-shrink-0">
@@ -526,7 +586,7 @@ export default function BottleDetailView({
             </div>
 
             {showPager && !isEditing && (
-              <div className="flex justify-center gap-1.5 mt-2">
+              <div className="flex justify-center items-center gap-1.5 mt-2">
                 {vlist.map((v, idx) => (
                   <button
                     key={v.variantId || idx}
@@ -536,6 +596,16 @@ export default function BottleDetailView({
                     className={`w-2 h-2 rounded-full ${idx === variantIndex ? 'bg-gray-800' : 'bg-gray-300'}`}
                   />
                 ))}
+                {addSlideEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => { setVariantIndex(vlist.length); setImageSide("front"); setImgError(false); }}
+                    aria-label="Add a version"
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[10px] leading-none border ${onAddSlide ? 'bg-gray-800 text-white border-gray-800' : 'text-gray-500 border-gray-400'}`}
+                  >
+                    +
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -788,6 +858,8 @@ export default function BottleDetailView({
         )}
         </>
         )}
+        </>
+        )}
       </div>
 
       {/* Full-screen image zoom — close control must sit above the image (image used to cover the X). */}
@@ -838,6 +910,7 @@ export default function BottleDetailView({
           onOpenChange={setShowMoreSheet}
           bottleName={localBottle.name}
           busy={isSaving}
+          onAddVariant={openAddVariant}
           onAddAnother={collectionState === 'owned' ? handleAddAnother : undefined}
           onMarkEmpty={collectionState === 'owned' ? handleMarkEmpty : undefined}
           onBlindTasting={
@@ -862,6 +935,31 @@ export default function BottleDetailView({
             setOwnedLocally(true);
             setShowVariantSelect(false);
             onClose();
+          }}
+        />
+      )}
+
+      {/* 7.9: contribute-a-version sheet (from the + slide / control / More row) */}
+      {publicUserId && (
+        <VariantSelectSheet
+          bottle={localBottle}
+          open={showAddVariant}
+          onOpenChange={setShowAddVariant}
+          mode="contribute"
+          onContributed={() => {
+            setShowAddVariant(false);
+            toast.success("Version added");
+            refetchVariants();
+          }}
+          onAdd={async (variantId) => {
+            if (onAddToBar) {
+              await onAddToBar(bottle.id, variantId);
+              setInCollectionLocally(true);
+              setOwnedLocally(true);
+            }
+            setShowAddVariant(false);
+            toast.success("Version added to My Bar");
+            refetchVariants();
           }}
         />
       )}

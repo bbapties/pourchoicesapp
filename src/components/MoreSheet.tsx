@@ -7,6 +7,8 @@ interface MoreSheetProps {
   onOpenChange: (open: boolean) => void;
   bottleName: string;
   busy?: boolean;
+  /** 7.9: contribute a new version (global variant or your store pick). Any state. */
+  onAddVariant?: () => void;
   /** Restock a bottle you already own (opens variant picker). Owned state. */
   onAddAnother?: () => void;
   /** Soft delete — hidden from My Bar, kept in history. Owned state. */
@@ -29,12 +31,14 @@ export default function MoreSheet({
   onOpenChange,
   bottleName,
   busy = false,
+  onAddVariant,
   onAddAnother,
   onMarkEmpty,
   onBlindTasting,
   onRemove,
 }: MoreSheetProps) {
   const rows: Row[] = [];
+  if (onAddVariant) rows.push({ label: "Add a variant", hint: "A batch, release, or your store pick", onClick: onAddVariant });
   if (onAddAnother) rows.push({ label: "Add another", hint: "You bought another bottle of this", onClick: onAddAnother });
   if (onMarkEmpty) rows.push({ label: "Mark as Empty", hint: "Hidden from My Bar, kept in your history", onClick: onMarkEmpty });
   if (onBlindTasting) rows.push({ label: "Blind tasting", hint: "Not live yet", onClick: onBlindTasting });
