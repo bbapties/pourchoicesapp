@@ -46,36 +46,50 @@ must be storing *now*, before those features exist.
   prefix so a resolved report's image is easy to purge). RLS mirrors `suggested_edits`
   (insert-own / select own+admin / update own+admin). SQL: `sql/feedback-migration.sql` (+ snapshot).
 
-These cover *domain* actions well. The **gap** is broad *usage/interaction* telemetry.
+- **`events`** (beta-prep, `src/lib/events.ts`) — the generic **usage/interaction** table (see below).
+  Broad telemetry that isn't a first-class bottle action: page views, searches, key clicks, errors.
+
+These cover *domain* actions well; `events` covers the broad *usage/interaction* layer.
 
 ---
 
-## The gap → a generic `events` table (proposed — NOT built yet; needs Brian's go)
+## The generic `events` table (BUILT 2026-08-23)
 
-A single wide, append-only table for everything that isn't already a first-class domain action:
-screen/route views, taps/clicks on key controls, **searches** (query + result count + mode),
-filters/sorts applied, coach/tour interactions, feature opens, and client errors.
+One wide, append-only table for everything that isn't already a first-class domain action. Decision
+(Brian): **one generic table**, with `event_type` as the "what kind" filter column and `metadata jsonb`
+for the long tail (new event shapes need no migration). Logged-out visitors are captured too
+(`user_id` NULL + a client `session_id`), so the pre-login funnel is visible. SQL:
+`sql/events-migration.sql` (+ `sql/events-snapshot.sql`).
 
-Proposed shape (one generic table; final call — generic vs a few typed tables — is Brian's):
+Shape:
 
 | column | notes |
 |--------|-------|
 | `id uuid` | pk |
 | `user_id uuid null` | null for logged-out; `ON DELETE CASCADE` to `users` |
-| `session_id text null` | client-generated per app session, to stitch a visit together |
-| `event_type text` | e.g. `page_view`, `click`, `search`, `filter`, `coach_shown`, `error` |
+| `session_id text null` | client-generated per app session (sessionStorage `pc.session.id`) |
+| `event_type text` | **v1:** `page_view`, `search`, `click`, `error` |
 | `surface text null` | route / screen (e.g. `/search`) |
-| `target_type text null` · `target_id text null` | what was acted on (bottle, variant, nav, button…) |
-| `metadata jsonb null` | the long tail (query text, result_count, sort mode, ms, etc.) |
+| `target_type text null` · `target_id text null` | what was acted on (`bottle_open`, `have_a_drink`, …) |
+| `metadata jsonb null` | the long tail (query, result_count, mode, message, pour_type, …) |
 | `created_at timestamptz` | default now() |
 
-Indexes: `(user_id, created_at)`, `(event_type, created_at)`. Ship with a **fail-open `logEvent`
-client helper** (batch/debounce; never throws). **Search history** = `event_type='search'` rows with
-`metadata = { query, result_count, mode }` — this alone feeds a future "recent searches" and
-discovery insights.
+Indexes: `(user_id, created_at)`, `(event_type, created_at)`, `(session_id)`. RLS: anon + auth may
+**insert** (anon only anonymous rows); **select is admin-only**; no UPDATE/DELETE policies (append-only).
 
-This is tracked in **BACKLOG.md** (Data / Audit). Do not build it without Brian's go + a schema
-decision.
+**Client helper** `logEvent` / `logClick` (`src/lib/events.ts`) — **fire-and-forget + fail-open**
+(never awaits, never throws; console-only on error). No batching (per-event) — fine at beta volume.
+
+**v1 instrumentation (live):**
+- `page_view` — every route change + the login funnel (`EventTracker`, mounted in `AppShell`).
+- `error` — uncaught JS errors + unhandled promise rejections (`EventTracker` window listeners).
+- `search` — `metadata = { query, result_count, mode }` (`SearchClient.searchBottles`). The
+  highest-value event: feeds a future "recent searches" + discovery insights.
+- `click` — `bottle_open` (SearchClient; not otherwise in `activities`) and `have_a_drink` intent
+  (BottleDetailView). More clicks can be added anytime (fail-open + jsonb).
+
+Add more events freely as you build (see the standing rule). Not yet wired: filters/sorts,
+coach/tour interactions, add-to-bar click (its success is already in `activities`).
 
 ---
 
@@ -83,8 +97,8 @@ decision.
 
 When you build or rework a feature:
 - **(a)** If it's a bottle action, log it to `activities` (existing rule).
-- **(b)** Once the generic `events` table exists, emit a usage event for the new surface — at least a
-  view + its key interactions.
+- **(b)** The generic `events` table exists — emit a usage event for the new surface via `logEvent` /
+  `logClick` (`src/lib/events.ts`): at least its key interactions (page views are captured globally).
 - **(c)** Keep all logging **fail-open**; never let it break the feature.
 - **(d)** Record any new `event_type` / `activities.action` values **here** so the vocabulary stays
   discoverable (and note the CHECK-constraint update if you add an `activities.action`).
