@@ -1,0 +1,13 @@
+-- Snapshot before public.suggested_edits (2026-08-23, Phase 7.8).
+-- The table does not exist yet. Additive change only; no existing table,
+-- column, policy, or function is altered by the migration.
+--
+-- Public tables at capture time:
+--   activities, bottle_variants, bottles, tasting_details, tasting_results,
+--   tasting_sessions, user_bottles, users
+--
+-- Rollback after the migration:
+--   DROP TABLE IF EXISTS public.suggested_edits CASCADE;
+-- That also drops the indexes and RLS policies on the table.
+-- The golden tables (bottles / bottle_variants) and their existing RLS are
+-- untouched; the suggest-edit gate is enforced in the app, not the DB.

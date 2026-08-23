@@ -121,6 +121,26 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    id: "bottle.suggest_edit",
+    title: "Suggest an edit",
+    body: "Spot something wrong on a bottle? Tap the pencil to fix it in place — corrections go to a quick review.",
+    route: "/search",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/search",
+        anchor: "search.list",
+        caption: "Open any bottle to see its details.",
+      },
+      {
+        route: "/search",
+        anchor: "bottle.suggest_edit",
+        caption: "Tap the pencil to edit fields in place — proof, notes, even the photo. Your own unverified adds apply instantly; everything else goes to an admin for review.",
+      },
+    ],
+  },
+  {
     id: "mybar.collection",
     title: "My Bar",
     body: "Your collection — owned now, or finished.",

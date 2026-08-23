@@ -4,6 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { logActivity } from "@/lib/activities";
+import {
+  fetchPendingSuggestions,
+  approveSuggestion,
+  rejectSuggestion,
+  fieldLabel,
+  type AdminSuggestion,
+} from "@/lib/suggestedEdits";
+
+const isImageField = (f: string) => f === "frontimage_url" || f === "backimage_url";
 
 type QueueVariant = {
   id: string;
@@ -39,6 +48,42 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [target, setTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [suggestions, setSuggestions] = useState<AdminSuggestion[]>([]);
+  const [sugNotes, setSugNotes] = useState<Record<string, string>>({});
+  const [sugBusy, setSugBusy] = useState<string | null>(null);
+
+  const loadSuggestions = async () => {
+    const { rows } = await fetchPendingSuggestions();
+    setSuggestions(rows);
+  };
+
+  const suggestionsByBottle = useMemo(() => {
+    const m = new Map<string, { name: string; distillery?: string | null; rows: AdminSuggestion[] }>();
+    for (const r of suggestions) {
+      const g = m.get(r.bottleId) || { name: r.bottleName, distillery: r.bottleDistillery, rows: [] };
+      g.rows.push(r);
+      m.set(r.bottleId, g);
+    }
+    return [...m.entries()].map(([bottleId, g]) => ({ bottleId, ...g }));
+  }, [suggestions]);
+
+  const doApprove = async (row: AdminSuggestion) => {
+    setSugBusy(row.id);
+    const res = await approveSuggestion(row, sugNotes[row.id] ?? "", publicUserId);
+    setSugBusy(null);
+    if (res.error) { toast.error(`Approve failed: ${res.error}`); return; }
+    toast.success(`Applied ${fieldLabel(row.field)}`);
+    loadSuggestions();
+  };
+
+  const doReject = async (row: AdminSuggestion) => {
+    setSugBusy(row.id);
+    const res = await rejectSuggestion(row.id, sugNotes[row.id] ?? "", publicUserId);
+    setSugBusy(null);
+    if (res.error) { toast.error(`Reject failed: ${res.error}`); return; }
+    toast.success(`Rejected ${fieldLabel(row.field)}`);
+    loadSuggestions();
+  };
 
   const load = async () => {
     setLoading(true);
@@ -131,6 +176,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
 
   useEffect(() => {
     load();
+    loadSuggestions();
   }, []);
 
   const filtered = useMemo(() => {
@@ -269,6 +315,79 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
         onChange={(e) => setSearch(e.target.value)}
         className="w-full border border-charcoal rounded px-3 py-2 text-sm bg-white"
       />
+
+      {/* 7.8: pending edit suggestions */}
+      {suggestions.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Pending edit suggestions ({suggestions.length})
+          </div>
+          {suggestionsByBottle.map((g) => (
+            <div key={g.bottleId} className="border border-gray-200 rounded bg-white">
+              <div className="px-3 py-2 border-b border-gray-100 font-semibold text-sm text-charcoal">
+                {[g.name, g.distillery].filter(Boolean).join(" · ")}
+              </div>
+              <ul className="divide-y divide-gray-100">
+                {g.rows.map((r) => (
+                  <li key={r.id} className="px-3 py-2 text-sm">
+                    <div className="text-xs text-gray-400">
+                      {fieldLabel(r.field)} · by {r.submittedByName} · {new Date(r.createdAt).toLocaleDateString()}
+                    </div>
+                    <div className="mt-1">
+                      {isImageField(r.field) ? (
+                        <div className="flex items-center gap-3">
+                          <div className="text-center">
+                            <div className="text-[10px] text-gray-400">current</div>
+                            {r.oldValue ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={r.oldValue} alt="current" className="h-16 w-12 object-contain border rounded" />
+                            ) : (<div className="h-16 w-12 border rounded flex items-center justify-center text-[10px] text-gray-300">none</div>)}
+                          </div>
+                          <span className="text-gray-400">→</span>
+                          <div className="text-center">
+                            <div className="text-[10px] text-gray-400">proposed</div>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={r.newValue ?? ""} alt="proposed" className="h-16 w-12 object-contain border rounded" />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-700">
+                          <span className="line-through text-gray-400">{r.oldValue || "—"}</span>
+                          {" → "}
+                          <span className="font-medium">{r.newValue || "—"}</span>
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Reason / comment (optional)"
+                      value={sugNotes[r.id] ?? ""}
+                      onChange={(e) => setSugNotes((n) => ({ ...n, [r.id]: e.target.value }))}
+                      className="mt-2 w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white"
+                    />
+                    <div className="flex gap-2 mt-1.5">
+                      <button
+                        disabled={sugBusy === r.id}
+                        onClick={() => doApprove(r)}
+                        className="text-xs px-3 py-1.5 border border-green-700 text-green-700 rounded disabled:opacity-40"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        disabled={sugBusy === r.id}
+                        onClick={() => doReject(r)}
+                        className="text-xs px-3 py-1.5 border border-red-600 text-red-600 rounded disabled:opacity-40"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="text-xs text-gray-500">
         {filtered.length} of {queue.length} items awaiting review
