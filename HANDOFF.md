@@ -8,11 +8,11 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** `646ac2e` (events telemetry docs). App tip: `aa134d3` (generic events table), pushed to `MVP-v3` (prod).
-- **Current phase:** **Phase 7 COMPLETE** (7.1–7.11 shipped). Beta-prep shipped: **feedback/bug-report channel** + **generic events/telemetry table** (both 2026-08-23). Phase 6.4 CSV import is still a shell.
+- **Last commit:** `75894c7` (Phase 4 docs). App tip: `40c007e` (Phase 4 Profile), pushed to `MVP-v3` (prod).
+- **Current phase:** **Phase 7 COMPLETE.** Also shipped 2026-08-23: **feedback/bug-report channel**, **generic events/telemetry table**, **Server-Component cookie fix + getUser() auth hardening**, and **Phase 4 Profile COMPLETE**. Phase 6.4 CSV import is still a shell.
 
 **Single next step for the incoming agent:**
-- **Nothing is queued — ask Brian.** Phase 7 is done; two beta-prep items shipped this session (feedback channel + events telemetry). Brian is prepping a **10–15 user beta**. Standing recommendation for what's left: **Phase 4 Profile** (small quick win — coming-soon stub + now holds the feedback button; view username/email, edit username, sign out), **Phase 3 Blind Tastings** (flagship must-have, large, still a stub — deserves its own dedicated push, now instrumentable via `logEvent`), **Phase 6.4 CSV import** (shell). Do not start any of these, or Phase 5 polish, without Brian's word.
+- **Nothing is queued — ask Brian.** Phase 7 done; Phase 4 Profile done; feedback + events telemetry shipped. Brian is prepping a **10–15 user beta**. Standing recommendation for what's left: **Phase 3 Blind Tastings** (flagship must-have, large, still a stub — deserves its own dedicated push; now instrumentable via `logEvent`), **Phase 6.4 CSV import** (shell). Optional beta-polish: a persistent feedback affordance; the duplicate `users_username_key`/`users_username_key1` indexes could be de-duped (cosmetic). Do not start any of these, or Phase 5 polish, without Brian's word.
 - **Feedback channel — what shipped (`00188a9` feat + `50f7b00` docs):** Profile "Send Feedback / Report a Bug" → `FeedbackSheet` (type feature|bug, message with Web-Speech dictation, optional screenshot). New `feedback` table + RLS (mirrors `suggested_edits`; **migration applied to prod DB** — `sql/feedback-migration.sql`, rollback `sql/feedback-snapshot.sql`). Admin triage queue in **Admin > Feedback** (`FeedbackTab.tsx`; status new/triaged/planned/done + internal note). Screenshots under `bottle-images/feedback/<id>/` with stored `screenshot_path` for easy purge. Lib `src/lib/feedback.ts`. Coach `profile.feedback` added to the **new-user core tour**. Verified end-to-end on localhost (submit → queue → triage → note persisted) + prod verify handed to Brian. Entry is Profile-only (no persistent affordance yet).
 - Design context (Brian, 7.8 discovery): from the bottle card there are exactly **two contribution actions — Suggest an edit (7.8) and Add a variant (7.9)**, both done. Personal notes/ratings are NOT a card action — they belong to the future drink/blind-tasting flow.
 
@@ -66,18 +66,42 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 
 ## Log (newest first)
 
-### 2026-08-23 — Claude (fix: Server-Component cookie-write error)
-- Fixed the `@supabase/ssr` "Cookies can only be modified in a Server Action or Route Handler" error
-  (+ occasional hard-reload 500) surfaced during the events session. Cause: `getSession()` in a Server
+### 2026-08-23 — Claude (Phase 4 Profile complete)
+- Discovery with Brian first: scope = username (view+edit) + email (view) + replay tutorial + feedback
+  & sign out; usernames **unique + basic format**; **inline edit + Save**.
+- **Shipped** (`40c007e` feat, `75894c7` docs), pushed to `MVP-v3` (prod):
+  - Rewrote `src/app/profile/page.tsx` from the coming-soon stub into a real greyscale screen.
+  - **Username** inline edit + Save — format (3–20, `[A-Za-z0-9_-]`) + case-insensitive uniqueness
+    pre-check; DB `users_username_key` is the real guarantee (catches 23505). **No migration** —
+    username was already unique-indexed. Lib `src/lib/profile.ts` (`updateUsername`, `validateUsername`,
+    `fetchEmail`, `resetCoaches`).
+  - **Email** read-only (from `public.users.email`).
+  - **Replay tutorial** — `resetCoaches` sets `seen_coach_ids=[]`, then `window.location.assign('/search')`
+    (full reload so CoachHost re-runs the core tour from a clean mount).
+  - **Send Feedback** + **Sign Out** re-homed here. **Mounted a `<Toaster/>`** — `/profile` had none, so
+    its toasts (incl. FeedbackSheet's) never rendered before. **Bug found + fixed mid-build.**
+  - Events per standing rule: `username_saved`, `replay_tutorial`.
+- **Verified end-to-end** as Lakehouse (Brian's live acct): username format-reject + taken-reject (visible
+  toasts) + a controlled write round-trip (LakehouseQA → DB → restored to Lakehouse); email shows;
+  replay cleared `seen_coach_ids` → `/search` → 9-step core tour (incl. new `profile.feedback` step),
+  then **restored his exact original `seen_coach_ids`**; feedback sheet opens; coach anchor intact.
+  tsc + eslint clean; all QA event rows purged (events table empty).
+- **Prod verify handed to Brian.** **Next: ask Brian** (Phase 3 Blind Tastings is the big remaining one).
+
+### 2026-08-23 — Claude (fix: Server-Component cookie-write error + getUser hardening)
+- **Cookie-write error** (`4f09c34`): the `@supabase/ssr` "Cookies can only be modified in a Server
+  Action or Route Handler" error (+ occasional hard-reload 500). Cause: `getSession()` in a Server
   Component can trigger a token refresh whose `setAll()` writes cookies during render (Next forbids it).
-- **Fix** (`4f09c34`): wrapped `setAll` in `src/lib/supabase-server.ts` in try/catch and ignore —
-  `middleware.ts` already refreshes the session + writes cookies per request, so the render-time write
-  is redundant (Supabase recommended pattern). **No middleware/auth-logic change.** Verified: fresh
-  `/admin` + `/mybar` loads now 200 with no cookie error in server logs.
-- **Still open (separate, NOT fixed — a warning, not the error):** server logs show
-  "Using getSession()... could be insecure! Use getUser()." Switching `getSession()`→`getUser()` in
-  middleware + server pages is more secure (verifies with the auth server) but adds a round-trip per
-  request and touches redirect logic (guardrail: auth). Left for a deliberate decision with Brian.
+  Fix: wrapped `setAll` in `src/lib/supabase-server.ts` in try/catch and ignore — `middleware.ts`
+  already refreshes the session + writes cookies per request, so the render-time write is redundant
+  (Supabase recommended pattern). No middleware/auth-logic change.
+- **Auth hardening** (`f6842a3`): `getSession()`→`getUser()` in the **server-side** gates — `middleware.ts`
+  route protection, `/admin` + `/mybar` server components, and the admin `delete-user` route
+  (security-critical). `getUser()` authenticates the token against the Auth server; `getSession()` trusts
+  the cookie. Client components (`useCurrentUser`, `SearchClient`, login `page.tsx`) keep `getSession()`
+  for local UX reads — the security boundary is server-side. 1:1 swap (null user → redirect/401).
+- Verified: fresh `/admin` + `/mybar` loads now 200 with **no cookie error and no "insecure" warning**
+  in the server logs. Prod verify handed to Brian.
 
 ### 2026-08-23 — Claude (generic events / telemetry table shipped)
 - Beta-prep foundation (TELEMETRY.md). Discovery with Brian first: **one generic table** with an
