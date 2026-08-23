@@ -66,6 +66,19 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 
 ## Log (newest first)
 
+### 2026-08-23 — Claude (fix: Server-Component cookie-write error)
+- Fixed the `@supabase/ssr` "Cookies can only be modified in a Server Action or Route Handler" error
+  (+ occasional hard-reload 500) surfaced during the events session. Cause: `getSession()` in a Server
+  Component can trigger a token refresh whose `setAll()` writes cookies during render (Next forbids it).
+- **Fix** (`4f09c34`): wrapped `setAll` in `src/lib/supabase-server.ts` in try/catch and ignore —
+  `middleware.ts` already refreshes the session + writes cookies per request, so the render-time write
+  is redundant (Supabase recommended pattern). **No middleware/auth-logic change.** Verified: fresh
+  `/admin` + `/mybar` loads now 200 with no cookie error in server logs.
+- **Still open (separate, NOT fixed — a warning, not the error):** server logs show
+  "Using getSession()... could be insecure! Use getUser()." Switching `getSession()`→`getUser()` in
+  middleware + server pages is more secure (verifies with the auth server) but adds a round-trip per
+  request and touches redirect logic (guardrail: auth). Left for a deliberate decision with Brian.
+
 ### 2026-08-23 — Claude (generic events / telemetry table shipped)
 - Beta-prep foundation (TELEMETRY.md). Discovery with Brian first: **one generic table** with an
   `event_type` filter column; v1 events = page_view + search + click + error; **capture logged-out**
