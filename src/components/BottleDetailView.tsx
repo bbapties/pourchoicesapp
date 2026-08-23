@@ -10,6 +10,7 @@ import AddVariantSheet from "@/components/AddVariantSheet";
 import VariantSelectSheet from "@/components/VariantSelectSheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import PourSheet from "@/components/PourSheet";
+import MoreSheet from "@/components/MoreSheet";
 import { fieldsForVariant, fetchVariantsForSku } from "@/lib/variants";
 import {
   fetchLastActivityForBottle,
@@ -65,6 +66,7 @@ export default function BottleDetailView({
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showVariantSelect, setShowVariantSelect] = useState(false);
   const [showPourSheet, setShowPourSheet] = useState(false);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [isPouring, setIsPouring] = useState(false);
   const [lastActivityLabel, setLastActivityLabel] = useState<string | undefined>(bottle.lastActivity);
   const [localBottle, setLocalBottle] = useState<BottleDetails>(bottle);
@@ -92,6 +94,13 @@ export default function BottleDetailView({
   ].filter(Boolean) as string[];
   const hasNotes = !!(shown.nose || shown.palate || shown.finish);
   const showImage = !!imageUrl && !imgError;
+
+  // 7.6: one state-dependent primary action + a More sheet, keyed off collection state.
+  const collectionState: 'none' | 'owned' | 'empty' = !inCollectionLocally
+    ? 'none'
+    : ownedLocally
+      ? 'owned'
+      : 'empty';
 
   useEffect(() => { setImgError(false); }, [imageUrl]);
 
@@ -162,6 +171,25 @@ export default function BottleDetailView({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // 7.6: "Mark as Empty" — soft delete (currently_owned → false; logs finished; kept in history).
+  const handleMarkEmpty = async () => {
+    if (isSaving || !onToggleOwnership) return;
+    setShowMoreSheet(false);
+    setIsSaving(true);
+    try {
+      await onToggleOwnership(bottle.id);
+      setOwnedLocally(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 7.6: "Add another" — restock a bottle you already own (bumps times_had via the add flow).
+  const handleAddAnother = () => {
+    setShowMoreSheet(false);
+    setShowVariantSelect(true);
   };
 
   const handlePour = async (pourType: PourType) => {
@@ -387,9 +415,38 @@ export default function BottleDetailView({
           )}
         </div>
 
-        {/* Actions */}
+        {/* 7.6: ownership status + one state-dependent primary action + More sheet */}
+        {inCollectionLocally && (
+          <div className="text-center text-xs text-gray-500 mb-2">
+            {collectionState === 'owned' ? '✓ In My Bar' : 'Empty — kept in your history'}
+          </div>
+        )}
+
         <div className="flex justify-center">
-          {!inCollectionLocally || !ownedLocally ? (
+          {collectionState === 'owned' ? (
+            <Button
+              type="button"
+              onClick={() => setShowPourSheet(true)}
+              disabled={isPouring}
+              variant="outline"
+              className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
+              style={{ minHeight: '44px' }}
+              data-coach="bottle.have_a_drink"
+            >
+              Have a drink
+            </Button>
+          ) : collectionState === 'empty' ? (
+            <Button
+              type="button"
+              onClick={handleMainButton}
+              disabled={isSaving || !onAddToBar}
+              variant="outline"
+              className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
+              style={{ minHeight: '44px' }}
+            >
+              {isSaving ? 'Adding...' : 'Add Back'}
+            </Button>
+          ) : (
             <Button
               onClick={handleMainButton}
               disabled={isSaving || !onAddToBar}
@@ -399,29 +456,11 @@ export default function BottleDetailView({
             >
               {isSaving ? 'Adding...' : 'Add to My Bar'}
             </Button>
-          ) : (
-            <div className="flex border border-gray-400 rounded overflow-hidden w-full" style={{ minHeight: '44px' }}>
-              <button
-                type="button"
-                disabled
-                className="flex-1 px-3 text-sm font-medium bg-gray-800 text-white"
-              >
-                ✓ In My Bar
-              </button>
-              <div className="w-px bg-gray-400" />
-              <button
-                type="button"
-                onClick={() => { if (!isSaving) handleMainButton(); }}
-                disabled={isSaving}
-                className="flex-1 px-3 text-sm font-medium bg-white text-gray-500 hover:bg-gray-50"
-              >
-                Finished It
-              </button>
-            </div>
           )}
         </div>
 
-        {publicUserId && (
+        {/* Have a drink — secondary when it is not the primary (any bottle, keeps the coach anchor visible) */}
+        {publicUserId && collectionState !== 'owned' && (
           <div className="mt-2">
             <Button
               type="button"
@@ -437,17 +476,23 @@ export default function BottleDetailView({
           </div>
         )}
 
-        {/* Remove from collection */}
-        {inCollectionLocally && !showDeleteConfirm && (
-          <div className="text-center mt-2">
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-xs text-gray-400 hover:text-red-500 underline"
+        {/* More — secondary actions for bottles in your collection */}
+        {publicUserId && inCollectionLocally && !showDeleteConfirm && (
+          <div className="mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSaving}
+              onClick={() => setShowMoreSheet(true)}
+              className="border-gray-400 text-gray-600 hover:bg-gray-100 disabled:opacity-60 w-full"
+              style={{ minHeight: '44px' }}
+              data-coach="bottle.more"
             >
-              Remove from collection
-            </button>
+              More
+            </Button>
           </div>
         )}
+
         {inCollectionLocally && showDeleteConfirm && (
           <div className="mt-2 border border-red-300 rounded p-2 bg-red-50 text-xs">
             <p className="text-gray-700 mb-2">
@@ -511,6 +556,23 @@ export default function BottleDetailView({
           bottleName={localBottle.name}
           isSaving={isPouring}
           onSelect={handlePour}
+        />
+      )}
+
+      {publicUserId && inCollectionLocally && (
+        <MoreSheet
+          open={showMoreSheet}
+          onOpenChange={setShowMoreSheet}
+          bottleName={localBottle.name}
+          busy={isSaving}
+          onAddAnother={collectionState === 'owned' ? handleAddAnother : undefined}
+          onMarkEmpty={collectionState === 'owned' ? handleMarkEmpty : undefined}
+          onBlindTasting={
+            collectionState === 'owned'
+              ? () => { setShowMoreSheet(false); toast.success("Blind tastings aren't live yet."); }
+              : undefined
+          }
+          onRemove={() => { setShowMoreSheet(false); setShowDeleteConfirm(true); }}
         />
       )}
 

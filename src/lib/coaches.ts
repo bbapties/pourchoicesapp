@@ -101,6 +101,26 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    id: "bottle.actions",
+    title: "Bottle actions",
+    body: "The main button now matches your bar — Add to My Bar, Have a drink, or Add Back — with a More menu for the rest.",
+    route: "/search",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/search",
+        anchor: "search.list",
+        caption: "Open any bottle to see its actions.",
+      },
+      {
+        route: "/search",
+        anchor: "bottle.have_a_drink",
+        caption: "The main button changes with your bar: Add to My Bar, Have a drink, or Add Back. More holds Add another, Mark as Empty, and Remove.",
+      },
+    ],
+  },
+  {
     id: "mybar.collection",
     title: "My Bar",
     body: "Your collection — owned now, or finished.",
