@@ -13,6 +13,7 @@ docs, then switches. This file is the standing context both agents load every se
 2. **[HANDOFF.md](HANDOFF.md)** — where the last agent stopped, the next step, open decisions.
 3. **[ROADMAP.md](ROADMAP.md)** — the phase checklist; source of truth for what's done vs pending.
 4. **[BACKLOG.md](BACKLOG.md)** — deferred items. Do **not** pull these into the current phase.
+5. **[TELEMETRY.md](TELEMETRY.md)** — instrumentation policy: capture events/activity/usage generously so future features (badges, analytics) already have data. Log as you build.
 
 Then summarize the current state back to Brian and confirm the next step **before** editing.
 
@@ -48,6 +49,7 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
 - Functionality first; stay **greyscale/wireframe** until Phase 5. Do not start visual polish early.
 - **Every bottle action logs an `activities` row** until Brian excludes it (`src/lib/activities.ts`). Fail-open. Current exclusion: admin hard-delete of a bottle (CASCADE would wipe the feed row).
 - **Every new user-facing surface** adds one row to the coach catalog (`src/lib/coaches.ts`) — `announce: true` plus a short `tour[]` if Show me should work. Do not re-audit the whole catalog. Set `core: true` only when the main loop actually changed. Quiet (`announce: false`) only for Admin / tiny fixes.
+- **Instrument as you build** — every new/reworked user-facing action emits an event (fail-open, append-only). Bottle actions → `activities`; broader usage → the generic events table once it exists. See **[TELEMETRY.md](TELEMETRY.md)**; record new event types there.
 
 ## Guardrails — ask Brian first
 - **No hard-deletes** of user data.
@@ -82,6 +84,7 @@ node scripts/_psql.mjs "SELECT 1 AS ok;"
 | `HANDOFF.md` | **Live baton** — current focus, where we stopped, next step, decisions, landmines |
 | `ROADMAP.md` | Phase checklist — what's done vs pending (canonical for scope/status) |
 | `BACKLOG.md` | Deferred / do-not-pull-in list |
+| `TELEMETRY.md` | Instrumentation policy — event/activity/usage tracking; what's logged, the proposed generic events table |
 | `DB_Schema.txt.txt` | Supabase schema dump (note: may lag reality — see HANDOFF drift notes) |
 
 ---

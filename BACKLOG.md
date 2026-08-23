@@ -28,6 +28,8 @@ Format: `- [ ] Short description — why it matters`
 - [ ] Third image slot on variants — badge / detail close-up (the Front/Back toggle is built to extend)
 
 ## Data / Audit
+- [ ] **Generic `events` table + `logEvent` helper** — one wide append-only table for usage/interaction telemetry not already covered by `activities` (page views, clicks, searches, filters/sorts, coach interactions, errors). Fail-open; `metadata jsonb` for the long tail; `ON DELETE CASCADE` to users. Foundation for badges/achievements, personalization, and usage analytics. See **TELEMETRY.md** for the proposed shape. Needs Brian's go + a schema decision (one generic table vs a few typed ones).
+- [ ] **Search history** — capture every search (query + result_count + mode) as an event; feeds a future "recent searches" and discovery insights. (Falls out of the generic events table above.)
 - [ ] Audit trail table for user_bottles — store every insert/update as a separate row (user_id, bottle_id, action, changed_at) for future reporting and tasting history
 
 ## My Bar
