@@ -5,7 +5,7 @@ Format: `- [ ] Short description — why it matters`
 
 ## UX / Quality of Life
 - [x] First-use / What's new coaches (shipped 7.11 — live-UI tour + digest; catalog `src/lib/coaches.ts`)
-- [ ] Replay tutorial from Profile (Profile is still a stub)
+- [x] Replay tutorial from Profile (shipped 2026-08-23 with Phase 4 — resets `seen_coach_ids`, reloads to `/search`, core tour replays)
 - [ ] Haptic feedback on key interactions (add to bar, tasting reveal)
 - [ ] Pull-to-refresh on search and My Bar lists
 - [ ] Keyboard dismissal on mobile when tapping outside search bar

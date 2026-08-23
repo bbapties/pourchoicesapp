@@ -43,12 +43,13 @@ Goal: Full tasting flow with Elo calculation.
 - [ ] 3.5 Elo calculation — client-side Momentum-Elo, sync to Supabase (Stories 6.33–6.34)
 - [ ] 3.6 Post-tasting — update history, gray earmarks on past bottles (Story 6.36)
 
-## Phase 4 — Profile Page
+## Phase 4 — Profile Page  ✅ COMPLETE (2026-08-23)
 Goal: Basic user profile management.
 
-- [ ] 4.1 View username/email
-- [ ] 4.2 Edit username
-- [ ] 4.3 Sign out
+- [x] 4.1 View username/email — real greyscale/wireframe screen (replaces the coming-soon stub); email read-only from `public.users`.
+- [x] 4.2 Edit username — inline edit + Save; format (3–20, `[A-Za-z0-9_-]`) + case-insensitive uniqueness (DB `users_username_key` is the guarantee). Lib `src/lib/profile.ts`.
+- [x] 4.3 Sign out — retained.
+- Extras: **Replay tutorial** (resets `seen_coach_ids`, reloads to `/search` → core tour replays); **Send Feedback** re-homed here; a `<Toaster />` now mounts on `/profile` (it previously had none). Events: `username_saved`, `replay_tutorial`.
 
 ## Phase 5 — Design & Polish (DO NOT START EARLY)
 Goal: Apply full design system from the MVP doc.
