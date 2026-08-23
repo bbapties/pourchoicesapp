@@ -39,6 +39,12 @@ must be storing *now*, before those features exist.
 - **`suggested_edits`** (7.8, `src/lib/suggestedEdits.ts`) — **append-only audit** of proposed
   corrections (`pending`/`approved`/`rejected`/`canceled`/`applied`) with reviewer + reason. A model
   for how other audit trails should look (immutable rows, status lifecycle).
+- **`feedback`** (beta-prep, `src/lib/feedback.ts`) — user-submitted **feature requests / bug reports**
+  from Profile; admin triages in Admin > Feedback (`status` new/triaged/planned/done + `admin_note`).
+  Captures context per report: `user_agent`, `viewport`, `route`, optional user screenshot
+  (`screenshot_url` + `screenshot_path` under the shared `bottle-images` bucket, `feedback/<id>/`
+  prefix so a resolved report's image is easy to purge). RLS mirrors `suggested_edits`
+  (insert-own / select own+admin / update own+admin). SQL: `sql/feedback-migration.sql` (+ snapshot).
 
 These cover *domain* actions well. The **gap** is broad *usage/interaction* telemetry.
 
