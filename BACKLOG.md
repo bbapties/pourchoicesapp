@@ -27,6 +27,9 @@ Format: `- [ ] Short description — why it matters`
 - [ ] Personal comments on a variant — per-user notes, saved instantly, no moderation (deferred from the Phase 7 detail revamp)
 - [ ] Third image slot on variants — badge / detail close-up (the Front/Back toggle is built to extend)
 
+## Feedback & Support (beta-important)
+- [ ] **User feedback + bug reports → admin panel** — an in-app "Suggest a feature / Report a bug" entry (e.g. from Profile or a persistent affordance) that writes to a `feedback` table and surfaces in the Admin panel as a triage queue (status new/triaged/planned/done, type feature|bug, optional route + screenshot/context auto-captured). Reuse the 7.8 admin-queue + review-note pattern. **Important before a 10–15 user beta** — it's the primary channel to collect feedback instead of ad-hoc texts. Ties into TELEMETRY (capture context with each report).
+
 ## Data / Audit
 - [ ] **Generic `events` table + `logEvent` helper** — one wide append-only table for usage/interaction telemetry not already covered by `activities` (page views, clicks, searches, filters/sorts, coach interactions, errors). Fail-open; `metadata jsonb` for the long tail; `ON DELETE CASCADE` to users. Foundation for badges/achievements, personalization, and usage analytics. See **TELEMETRY.md** for the proposed shape. Needs Brian's go + a schema decision (one generic table vs a few typed ones).
 - [ ] **Search history** — capture every search (query + result_count + mode) as an event; feeds a future "recent searches" and discovery insights. (Falls out of the generic events table above.)
