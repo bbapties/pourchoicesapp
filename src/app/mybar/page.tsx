@@ -5,14 +5,14 @@ import MyBarClient from "./MyBarClient";
 export default async function MyBarPage() {
   const supabase = await createSupabaseServerClient();
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) redirect('/');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/');
 
   // Resolve public.users.id from auth_id
   const { data: publicUser } = await supabase
     .from('users')
     .select('id')
-    .eq('auth_id', session.user.id)
+    .eq('auth_id', user.id)
     .single();
 
   if (!publicUser) redirect('/');

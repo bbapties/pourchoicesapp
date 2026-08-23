@@ -21,15 +21,15 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   const { data: caller } = await supabase
     .from("users")
     .select("id, role")
-    .eq("auth_id", session.user.id)
+    .eq("auth_id", user.id)
     .maybeSingle();
 
   if (!caller || caller.role !== "admin") {

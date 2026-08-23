@@ -34,12 +34,15 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // getUser() authenticates the token against the Supabase Auth server (and
+  // refreshes it, writing cookies onto `response`) — unlike getSession(), which
+  // trusts the cookie as-is. This is the secure pattern for gating routes.
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
   // Protect all routes except the root login page
-  if (!session && request.nextUrl.pathname !== '/') {
+  if (!user && request.nextUrl.pathname !== '/') {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/'
     return NextResponse.redirect(redirectUrl)

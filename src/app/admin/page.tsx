@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   const supabase = await createSupabaseServerClient();
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) redirect("/");
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/");
 
   const { data: publicUser } = await supabase
     .from("users")
     .select("id, username, role")
-    .eq("auth_id", session.user.id)
+    .eq("auth_id", user.id)
     .maybeSingle();
 
   if (!publicUser || publicUser.role !== "admin") {
