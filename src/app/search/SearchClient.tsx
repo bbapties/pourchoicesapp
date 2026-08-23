@@ -23,7 +23,7 @@ const LOAD_MORE_SIZE = 15;
 type ViewMode = 'bottles' | 'variants';
 
 const BOTTLE_SELECT =
-  "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, default_variant_elo, default_variant_id, variant_count";
+  "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by, default_variant_elo, default_variant_id, variant_count";
 const VARIANT_SELECT =
   "variant_id, bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, variant_is_default, variant_elo_global, variant_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_batch, attr_release_year, attr_store_pick_name, attr_nose, attr_palate, attr_finish, attr_notes";
 
@@ -52,6 +52,15 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   // user_bottles map: bottle_id → array of ownership rows (multiple variants per bottle supported)
   const [userBottlesMap, setUserBottlesMap] = useState<Record<string, UserBottleRow[]>>({});
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
+  const [authId, setAuthId] = useState<string | null>(null);
+
+  // 7.9: store picks are private to their creator. Scope an all_variant_details query to
+  // global variants + the viewer's own store picks. Match auth id OR public id — created_by is
+  // stored inconsistently across rows. (Column names are the *_details view's.)
+  const myIds = useMemo(() => [authId, publicUserId].filter(Boolean) as string[], [authId, publicUserId]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scopeVariantQuery = (q: any) =>
+    myIds.length ? q.or(`attr_store_pick_name.is.null,variant_created_by.in.(${myIds.join(",")})`) : q.is("attr_store_pick_name", null);
 
   type SortOption = 'global' | 'az' | 'za' | 'yours' | null;
   type FilterField = 'category' | 'verified';
@@ -102,7 +111,14 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     const batches: string[] = result.attr_batch || [];
     const releaseYears: string[] = result.attr_release_year || [];
     const storePickNames: string[] = result.attr_store_pick_name || [];
+    const createdBys: string[] = result.attr_variant_created_by || [];
     const elo = result.default_variant_elo ?? result.bottle_elo_global;
+
+    // 7.9: "N versions" badge counts global variants + only the viewer's own store picks
+    // (created_by may be an auth id or a public id — match either).
+    const visibleVariantCount = variantIds.length
+      ? variantIds.filter((_v, i) => !storePickNames[i] || createdBys[i] === authId || createdBys[i] === publicUserId).length
+      : (result.variant_count ?? 0);
 
     return {
       id: result.bottle_id,
@@ -114,7 +130,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       elo_global: elo,
       provisional: !result.bottle_verified,
       stars: calcStars(elo),
-      variantCount: result.variant_count ?? variantIds.length,
+      variantCount: visibleVariantCount,
       style: result.bottle_style,
       age: result.attr_age,
       proof: result.attr_proof,
@@ -172,6 +188,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     async function fetchUserBottles() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
+      setAuthId(session.user.id);
 
       const { data: publicUser, error: userError } = await supabase
         .from('users')
@@ -230,8 +247,10 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
       const isBottles = viewMode === 'bottles';
       // Cast to any: a union table name overflows Supabase's typed query builder.
-      const { data, error } = await (supabase.from(isBottles ? "all_bottle_details" : "all_variant_details") as any)
-        .select(isBottles ? BOTTLE_SELECT : VARIANT_SELECT)
+      let q = (supabase.from(isBottles ? "all_bottle_details" : "all_variant_details") as any)
+        .select(isBottles ? BOTTLE_SELECT : VARIANT_SELECT);
+      if (!isBottles) q = scopeVariantQuery(q);
+      const { data, error } = await q
         .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
         .range(offset, offset + limit - 1);
 
@@ -259,7 +278,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       else { setIsLoadingMore(false); isLoadingMoreRef.current = false; }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, minElo, maxElo]);
+  }, [viewMode, minElo, maxElo, authId, publicUserId]);
 
   // Initial browse load (re-runs when the mode changes)
   useEffect(() => {
@@ -376,9 +395,11 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         : `bottle_name.ilike.%${term}%,bottle_distillery.ilike.%${term}%,bottle_category.ilike.%${term}%,bottle_style.ilike.%${term}%,bottle_barcode.ilike.%${term}%,attr_age.ilike.%${term}%,attr_batch.ilike.%${term}%,attr_store_pick_name.ilike.%${term}%,attr_nose.ilike.%${term}%,attr_palate.ilike.%${term}%,attr_finish.ilike.%${term}%`;
 
       // Cast to any: a union table name + .or() overflows Supabase's typed query builder.
-      const { data: searchResults, error } = await (supabase.from(isBottles ? "all_bottle_details" : "all_variant_details") as any)
+      let sq = (supabase.from(isBottles ? "all_bottle_details" : "all_variant_details") as any)
         .select(isBottles ? BOTTLE_SELECT : VARIANT_SELECT)
-        .or(orClause)
+        .or(orClause);
+      if (!isBottles) sq = scopeVariantQuery(sq);
+      const { data: searchResults, error } = await sq
         .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
 
@@ -417,7 +438,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, minElo, maxElo]);
+  }, [viewMode, minElo, maxElo, authId, publicUserId]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -537,6 +558,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       const isBottles = viewMode === 'bottles';
       let q: any = (supabase.from(isBottles ? 'all_bottle_details' : 'all_variant_details') as any)
         .select('*', { count: 'exact', head: true });
+      if (!isBottles) q = scopeVariantQuery(q);
 
       if (filter.field === 'category') {
         q = q.eq('bottle_category', filter.value);
@@ -550,7 +572,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     }
 
     fetchCount();
-  }, [filter, query, filterActive, viewMode]);
+  }, [filter, query, filterActive, viewMode, authId, publicUserId]);
 
   // Count shown in banner
   // - No query, no filter: total DB count for the mode (from server prop)

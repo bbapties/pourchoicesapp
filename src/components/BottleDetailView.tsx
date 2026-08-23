@@ -145,13 +145,13 @@ export default function BottleDetailView({
         if (!cancelled) setHasPending(p);
       });
     }
-    fetchVariantsForSku(bottle.id).then((variants) => {
+    fetchVariantsForSku(bottle.id, [authId, publicUserId]).then((variants) => {
       if (cancelled || !variants.length) return;
       setLocalBottle((prev) => ({ ...prev, variants }));
       setVariantIndex(0);
     });
     return () => { cancelled = true; };
-  }, [bottle.id, inCollection, currentlyOwned, publicUserId]);
+  }, [bottle.id, inCollection, currentlyOwned, publicUserId, authId]);
 
   const goVariant = (dir: number) => {
     if (!showPager || isEditing) return;

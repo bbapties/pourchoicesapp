@@ -54,15 +54,30 @@ function orderVariants(rows: VariantRow[]): VariantRow[] {
   });
 }
 
-/** Ordered variants for a SKU — default first. Falls back to pre-7.1 columns if the new ones aren't live yet. */
-export async function fetchVariantsForSku(bottleId: string): Promise<BottleVariant[]> {
-  const full = await supabase
-    .from("bottle_variants")
-    .select(FULL_SELECT)
-    .eq("bottles_id", bottleId);
+/**
+ * Ordered variants for a SKU — default first. Falls back to pre-7.1 columns if the new ones aren't
+ * live yet. 7.9: store picks (`store_pick_name` set) are private to their creator — pass the viewer's
+ * id(s) to include their own; without any, only global (non-store-pick) variants are returned.
+ * Pass BOTH the auth id and public id: `created_by` is stored inconsistently (auth id on some rows,
+ * public id on others), so matching either id makes owner-sees-own robust.
+ */
+export async function fetchVariantsForSku(
+  bottleId: string,
+  ownerIds?: (string | null | undefined)[]
+): Promise<BottleVariant[]> {
+  const ids = (ownerIds ?? []).filter(Boolean) as string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scope = (q: any) =>
+    ids.length
+      ? q.or(`store_pick_name.is.null,created_by.in.(${ids.join(",")})`)
+      : q.is("store_pick_name", null);
+
+  const full = await scope(
+    supabase.from("bottle_variants").select(FULL_SELECT).eq("bottles_id", bottleId)
+  );
 
   const result = full.error
-    ? await supabase.from("bottle_variants").select(LEGACY_SELECT).eq("bottles_id", bottleId)
+    ? await scope(supabase.from("bottle_variants").select(LEGACY_SELECT).eq("bottles_id", bottleId))
     : full;
 
   if (result.error || !result.data) {
