@@ -127,7 +127,7 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
-**Progress (2026-08-23):** **Phase 7 COMPLETE — 7.1–7.11 shipped to `MVP-v3`.** 7.9 landed add-a-variant (global vs private store pick) + the store-pick scoping leak fix + the carousel "+" slide. **Next major work is elsewhere** — Phase 3 Blind Tastings (big, flagship must-have, still a stub), Phase 4 Profile (coming-soon stub), Phase 6.4 CSV import (shell), or beta-prep items in BACKLOG (feedback/bug channel, generic events table). See HANDOFF for the recommendation. Ask Brian.
+**Progress (2026-08-23):** **Phase 7 COMPLETE — 7.1–7.11 shipped to `MVP-v3`.** 7.9 landed add-a-variant (global vs private store pick) + the store-pick scoping leak fix + the carousel "+" slide. **Next major work is elsewhere** — Phase 3 Blind Tastings (big, flagship must-have, still a stub), Phase 4 Profile (coming-soon stub), Phase 6.4 CSV import (shell), or the remaining beta-prep item in BACKLOG (generic events table). **Beta-prep feedback/bug-report channel SHIPPED 2026-08-23** (Profile entry + Admin > Feedback triage queue; `feedback` table). See HANDOFF for the recommendation. Ask Brian.
 
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.

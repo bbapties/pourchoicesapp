@@ -26,6 +26,7 @@ Format: `- [ ] Short description — why it matters`
 - [ ] UX refinement pass — layout, button placement, stats section structure (defer until all functionality is working)
 - [ ] Personal comments on a variant — per-user notes, saved instantly, no moderation (deferred from the Phase 7 detail revamp)
 - [ ] Third image slot on variants — badge / detail close-up (the Front/Back toggle is built to extend)
+- [ ] **AI background removal on uploaded bottle images** — run every uploaded bottle/variant image through an AI background-strip step so the subject sits on a white or transparent background, for cleaner, more consistent card presentation. Applies at upload (`uploadBottleImage` path) and could batch-process the existing library. Consider on-device vs a service/API, cost, and storing the processed version (keep the original?). Pairs well with the storage image-usage/orphan-purge item under Data / Audit.
 
 ## Feedback & Support (beta-important)
 - [x] **User feedback + bug reports → admin panel** (shipped 2026-08-23) — Profile entry "Send Feedback / Report a Bug" → `FeedbackSheet` (type feature|bug, message with **speech-to-text** dictation, optional **screenshot** attach). Writes the `feedback` table (context auto-captured: user_agent/viewport/route). Admin triage queue in **Admin > Feedback** (status new/triaged/planned/done + internal note), reusing the 7.8 queue + review-note pattern. Added to the new-user core coach tour (`profile.feedback`). Ties into TELEMETRY. Entry point is Profile only (no persistent affordance yet — could add later).

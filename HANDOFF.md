@@ -8,11 +8,12 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** END SESSION docs (this baton). App tip before docs: `57e0910` (7.9 add-a-variant).
-- **Current phase:** **Phase 7 COMPLETE** (7.1–7.11 shipped). Remaining app work is in other phases / BACKLOG. Phase 6.4 CSV import is still a shell.
+- **Last commit:** END SESSION docs (this baton). App tip before docs: `50f7b00` (feedback channel), pushed to `MVP-v3` (prod).
+- **Current phase:** **Phase 7 COMPLETE** (7.1–7.11 shipped). Beta-prep in progress: **feedback/bug-report channel SHIPPED** (2026-08-23). Phase 6.4 CSV import is still a shell.
 
 **Single next step for the incoming agent:**
-- **Nothing is queued — ask Brian.** Phase 7 is done. Brian is prepping a **10–15 user beta**. The standing recommendation (given to Brian this session): the big remaining pieces are **Phase 3 Blind Tastings** (flagship must-have, large, still a stub), **Phase 4 Profile** (coming-soon stub — small: view username/email, edit username, sign out), **Phase 6.4 CSV import** (shell), and beta-prep BACKLOG items — the **user feedback/bug-report channel** and the **generic events/telemetry table** (capture beta activity for future badges; see [TELEMETRY.md](TELEMETRY.md)). Do not start any of these, or Phase 5 polish, without Brian's word.
+- **Nothing is queued — ask Brian.** Phase 7 is done and the **feedback/bug-report channel just shipped** (this session). Brian is prepping a **10–15 user beta**. Standing recommendation for what's left: **Phase 3 Blind Tastings** (flagship must-have, large, still a stub), **Phase 4 Profile** (coming-soon stub + now the feedback button — small: view username/email, edit username, sign out), **Phase 6.4 CSV import** (shell), and the last big beta-prep BACKLOG item — the **generic events/telemetry table** (capture beta activity for future badges; see [TELEMETRY.md](TELEMETRY.md)). Do not start any of these, or Phase 5 polish, without Brian's word.
+- **Feedback channel — what shipped (`00188a9` feat + `50f7b00` docs):** Profile "Send Feedback / Report a Bug" → `FeedbackSheet` (type feature|bug, message with Web-Speech dictation, optional screenshot). New `feedback` table + RLS (mirrors `suggested_edits`; **migration applied to prod DB** — `sql/feedback-migration.sql`, rollback `sql/feedback-snapshot.sql`). Admin triage queue in **Admin > Feedback** (`FeedbackTab.tsx`; status new/triaged/planned/done + internal note). Screenshots under `bottle-images/feedback/<id>/` with stored `screenshot_path` for easy purge. Lib `src/lib/feedback.ts`. Coach `profile.feedback` added to the **new-user core tour**. Verified end-to-end on localhost (submit → queue → triage → note persisted) + prod verify handed to Brian. Entry is Profile-only (no persistent affordance yet).
 - Design context (Brian, 7.8 discovery): from the bottle card there are exactly **two contribution actions — Suggest an edit (7.8) and Add a variant (7.9)**, both done. Personal notes/ratings are NOT a card action — they belong to the future drink/blind-tasting flow.
 
 **Product surface (so you do not rebuild what exists):**
@@ -64,6 +65,35 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-23 — Claude (END SESSION: feedback / bug-report channel shipped)
+- Beta-prep item off BACKLOG. Discovery Q&A with Brian first (entry point, form fields, auto-capture,
+  admin surface), then built.
+- **Shipped** (`00188a9` feat, `50f7b00` docs), pushed to `MVP-v3` (prod):
+  - Profile entry "Send Feedback / Report a Bug" → `FeedbackSheet` — feature|bug toggle, message box
+    with **Web-Speech dictation** (🎤, gracefully hidden where unsupported), optional **screenshot**
+    attach (`accept="image/*"`). Auto-captures user_agent/viewport/route (route included for a future
+    persistent affordance; entry is Profile-only today). Fail-open on the screenshot upload.
+  - New **`feedback`** table + RLS mirroring `suggested_edits` (insert-own / select own+admin /
+    update own+admin). **Applied to prod DB this session** (Brian's go). `sql/feedback-migration.sql`
+    (+ `sql/feedback-snapshot.sql` rollback). Additive.
+  - Admin **Feedback** tab (`FeedbackTab.tsx`, 4th tab): triage queue, Open/All/status filters with
+    counts, status controls (new→triaged→planned→done), internal note (7.8 review-note pattern),
+    screenshot thumbnail, reporter+context line.
+  - Screenshots namespaced `bottle-images/feedback/<id>/…`; `screenshot_path` stored on the row so a
+    resolved report's image is a one-delete purge.
+  - Coach `profile.feedback` added as the **final new-user core tour step** (`src/lib/coaches.ts`).
+  - Lib `src/lib/feedback.ts`. TELEMETRY records the new table.
+- **Verified end-to-end** on localhost @ 375px as admin (Lakehouse): submit (feature, context
+  captured) → appears in Admin > Feedback with filters/counts/type badge/reporter line → New→Triaged
+  persisted → note saved (`reviewed_by`+`updated_at` set). No console errors. All QA rows deleted
+  (table empty). **Prod verify handed to Brian** after Vercel.
+- **Env note:** another Claude session's `next dev` held this project's `.next/dev/lock`; with Brian's
+  say-so I stopped that process (PIDs 19360/20136) to run verification here. That other chat's preview
+  is stopped — restart it there if needed.
+- **New BACKLOG items** (Brian, this session): storage image-usage/orphan-purge audit; **AI
+  background-removal on uploaded bottle images** (white/transparent bg for cleaner cards).
+- **Next: nothing queued — ask Brian.** (Phase 3 tastings / Phase 4 profile / 6.4 CSV / generic events table.)
 
 ### 2026-08-23 — Claude (END SESSION: 7.9 add-a-variant — Phase 7 COMPLETE)
 - Discovery with Brian first (store-pick privacy + the carousel entry-point UX), then built in 3 parts.
