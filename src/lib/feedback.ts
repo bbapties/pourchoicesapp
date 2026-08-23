@@ -1,0 +1,186 @@
+import { supabase } from "@/lib/supabase";
+
+// Feedback / bug-report channel (beta-prep).
+// Users submit from Profile; admins triage in Admin > Feedback.
+// Table + RLS: sql/feedback-migration.sql (mirrors the 7.8 suggested_edits shape).
+
+const BUCKET = "bottle-images"; // reused; feedback objects live under "feedback/<id>/..."
+
+export type FeedbackType = "feature" | "bug";
+export type FeedbackStatus = "new" | "triaged" | "planned" | "done";
+
+export const FEEDBACK_STATUSES: FeedbackStatus[] = ["new", "triaged", "planned", "done"];
+
+export function statusLabel(s: FeedbackStatus): string {
+  switch (s) {
+    case "new": return "New";
+    case "triaged": return "Triaged";
+    case "planned": return "Planned";
+    case "done": return "Done";
+    default: return s;
+  }
+}
+
+/** Non-sensitive context captured with each report (no route/PII beyond the pathname). */
+function captureContext(): { user_agent: string | null; viewport: string | null; route: string | null } {
+  if (typeof window === "undefined") {
+    return { user_agent: null, viewport: null, route: null };
+  }
+  return {
+    user_agent: navigator.userAgent || null,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    route: window.location.pathname || null,
+  };
+}
+
+/**
+ * Upload an optional screenshot to the shared bucket under a feedback-tagged
+ * path so a resolved report's image is trivial to purge. Returns both the
+ * public URL (for display) and the storage path (for deletion).
+ */
+async function uploadScreenshot(
+  file: File,
+  feedbackId: string
+): Promise<{ url: string | null; path: string | null; error: string | null }> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `feedback/${feedbackId}/${crypto.randomUUID()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+  if (uploadError) return { url: null, path: null, error: uploadError.message };
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return { url: data.publicUrl, path, error: null };
+}
+
+/**
+ * Submit a feedback report. Inserts the row first (to get its id for the
+ * screenshot path), uploads the optional screenshot, then attaches it.
+ * Fail-open on the screenshot: a report is never lost because its image failed.
+ */
+export async function submitFeedback(opts: {
+  userId: string; // public users id
+  type: FeedbackType;
+  message: string;
+  screenshot?: File | null;
+}): Promise<{ error?: string; screenshotFailed?: boolean }> {
+  const message = opts.message.trim();
+  if (!message) return { error: "Message is empty" };
+
+  const ctx = captureContext();
+
+  const { data, error } = await supabase
+    .from("feedback")
+    .insert({
+      type: opts.type,
+      message,
+      status: "new",
+      submitted_by: opts.userId,
+      user_agent: ctx.user_agent,
+      viewport: ctx.viewport,
+      route: ctx.route,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+
+  if (opts.screenshot) {
+    const up = await uploadScreenshot(opts.screenshot, data.id);
+    if (up.error || !up.url) {
+      // Keep the report; flag the image failure to the caller.
+      return { screenshotFailed: true };
+    }
+    const { error: attachErr } = await supabase
+      .from("feedback")
+      .update({ screenshot_url: up.url, screenshot_path: up.path })
+      .eq("id", data.id);
+    if (attachErr) return { screenshotFailed: true };
+  }
+
+  return {};
+}
+
+export type FeedbackRow = {
+  id: string;
+  type: FeedbackType;
+  message: string;
+  screenshotUrl: string | null;
+  screenshotPath: string | null;
+  status: FeedbackStatus;
+  submittedByName: string;
+  adminNote: string | null;
+  userAgent: string | null;
+  viewport: string | null;
+  route: string | null;
+  createdAt: string;
+};
+
+const ADMIN_SELECT = `
+  id, type, message, screenshot_url, screenshot_path, status, admin_note,
+  user_agent, viewport, route, created_at,
+  users:submitted_by ( username )
+`;
+
+/** All reports, newest first, for the admin triage queue. */
+export async function fetchFeedback(): Promise<{ rows: FeedbackRow[]; error?: string }> {
+  const { data, error } = await supabase
+    .from("feedback")
+    .select(ADMIN_SELECT)
+    .order("created_at", { ascending: false });
+  if (error) { console.error("fetchFeedback:", error.message); return { rows: [], error: error.message }; }
+
+  const rows: FeedbackRow[] = (data || []).map((raw: any) => {
+    const user = Array.isArray(raw.users) ? raw.users[0] : raw.users;
+    return {
+      id: raw.id,
+      type: raw.type,
+      message: raw.message,
+      screenshotUrl: raw.screenshot_url,
+      screenshotPath: raw.screenshot_path,
+      status: raw.status,
+      submittedByName: user?.username ?? "Someone",
+      adminNote: raw.admin_note,
+      userAgent: raw.user_agent,
+      viewport: raw.viewport,
+      route: raw.route,
+      createdAt: raw.created_at,
+    };
+  });
+  return { rows };
+}
+
+/** Admin: move a report through the triage lifecycle. */
+export async function updateFeedbackStatus(
+  id: string,
+  status: FeedbackStatus,
+  reviewerUserId: string
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from("feedback")
+    .update({ status, reviewed_by: reviewerUserId, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  return error ? { error: error.message } : {};
+}
+
+/** Admin: attach/replace a triage note (reuses the 7.8 review-note idea). */
+export async function setFeedbackNote(
+  id: string,
+  note: string,
+  reviewerUserId: string
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from("feedback")
+    .update({
+      admin_note: note.trim() || null,
+      reviewed_by: reviewerUserId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  return error ? { error: error.message } : {};
+}

@@ -4,13 +4,15 @@ import { useState } from "react";
 import UsersTab from "./UsersTab";
 import BottlesTab from "./BottlesTab";
 import ImportTab from "./ImportTab";
+import FeedbackTab from "./FeedbackTab";
 
-type TabId = "users" | "bottles" | "import";
+type TabId = "users" | "bottles" | "feedback" | "import";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "users",   label: "Users" },
-  { id: "bottles", label: "Bottles" },
-  { id: "import",  label: "Import" },
+  { id: "users",    label: "Users" },
+  { id: "bottles",  label: "Bottles" },
+  { id: "feedback", label: "Feedback" },
+  { id: "import",   label: "Import" },
 ];
 
 export default function AdminClient({
@@ -45,9 +47,10 @@ export default function AdminClient({
       </nav>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {tab === "users"   && <UsersTab currentPublicUserId={publicUserId} />}
-        {tab === "bottles" && <BottlesTab publicUserId={publicUserId} />}
-        {tab === "import"  && <ImportTab />}
+        {tab === "users"    && <UsersTab currentPublicUserId={publicUserId} />}
+        {tab === "bottles"  && <BottlesTab publicUserId={publicUserId} />}
+        {tab === "feedback" && <FeedbackTab publicUserId={publicUserId} />}
+        {tab === "import"   && <ImportTab />}
       </div>
     </div>
   );

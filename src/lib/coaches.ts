@@ -180,6 +180,21 @@ export const COACH_CATALOG: CoachItem[] = [
       },
     ],
   },
+  {
+    id: "profile.feedback",
+    title: "Send feedback",
+    body: "Have an idea, or hit a bug? Tell us right from Profile.",
+    route: "/profile",
+    core: true,
+    announce: true,
+    tour: [
+      {
+        route: "/profile",
+        anchor: "profile.feedback",
+        caption: "Tap here any time to suggest a feature or report a bug. You can type it, speak it, or attach a screenshot — it goes straight to the team.",
+      },
+    ],
+  },
 ];
 
 export function coreItems(): CoachItem[] {
