@@ -12,9 +12,16 @@ export async function createSupabaseServerClient() {
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // `setAll` was called from a Server Component, where Next forbids
+            // writing cookies during render. Safe to ignore: middleware.ts
+            // refreshes the auth session on every request and writes the
+            // cookies onto the response. (Supabase @ssr recommended pattern.)
+          }
         },
       },
     }
