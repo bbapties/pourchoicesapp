@@ -127,7 +127,7 @@ Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually 
 Design agreed 2026-07-25 (mockup approved). Full rationale in memory: `bottle-detail-revamp`.
 Still greyscale/wireframe (styling = later). The blind-tasting branch depends on Phase 3 (Taste flow), currently a stub.
 
-**Progress (2026-08-22):** **7.1–7.5, 7.7, 7.10, 7.11 shipped to `MVP-v3`.** 7.4 carousel includes the default; the whole detail card swaps. 7.11 coaches: core tour for new users, What's new digest for existing. **Next: 7.6** state-aware action control. 7.8/7.9 and Phase 3 tastings are not next unless Brian says so.
+**Progress (2026-08-23):** **7.1–7.7, 7.10, 7.11 shipped to `MVP-v3`.** 7.6 landed the state-aware action control (primary + More sheet). 7.11 coaches: core tour for new users, What's new digest for existing. **Next: 7.8** (suggest-an-edit, needs a suggested-edits table) or **7.9** (add-a-variant save choice) — both still gated unless Brian says go. Phase 3 tastings remain a stub.
 
 ### Design summary
 - **Variants are near-full bottles** — each has its own Elo, nose/palate/finish, verified status, and front/back images. A "SKU/label" (name + distillery + category/style) groups them.
@@ -163,9 +163,10 @@ Epic B — Detail card UI
   - Exit: toggle flips image without swiping; tap opens full-screen zoom + close; each variant shows its own images; missing/broken → placeholder.
 
 Epic C — Actions & moderation
-- [ ] 7.6 State-aware action control
+- [x] 7.6 State-aware action control (2026-08-23, on `MVP-v3`)
   - Goal: state-dependent primary (Add to My Bar / Log a Pour / Add Back) + More sheet (Add another, Blind tasting, Mark as Empty) + a separate Suggest-edit pencil.
   - Exit: visible actions match state (not owned / owned / empty); Mark as Empty soft-deletes (hidden from My Bar, kept in history).
+  - Live: one state-dependent primary + `MoreSheet` (bottom sheet). none → Add to My Bar + Have a drink; owned → Have a drink + More (Add another / Mark as Empty / Blind tasting stub / Remove); empty → Add Back + Have a drink + More (Remove). Mark as Empty = existing `onToggleOwnership` (soft). **Add Back routes through the restock path (`onAddToBar` → `addOrRestockUserBottle`), NOT the toggle** — MyBar's `handleToggleOwnership` is one-way finished-only, so wiring Add Back to it silently no-ops. Suggest-edit pencil unchanged. Coach row `bottle.actions` (announce). `bottle.have_a_drink` anchor stays on a visible element in every state.
 - [x] 7.7 Log a Pour branch (SKU-level prototype, 2026-08-21)
   - Goal: one Have a drink action branching into neat / rocks / mixed / blind tasting; records a drink event. **SKU-level UI; pours now attach `variant_id` when the carousel is on a specific version (7.4).**
   - Exit: choosing a type records an `activities` row + updates My last activity. Does **not** add the bottle to My Bar or increment `times_had`. Blind logs the pour and toasts that tastings aren't live (Phase 3 still a stub; `/taste` redirects to `/social`).
@@ -204,3 +205,4 @@ Notes: 7.4/7.5 done (carousel + per-variant images). 7.7 pours attach `variant_i
 - [x] 7.4 Variant carousel (default included; swipe swaps the card)
 - [x] 7.5 Per-variant images on the carousel
 - [x] 7.11 First-use coaches + What's new digest
+- [x] 7.6 State-aware action control (primary + More sheet; Add Back via restock)

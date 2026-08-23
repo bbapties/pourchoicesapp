@@ -8,16 +8,17 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** END SESSION docs (this baton). App tip before docs: `664d6d3` (7.4 carousel).
-- **Current phase:** **Phase 7.** Shipped: 7.1, 7.2, 7.3, 7.4, 7.5, 7.7, 7.10, 7.11. **Not shipped:** 7.6 (actions), 7.8 (real suggest-edit table), 7.9 (contribute/add-variant save choice). Phase 6.4 CSV import is still a shell.
+- **Last commit:** END SESSION docs (this baton). App tip before docs: `750e427` (7.6 actions).
+- **Current phase:** **Phase 7.** Shipped: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.10, 7.11. **Not shipped:** 7.8 (real suggest-edit table), 7.9 (contribute/add-variant save choice). Phase 6.4 CSV import is still a shell.
 
 **Single next step for the incoming agent:**
-- **7.6 — State-aware action control.** Primary button should match collection state (Add to My Bar / Have a drink or Log a Pour / Add Back) plus a More sheet (Add another, Blind tasting stub, Mark as Empty). Suggest-edit pencil stays separate. **Do not start Phase 3 tastings, Phase 5 polish, or 7.8/7.9 unless Brian says so.**
+- **Nothing is queued.** 7.6 is done. The remaining Phase-7 items are **7.8** (suggest-an-edit → needs a `suggested_edits` table + admin queue) and **7.9** (add-a-variant save choice), both **gated — do not start unless Brian says go.** Also do not start Phase 3 tastings or Phase 5 polish without Brian's word. Ask Brian what's next.
 
 **Product surface (so you do not rebuild what exists):**
 - Nav: Search / Social / My Bar / Profile (+ Admin). `/taste` → `/social`. Login → `/mybar`. Profile = coming-soon + Sign out.
 - Bottle detail: carousel over **default + variants** (swipe / arrows / dots). One variant → no pager. Fields that swap: images, Elo, verified, age, proof, notes, tasting notes. SKU identity (name, distillery, category) stays. Front/Back + zoom live.
 - Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / blind (blind toasts "not live"). Writes `activities` with optional `variant_id` of the visible carousel slide.
+- Actions (7.6): one state-dependent primary + a `MoreSheet`. **none** → Add to My Bar (primary) + Have a drink. **owned** → Have a drink (primary) + More (Add another / Mark as Empty / Blind tasting stub / Remove). **empty** → Add Back (primary) + Have a drink + More (Remove). Suggest-edit pencil stays separate (top bar). Mark as Empty = soft delete (`currently_owned=false`, kept in history). Add Back = restock (`onAddToBar`), which bumps `times_had`.
 - Social: global reverse-chrono feed from `activities`.
 - Coaches: new users get a live-UI core tour; existing users get one What's new digest per session (Show me = that feature's tour). Catalog `src/lib/coaches.ts`. Storage `users.seen_coach_ids`. Existing accounts were seeded `core.done`.
 
@@ -34,6 +35,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - Activity policy: log every bottle action until Brian excludes it (`src/lib/activities.ts`). Fail-open. Exclusion: admin hard-delete of a bottle.
 - Coach policy: new user-facing surface → one `src/lib/coaches.ts` row. Pile-up = one digest per session, never 20 autoplayed tours. New vs existing = `core.done` in `seen_coach_ids`, not account age.
 - Detail carousel: `localBottle.variants` is the **full** ordered list (default first). Do not filter to labeled-only. Display via `fieldsForVariant`.
+- **MyBar `handleToggleOwnership` is one-way** (hard-codes `currently_owned=false`, always logs `finished`) — it is a "mark finished", not a real toggle. Use it only for **Mark as Empty**. For **Add Back** (empty→owned) use the restock path (`onAddToBar` → `addOrRestockUserBottle`), which sets owned=true and bumps `times_had` in both Search and MyBar. SearchClient's toggle *is* a real toggle; the divergence is why 7.6 routes Add Back through restock, not toggle.
 - Supabase's typed client overflows ("excessively deep") on a **union table name + `.or()`** — the dynamic-table queries in `SearchClient.tsx` are cast to `any` on purpose. Don't "fix" the casts.
 
 ---
@@ -55,6 +57,24 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-23 — Claude (END SESSION: 7.6 state-aware actions pushed to MVP-v3)
+- **7.6 shipped** (`750e427`): rebuilt the `BottleDetailView` action region into one state-dependent
+  primary + a new `MoreSheet` (`src/components/MoreSheet.tsx`, PourSheet bottom-sheet pattern).
+  Per state — none: Add to My Bar + Have a drink; owned: Have a drink + More (Add another / Mark as
+  Empty / Blind tasting stub / Remove); empty: Add Back + Have a drink + More (Remove). Suggest-edit
+  pencil untouched. Added the required `coaches.ts` row `bottle.actions` (announce).
+- **Bug found + fixed in the same change:** MyBar's `handleToggleOwnership` is one-way
+  (`currently_owned=false` only). First cut wired "Add Back" to `onToggleOwnership` → it silently
+  no-op'd in MyBar. Re-routed Add Back through the restock path (`onAddToBar` →
+  `addOrRestockUserBottle`) so empty→owned persists everywhere. New landmine documents this.
+- **No SQL, no schema, no parent-handler signature changes.** All actions already have `activities`
+  emitters; nothing added there.
+- Verified logged-in (QA account) on localhost @ 375px across all three states + the
+  owned→empty→owned round-trip; typecheck + console + server logs clean. Buffalo Trace was used as
+  the test bottle and restored to owned (its `times_had` is now 2 from the Add-Back restock — a
+  correct "had it again", not a bug). **Prod verify still on Brian** after Vercel.
+- **Next: nothing queued.** 7.8 / 7.9 remain gated. Ask Brian.
 
 ### 2026-08-22 — Grok (END SESSION: 7.11 + 7.4 pushed; next is 7.6)
 - Session pulled engagement forward then returned to 7.4. Brian: light test, push everything, end session.
