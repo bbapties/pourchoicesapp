@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CurrentUserProvider, useCurrentUser } from "@/lib/useCurrentUser";
 import CoachHost, { unseenAnnounceRoutes } from "@/components/CoachHost";
+import EventTracker from "@/components/EventTracker";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const { authId, isAdmin, loading, seenCoachIds } = useCurrentUser();
@@ -32,6 +33,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <EventTracker />
       <main
         className="flex-1 overflow-y-auto min-h-0"
         style={{

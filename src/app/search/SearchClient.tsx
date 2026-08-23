@@ -16,6 +16,7 @@ import { type BottleDetails } from "@/lib/types";
 import BottleDetailView from "@/components/BottleDetailView";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, type UserBottleRow } from "@/lib/userBottles";
 import { logActivity } from "@/lib/activities";
+import { logEvent, logClick } from "@/lib/events";
 
 const DEFAULT_PAGE_SIZE = 30;
 const LOAD_MORE_SIZE = 15;
@@ -371,6 +372,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const handleBottleClick = (bottle: any) => {
     const skuId = bottle.bottleId ?? bottle.id;
     const row = userBottlesMap[skuId]?.[0];
+    logClick("bottle_open", { userId: publicUserId, surface: "/search", targetId: skuId, metadata: { mode: viewMode } });
     setSelectedBottle({
       ...bottle,
       id: skuId, // detail view fetches variants + collection status by SKU id
@@ -430,6 +432,13 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
       const mapFn = isBottles ? mapBottleResult : mapVariantResult;
       setBottles(filteredResults.map(mapFn));
+
+      logEvent({
+        eventType: "search",
+        userId: publicUserId,
+        surface: "/search",
+        metadata: { query: searchTerm, result_count: filteredResults.length, mode: viewMode },
+      });
     } catch (error) {
       console.error("Unexpected error:", error);
       setBottles([]);

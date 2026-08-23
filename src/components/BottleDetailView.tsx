@@ -26,6 +26,7 @@ import {
   logActivity,
   type PourType,
 } from "@/lib/activities";
+import { logClick } from "@/lib/events";
 
 interface BottleDetailViewProps {
   bottle: BottleDetails;
@@ -363,6 +364,11 @@ export default function BottleDetailView({
 
   const handlePour = async (pourType: PourType) => {
     if (!publicUserId || isPouring) return;
+    logClick("have_a_drink", {
+      userId: publicUserId,
+      targetId: bottle.id,
+      metadata: { pour_type: pourType, variant_id: currentVariant?.variantId ?? null },
+    });
     setIsPouring(true);
     try {
       const result = await logActivity({
