@@ -8,11 +8,11 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** END SESSION docs (this baton). App tip before docs: `50f7b00` (feedback channel), pushed to `MVP-v3` (prod).
-- **Current phase:** **Phase 7 COMPLETE** (7.1–7.11 shipped). Beta-prep in progress: **feedback/bug-report channel SHIPPED** (2026-08-23). Phase 6.4 CSV import is still a shell.
+- **Last commit:** `646ac2e` (events telemetry docs). App tip: `aa134d3` (generic events table), pushed to `MVP-v3` (prod).
+- **Current phase:** **Phase 7 COMPLETE** (7.1–7.11 shipped). Beta-prep shipped: **feedback/bug-report channel** + **generic events/telemetry table** (both 2026-08-23). Phase 6.4 CSV import is still a shell.
 
 **Single next step for the incoming agent:**
-- **Nothing is queued — ask Brian.** Phase 7 is done and the **feedback/bug-report channel just shipped** (this session). Brian is prepping a **10–15 user beta**. Standing recommendation for what's left: **Phase 3 Blind Tastings** (flagship must-have, large, still a stub), **Phase 4 Profile** (coming-soon stub + now the feedback button — small: view username/email, edit username, sign out), **Phase 6.4 CSV import** (shell), and the last big beta-prep BACKLOG item — the **generic events/telemetry table** (capture beta activity for future badges; see [TELEMETRY.md](TELEMETRY.md)). Do not start any of these, or Phase 5 polish, without Brian's word.
+- **Nothing is queued — ask Brian.** Phase 7 is done; two beta-prep items shipped this session (feedback channel + events telemetry). Brian is prepping a **10–15 user beta**. Standing recommendation for what's left: **Phase 4 Profile** (small quick win — coming-soon stub + now holds the feedback button; view username/email, edit username, sign out), **Phase 3 Blind Tastings** (flagship must-have, large, still a stub — deserves its own dedicated push, now instrumentable via `logEvent`), **Phase 6.4 CSV import** (shell). Do not start any of these, or Phase 5 polish, without Brian's word.
 - **Feedback channel — what shipped (`00188a9` feat + `50f7b00` docs):** Profile "Send Feedback / Report a Bug" → `FeedbackSheet` (type feature|bug, message with Web-Speech dictation, optional screenshot). New `feedback` table + RLS (mirrors `suggested_edits`; **migration applied to prod DB** — `sql/feedback-migration.sql`, rollback `sql/feedback-snapshot.sql`). Admin triage queue in **Admin > Feedback** (`FeedbackTab.tsx`; status new/triaged/planned/done + internal note). Screenshots under `bottle-images/feedback/<id>/` with stored `screenshot_path` for easy purge. Lib `src/lib/feedback.ts`. Coach `profile.feedback` added to the **new-user core tour**. Verified end-to-end on localhost (submit → queue → triage → note persisted) + prod verify handed to Brian. Entry is Profile-only (no persistent affordance yet).
 - Design context (Brian, 7.8 discovery): from the bottle card there are exactly **two contribution actions — Suggest an edit (7.8) and Add a variant (7.9)**, both done. Personal notes/ratings are NOT a card action — they belong to the future drink/blind-tasting flow.
 
@@ -65,6 +65,32 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-23 — Claude (generic events / telemetry table shipped)
+- Beta-prep foundation (TELEMETRY.md). Discovery with Brian first: **one generic table** with an
+  `event_type` filter column; v1 events = page_view + search + click + error; **capture logged-out**
+  (nullable user_id + session_id); **fire-per-event** fail-open.
+- **Shipped** (`aa134d3` feat, `646ac2e` docs), pushed to `MVP-v3` (prod):
+  - New **`public.events`** — `event_type`/`surface`/`target_type`/`target_id`/`metadata jsonb`,
+    nullable `user_id` (+ client `session_id`), append-only. RLS: anon+auth insert (anon only
+    anonymous rows), **admin-only read**, no update/delete. **Applied to prod DB this session.**
+    `sql/events-migration.sql` (+ `sql/events-snapshot.sql` rollback). Additive.
+  - **`src/lib/events.ts`** — fail-open, fire-and-forget `logEvent` / `logClick` (never awaits/throws;
+    console-only on error). `session_id` in sessionStorage (`pc.session.id`).
+  - **`EventTracker.tsx`** (mounted in `AppShell`, inside the provider) — `page_view` per route change
+    (incl. the login funnel) + global `error` capture (window error + unhandledrejection).
+  - `search` event in `SearchClient.searchBottles` (`{query, result_count, mode}`); `click` events
+    `bottle_open` (SearchClient) + `have_a_drink` (BottleDetailView `handlePour`).
+- **Verified end-to-end** on localhost as admin: page_views (incl. anonymous rows, proving the
+  nullable-user funnel), a `search` (buffalo → result_count 7 → correct mode), `bottle_open` +
+  `have_a_drink` clicks with session_id + metadata. All QA rows purged (events table emptied; test
+  `drank` activity deleted). tsc clean; ESLint only pre-existing `any`/deps warnings.
+- **Pre-existing infra note (NOT from this change):** hard reloads surface Next 16 + @supabase/ssr
+  "Cookies can only be modified in a Server Action/Route Handler" errors during server render (one
+  transient /admin 500 that self-recovered; all routes otherwise 200). Client-only telemetry doesn't
+  touch cookies. Fixing it means auth/middleware work (gated) — flagged for Brian, not touched.
+- **Prod verify handed to Brian** after Vercel. Add more events freely as features land (standing
+  rule (b) in TELEMETRY). **Next: ask Brian** (Phase 4 Profile is the recommended quick win).
 
 ### 2026-08-23 — Claude (END SESSION: feedback / bug-report channel shipped)
 - Beta-prep item off BACKLOG. Discovery Q&A with Brian first (entry point, form fields, auto-capture,
