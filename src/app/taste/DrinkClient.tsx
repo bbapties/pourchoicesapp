@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronUp, ChevronDown, Check, Wine, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -31,7 +32,17 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export default function DrinkClient({ publicUserId }: { publicUserId: string }) {
+export default function DrinkClient({
+  publicUserId,
+  seedBottleId,
+  seedVariantId,
+}: {
+  publicUserId: string;
+  seedBottleId?: string | null;
+  seedVariantId?: string | null;
+}) {
+  const router = useRouter();
+  const seeded = useRef(false);
   const [step, setStep] = useState<Step>("home");
   const [mode, setMode] = useState<Mode>("self");
   const [catalog, setCatalog] = useState<CatalogBottle[]>([]);
@@ -66,13 +77,46 @@ export default function DrinkClient({ publicUserId }: { publicUserId: string }) 
     return () => { cancelled = true; };
   }, []);
 
+  // Pre-seed from bottle-card Blind (Have a drink or More). Skip home → land on mode
+  // with that bottle already in the lineup. Fetch by id so we aren't limited to the
+  // 300-name catalog window.
+  useEffect(() => {
+    if (!seedBottleId || seeded.current) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("all_bottle_details")
+        .select("bottle_id, bottle_name, bottle_distillery, default_variant_id")
+        .eq("bottle_id", seedBottleId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!data?.default_variant_id) {
+        toast.error("Couldn't add that bottle to the tasting");
+        return;
+      }
+      seeded.current = true;
+      setPicks([{
+        bottleId: data.bottle_id,
+        variantId: seedVariantId || (data.default_variant_id as string),
+        name: data.bottle_name,
+        distillery: data.bottle_distillery,
+      }]);
+      setStep("mode");
+    })();
+    return () => { cancelled = true; };
+  }, [seedBottleId, seedVariantId]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = q
       ? catalog.filter((b) => b.name.toLowerCase().includes(q) || (b.distillery ?? "").toLowerCase().includes(q))
       : catalog;
-    return base.slice(0, 60);
-  }, [catalog, query]);
+    const shown = base.slice(0, 60);
+    // Keep already-picked / pre-seeded bottles visible even if they're outside the
+    // 300-name catalog window or the 60-row slice.
+    const extra = picks.filter((p) => !shown.some((s) => s.bottleId === p.bottleId));
+    return extra.length ? [...extra, ...shown] : shown;
+  }, [catalog, query, picks]);
 
   const isPicked = (id: string) => picks.some((p) => p.bottleId === id);
 
@@ -85,7 +129,13 @@ export default function DrinkClient({ publicUserId }: { publicUserId: string }) 
     }
   };
 
-  const startMode = (m: Mode) => { setMode(m); setPicks([]); setQuery(""); setStep("pick"); };
+  const startMode = (m: Mode) => {
+    setMode(m);
+    setQuery("");
+    // Keep a bottle-card pre-seed; a normal Start from home begins empty.
+    if (!seeded.current) setPicks([]);
+    setStep("pick");
+  };
 
   const afterPick = () => {
     if (picks.length < MIN_PICKS) { toast(`Pick at least ${MIN_PICKS} bottles`); return; }
@@ -139,6 +189,7 @@ export default function DrinkClient({ publicUserId }: { publicUserId: string }) 
 
   const reset = () => {
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery(""); setStep("home");
+    if (seedBottleId) router.replace("/taste");
   };
 
   const back = () => {
@@ -182,6 +233,9 @@ export default function DrinkClient({ publicUserId }: { publicUserId: string }) 
         {step === "mode" && (
           <div className="pt-4 space-y-3">
             <h2 className="text-base font-semibold text-charcoal mb-1">How are you tasting?</h2>
+            {picks.length === 1 && (
+              <p className="text-sm text-gray-500">Starting with {picks[0].name}. Pick 1–4 more after this.</p>
+            )}
             <button type="button" onClick={() => startMode("self")} className="w-full text-left rounded-lg border border-charcoal p-4">
               <div className="font-semibold text-charcoal">I&apos;ll set it up myself</div>
               <div className="text-sm text-gray-500">Pour into lettered glasses, hide the letters, shuffle, then rank.</div>

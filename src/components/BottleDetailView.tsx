@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { X, ChevronLeft, ChevronRight, Pencil, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ export default function BottleDetailView({
   onEditSaved,
   onActivityLogged,
 }: BottleDetailViewProps) {
+  const router = useRouter();
   const [imageSide, setImageSide] = useState<'front' | 'back'>('front');
   const [variantIndex, setVariantIndex] = useState(0);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -437,8 +439,29 @@ export default function BottleDetailView({
     }
   };
 
+  const startBlindTasting = (source: "pour" | "more") => {
+    if (!publicUserId) return;
+    logClick("blind_tasting", {
+      userId: publicUserId,
+      targetId: bottle.id,
+      metadata: { source, variant_id: currentVariant?.variantId ?? null },
+    });
+    setShowPourSheet(false);
+    setShowMoreSheet(false);
+    const params = new URLSearchParams({ bottle: bottle.id });
+    const vId = currentVariant?.variantId;
+    if (vId) params.set("variant", vId);
+    router.push(`/taste?${params.toString()}`);
+  };
+
   const handlePour = async (pourType: PourType) => {
     if (!publicUserId || isPouring) return;
+    // Blind starts the Drink flow with this bottle pre-seeded. It is not a pour log —
+    // logging "drank it blind" here would hit Social before they even rank.
+    if (pourType === "blind") {
+      startBlindTasting("pour");
+      return;
+    }
     logClick("have_a_drink", {
       userId: publicUserId,
       targetId: bottle.id,
@@ -464,14 +487,10 @@ export default function BottleDetailView({
       });
       if (label) setLastActivityLabel(label);
       setShowPourSheet(false);
-      if (pourType === "blind") {
-        toast.success("Pour logged. Blind tastings aren't live yet.");
-      } else {
-        toast.success("Pour logged");
-      }
+      toast.success("Pour logged");
       onActivityLogged?.();
-      // 3.1: after a (non-blind) pour, prompt for the manual star guess if not yet blind-tasted.
-      if (pourType !== "blind" && !hasTasted) setShowRatePrompt(true);
+      // 3.1: after a pour, prompt for the manual star guess if not yet blind-tasted.
+      if (!hasTasted) setShowRatePrompt(true);
     } finally {
       setIsPouring(false);
     }
@@ -1058,7 +1077,7 @@ export default function BottleDetailView({
           onMarkEmpty={collectionState === 'owned' ? handleMarkEmpty : undefined}
           onBlindTasting={
             collectionState === 'owned'
-              ? () => { setShowMoreSheet(false); toast.success("Blind tastings aren't live yet."); }
+              ? () => startBlindTasting("more")
               : undefined
           }
           onRemove={() => { setShowMoreSheet(false); setShowDeleteConfirm(true); }}

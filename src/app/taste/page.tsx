@@ -2,7 +2,11 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import DrinkClient from "./DrinkClient";
 
-export default async function TastePage() {
+export default async function TastePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ bottle?: string; variant?: string }>;
+}) {
   const supabase = await createSupabaseServerClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -15,5 +19,12 @@ export default async function TastePage() {
     .single();
   if (!publicUser) redirect("/");
 
-  return <DrinkClient publicUserId={publicUser.id} />;
+  const sp = await searchParams;
+  return (
+    <DrinkClient
+      publicUserId={publicUser.id}
+      seedBottleId={sp.bottle ?? null}
+      seedVariantId={sp.variant ?? null}
+    />
+  );
 }

@@ -7,7 +7,7 @@ const POUR_OPTIONS: { type: PourType; label: string; hint: string }[] = [
   { type: "neat", label: "Neat", hint: "Straight, no ice" },
   { type: "rocks", label: "On the rocks", hint: "Over ice" },
   { type: "mixed", label: "Mixed", hint: "In a cocktail" },
-  { type: "blind", label: "Blind tasting", hint: "Logs this pour. Blind tastings aren't live yet." },
+  { type: "blind", label: "Blind tasting", hint: "Start a ranking with this bottle" },
 ];
 
 interface PourSheetProps {
