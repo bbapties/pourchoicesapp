@@ -8,6 +8,7 @@ import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import BottleDetailView from "@/components/BottleDetailView";
 import { type BottleDetails } from "@/lib/types";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+import { isVariantVisibleToViewer } from "@/lib/variants";
 import {
   fetchActivityFeed,
   formatFeedAction,
@@ -25,13 +26,14 @@ import {
 const PAGE_SIZE = 40;
 
 const DETAIL_SELECT =
-  "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name";
+  "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by";
 
-function mapDetail(result: any, row?: UserBottleRow | null): BottleDetails {
+function mapDetail(result: any, row?: UserBottleRow | null, viewerIds: (string | null | undefined)[] = []): BottleDetails {
   const variantIds: string[] = result.attr_variant_ids || [];
   const batches: string[] = result.attr_batch || [];
   const releaseYears: string[] = result.attr_release_year || [];
   const storePickNames: string[] = result.attr_store_pick_name || [];
+  const createdBys: string[] = result.attr_variant_created_by || [];
   return {
     id: result.bottle_id,
     name: result.bottle_name,
@@ -55,7 +57,9 @@ function mapDetail(result: any, row?: UserBottleRow | null): BottleDetails {
         batch: batches[i],
         storePickName: storePickNames[i],
       }))
-      .filter((v) => v.releaseYear || v.batch || v.storePickName),
+      // B-10: hide other users' private store picks in the seed (globals + own picks only).
+      .filter((v, i) => (v.releaseYear || v.batch || v.storePickName)
+        && isVariantVisibleToViewer(v.storePickName, createdBys[i], viewerIds)),
     nose: result.attr_nose,
     palate: result.attr_palate,
     finish: result.attr_finish,
@@ -64,7 +68,7 @@ function mapDetail(result: any, row?: UserBottleRow | null): BottleDetails {
 }
 
 export default function SocialClient() {
-  const { publicUserId } = useCurrentUser();
+  const { publicUserId, authId } = useCurrentUser();
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -139,7 +143,7 @@ export default function SocialClient() {
       inCollection: !!row && (row.currently_owned || (row.times_had ?? 0) >= 1),
       currentlyOwned: !!row?.currently_owned,
     });
-    setSelectedBottle(mapDetail(data, row));
+    setSelectedBottle(mapDetail(data, row, [authId, publicUserId]));
   };
 
   const handleAddToBar = async (bottleId: string, variantId?: string | null) => {

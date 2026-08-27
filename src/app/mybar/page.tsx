@@ -59,7 +59,7 @@ export default async function MyBarPage() {
     attr_frontimage_url, attr_backimage_url,
     attr_proof, attr_volume, attr_age,
     attr_nose, attr_palate, attr_finish, attr_extras,
-    attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name
+    attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by
   `;
 
   let ownedCollection: any[] = [];

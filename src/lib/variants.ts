@@ -88,6 +88,22 @@ export async function fetchVariantsForSku(
   return orderVariants(result.data as VariantRow[]).map(mapRow);
 }
 
+/**
+ * Client-side store-pick privacy check, mirroring `fetchVariantsForSku`'s DB filter
+ * (`store_pick_name IS NULL OR created_by IN (ids)`). Use it to filter the variant
+ * arrays that seed the carousel from a list row, so another user's private store
+ * pick never flashes before the authoritative refetch (B-10). `created_by` may be
+ * an auth id OR a public id, so pass both viewer ids.
+ */
+export function isVariantVisibleToViewer(
+  storePickName: string | null | undefined,
+  createdBy: string | null | undefined,
+  viewerIds: (string | null | undefined)[]
+): boolean {
+  if (!storePickName) return true;
+  return viewerIds.some((id) => !!id && id === createdBy);
+}
+
 /** Fields that swap when the detail carousel moves. SKU identity (name/distillery/category) stays put. */
 export function fieldsForVariant(bottle: BottleDetails, v?: BottleVariant | null) {
   if (!v) {

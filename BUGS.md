@@ -50,9 +50,8 @@ These ship before any new feature. Do them in this order.
 
 - [x] **B-09** (high) Mark as Empty was SKU-wide in Social. **FIXED (Claude, 2026-08-27).**
   `SocialClient.handleToggleOwnership` now scopes the `currently_owned=false` update to the card's `variant_id` (`.eq(variant_id)` / `.is(variant_id,null)`), matching My Bar (B-05) and the per-(user,variant) `user_bottles` model — finishing one version no longer empties the whole SKU. My Bar half already shipped with B-05. `SocialClient.tsx`.
-- [ ] **B-10** (high) Other people's store picks can flash in the initial carousel.
-  Unfiltered `attr_store_pick_*` arrays seed the card; `fetchVariantsForSku` filters correctly only after refetch. Social `DETAIL_SELECT` omits `attr_variant_created_by`.
-  `SearchClient.tsx` ~143–150 · `MyBarClient.tsx` ~146–153 · `SocialClient.tsx` ~51–58
+- [x] **B-10** (high) Other people's store picks could flash in the initial carousel. **FIXED (Claude, 2026-08-27).**
+  The variant arrays that seed the carousel from a list row are now filtered client-side by the same predicate as `fetchVariantsForSku` — new shared helper `isVariantVisibleToViewer(storePickName, createdBy, [authId, publicId])` in `lib/variants.ts` (globals always; store picks only to their creator, matching auth OR public id). Applied in SearchClient `mapBottleResult`, MyBarClient `handleCardClick`, and SocialClient `mapDetail`. Also added `attr_variant_created_by` to My Bar's `detailFields` and Social's `DETAIL_SELECT` so both can filter (Search already had it). tsc/build/lint clean.
 - [ ] **B-11** (high) `VariantSelectSheet` only matches `created_by = authId`.
   Previous-store list and reuse query miss rows stamped with `public.users.id` → duplicate store picks.
   `VariantSelectSheet.tsx` ~88–93, 140–166

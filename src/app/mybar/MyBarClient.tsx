@@ -11,6 +11,8 @@ import BottleDetailView from "@/components/BottleDetailView";
 import { type BottleDetails } from "@/lib/types";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle } from "@/lib/userBottles";
 import { logActivity } from "@/lib/activities";
+import { isVariantVisibleToViewer } from "@/lib/variants";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 interface MyBarClientProps {
   ownedCollection: any[];
@@ -77,6 +79,7 @@ function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: b
 }
 
 export default function MyBarClient({ ownedCollection: initialOwned, emptyCollection: initialEmpty, tastedCollection: initialTasted, allBottlesElo, publicUserId }: MyBarClientProps) {
+  const { authId } = useCurrentUser(); // for B-10 store-pick visibility (match auth or public id)
   const { minElo, maxElo } = useMemo(() => {
     if (!allBottlesElo.length) return { minElo: 1500, maxElo: 1500 };
     return { maxElo: Math.max(...allBottlesElo), minElo: Math.min(...allBottlesElo) };
@@ -141,6 +144,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const batches: string[] = Array.isArray(raw.attr_batch) ? raw.attr_batch : (raw.attr_batch ? [raw.attr_batch] : []);
     const releaseYears: string[] = Array.isArray(raw.attr_release_year) ? raw.attr_release_year : (raw.attr_release_year ? [String(raw.attr_release_year)] : []);
     const storePickNames: string[] = Array.isArray(raw.attr_store_pick_name) ? raw.attr_store_pick_name : (raw.attr_store_pick_name ? [raw.attr_store_pick_name] : []);
+    const createdBys: string[] = Array.isArray(raw.attr_variant_created_by) ? raw.attr_variant_created_by : (raw.attr_variant_created_by ? [raw.attr_variant_created_by] : []);
     setSelectedBottle({
       id: raw.bottle_id,
       name: raw.bottle_name,
@@ -172,7 +176,9 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           storePickName: storePickNames[i],
           isDefault: !!raw.variant_is_default,
         }))
-        .filter(v => v.releaseYear || v.batch || v.storePickName || (activeTab === 'tasted' && v.variantId)),
+        // B-10: hide other users' private store picks in the seed (globals + own picks only).
+        .filter((v, i) => (v.releaseYear || v.batch || v.storePickName || (activeTab === 'tasted' && v.variantId))
+          && isVariantVisibleToViewer(v.storePickName, createdBys[i], [authId, publicUserId])),
       nose: raw.attr_nose,
       palate: raw.attr_palate,
       finish: raw.attr_finish,

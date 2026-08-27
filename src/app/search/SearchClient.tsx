@@ -14,6 +14,7 @@ import BottleCard, { type Bottle } from "@/components/BottleCard";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
 import { type BottleDetails } from "@/lib/types";
 import BottleDetailView from "@/components/BottleDetailView";
+import { isVariantVisibleToViewer } from "@/lib/variants";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, type UserBottleRow } from "@/lib/userBottles";
 import { logActivity } from "@/lib/activities";
 import { logEvent, logClick } from "@/lib/events";
@@ -147,7 +148,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
           batch: batches[i],
           storePickName: storePickNames[i],
         }))
-        .filter(v => v.releaseYear || v.batch || v.storePickName),
+        // B-10: hide other users' private store picks in the seed (globals + own picks only).
+        .filter((v, i) => (v.releaseYear || v.batch || v.storePickName)
+          && isVariantVisibleToViewer(v.storePickName, createdBys[i], [authId, publicUserId])),
       nose: result.attr_nose,
       palate: result.attr_palate,
       finish: result.attr_finish,
