@@ -50,9 +50,14 @@ display-only manual star "guess" wiped to a 1500 baseline on first tasting. Buil
 - [x] **3.2 Solo Mode 2 (self-serve) flow** — DONE (committed local `291be12`, verified end-to-end on
   the QA account 2026-08-26). "Drink" nav tab → /taste; pick 2-5 → auto A-E label → rank → save →
   Elo scored via the trigger. `lib/tastings.ts`, `src/app/taste/DrinkClient.tsx`.
-- [ ] **3.3 Solo Mode 1 (guest helper) flow** — handoff + secret mapping + in-app reveal ← NEXT
-- [ ] **3.4 Group sessions** — host/join via short code; per-person reveal + Elo
-- [ ] **3.5 Trimmings** — per-glass notes, My Bar "Tasted" tab, Social `tasted` activity + session-detail view, coaches
+- [x] **3.3 Solo Mode 1 (guest helper) flow** — DONE (committed local `c9d4131`, verified on QA account
+  2026-08-26). App randomizes the secret pour, instructs the helper, taster ranks blind letters, app reveals.
+  Both solo tasting modes now work end-to-end.
+- [ ] **3.4 Group sessions** — host/join via short code; per-person reveal + Elo ⏸ PAUSED (needs schema +
+  realtime + multi-device testing best done with Brian awake)
+- [ ] **3.5 Trimmings** — per-glass notes, My Bar "Tasted" tab, Social `tasted` activity + session-detail view,
+  coaches ⏸ PARTLY PAUSED (Social `tasted` + session-detail need additive schema: `activities.action` CHECK
+  + a session-link column — get Brian's go first)
 
 Original story-level checklist (maps into 3.2–3.4 above; kept for AC reference):
 - [ ] 3.1 Tasting picker — select 2–5 bottles, tray fills (Stories 6.29–6.30)

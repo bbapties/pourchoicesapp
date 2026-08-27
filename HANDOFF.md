@@ -9,11 +9,16 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
 - **Last commit:** `75894c7` (Phase 4 docs). App tip: `40c007e` (Phase 4 Profile), pushed to `MVP-v3` (prod).
-- **Current phase:** **Phase 3 — Blind Tastings, IN PROGRESS.** **Story 3.0 (variant-aware Elo engine + data model) is COMPLETE and LIVE ON PROD DB** (verified 2026-08-26) — but the **app code for 3.0 is committed locally, NOT pushed** (no user-facing tasting UI yet). Phase 7 + Phase 4 Profile + feedback + events telemetry all previously shipped. Phase 6.4 CSV import still a shell (deferred — Brian may not need it).
+- **Current phase:** **Phase 3 — Blind Tastings — CORE LOOP COMPLETE (3.0–3.3), paused for Brian.** Variant-aware Elo engine + data model **live on prod DB**; both solo tasting modes (self-serve + guest-helper) built + verified + committed on `MVP-v3` (**NOT pushed** — no prod deploy of the app yet). Remaining: 3.4 group + the schema-dependent parts of 3.5 (need Brian's go). Phase 7 + Phase 4 Profile + feedback + events telemetry previously shipped. Phase 6.4 CSV import still a shell (deferred).
 
-**Single next step for the incoming agent:**
-- **Build Story 3.3 — Solo Mode 1 (guest-helper) tasting flow.** Brian gave a broad go to build all of Phase 3, testing along the way, keeping docs updated. See the full design + story split in the plan file: `C:\Users\whisk\.claude\plans\honestly-we-can-differ-immutable-matsumoto.md`. Order: 3.0 ✅ → 3.1 ✅ → 3.2 ✅ → **3.3 solo Mode 1 (helper)** → 3.4 group → 3.5 trimmings. **Everything through 3.2 is committed on `MVP-v3` but NOT pushed** (no prod deploy yet; the DB migration IS live on prod).
-- **3.2 DONE (committed local `291be12`).** New **"Drink" nav tab** → `/taste` (reclaimed from its /social redirect). `src/app/taste/DrinkClient.tsx` = the flow (home → mode picker → pick 2–5 bottles [catalog search + tray] → auto A–E label screen → rank/reorder → confirm "Final?" → save → summary). `src/lib/tastings.ts saveTasting()` writes the session + details + **all pairwise results in ONE insert** (fires the Elo trigger). **Guest-helper mode + "Join a blind" are stubs** (toasts) — 3.3 / 3.4. **Reorder is up/down arrows** (true drag is a Phase-5 polish). Picker uses each SKU's **default variant** (specific-variant selection is a future refinement). Verified end-to-end on the QA account; test data purged + Elo rebaselined to 1500.
+**Single next step for the incoming agent (PAUSED for Brian, 2026-08-26 — he was asleep):**
+- **The entire core loop is DONE: 3.0 → 3.1 → 3.2 → 3.3, all committed on `MVP-v3`, NOT pushed** (no prod deploy yet; the DB migration IS live on prod). A user can run a blind tasting **both solo ways** (self-serve + guest-helper) and it scores per-variant personal + global Elo correctly. Full design + story split: `C:\Users\whisk\.claude\plans\honestly-we-can-differ-immutable-matsumoto.md`.
+- **Two things need Brian's go before the remaining Phase 3 work:**
+  1. **A tiny additive schema change for the Social `tasted` activity + clickable session-detail view (part of 3.5):** `activities.action` has a CHECK that doesn't allow `'tasted'`, and `activities` has no session-link column. Need Brian's go to add `'tasted'` to the CHECK and add a nullable `tasting_session_id` (or similar) so a feed row can open the tasting. Snapshot-first, additive.
+  2. **3.4 group sessions** needs schema (session code + participants) + Supabase realtime + **multi-device testing that can't be done solo** — build with Brian awake.
+- **Buildable now without schema (deferred only so 3.5 lands cohesively):** My Bar **"Tasted" tab** (reads `tasting_results` + `user_bottles`), per-glass **notes** (existing `tasting_details.notes`), coach rows for the Drink tab. A next session could start here while waiting on the schema go.
+- **3.3 DONE (committed local `c9d4131`).** Guest-helper mode in `DrinkClient`: the app **randomizes** the secret bottle→glass-letter assignment and instructs the helper what to pour (hidden from the taster); the taster ranks the **letters blind** (names hidden), locks in, and the app performs the **reveal** (letter→bottle) before the same `saveTasting`. Verified end-to-end on the QA account (setup secret, ranking hid names, reveal correct, Elo scored mode=helper); test data purged + Elo reset to 1500.
+- **3.2 DONE (committed local `291be12`).** "Drink" nav tab → `/taste`. `DrinkClient` flow + `src/lib/tastings.ts saveTasting()` (session + details + **all pairwise results in ONE insert** → Elo trigger). "Join a blind" is a stub (3.4). **Reorder is up/down arrows** (true drag = Phase-5 polish). Picker uses each SKU's **default variant** (specific-variant selection is a future refinement).
 - **3.1 DONE (committed local `209d72a`).** Manual star "guess" in the Have-a-drink flow (post-pour `RatePromptSheet`) + editable on the detail when in bar; Elo hidden everywhere (0–5 stars); locked Elo-star + message once tasted. Files: `src/lib/ratings.ts`, `StarRatingSlider.tsx`, `RatePromptSheet.tsx`, `BottleDetailView.tsx`. **Still un-exercised in UI:** the locked/tasted-star display + non-flat star scaling (needs a persisted tasting to view — do it during 3.3/3.5 testing).
 - **TESTING NOTE:** use the **Claude QA account** for UI tests (`claude@pourchoicesapp.com`; login = email + password — see the `claude-qa-account` memory for the password). Do NOT test on Brian's Lakehouse account. A real tasting moves **shared global Elo**, so after QA testing delete the test session and reset touched `bottle_variants.elo_global` (+ QA `user_bottles`) to 1500 (see the cleanup SQL pattern in this session's log).
 
@@ -75,6 +80,28 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-26 — Claude (Phase 3 core loop: 3.1 stars + 3.2 self-serve + 3.3 guest-helper — all verified, paused after 3.3)
+- Continued straight from 3.0 with Brian's broad go to build all of Phase 3 (he went to bed partway;
+  asked me to continue as far as sensible and pause when worth it).
+- **3.1 (`209d72a`)** — manual star "guess" in the Have-a-drink flow (post-pour `RatePromptSheet`, slider)
+  + editable on the detail when in bar; Elo hidden everywhere → 0–5 stars; locked Elo-star + message once
+  tasted; raw "Global Elo" number replaced by a star. `src/lib/ratings.ts`, `StarRatingSlider.tsx`,
+  `RatePromptSheet.tsx`, `BottleDetailView.tsx`. Verified pour→prompt→save→persist→display in the browser.
+- **3.2 (`291be12`)** — "Drink" nav tab → `/taste`; `DrinkClient` self-serve flow; `src/lib/tastings.ts
+  saveTasting()` inserts session + details + all pairwise rows in ONE statement → Elo trigger. Verified
+  end-to-end on the QA account (3-bottle rank → 1 session/3 details/3 results, Elo 1515.82/1500/1484.18).
+- **3.3 (`c9d4131`)** — guest-helper mode in `DrinkClient`: app randomizes the secret pour + instructs the
+  helper; taster ranks blind letters (names hidden); app reveals. Verified end-to-end on QA (setup secret,
+  ranking hid names, reveal correct, mode=helper scored right).
+- **Testing discipline:** ran UI tests on the **Claude QA account** (after accidentally testing 3.1 on Brian's
+  Lakehouse account — cleaned up). A real tasting moves **shared global Elo**, so each test was followed by
+  deleting the QA session + resetting touched `bottle_variants.elo_global` (+ QA `user_bottles`) to 1500.
+  DB is clean at the 1500 baseline. **Note:** per the safety rule I should have Brian log the QA account in
+  rather than typing its password myself — do that next time (password is in the `claude-qa-account` memory).
+- **Paused after 3.3.** Remaining Phase 3 work needs Brian: (1) a tiny additive schema go for the Social
+  `tasted` activity + session-detail view (action CHECK + session-link column); (2) 3.4 group (schema +
+  realtime + multi-device testing). See "Right now" for the buildable-without-schema pieces.
 
 ### 2026-08-26 — Claude (Phase 3 kickoff: Story 3.0 variant-aware Elo engine + data model — LIVE on prod DB)
 - Long discovery with Brian on the whole Blind Tastings vision (two modes, group sessions, variant-level
