@@ -27,37 +27,48 @@ export async function saveTasting(opts: {
   picks: TastingPick[]; // ranked best -> worst
   notes?: Record<string, GlassNote>; // keyed by variantId (optional)
   name?: string | null;
-}): Promise<{ sessionId: string } | { error: string }> {
+  sessionId?: string | null; // reuse an already-created session on retry (B-07 idempotency)
+}): Promise<{ sessionId?: string; error?: string }> {
   const picks = opts.picks;
   if (picks.length < 2) return { error: "Need at least 2 bottles" };
 
-  // 1. Session
-  const { data: session, error: sErr } = await supabase
-    .from("tasting_sessions")
-    .insert({
-      user_id: opts.userId,
-      is_blind: true,
-      mode: opts.mode,
-      name: opts.name ?? null,
-      bottle_ids: picks.map((p) => p.bottleId),
-      variant_ids: picks.map((p) => p.variantId),
-    })
-    .select("id")
-    .single();
-  if (sErr || !session) return { error: sErr?.message ?? "Could not create tasting" };
-  const sessionId = session.id as string;
+  // 1. Session — reuse the one from a prior (failed) attempt so a retry never
+  //    creates a second session that would score the same tasting again (B-07).
+  let sessionId = opts.sessionId ?? null;
+  if (!sessionId) {
+    const { data: session, error: sErr } = await supabase
+      .from("tasting_sessions")
+      .insert({
+        user_id: opts.userId,
+        is_blind: true,
+        mode: opts.mode,
+        name: opts.name ?? null,
+        bottle_ids: picks.map((p) => p.bottleId),
+        variant_ids: picks.map((p) => p.variantId),
+      })
+      .select("id")
+      .single();
+    if (sErr || !session) return { error: sErr?.message ?? "Could not create tasting" };
+    sessionId = session.id as string;
 
-  // 2. Details (one per glass; optional notes). Fail-open — details are not required for scoring.
-  const detailRows = picks.map((p) => ({
-    tasting_session_id: sessionId,
-    bottle_id: p.bottleId,
-    variant_id: p.variantId,
-    notes: opts.notes?.[p.variantId] ?? null,
-  }));
-  await supabase.from("tasting_details").insert(detailRows);
+    // 2. Details (one per glass; optional notes). Fail-open — details are not
+    //    required for scoring. Only on first creation, so a retry can't duplicate them.
+    const detailRows = picks.map((p) => ({
+      tasting_session_id: sessionId,
+      bottle_id: p.bottleId,
+      variant_id: p.variantId,
+      notes: opts.notes?.[p.variantId] ?? null,
+    }));
+    await supabase.from("tasting_details").insert(detailRows);
+  }
 
   // 3. Pairwise results — picks[i] ranked above picks[j] (i < j) => i beats j.
-  //    All rows in ONE insert so the Elo trigger runs once over the whole session.
+  //    All rows in ONE upsert so the Elo trigger runs once over the whole session.
+  //    ignoreDuplicates => ON CONFLICT DO NOTHING on the existing unique
+  //    (tasting_session_id, winner_bottle_id, loser_bottle_id): re-inserting the
+  //    same set into the same session is a no-op, so a retry after a silently-
+  //    successful insert (e.g. mobile timeout) adds zero new rows and the trigger
+  //    cannot double-score.
   const resultRows: {
     tasting_session_id: string;
     winner_bottle_id: string;
@@ -76,8 +87,14 @@ export async function saveTasting(opts: {
       });
     }
   }
-  const { error: rErr } = await supabase.from("tasting_results").insert(resultRows);
-  if (rErr) return { error: rErr.message };
+  const { error: rErr } = await supabase
+    .from("tasting_results")
+    .upsert(resultRows, {
+      onConflict: "tasting_session_id,winner_bottle_id,loser_bottle_id",
+      ignoreDuplicates: true,
+    });
+  // Return sessionId even on failure so the caller can retry against the SAME session.
+  if (rErr) return { sessionId, error: rErr.message };
 
   return { sessionId };
 }

@@ -57,6 +57,9 @@ export default function DrinkClient({
   const [glassAssignment, setGlassAssignment] = useState<{ letter: string; pick: CatalogBottle }[]>([]);
   const [rankOrder, setRankOrder] = useState<RankItem[]>([]);
   const [saving, setSaving] = useState(false);
+  // Holds the session created by a failed save so a retry reuses it (B-07: never
+  // create a second session that would score the same tasting twice).
+  const pendingSessionRef = useRef<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [result, setResult] = useState<RankItem[] | null>(null);
   const [pourTarget, setPourTarget] = useState<CatalogBottle | null>(null);
@@ -203,8 +206,11 @@ export default function DrinkClient({
     setSaving(true);
     try {
       const orderedPicks: TastingPick[] = rankOrder.map((b) => ({ bottleId: b.bottleId, variantId: b.variantId, name: b.name }));
-      const res = await saveTasting({ userId: publicUserId, mode, picks: orderedPicks });
-      if ("error" in res) { toast.error("Could not save the tasting"); return; }
+      const res = await saveTasting({ userId: publicUserId, mode, picks: orderedPicks, sessionId: pendingSessionRef.current });
+      // Remember the session even on failure so a retry reuses it (idempotent).
+      if (res.sessionId) pendingSessionRef.current = res.sessionId;
+      if (res.error) { toast.error("Could not save the tasting"); return; }
+      pendingSessionRef.current = null;
       setResult([...rankOrder]);
       setConfirming(false);
       setStep("done");
@@ -215,6 +221,7 @@ export default function DrinkClient({
   };
 
   const reset = () => {
+    pendingSessionRef.current = null;
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
     setPourTarget(null); setShowPourSheet(false); setShowRatePrompt(false); setStep("home");
     if (seedBottleId) router.replace("/taste");
