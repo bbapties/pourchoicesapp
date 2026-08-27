@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster } from "@/components/ui/sonner";
+import { validateUsername } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -94,8 +95,25 @@ export default function Home() {
     }
   };
 
-  const handleUsernameSubmit = () => {
+  const handleUsernameSubmit = async () => {
     if (!username || isLoading) return;
+    const name = username.trim();
+    const formatErr = validateUsername(name);
+    if (formatErr) { setError(formatErr); return; }
+
+    // Pre-check uniqueness (case-insensitive) BEFORE auth.signUp, so a duplicate
+    // username can't leave an Auth user with no public.users row (B-08).
+    setIsLoading(true);
+    setError(null);
+    const { data: taken, error: checkErr } = await supabase
+      .from("users")
+      .select("id")
+      .ilike("username", name)
+      .limit(1);
+    setIsLoading(false);
+    if (checkErr) { setError("Couldn't check that username. Please try again."); return; }
+    if (taken && taken.length > 0) { setError("That username is taken."); return; }
+
     goToStep("password", "forward");
   };
 
@@ -120,12 +138,27 @@ export default function Home() {
         return;
       }
       if (data.user) {
-        await supabase.from("users").insert({
+        const { error: insErr } = await supabase.from("users").insert({
           auth_id: data.user.id,
-          username,
+          username: username.trim(),
           email,
           collection: [],
         });
+        if (insErr) {
+          // The Auth user was created but the profile row wasn't. Sign out so we
+          // don't leave an authenticated session with no public.users row (which
+          // would bounce-loop on /mybar), and surface the error instead of
+          // silently navigating (B-08).
+          await supabase.auth.signOut();
+          const code = (insErr as { code?: string }).code;
+          setError(
+            code === "23505"
+              ? "That username or email is already taken."
+              : "Could not finish creating your account. Please try again."
+          );
+          setIsLoading(false);
+          return;
+        }
       }
       router.replace("/mybar");
     }
