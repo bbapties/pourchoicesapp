@@ -18,6 +18,23 @@ export default async function MyBarPage() {
   if (!publicUser) redirect('/');
 
   const userBottleSelect = 'bottle_id, variant_id, created_at, updated_at, times_had';
+  type UbRow = {
+    bottle_id: string;
+    variant_id: string | null;
+    created_at: string;
+    updated_at: string | null;
+    times_had: number | null;
+  };
+  // One SKU card per tab (B-31 still collapses multi-variant). Keep the first
+  // user_bottles row's variant_id so Add Back / Remove don't fall back to default (B-05).
+  const indexByBottle = (rows: UbRow[]) => {
+    const map = new Map<string, UbRow>();
+    for (const r of rows) {
+      if (!map.has(r.bottle_id)) map.set(r.bottle_id, r);
+    }
+    return map;
+  };
+
   const { data: ownedBottles } = await supabase
     .from('user_bottles')
     .select(userBottleSelect)
@@ -55,22 +72,18 @@ export default async function MyBarPage() {
       .in('bottle_id', ownedIds)
       .order('default_variant_elo', { ascending: false, nullsFirst: false });
 
-    const addedAtMap: Record<string, string> = {};
-    const updatedAtMap: Record<string, string> = {};
-    const timesHadMap: Record<string, number> = {};
-    (ownedBottles || []).forEach(r => {
-      addedAtMap[r.bottle_id] = r.created_at;
-      updatedAtMap[r.bottle_id] = r.updated_at || r.created_at;
-      timesHadMap[r.bottle_id] = r.times_had ?? 1;
+    const ownedBySku = indexByBottle((ownedBottles || []) as UbRow[]);
+    ownedCollection = (details || []).map(d => {
+      const ub = ownedBySku.get(d.bottle_id);
+      return {
+        ...d,
+        variant_id: ub?.variant_id ?? null,
+        addedAt: ub?.created_at,
+        created_at: ub?.created_at,
+        updated_at: ub?.updated_at || ub?.created_at,
+        times_had: ub?.times_had ?? 1,
+      };
     });
-
-    ownedCollection = (details || []).map(d => ({
-      ...d,
-      addedAt: addedAtMap[d.bottle_id],
-      created_at: addedAtMap[d.bottle_id],
-      updated_at: updatedAtMap[d.bottle_id],
-      times_had: timesHadMap[d.bottle_id],
-    }));
   }
 
   if (emptyIds.length > 0) {
@@ -80,21 +93,18 @@ export default async function MyBarPage() {
       .in('bottle_id', emptyIds)
       .order('default_variant_elo', { ascending: false, nullsFirst: false });
 
-    // Use updated_at as "finished on" date if available, else created_at
-    const finishedAtMap: Record<string, string> = {};
-    const timesHadMap: Record<string, number> = {};
-    (emptyBottles || []).forEach(r => {
-      finishedAtMap[r.bottle_id] = r.updated_at || r.created_at;
-      timesHadMap[r.bottle_id] = r.times_had ?? 1;
+    const emptyBySku = indexByBottle((emptyBottles || []) as UbRow[]);
+    emptyCollection = (details || []).map(d => {
+      const ub = emptyBySku.get(d.bottle_id);
+      return {
+        ...d,
+        variant_id: ub?.variant_id ?? null,
+        addedAt: ub?.updated_at || ub?.created_at,
+        created_at: ub?.created_at,
+        updated_at: ub?.updated_at || ub?.created_at,
+        times_had: ub?.times_had ?? 1,
+      };
     });
-
-    emptyCollection = (details || []).map(d => ({
-      ...d,
-      addedAt: finishedAtMap[d.bottle_id],
-      created_at: (emptyBottles || []).find(r => r.bottle_id === d.bottle_id)?.created_at,
-      updated_at: finishedAtMap[d.bottle_id],
-      times_had: timesHadMap[d.bottle_id],
-    }));
   }
 
   // Star scaling uses default-variant Elo (same as Search). bottles.elo_global is

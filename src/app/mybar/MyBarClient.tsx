@@ -166,10 +166,11 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   const handleAddToBar = useCallback(async (bottleId: string, variantId?: string | null) => {
     const now = new Date().toISOString();
     const existingRow = rawEmpty.find(r => r.bottle_id === bottleId) || rawOwned.find(r => r.bottle_id === bottleId);
+    const resolvedVariant = variantId ?? existingRow?.variant_id ?? null;
     const result = await addOrRestockUserBottle({
       userId: publicUserId,
       bottleId,
-      variantId: variantId ?? existingRow?.variant_id ?? null,
+      variantId: resolvedVariant,
     });
     if ("error" in result) {
       toast.error("Failed to add to My Bar");
@@ -180,6 +181,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     if (row) {
       const next = {
         ...row,
+        variant_id: resolvedVariant ?? row.variant_id ?? null,
         addedAt: now,
         times_had: result.timesHad,
         created_at: row.created_at || now,
@@ -194,14 +196,17 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   }, [publicUserId, rawEmpty, rawOwned]);
 
   const handleToggleOwnership = useCallback(async (bottleId: string) => {
-    // Mark as Empty: only flip currently-owned rows -> finished. Scoping to
+    // Mark as Empty: flip the ownership row for THIS variant (B-05). Scoping to
     // currently_owned = true leaves tasting-only rows (times_had = 0) untouched.
-    const { error } = await supabase
+    const row = rawOwned.find(r => r.bottle_id === bottleId);
+    let q = supabase
       .from('user_bottles')
       .update({ currently_owned: false, updated_at: new Date().toISOString() })
       .eq('user_id', publicUserId)
       .eq('bottle_id', bottleId)
       .eq('currently_owned', true);
+    if (row?.variant_id) q = q.eq('variant_id', row.variant_id);
+    const { error } = await q;
 
     if (error) { toast.error("Failed to update"); return; }
 
@@ -209,9 +214,9 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       userId: publicUserId,
       bottleId,
       action: "finished",
+      variantId: row?.variant_id ?? null,
     });
 
-    const row = rawOwned.find(r => r.bottle_id === bottleId);
     if (row) {
       setRawOwned(prev => prev.filter(r => r.bottle_id !== bottleId));
       setRawEmpty(prev => [...prev, { ...row, addedAt: new Date().toISOString(), updated_at: new Date().toISOString() }]);
