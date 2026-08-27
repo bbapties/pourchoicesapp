@@ -39,6 +39,7 @@ These ship before any new feature. Do them in this order.
 - [ ] **B-07** (high) `saveTasting` is not transactional; retry can double-score global Elo.
   Session insert → details (errors ignored) → pairwise results. Results failure leaves an orphan session; a second "Yes, reveal" creates a new session and fires the trigger again. Mobile timeout after a successful insert is the worst case. No unique (session, winner, loser) guard.
   `src/lib/tastings.ts` ~34–80 · `DrinkClient.tsx` ~124–138
+  **How to fix (for Claude):** Ask Brian, then snapshot + additive RPC. Preferred: `save_tasting(...)` SECURITY DEFINER function that inserts session + details + **all pairwise `tasting_results` in ONE INSERT** (Elo trigger contract — do **not** rewrite `update_elo_for_session`). App calls the RPC instead of three client inserts. Add a unique constraint on `(tasting_session_id, winner_variant_id, loser_variant_id)` so a retry of the same session cannot double-fire. `user_id` is **public.users.id** (B-74 — never `auth.uid()`). Keep DrinkClient `saving` guard. Test on Grok/Claude QA accounts; purge the test session and reset touched Elos to 1500 after.
 - [ ] **B-08** (high) Signup is thinner than Profile and can orphan an Auth user.
   No `validateUsername`, no uniqueness check, `users` insert errors ignored, always `router.replace("/mybar")`. Duplicate username → Auth row with no `public.users` row → bounce loop. No forgot-password.
   `src/app/page.tsx` ~97–131

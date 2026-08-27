@@ -8,13 +8,16 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** this session — B-01 + Drink hub (pour or blind everywhere). Pushing to `MVP-v3`.
-- **Current phase:** **Phase 8 — Pre-beta cut.** Phase 3 core loop (3.0–3.3) is shipped; 3.4 group + 3.5 Social `tasted` are **paused out of the beta cut**. Full stories + order: **[PHASE8.md](PHASE8.md)**. Bug queue: **[BUGS.md](BUGS.md)**. Checklist: **ROADMAP Phase 8**.
+- **Tip:** `ac1ff14` (Claude: verify-bottle skill + QUEUE_SPEC). Grok's last app commit: `fa4a0b1` (B-06 Tasted tab). **Everything is on origin/MVP-v3.**
+- **Current phase:** **Phase 8 — Pre-beta cut.** Stories: [PHASE8.md](PHASE8.md). Bugs: [BUGS.md](BUGS.md). Checklist: ROADMAP Phase 8.
+- **Switching to Claude** for the next coding session. Grok stopped after Wave 1 B-01…B-06.
 
-**Single next step for the incoming agent:**
-- **B-01…B-06 are done.** Next Wave 1 item is **B-07** (`saveTasting` one transaction / no double Elo). Do not start PWA / tutorial / barcode / push until Wave 1's minimum (B-01…B-08) is done, unless Brian reorders.
-- **Wave 0 (ask Brian, don't poke auth/RLS/env without a go):** B-18 users-table anon read, B-19 role self-update, B-20 `delete_user_cascade` admin check, B-21 Vercel service-role env name, B-22 QA password rotate, plus prod-verify 3.0–3.3 on www.pourchoicesapp.com.
-- **3.4 / 3.5 Social `tasted` schema** still need Brian's go but are **not** the next build. Tasted **tab** (B-06) is pulled into Wave 1 so testers aren't shown `Tasted (0)` after a real tasting.
+**Single next step for Claude:**
+- **B-07** — `saveTasting` is three client inserts (session → details fail-open → pairwise results). A retry after a successful results insert **double-scores global Elo**. Ask Brian before any RPC/schema. Do **not** rewrite the Elo trigger. Implementer notes on BUGS.md B-07.
+- After B-07: **B-08** (signup username validation + no orphan Auth user). Then Wave 1b (B-09…B-17) unless Brian reorders.
+- **Do not start** PWA / tutorial / barcode / push (8.2–8.5), 3.4 group, or B-74 until Wave 1 minimum (B-01…B-08) is done, unless Brian says so.
+- **Gated / ask first:** Wave 0 (B-18…B-22 RLS/env/QA password), B-07 RPC, B-74 id cleanup. Auth/schema = Brian's go, snapshot first.
+- Side lane (not next): `.claude/skills/verify-bottle/QUEUE_SPEC.md` — two app gaps (barcode/extras as editable fields; `__merge__`/`__delete__` in the suggest-edit queue). Data-lane skill already exists. Do **after** B-07/B-08 unless Brian pulls it forward.
 
 **Why Phase 8 exists (Brian, 2026-08-27):** before inviting 10–15 testers, (1) log the review findings as bugs and work them, (2) barcode scan on every bottle search + seed barcodes, (3) rewrite new-user tutorial + admin-controlled What's new, (4) PWA install prompt (Android + iOS, strongly suggest install), (5) admin push to all or one user (Profile notifications default on). Order is in PHASE8.md — first-session path is URL → install → signup → tour → search/drink, so trust bugs then PWA then tutorial then barcode then push.
 **TESTING NOTE:** Grok uses the **Grok QA account** (`grokbuild@pourchoicesapp.com` / username `GrokBuildAdmin` / role `admin`). Claude uses `claude@pourchoicesapp.com`. Ask Brian for the password rather than committing it. Do NOT test on Brian's Lakehouse account. A real tasting moves **shared global Elo** — after QA, delete the test session and reset touched `bottle_variants.elo_global` (+ QA `user_bottles`) to 1500. Both QA admins are temporary/weak-password; **B-22** still applies (rotate or demote before the public invite if testers could guess them).
@@ -30,6 +33,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 
 **Product surface (so you do not rebuild what exists):**
 - Nav: Search / Social / My Bar / Drink / Profile (+ Admin). Drink = `/taste` (solo self-serve + guest-helper shipped). Login → `/mybar`. Profile = username/email/replay tutorial/feedback/sign out. Join-a-blind is a stub (3.4).
+- **My Bar tabs:** In My Bar / Empty / **Tasted (B-06 live)** — Tasted = variants this user ranked that they do not own and never finished. Owned/empty still SKU-collapsed (B-31). Cards carry `variant_id` (B-05). Stars from `default_variant_elo` (B-04).
 - Bottle detail: carousel over **default + variants** (swipe / arrows / dots). One variant → no pager. Fields that swap: images, Elo, verified, age, proof, notes, tasting notes. SKU identity (name, distillery, category) stays. Front/Back + zoom live.
 - Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / **blind**. Neat/rocks/mixed write `activities.drank` (optional `variant_id` of the visible carousel slide). **Blind opens `/taste?bottle=&variant=`** with that bottle pre-seeded — it does **not** log a pour.
 - **Drink tab (`/taste`)** is a hub: **Have a drink** (pick one bottle → same pour sheet) **or** **Start a blind tasting**. Join-a-blind is still a stub.
@@ -56,7 +60,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - `activities` rollback: `DROP TABLE IF EXISTS public.activities CASCADE;` (see `sql/activities-snapshot.sql`). Admin `delete_user_cascade` is unchanged; `activities.user_id` ON DELETE CASCADE covers user wipe.
 - Activity policy: log every bottle action until Brian excludes it (`src/lib/activities.ts`). Fail-open. Exclusion: admin hard-delete of a bottle.
 - Coach policy: new user-facing surface → one `src/lib/coaches.ts` row. Pile-up = one digest per session, never 20 autoplayed tours. New vs existing = `core.done` in `seen_coach_ids`, not account age. **Phase 8.3 will change the digest source** to admin-published rows; until then the old rule still applies.
-- Detail carousel: `localBottle.variants` is the owner-scoped ordered list (default first; global variants + the viewer's own store picks). Display via `fieldsForVariant`. **7.9:** the carousel has a virtual **add-slide** at index `vlist.length` — `totalSlides = vlist.length + (addSlideEnabled ? 1 : 0)`, `onAddSlide = variantIndex >= vlist.length`. `showPager` is true whenever logged in (even single-version), so **"single variant = no pager" is retired**. The add-slide body replaces the normal card body (image/attrs/actions).
+- Detail carousel: `localBottle.variants` is the owner-scoped ordered list (default first; global variants + the viewer's own store picks). Display via `fieldsForVariant`. **7.9:** the carousel has a virtual **add-slide** at index `vlist.length` — `totalSlides = vlist.length + (addSlideEnabled ? 1 : 0)`. **B-03:** `addSlideEnabled` requires `vlist.length > 0` so a default-only SKU does not open as the dashed add panel. The add-slide body replaces the normal card body (image/attrs/actions).
 - **`public.users.id` ≠ `auth.users.id` (B-74, Claude 2026-08-27).** Public users have their own UUID; `auth_id` links to Auth. Do **not** assume they are equal. FKs to people (`user_bottles.user_id`, tasting `user_id`, activities, events, feedback) are public ids. Resolve with `users.auth_id = auth.uid()`. Never `user_id = auth.uid()`. Logged as a gated cleanup **before 3.4 and 8.5** — not Wave 1, not a drive-by.
 - **`created_by` inconsistency (B-46, symptom of B-74):** store picks (and other variants) are stamped with the **auth id on some rows, the public id on others**. 7.9 handles this by matching **both** ids (`created_by IN (authId, publicId)`) in every owner-scope filter. Until B-74, always match both. 7.8's gate compares `target.created_by === authId` only — a public-id stamp reads as "not mine" → extra admin approval (B-45).
 - **7.8 gate treats `verified IS NULL` as unverified** (`!data?.verified`). A variant with `verified=null` that displays as ✓ via the bottle-level fallback (`fieldsForVariant`) will direct-apply for its creator. Intended, but note null≠false here.
@@ -82,6 +86,12 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-27 — Grok (END SESSION — baton to Claude)
+- **Pushed to `origin/MVP-v3`.** Tip includes Grok Wave 1 B-01…B-06 + Drink hub, then Claude's verify-bottle skill (`1b39f85`, `ac1ff14`). Working tree clean aside from untracked `.claude/launch.json` / weekly HTML.
+- **Shipped this Grok session (prod):** B-01 Blind wired to Drink; Drink tab + More offer pour **or** blind; B-02 helper Back leak; B-03 add-slide flash; B-04 My Bar default-variant Elo; B-05 persist My Bar `variant_id`; B-06 Tasted tab; B-74 logged (not fixed). Grok QA admin `grokbuild@pourchoicesapp.com` / `GrokBuildAdmin`.
+- **Exact next for Claude:** **B-07** `saveTasting` RPC/transaction — ask Brian first. Notes on BUGS.md B-07. Then B-08. QUEUE_SPEC.md (barcode/extras + merge/delete in suggest-edit) is later unless Brian pulls it forward.
+- **3-line summary:** Wave 1 trust bugs B-01…B-06 are on prod. Next code is B-07 (schema go). Do not start 8.2–8.5 / 3.4 / B-74 without Brian.
 
 ### 2026-08-27 — Grok (B-06 My Bar Tasted tab)
 - Tasted tab is no longer a hardcoded `Tasted (0)`. It lists variants from this user's `tasting_results` that are not on Owned/Empty (never owned, or removed after a tasting). Star-guess-only `user_bottles` rows stay out.

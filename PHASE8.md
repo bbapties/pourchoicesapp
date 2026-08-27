@@ -31,7 +31,7 @@ Stay greyscale/wireframe (Phase 5 still later). One feature or fix per commit. S
 Testers' first minutes: **open the URL → (optional) install → sign up → tutorial → search/drink.**
 
 1. **Wave 0** — prod safety confirms (don't invite people onto a world-readable users table).
-2. **Wave 1** — trust bugs. Drink "isn't live," helper leak, wrong My Bar stars, Add Back hitting the wrong variant, fake Tasted tab — these make the flagship look broken.
+2. **Wave 1** — trust bugs. **B-01…B-06 shipped to prod (Grok, 2026-08-27).** Remaining minimum: B-07 (`saveTasting` atomic) then B-08 (signup). Then 1b cluster B-09…B-17.
 3. **Wave 2 — PWA** — first click of the URL. Also the service worker later notifications need.
 4. **Wave 3 — Tutorial / What's new** — first login after install. Admin control of announcements; notifications (8.5) will take some of this load.
 5. **Wave 4 — Barcode + seed** — makes Search feel mature. Independent of PWA. Do after first-run UX so we're not adding a camera permission into a half-broken first session.

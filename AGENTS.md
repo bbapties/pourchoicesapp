@@ -26,7 +26,7 @@ Pour Choices — a mobile-first spirits app to discover, rate, and collect bottl
 Elo ranking system and (future) blind tastings. Live at **www.pourchoicesapp.com**.
 
 **Current nav (logged in):** Search / Social / My Bar / Drink / Profile (+ Admin if `users.role = 'admin'`).
-Login lands on `/mybar`. Drink is `/taste` (both solo blind-tasting modes shipped). Profile is real (username, email, replay tutorial, feedback, sign out). Group tasting (3.4) is still a stub.
+Login lands on `/mybar`. Drink is `/taste` (Have a drink **or** solo blind tasting; join is a stub). My Bar has Owned / Empty / Tasted. Profile is real (username, email, replay tutorial, feedback, sign out). Group tasting (3.4) is still a stub.
 
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · shadcn/ui + Radix ·
 Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
