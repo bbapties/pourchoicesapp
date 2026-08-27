@@ -102,8 +102,11 @@ export default function BottleDetailView({
   const { authId } = useCurrentUser();
 
   // 7.9: carousel = variants + a virtual "+ Add a version" slide at the end (logged in, not editing).
+  // Never treat an empty list as the add-slide — Search/My Bar/Social omit the default
+  // variant from `bottle.variants`, so a default-only SKU opens with vlist=[] until
+  // fetchVariantsForSku returns. Showing the add panel as the whole card is B-03.
   const vlist = localBottle.variants || [];
-  const addSlideEnabled = !!publicUserId && !isEditing;
+  const addSlideEnabled = !!publicUserId && !isEditing && vlist.length > 0;
   const totalSlides = vlist.length + (addSlideEnabled ? 1 : 0);
   const showPager = totalSlides > 1;
   const onAddSlide = addSlideEnabled && variantIndex >= vlist.length;
@@ -609,22 +612,26 @@ export default function BottleDetailView({
           ) : (
             identity && <div className="text-xs text-gray-400 mt-1">{identity}</div>
           )}
-          {/* 7.9: swipe hint + explicit add-a-version door */}
-          {!isEditing && showPager && (
+          {/* 7.9: swipe hint when there's more than one slide; add-a-version stays
+              available even if the variant list hasn't loaded yet (vlist empty). */}
+          {!isEditing && publicUserId && !onAddSlide && (
             <div className="flex items-center justify-between mt-1.5">
               <span className="text-[11px] text-gray-400">
-                {onAddSlide ? 'Swipe back to the versions ‹' : 'Swipe or tap ‹ › to see versions'}
+                {showPager ? 'Swipe or tap ‹ › to see versions' : ''}
               </span>
-              {!onAddSlide && (
-                <button
-                  type="button"
-                  onClick={openAddVariant}
-                  className="text-[11px] text-gray-600 hover:text-black underline flex-shrink-0"
-                  data-coach="bottle.add_variant"
-                >
-                  + Add a version
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={openAddVariant}
+                className="text-[11px] text-gray-600 hover:text-black underline flex-shrink-0"
+                data-coach="bottle.add_variant"
+              >
+                + Add a version
+              </button>
+            </div>
+          )}
+          {!isEditing && showPager && onAddSlide && (
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-[11px] text-gray-400">Swipe back to the versions ‹</span>
             </div>
           )}
         </div>
