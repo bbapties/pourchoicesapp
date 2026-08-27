@@ -156,7 +156,18 @@ Gated: auth / RLS / env. Ask Brian before changing.
 - [ ] **B-45** (low) Suggest-edit "mine" gate is auth-id only (`created_by === authId`).
   Public-id rows go to pending. `suggestedEdits.ts` ~100–101
 - [ ] **B-46** (medium) `created_by` mixed auth id vs public id across bottles/variants.
-  Standardize eventually; until then every owner-scope filter must match both. HANDOFF landmine.
+  Symptom of **B-74**. Until B-74, every owner-scope filter must match both. HANDOFF landmine.
+
+---
+
+## Auth id vs public id (do before later features — gated)
+
+- [ ] **B-74** (high, gated — auth) **`public.users.id` is not `auth.users.id`.**
+  Caught by Claude, logged 2026-08-27. `public.users` has its own UUID PK; `auth_id` is the FK to `auth.users.id`. They are **never equal** (or only by accident). Several later features will break if they write `auth.uid()` into a column that FKs to `public.users.id`, or assume `created_by` / `user_id` / `users.id` are interchangeable.
+  Already bitten: tasting-table RLS (fixed in 3.0 by resolving `auth.uid()` → `public.users.id`); `created_by` on bottles/variants is mixed (B-11, B-45, B-46); store-pick filters have to match both ids.
+  **Will bite next:** 3.4 group tasting participants, 8.5 push subscriptions / notifications `user_id`, any "this is mine" gate, admin attribution.
+  **Until a dedicated cleanup:** (1) FKs to people = `public.users.id`. Resolve with `users.auth_id = auth.uid()`. (2) Never `user_id = auth.uid()`. (3) `created_by` is mixed — match **both** ids. (4) Don't "fix" by making public PK = auth id without a snapshot + Brian's go — that's auth territory.
+  Not part of Wave 1. Schedule **before 3.4 and 8.5**, or as its own gated cleanup. Snapshot + explicit go.
 
 ---
 

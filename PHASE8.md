@@ -6,7 +6,7 @@ Work that ships **before** the 10–15 person beta. Blind-tasting core (3.0–3.
 
 Paused **out** of this cut (do not pull in unless Brian says so):
 
-- 3.4 group tastings (schema + realtime + two phones)
+- 3.4 group tastings (schema + realtime + two phones) — **also blocked on B-74** (don't write `auth.uid()` into participant `user_id`)
 - 3.5 Social `tasted` activity + session-detail (needs additive schema go)
 - Phase 5 visual polish
 - Phase 6.4 CSV import (barcode *seeding* may reuse a thin import path — see 8.4)
@@ -37,6 +37,7 @@ Testers' first minutes: **open the URL → (optional) install → sign up → tu
 5. **Wave 4 — Barcode + seed** — makes Search feel mature. Independent of PWA. Do after first-run UX so we're not adding a camera permission into a half-broken first session.
 6. **Wave 5 — Push notifications** — needs the PWA service worker + Profile toggle. Admin send-to-all/one. Suggested-edit "your edit was reviewed" (BACKLOG) can ride this once it exists.
 7. **Wave 6** — remaining bugs (medium/low, Elo hardening, RLS tighten). Keep grinding these during/after the invite; they don't block the first session.
+8. **B-74 id cleanup** — gated auth. Do **before** 3.4 group tasting and 8.5 push. `public.users.id` ≠ `auth.users.id`; `created_by` is mixed. Not Wave 1.
 
 Do **not** start 3.4 or Phase 5 in this phase.
 
@@ -322,5 +323,5 @@ Tasting complete should log `activities` `'tasted'` when 3.5 schema is approved 
 - Camera + push only work in a **secure context** (HTTPS or localhost). The LAN QA URL (`192.168.68.74`) is HTTP — PWA install / camera / push **will not work there**. Test PWA/push on prod or an HTTPS tunnel.
 - Don't put VAPID private key in the client. Guardrail: env/secrets need Brian.
 - Barcode is SKU-level today; don't silently attach a scan to a store-pick variant.
-- `created_by` still dual-id — any new owner filter matches **both** (B-46).
+- `created_by` still dual-id — any new owner filter matches **both** (B-46). **B-74:** `public.users.id` is not `auth.users.id`. Never write `auth.uid()` into a `user_id` that FKs to `public.users`. Resolve `auth.uid()` → `users.id` via `auth_id`. Schedule a real cleanup before 3.4 / 8.5 (gated).
 - Helper mapping and Elo trigger contracts from Phase 3 still apply (one pairwise INSERT, no silent add-to-bar).
