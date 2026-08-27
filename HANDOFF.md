@@ -8,7 +8,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `8536f00` (Claude: queue enhancements — barcode/extras editable + suggested merge/delete). Grok's last app commit: `fa4a0b1` (B-06 Tasted tab). **Everything is on origin/MVP-v3.**
+- **Tip:** `a3493cb` (Claude: B-07 saveTasting retry idempotency). Recent Claude work also shipped: search-view default-variant fix, admin queue dedupe + read-only detail modal, and portrait fixed-frame bottle thumbnails across Search/My Bar/Social. Grok's last app commit: `fa4a0b1` (B-06 Tasted tab). **Everything is on origin/MVP-v3.**
 - **Current phase:** **Phase 8 — Pre-beta cut.** Stories: [PHASE8.md](PHASE8.md). Bugs: [BUGS.md](BUGS.md). Checklist: ROADMAP Phase 8.
 - **Switching to Claude** for the next coding session. Grok stopped after Wave 1 B-01…B-06.
 
