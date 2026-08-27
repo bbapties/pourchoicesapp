@@ -33,9 +33,24 @@ Goal: Full personal collection management.
 - [ ] 2.2 My Bar — edit bottle (tap → detail view with toggle/delete already wired) (Story 6.24)
 - [ ] 2.3 My Bar — FAB redirects to search/add flow (Story 6.26)
 
-## Phase 3 — Blind Tastings
+## Phase 3 — Blind Tastings  ·  IN PROGRESS (2026-08-26)
 Goal: Full tasting flow with Elo calculation.
 
+**Reworked plan (discovery with Brian, 2026-08-26).** Full design + story split in the plan file
+`C:\Users\whisk\.claude\plans\honestly-we-can-differ-immutable-matsumoto.md`. Two modes (guest-helper w/
+in-app reveal vs. self-serve/report-only), hosted group sessions, **variant-level Elo** (global excludes
+store picks w/ rollup to the parent default; personal includes them), Elo hidden → shown as 0–5★, a
+display-only manual star "guess" wiped to a 1500 baseline on first tasting. Build order:
+- [x] **3.0 Variant-aware Elo engine + data model** — LIVE on prod DB + verified 2026-08-26 (app code
+  committed local, not pushed). The Elo engine is a Supabase trigger (extended, not rewritten);
+  `user_bottles` re-keyed per-variant; all Elo rebaselined to 1500; tasting-table RLS fixed. See HANDOFF.
+- [ ] **3.1 Stars everywhere + manual guess** ← NEXT
+- [ ] **3.2 Solo Mode 2 (self-serve) flow** — the core loop (no in-app reveal)
+- [ ] **3.3 Solo Mode 1 (guest helper) flow** — handoff + secret mapping + in-app reveal
+- [ ] **3.4 Group sessions** — host/join via short code; per-person reveal + Elo
+- [ ] **3.5 Trimmings** — per-glass notes, My Bar "Tasted" tab, Social `tasted` activity + session-detail view, coaches
+
+Original story-level checklist (maps into 3.2–3.4 above; kept for AC reference):
 - [ ] 3.1 Tasting picker — select 2–5 bottles, tray fills (Stories 6.29–6.30)
 - [ ] 3.2 Partner handoff screens — overlay + walkthrough (Story 6.30)
 - [ ] 3.3 Ghost cards — draggable A–E, tap to expand notes accordion (Stories 6.31–6.32)

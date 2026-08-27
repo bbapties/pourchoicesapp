@@ -9,10 +9,17 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
 - **Last commit:** `75894c7` (Phase 4 docs). App tip: `40c007e` (Phase 4 Profile), pushed to `MVP-v3` (prod).
-- **Current phase:** **Phase 7 COMPLETE.** Also shipped 2026-08-23: **feedback/bug-report channel**, **generic events/telemetry table**, **Server-Component cookie fix + getUser() auth hardening**, and **Phase 4 Profile COMPLETE**. Phase 6.4 CSV import is still a shell.
+- **Current phase:** **Phase 3 — Blind Tastings, IN PROGRESS.** **Story 3.0 (variant-aware Elo engine + data model) is COMPLETE and LIVE ON PROD DB** (verified 2026-08-26) — but the **app code for 3.0 is committed locally, NOT pushed** (no user-facing tasting UI yet). Phase 7 + Phase 4 Profile + feedback + events telemetry all previously shipped. Phase 6.4 CSV import still a shell (deferred — Brian may not need it).
 
 **Single next step for the incoming agent:**
-- **Nothing is queued — ask Brian.** Phase 7 done; Phase 4 Profile done; feedback + events telemetry shipped. Brian is prepping a **10–15 user beta**. Standing recommendation for what's left: **Phase 3 Blind Tastings** (flagship must-have, large, still a stub — deserves its own dedicated push; now instrumentable via `logEvent`), **Phase 6.4 CSV import** (shell). Optional beta-polish: a persistent feedback affordance; the duplicate `users_username_key`/`users_username_key1` indexes could be de-duped (cosmetic). Do not start any of these, or Phase 5 polish, without Brian's word.
+- **Build Story 3.1 — Stars everywhere + the manual guess.** Brian gave a broad go to build all of Phase 3, testing along the way, keeping docs updated. See the full design + story split in the plan file: `C:\Users\whisk\.claude\plans\honestly-we-can-differ-immutable-matsumoto.md`. Order: 3.0 ✅ → **3.1 stars** → 3.2 solo Mode 2 flow → 3.3 solo Mode 1 (helper) → 3.4 group → 3.5 trimmings.
+
+**⚠️ Phase 3 — what is LIVE on the prod DB right now (from Story 3.0, applied 2026-08-26):**
+- **The Elo engine is a Supabase trigger** (`trig_update_elo_after_session` AFTER INSERT on `tasting_results`, fn `update_elo_for_session()`), NOT app code. It was EXTENDED to be **variant-level**: personal Elo → `user_bottles.elo` keyed per (user, variant); global Elo → `bottle_variants.elo_global`, with **store-pick global points rolling up to the parent SKU's default variant** (store pick's own global stays put; personal stays on the store pick). Flat **K=32**; upset credit via the expected-score term; win-rate dampener over the **last N head-to-heads of that specific pair** (personal 10 / global 20). The trigger uses a `new_results` transition table → the flow **must insert all pairwise rows for a session in ONE INSERT**. SQL: `sql/3.0-migration.sql` (re-runnable) + `sql/3.0-reset.sql` (one-time, already run) + `sql/3.0-snapshot.sql` (rollback).
+- **`user_bottles` was re-keyed to per-variant:** PK is now the surrogate `id` (partial unique indexes `user_bottles_no_variant` / `user_bottles_with_variant` enforce uniqueness). Legacy NULL-variant rows backfilled to their default variant. **Row semantics:** owned = `currently_owned=true`; finished = `currently_owned=false AND times_had>=1`; **tasted-only = `times_had=0`** (trigger-created, never owned — no silent add-to-bar).
+- **All Elo was rebaselined to 1500** and the 13 test tasting sessions purged, for a clean beta leaderboard. Star display already degrades to "no rating" when all Elo is equal (calcStars returns null when min==max), so a flat baseline is fine.
+- **RLS on the tasting tables was fixed** to resolve `auth.uid()` → `public.users.id` (the old policies compared auth id to a public id and would fail every app insert). Each participant owns their own session row (works for group joiners too).
+- **App code audit (Story 3.0, committed local, not pushed):** `src/lib/userBottles.ts` (`addOrRestockUserBottle`/`removeUserBottle` now variant-scoped; `resolveDefaultVariantId`; **remove DEMOTES a tasted row to tasting-only instead of deleting**, preserving Elo), `src/app/mybar/page.tsx` (Empty tab query now `times_had>=1`), `MyBarClient.tsx` + `SearchClient.tsx` + `SocialClient.tsx` (variant-scoped writes; `inCollection` = an ownership row exists, not any row; Social fetch no longer `.maybeSingle()`). tsc clean; verified via rolled-back DB tests (engine deltas incl. store-pick rollup; My Bar tab filters exclude tasting-only rows).
 - **Feedback channel — what shipped (`00188a9` feat + `50f7b00` docs):** Profile "Send Feedback / Report a Bug" → `FeedbackSheet` (type feature|bug, message with Web-Speech dictation, optional screenshot). New `feedback` table + RLS (mirrors `suggested_edits`; **migration applied to prod DB** — `sql/feedback-migration.sql`, rollback `sql/feedback-snapshot.sql`). Admin triage queue in **Admin > Feedback** (`FeedbackTab.tsx`; status new/triaged/planned/done + internal note). Screenshots under `bottle-images/feedback/<id>/` with stored `screenshot_path` for easy purge. Lib `src/lib/feedback.ts`. Coach `profile.feedback` added to the **new-user core tour**. Verified end-to-end on localhost (submit → queue → triage → note persisted) + prod verify handed to Brian. Entry is Profile-only (no persistent affordance yet).
 - Design context (Brian, 7.8 discovery): from the bottle card there are exactly **two contribution actions — Suggest an edit (7.8) and Add a variant (7.9)**, both done. Personal notes/ratings are NOT a card action — they belong to the future drink/blind-tasting flow.
 
@@ -65,6 +72,33 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-26 — Claude (Phase 3 kickoff: Story 3.0 variant-aware Elo engine + data model — LIVE on prod DB)
+- Long discovery with Brian on the whole Blind Tastings vision (two modes, group sessions, variant-level
+  Elo, star guesses). Full design + 6-story split in the plan file
+  `C:\Users\whisk\.claude\plans\honestly-we-can-differ-immutable-matsumoto.md`. Brian gave a broad go to
+  build all of Phase 3, testing along the way, keeping docs updated.
+- **Discovered the Elo engine already exists as a Supabase trigger** (not app code) and was bottle-level.
+  **Extended it in place** to variant-level with store-pick rollup (do NOT rewrite — it's Brian's). Also
+  found + fixed (with Brian's per-item go): the tasting-table **RLS compared auth.uid() to a public id**
+  (would fail every app insert); the **K-factor accumulated across pairs** (bug) → flat K=32; the win-rate
+  window → per-pair last-N head-to-heads; the engine's **auto-add-to-bar side effect** → tasting rows now
+  `times_had=0, currently_owned=false`.
+- **Applied to prod DB (Brian confirmed a Supabase backup first):**
+  - `sql/3.0-migration.sql` (re-runnable/idempotent): variant columns on tasting tables;
+    `user_bottles` re-keyed to surrogate `id` PK + NULL-variant backfill to default; extended
+    `update_elo_for_session()`; RLS fix.
+  - `sql/3.0-reset.sql` (**one-time, already run**): purged 13 test sessions, rebaselined all Elo to 1500.
+  - `sql/3.0-snapshot.sql`: rollback for the migration (restores prior fn/RLS/PK; data reset needs the backup).
+- **Verified** with rolled-back transactions on real bottles: normal vs normal (swing 8 → 1508/1492,
+  personal rows `currently_owned=false`); store-pick rollup (global → parent default variant, store pick
+  stays 1500, personal stays on the store pick); My Bar tab filters exclude tasting-only rows. tsc clean.
+- **App code audit (committed local, NOT pushed — no user-facing UI yet):** made every `user_bottles`
+  read/write variant-safe (see "Right now" for the file list). remove-from-collection now **demotes** a
+  tasted row (keeps Elo) instead of deleting.
+- **Next: Story 3.1 — stars everywhere + the manual guess.** Then 3.2 solo Mode 2 flow. Nothing pushed to
+  prod yet on the app side; the DB is already migrated + rebaselined (so any next session must NOT re-run
+  `3.0-reset.sql`).
 
 ### 2026-08-23 — Claude (Phase 4 Profile complete)
 - Discovery with Brian first: scope = username (view+edit) + email (view) + replay tutorial + feedback
