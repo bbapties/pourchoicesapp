@@ -32,9 +32,10 @@ These ship before any new feature. Do them in this order.
   Query selects `variant_id` then never copies it onto the card payload. Restock/remove fall back to `resolveDefaultVariantId`. Finish a store pick → Add Back restocks the standard bottle; Remove can demote the wrong row.
   `src/app/mybar/page.tsx` ~20–73 · `MyBarClient.tsx` ~161–221
   **Shipped:** owned/empty payloads copy `variant_id` from the user_bottles row. Add Back / Remove / Mark as Empty are scoped to that variant. (SKU-collapsed cards for multiple owned variants = B-31, still open.)
-- [ ] **B-06** (high) My Bar "Tasted" tab is a hard-coded empty stub.
+- [x] **B-06** (high) My Bar "Tasted" tab is a hard-coded empty stub.
   Always `Tasted (0)` / "No tastings yet" even after a real tasting. Tasting-only rows have nowhere to live. Either wire it (reads `tasting_results` + `user_bottles`) or hide the tab until 3.5.
   `MyBarClient.tsx` ~392–415 · `mybar/page.tsx` ~26–34
+  **Shipped:** Tasted lists variants this user ranked that they do **not** own and never finished (excludes star-guess placeholders with no `tasting_results`). One card per variant. Count is live. Tap opens detail as not-in-collection (Add to My Bar). Ones you own stay on In My Bar / Empty.
 - [ ] **B-07** (high) `saveTasting` is not transactional; retry can double-score global Elo.
   Session insert → details (errors ignored) → pairwise results. Results failure leaves an orphan session; a second "Yes, reveal" creates a new session and fires the trigger again. Mobile timeout after a successful insert is the worst case. No unique (session, winner, loser) guard.
   `src/lib/tastings.ts` ~34–80 · `DrinkClient.tsx` ~124–138

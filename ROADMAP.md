@@ -236,7 +236,7 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 - [x] B-03 Default bottles flash as "+ Add a version"
 - [x] B-04 My Bar stars from `default_variant_elo`
 - [x] B-05 Persist My Bar `variant_id`; Add Back / Remove the right variant
-- [ ] B-06 Wire Tasted tab **or** hide it (don't lie with Tasted (0))
+- [x] B-06 Wire Tasted tab **or** hide it (don't lie with Tasted (0))
 - [ ] B-07 `saveTasting` one transaction / no double Elo
 - [ ] B-08 Signup uses same username rules as Profile; no orphan Auth users
 - [ ] B-09 … B-17 (1b cluster — scoped empty, store-pick flash, VariantSelectSheet both ids, search `.or()` escape, etc.)

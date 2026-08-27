@@ -12,7 +12,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - **Current phase:** **Phase 8 — Pre-beta cut.** Phase 3 core loop (3.0–3.3) is shipped; 3.4 group + 3.5 Social `tasted` are **paused out of the beta cut**. Full stories + order: **[PHASE8.md](PHASE8.md)**. Bug queue: **[BUGS.md](BUGS.md)**. Checklist: **ROADMAP Phase 8**.
 
 **Single next step for the incoming agent:**
-- **B-01…B-05 are done.** Next Wave 1 item is **B-06** (wire My Bar Tasted tab, or hide it). Do not start PWA / tutorial / barcode / push until Wave 1's minimum (B-01…B-08) is done, unless Brian reorders.
+- **B-01…B-06 are done.** Next Wave 1 item is **B-07** (`saveTasting` one transaction / no double Elo). Do not start PWA / tutorial / barcode / push until Wave 1's minimum (B-01…B-08) is done, unless Brian reorders.
 - **Wave 0 (ask Brian, don't poke auth/RLS/env without a go):** B-18 users-table anon read, B-19 role self-update, B-20 `delete_user_cascade` admin check, B-21 Vercel service-role env name, B-22 QA password rotate, plus prod-verify 3.0–3.3 on www.pourchoicesapp.com.
 - **3.4 / 3.5 Social `tasted` schema** still need Brian's go but are **not** the next build. Tasted **tab** (B-06) is pulled into Wave 1 so testers aren't shown `Tasted (0)` after a real tasting.
 
@@ -82,6 +82,11 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-27 — Grok (B-06 My Bar Tasted tab)
+- Tasted tab is no longer a hardcoded `Tasted (0)`. It lists variants from this user's `tasting_results` that are not on Owned/Empty (never owned, or removed after a tasting). Star-guess-only `user_bottles` rows stay out.
+- One card per variant; date is last tasted; no owned/empty earmark. Detail opens as not-in-collection. Adding to the bar moves it off Tasted.
+- Grok QA has 0 sessions so empty copy is correct. Next: **B-07**.
 
 ### 2026-08-27 — Grok (log B-74: public.users.id ≠ auth.users.id)
 - Claude flagged the public.users ↔ auth.users id mismatch as something to fix before later features assume they are equal. Not fixing now (auth / gated). Logged as **B-74**: FKs stay `public.users.id`; resolve `auth.uid()` via `users.auth_id`; `created_by` stays dual-match (B-46) until a dedicated cleanup. Schedule **before 3.4 and 8.5**. ROADMAP 8.7, PHASE8 landmine, AGENTS convention.
