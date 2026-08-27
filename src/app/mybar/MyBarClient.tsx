@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Search, ChevronDown, Check, X } from "lucide-react";
+import { Search, ChevronDown, Check, X, ScanLine } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import BottleCardMedium from "@/components/BottleCardMedium";
 import BottleDetailView from "@/components/BottleDetailView";
+import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
+import ProvisionalSheet from "@/components/ProvisionalSheet";
+import { lookupBottleByBarcode } from "@/lib/barcode";
 import { type BottleDetails } from "@/lib/types";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle } from "@/lib/userBottles";
 import { logActivity } from "@/lib/activities";
@@ -95,6 +98,12 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [filter, setFilter] = useState<FilterState>({ step: 'closed', field: null, value: null });
   const [selectedBottle, setSelectedBottle] = useState<BottleDetails | null>(null);
+  // Ownership for the open detail. Set from the active tab for collection cards,
+  // and fetched for a scanned bottle that may not be in the collection.
+  const [selectedOwned, setSelectedOwned] = useState<{ inCollection: boolean; currentlyOwned: boolean }>({ inCollection: false, currentlyOwned: false });
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState<string | undefined>(undefined);
+  const [showAddSheet, setShowAddSheet] = useState(false);
 
   const activeRaw = activeTab === 'owned' ? rawOwned : activeTab === 'empty' ? rawEmpty : rawTasted;
 
@@ -184,6 +193,76 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       finish: raw.attr_finish,
       extras: raw.attr_extras,
     });
+    setSelectedOwned({ inCollection: activeTab !== 'tasted', currentlyOwned: activeTab === 'owned' });
+  };
+
+  // Open a bottle straight from its SKU id (barcode scanner) with its real
+  // collection status, since a scanned bottle may not be in the current tab.
+  const openBottleById = async (bottleId: string) => {
+    const { data } = await supabase
+      .from("all_bottle_details")
+      .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_verified, default_variant_elo, bottle_elo_global, attr_frontimage_url, attr_backimage_url, attr_proof, attr_volume, attr_age, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by")
+      .eq("bottle_id", bottleId)
+      .maybeSingle();
+    if (!data) { toast.error("Couldn't open that bottle"); return; }
+
+    let inCollection = false, currentlyOwned = false;
+    if (publicUserId) {
+      const { data: ub } = await supabase
+        .from("user_bottles")
+        .select("currently_owned, times_had")
+        .eq("user_id", publicUserId)
+        .eq("bottle_id", bottleId)
+        .order("currently_owned", { ascending: false })
+        .order("times_had", { ascending: false })
+        .limit(1);
+      const row = ub?.[0];
+      if (row) { inCollection = row.currently_owned || (row.times_had ?? 0) >= 1; currentlyOwned = !!row.currently_owned; }
+    }
+
+    const variantIds: string[] = data.attr_variant_ids || [];
+    const batches: string[] = Array.isArray(data.attr_batch) ? data.attr_batch : [];
+    const releaseYears: string[] = Array.isArray(data.attr_release_year) ? data.attr_release_year : [];
+    const storePickNames: string[] = Array.isArray(data.attr_store_pick_name) ? data.attr_store_pick_name : [];
+    const createdBys: string[] = Array.isArray(data.attr_variant_created_by) ? data.attr_variant_created_by : [];
+
+    setSelectedOwned({ inCollection, currentlyOwned });
+    setSelectedBottle({
+      id: data.bottle_id,
+      name: data.bottle_name,
+      distillery: data.bottle_distillery,
+      category: data.bottle_category,
+      style: data.bottle_style,
+      proof: data.attr_proof,
+      volume: data.attr_volume,
+      age: data.attr_age,
+      elo_global: data.default_variant_elo ?? data.bottle_elo_global,
+      verified: data.bottle_verified,
+      frontImageUrl: data.attr_frontimage_url,
+      backImageUrl: data.attr_backimage_url,
+      variants: variantIds
+        .map((vid, i) => ({ variantId: vid, releaseYear: releaseYears[i], batch: batches[i], storePickName: storePickNames[i] }))
+        .filter((v, i) => (v.releaseYear || v.batch || v.storePickName)
+          && isVariantVisibleToViewer(v.storePickName, createdBys[i], [authId, publicUserId])),
+      nose: data.attr_nose,
+      palate: data.attr_palate,
+      finish: data.attr_finish,
+      extras: data.attr_extras,
+    });
+  };
+
+  // Barcode scan: open the matching bottle, or jump to Add Bottle prefilled.
+  const handleScan = async (code: string) => {
+    setShowScanner(false);
+    const match = await lookupBottleByBarcode(code);
+    if (match) {
+      toast.success(`Found: ${match.name}`);
+      await openBottleById(match.id);
+    } else {
+      toast.message("No match — add this bottle");
+      setScannedBarcode(code);
+      setShowAddSheet(true);
+    }
   };
 
   const handleAddToBar = useCallback(async (bottleId: string, variantId?: string | null) => {
@@ -324,8 +403,16 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
             placeholder="Search your collection..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="rounded-full pl-10 h-10 text-base border-charcoal focus:border-charcoal bg-ivory text-charcoal placeholder:text-charcoal placeholder:opacity-60"
+            className="rounded-full pl-10 pr-11 h-10 text-base border-charcoal focus:border-charcoal bg-ivory text-charcoal placeholder:text-charcoal placeholder:opacity-60"
           />
+          <button
+            type="button"
+            onClick={() => setShowScanner(true)}
+            aria-label="Scan barcode"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-charcoal rounded-full hover:bg-charcoal/10"
+          >
+            <ScanLine className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
@@ -506,8 +593,8 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
         <BottleDetailView
           bottle={selectedBottle}
           onClose={() => setSelectedBottle(null)}
-          inCollection={activeTab !== 'tasted'}
-          currentlyOwned={activeTab === 'owned'}
+          inCollection={selectedOwned.inCollection}
+          currentlyOwned={selectedOwned.currentlyOwned}
           publicUserId={publicUserId}
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}
@@ -519,6 +606,21 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           }}
         />
       )}
+
+      {/* Barcode scanner */}
+      <BarcodeScannerSheet
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onDetected={handleScan}
+      />
+
+      {/* Add Bottle (from a scan with no match) — open the new bottle so it can be added to the bar */}
+      <ProvisionalSheet
+        open={showAddSheet}
+        onOpenChange={(o) => { setShowAddSheet(o); if (!o) setScannedBarcode(undefined); }}
+        onBottleAdded={(b) => { if (b?.id) openBottleById(b.id); }}
+        initialBarcode={scannedBarcode}
+      />
     </>
   );
 }
