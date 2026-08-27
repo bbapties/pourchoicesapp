@@ -169,12 +169,16 @@ export default function SocialClient() {
 
   const handleToggleOwnership = async (bottleId: string) => {
     if (!publicUserId || !selectedRow) return;
-    const { error } = await supabase
+    // Scope to the card's variant (B-09): user_bottles is one row per (user, variant),
+    // so marking empty must target this variant only — not every version of the SKU.
+    let q = supabase
       .from("user_bottles")
       .update({ currently_owned: false, updated_at: new Date().toISOString() })
       .eq("user_id", publicUserId)
       .eq("bottle_id", bottleId)
       .eq("currently_owned", true);
+    q = selectedRow.variant_id ? q.eq("variant_id", selectedRow.variant_id) : q.is("variant_id", null);
+    const { error } = await q;
     if (error) { toast.error("Failed to update"); return; }
     await logActivity({ userId: publicUserId, bottleId, action: "finished" });
     setSelectedRow({ ...selectedRow, currently_owned: false, updated_at: new Date().toISOString() });

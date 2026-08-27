@@ -48,10 +48,8 @@ These ship before any new feature. Do them in this order.
 
 ## Wave 1b — Same area, ship with the trust cluster
 
-- [ ] **B-09** (high) Mark as Empty is SKU-wide in My Bar + Social (Search is variant-scoped).
-  Owning default + store pick, finishing one marks both empty.
-  `MyBarClient.tsx` ~191–199 · `SocialClient.tsx` ~170–177
-  **My Bar half shipped with B-05** (Mark as Empty scopes to the card's `variant_id`). Social still SKU-wide.
+- [x] **B-09** (high) Mark as Empty was SKU-wide in Social. **FIXED (Claude, 2026-08-27).**
+  `SocialClient.handleToggleOwnership` now scopes the `currently_owned=false` update to the card's `variant_id` (`.eq(variant_id)` / `.is(variant_id,null)`), matching My Bar (B-05) and the per-(user,variant) `user_bottles` model — finishing one version no longer empties the whole SKU. My Bar half already shipped with B-05. `SocialClient.tsx`.
 - [ ] **B-10** (high) Other people's store picks can flash in the initial carousel.
   Unfiltered `attr_store_pick_*` arrays seed the card; `fetchVariantsForSku` filters correctly only after refetch. Social `DETAIL_SELECT` omits `attr_variant_created_by`.
   `SearchClient.tsx` ~143–150 · `MyBarClient.tsx` ~146–153 · `SocialClient.tsx` ~51–58

@@ -13,7 +13,8 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - **Switching to Claude** for the next coding session. Grok stopped after Wave 1 B-01…B-06.
 
 **Single next step for Claude:**
-- **Wave 1b (B-09…B-17)** unless Brian reorders — start with **B-09** (Mark as Empty is SKU-wide in Social; should scope to the card's `variant_id` like My Bar already does). `SocialClient.tsx` ~170–177.
+- **Wave 1b — next is B-10** (other people's store picks can flash in the initial carousel; Social `DETAIL_SELECT` omits `attr_variant_created_by`). `SearchClient.tsx` ~143–150 · `MyBarClient.tsx` ~146–153 · `SocialClient.tsx` ~51–58.
+- **B-09 SHIPPED** (Claude, 2026-08-27): Social Mark as Empty now variant-scoped like My Bar. `SocialClient.tsx`.
 - **B-07 SHIPPED** (Claude, 2026-08-27): saveTasting retry no longer double-scores Elo (session reuse + `ignoreDuplicates` upsert; existing unique guard makes it a no-op). App-only. Verified via rolled-back DB test.
 - **B-08 SHIPPED** (Claude, 2026-08-27): signup validates + pre-checks username uniqueness before `auth.signUp`, handles the `users` insert error (signs out to avoid an authed-but-profileless bounce loop; navigates only on success). App-only, no auth-config/RLS/middleware change. Remaining: forgot-password flow (separate feature); pre-existing orphaned Auth users still need admin cleanup.
 - **Do not start** PWA / tutorial / barcode / push (8.2–8.5), 3.4 group, or B-74 until Wave 1 minimum (B-01…B-08) is done, unless Brian says so.
