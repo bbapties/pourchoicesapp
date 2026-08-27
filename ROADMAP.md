@@ -33,7 +33,7 @@ Goal: Full personal collection management.
 - [ ] 2.2 My Bar — edit bottle (tap → detail view with toggle/delete already wired) (Story 6.24)
 - [ ] 2.3 My Bar — FAB redirects to search/add flow (Story 6.26)
 
-## Phase 3 — Blind Tastings  ·  IN PROGRESS (2026-08-26)
+## Phase 3 — Blind Tastings  ·  CORE LOOP SHIPPED (3.0–3.3, prod 2026-08-27); 3.4/3.5 remain
 Goal: Full tasting flow with Elo calculation.
 
 **Reworked plan (discovery with Brian, 2026-08-26).** Full design + story split in the plan file
@@ -41,16 +41,16 @@ Goal: Full tasting flow with Elo calculation.
 in-app reveal vs. self-serve/report-only), hosted group sessions, **variant-level Elo** (global excludes
 store picks w/ rollup to the parent default; personal includes them), Elo hidden → shown as 0–5★, a
 display-only manual star "guess" wiped to a 1500 baseline on first tasting. Build order:
-- [x] **3.0 Variant-aware Elo engine + data model** — LIVE on prod DB + verified 2026-08-26 (app code
-  committed local, not pushed). The Elo engine is a Supabase trigger (extended, not rewritten);
+- [x] **3.0 Variant-aware Elo engine + data model** — LIVE on prod DB + verified 2026-08-26; app code
+  SHIPPED to prod 2026-08-27. The Elo engine is a Supabase trigger (extended, not rewritten);
   `user_bottles` re-keyed per-variant; all Elo rebaselined to 1500; tasting-table RLS fixed. See HANDOFF.
-- [x] **3.1 Stars everywhere + manual guess** — DONE (committed local `209d72a`, verified 2026-08-26).
+- [x] **3.1 Stars everywhere + manual guess** — DONE (shipped to prod `209d72a`, verified 2026-08-26).
   Guess captured in the Have-a-drink flow (post-pour prompt) + editable on detail when in bar; Elo hidden
   everywhere (shown as 0-5 stars); locked Elo-star + message once tasted. Slider input.
-- [x] **3.2 Solo Mode 2 (self-serve) flow** — DONE (committed local `291be12`, verified end-to-end on
+- [x] **3.2 Solo Mode 2 (self-serve) flow** — DONE (shipped to prod `291be12`, verified end-to-end on
   the QA account 2026-08-26). "Drink" nav tab → /taste; pick 2-5 → auto A-E label → rank → save →
   Elo scored via the trigger. `lib/tastings.ts`, `src/app/taste/DrinkClient.tsx`.
-- [x] **3.3 Solo Mode 1 (guest helper) flow** — DONE (committed local `c9d4131`, verified on QA account
+- [x] **3.3 Solo Mode 1 (guest helper) flow** — DONE (shipped to prod `c9d4131`, verified on QA account
   2026-08-26). App randomizes the secret pour, instructs the helper, taster ranks blind letters, app reveals.
   Both solo tasting modes now work end-to-end.
 - [ ] **3.4 Group sessions** — host/join via short code; per-person reveal + Elo ⏸ PAUSED (needs schema +
