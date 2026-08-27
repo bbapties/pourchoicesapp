@@ -38,7 +38,7 @@ export default async function MyBarPage() {
 
   const detailFields = `
     bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style,
-    bottle_elo_global, bottle_verified,
+    bottle_elo_global, default_variant_elo, bottle_verified,
     attr_frontimage_url, attr_backimage_url,
     attr_proof, attr_volume, attr_age,
     attr_nose, attr_palate, attr_finish, attr_extras,
@@ -53,7 +53,7 @@ export default async function MyBarPage() {
       .from('all_bottle_details')
       .select(detailFields)
       .in('bottle_id', ownedIds)
-      .order('bottle_elo_global', { ascending: false, nullsFirst: false });
+      .order('default_variant_elo', { ascending: false, nullsFirst: false });
 
     const addedAtMap: Record<string, string> = {};
     const updatedAtMap: Record<string, string> = {};
@@ -78,7 +78,7 @@ export default async function MyBarPage() {
       .from('all_bottle_details')
       .select(detailFields)
       .in('bottle_id', emptyIds)
-      .order('bottle_elo_global', { ascending: false, nullsFirst: false });
+      .order('default_variant_elo', { ascending: false, nullsFirst: false });
 
     // Use updated_at as "finished on" date if available, else created_at
     const finishedAtMap: Record<string, string> = {};
@@ -97,17 +97,21 @@ export default async function MyBarPage() {
     }));
   }
 
-  // Fetch all Elos for star scaling
-  const { data: allBottlesElo } = await supabase
+  // Star scaling uses default-variant Elo (same as Search). bottles.elo_global is
+  // legacy — the 3.0 trigger only writes bottle_variants.elo_global (B-04).
+  const { data: eloRows } = await supabase
     .from('all_bottle_details')
-    .select('bottle_elo_global')
-    .order('bottle_elo_global', { ascending: false, nullsFirst: false });
+    .select('default_variant_elo, bottle_elo_global')
+    .order('default_variant_elo', { ascending: false, nullsFirst: false });
+  const allBottlesElo = (eloRows || [])
+    .map((r) => r.default_variant_elo ?? r.bottle_elo_global)
+    .filter((e): e is number => e != null);
 
   return (
     <MyBarClient
       ownedCollection={ownedCollection}
       emptyCollection={emptyCollection}
-      allBottlesElo={allBottlesElo || []}
+      allBottlesElo={allBottlesElo}
       publicUserId={publicUser.id}
     />
   );

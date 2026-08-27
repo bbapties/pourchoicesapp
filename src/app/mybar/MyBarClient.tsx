@@ -15,8 +15,13 @@ import { logActivity } from "@/lib/activities";
 interface MyBarClientProps {
   ownedCollection: any[];
   emptyCollection: any[];
-  allBottlesElo: Array<{ bottle_elo_global?: number }>;
+  allBottlesElo: number[];
   publicUserId: string;
+}
+
+function eloOf(d: { default_variant_elo?: number | null; bottle_elo_global?: number | null }): number | null {
+  const n = d.default_variant_elo ?? d.bottle_elo_global;
+  return n == null ? null : Number(n);
 }
 
 type TabOption = 'owned' | 'empty' | 'tasted';
@@ -54,7 +59,7 @@ function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: b
     style: d.bottle_style,
     proof: d.attr_proof,
     image_url: d.attr_frontimage_url,
-    stars: calcStarsFromElo(d.bottle_elo_global, minElo, maxElo),
+    stars: calcStarsFromElo(eloOf(d), minElo, maxElo),
     addedAt: d.addedAt,
     provisional: !d.bottle_verified,
     currentlyOwned,
@@ -63,8 +68,8 @@ function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: b
 
 export default function MyBarClient({ ownedCollection: initialOwned, emptyCollection: initialEmpty, allBottlesElo, publicUserId }: MyBarClientProps) {
   const { minElo, maxElo } = useMemo(() => {
-    const valid = allBottlesElo.map(b => b.bottle_elo_global).filter((e): e is number => e != null);
-    return { maxElo: valid[0] ?? 1500, minElo: valid[valid.length - 1] ?? 1500 };
+    if (!allBottlesElo.length) return { minElo: 1500, maxElo: 1500 };
+    return { maxElo: Math.max(...allBottlesElo), minElo: Math.min(...allBottlesElo) };
   }, [allBottlesElo]);
 
   const [rawOwned, setRawOwned] = useState<any[]>(initialOwned);
@@ -131,7 +136,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       proof: raw.attr_proof,
       volume: raw.attr_volume,
       age: raw.attr_age,
-      elo_global: raw.bottle_elo_global,
+      elo_global: eloOf(raw) ?? undefined,
       verified: raw.bottle_verified,
       lastActivity: formatLastActivity({
         currently_owned: activeTab === "owned",
