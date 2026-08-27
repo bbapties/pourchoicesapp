@@ -16,9 +16,10 @@ These ship before any new feature. Do them in this order.
   Pour sheet, More sheet, and post-pour toast still say "aren't live yet" / "Not live yet". More → Blind tasting only toasts; Have a drink → Blind logs a pour and does not open `/taste`. Real flow is the Drink tab.
   `src/components/PourSheet.tsx` ~10 · `MoreSheet.tsx` ~16–44 · `BottleDetailView.tsx` ~467–468, 1059–1062
   **Shipped:** copy updated; Have a drink → Blind and More → Blind tasting open `/taste?bottle=&variant=` with the bottle pre-seeded (no `drank` activity). DrinkClient lands on the mode step with that bottle already in the lineup.
-- [ ] **B-02** (high) Guest-helper Back leaks the secret mapping, then re-shuffles.
+- [x] **B-02** (high) Guest-helper Back leaks the secret mapping, then re-shuffles.
   Rank → Back → handback → Back lands on helper setup (bottle → glass letters). Continue from handoff shuffles again after glasses are poured.
   `src/app/taste/DrinkClient.tsx` ~144–150, 259–276
+  **Shipped:** Back is hidden on helperSetup + handback. `back()` no-ops on those steps. Helper shuffle is frozen after the first deal; changing the lineup (afterPick / "Wrong bottles? Pick again") clears it so a new deal is intentional.
 - [ ] **B-03** (high) Default bottles flash as the "+ Add a version" slide.
   Search/My Bar/Social build `variants` by filtering to batch/year/store-pick, so a default-only SKU opens with `vlist=[]`. While logged in the virtual add-slide becomes the whole card (no image, no Add to My Bar) until `fetchVariantsForSku` returns. Failed fetch stays stuck.
   `BottleDetailView.tsx` ~102–107, 174–198 · `SearchClient.tsx` ~143–150

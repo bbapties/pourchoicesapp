@@ -232,7 +232,7 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 ### 8.1 Trust bugs (minimum before invite: B-01 … B-08)
 - [x] B-01 Stop "tastings aren't live" copy; wire More / pour-blind to Drink
       (follow-up: Drink tab + More both offer **Have a drink** *and* **Blind tasting**)
-- [ ] B-02 Helper-mode Back leak + re-shuffle
+- [x] B-02 Helper-mode Back leak + re-shuffle
 - [ ] B-03 Default bottles flash as "+ Add a version"
 - [ ] B-04 My Bar stars from `default_variant_elo`
 - [ ] B-05 Persist My Bar `variant_id`; Add Back / Remove the right variant

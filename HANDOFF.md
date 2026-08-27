@@ -12,7 +12,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - **Current phase:** **Phase 8 — Pre-beta cut.** Phase 3 core loop (3.0–3.3) is shipped; 3.4 group + 3.5 Social `tasted` are **paused out of the beta cut**. Full stories + order: **[PHASE8.md](PHASE8.md)**. Bug queue: **[BUGS.md](BUGS.md)**. Checklist: **ROADMAP Phase 8**.
 
 **Single next step for the incoming agent:**
-- **B-01 is done** (this session). Next Wave 1 item is **B-02** (helper-mode Back leak + re-shuffle). Do not start PWA / tutorial / barcode / push until Wave 1's minimum (B-01…B-08) is done, unless Brian reorders.
+- **B-01 and B-02 are done.** Next Wave 1 item is **B-03** (default bottles flash as the "+ Add a version" slide). Do not start PWA / tutorial / barcode / push until Wave 1's minimum (B-01…B-08) is done, unless Brian reorders.
 - **Wave 0 (ask Brian, don't poke auth/RLS/env without a go):** B-18 users-table anon read, B-19 role self-update, B-20 `delete_user_cascade` admin check, B-21 Vercel service-role env name, B-22 QA password rotate, plus prod-verify 3.0–3.3 on www.pourchoicesapp.com.
 - **3.4 / 3.5 Social `tasted` schema** still need Brian's go but are **not** the next build. Tasted **tab** (B-06) is pulled into Wave 1 so testers aren't shown `Tasted (0)` after a real tasting.
 
@@ -82,6 +82,11 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-27 — Grok (B-02 helper Back leak + Grok bar cleanup)
+- Removed 1792 Small Batch from GrokBuildAdmin's bar (user_bottles row + the added_to_collection activity). Bar is empty.
+- **B-02:** helperSetup and handback no longer have a Back control (`back()` no-ops there). Rank → Back still goes to handback (letters only, no names). Shuffle is frozen after the first helper deal; "Wrong bottles? Pick again" / re-picking the lineup clears it.
+- Next: **B-03**.
 
 ### 2026-08-27 — Grok (Drink hub: pour OR blind, everywhere)
 - Drink tab is no longer blind-only. Home is **Have a drink** (pick one → pour sheet) **and** **Start a blind tasting**. Header on those steps is "Drink".
