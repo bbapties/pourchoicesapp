@@ -172,7 +172,7 @@ export default function DrinkClient({ publicUserId }: { publicUserId: string }) 
             <h2 className="text-lg font-semibold text-charcoal">Run a blind tasting</h2>
             <p className="text-sm text-gray-500 max-w-xs">Rank 2–5 bottles blind. Your ranking updates your personal and the global scores.</p>
             <div className="w-full mt-2 space-y-2">
-              <button type="button" onClick={() => setStep("mode")} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>Start a blind tasting</button>
+              <button type="button" data-coach="taste.start" onClick={() => setStep("mode")} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>Start a blind tasting</button>
               <button type="button" onClick={() => toast("Joining someone's tasting is coming soon")} className={secondaryBtn}>Join a blind (enter code)</button>
             </div>
           </div>

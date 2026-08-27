@@ -61,6 +61,26 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    id: "taste.blind",
+    title: "Blind tastings are live",
+    body: "Rank 2-5 bottles blind from the new Drink tab. Your ranking updates your personal and the global scores.",
+    route: "/taste",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/taste",
+        anchor: "nav.taste",
+        caption: "New: the Drink tab is home for blind tastings.",
+      },
+      {
+        route: "/taste",
+        anchor: "taste.start",
+        caption: "Start a blind tasting - pick 2-5 bottles, rank them blind, and watch the scores update.",
+      },
+    ],
+  },
+  {
     id: "social.feed",
     title: "Social",
     body: "Pours and collection changes from everyone show up here.",
