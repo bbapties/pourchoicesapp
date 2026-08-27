@@ -12,7 +12,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - **Current phase:** **Phase 8 — Pre-beta cut.** Phase 3 core loop (3.0–3.3) is shipped; 3.4 group + 3.5 Social `tasted` are **paused out of the beta cut**. Full stories + order: **[PHASE8.md](PHASE8.md)**. Bug queue: **[BUGS.md](BUGS.md)**. Checklist: **ROADMAP Phase 8**.
 
 **Single next step for the incoming agent:**
-- **B-01…B-03 are done.** Next Wave 1 item is **B-04** (My Bar stars from `default_variant_elo`). Do not start PWA / tutorial / barcode / push until Wave 1's minimum (B-01…B-08) is done, unless Brian reorders.
+- **B-01…B-04 are done.** Next Wave 1 item is **B-05** (persist My Bar `variant_id` so Add Back / Remove hit the right version). Do not start PWA / tutorial / barcode / push until Wave 1's minimum (B-01…B-08) is done, unless Brian reorders.
 - **Wave 0 (ask Brian, don't poke auth/RLS/env without a go):** B-18 users-table anon read, B-19 role self-update, B-20 `delete_user_cascade` admin check, B-21 Vercel service-role env name, B-22 QA password rotate, plus prod-verify 3.0–3.3 on www.pourchoicesapp.com.
 - **3.4 / 3.5 Social `tasted` schema** still need Brian's go but are **not** the next build. Tasted **tab** (B-06) is pulled into Wave 1 so testers aren't shown `Tasted (0)` after a real tasting.
 
@@ -82,6 +82,11 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-27 — Grok (B-04 My Bar stars from default_variant_elo)
+- My Bar listed/scaled/sorted on `bottles.elo_global`. The 3.0 trigger only writes `bottle_variants.elo_global`; after the 1500 rebaseline, 0 SKUs had moved bottle Elo and 3 had moved default-variant Elo (1792 1515.82, Basil Hayden 1484.18) — My Bar looked unranked.
+- Now selects/orders `default_variant_elo` (fallback `bottle_elo_global`) and scales min/max across the coalesced catalog, matching Search.
+- Next: **B-05**.
 
 ### 2026-08-27 — Grok (B-03 add-slide flash)
 - Default-only SKUs open with `variants=[]` (Search/My Bar filter to batch/year/store-pick). The virtual add-slide used to become the whole card (`variantIndex >= vlist.length` when length is 0).

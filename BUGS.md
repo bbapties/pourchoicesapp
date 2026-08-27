@@ -24,9 +24,10 @@ These ship before any new feature. Do them in this order.
   Search/My Bar/Social build `variants` by filtering to batch/year/store-pick, so a default-only SKU opens with `vlist=[]`. While logged in the virtual add-slide becomes the whole card (no image, no Add to My Bar) until `fetchVariantsForSku` returns. Failed fetch stays stuck.
   `BottleDetailView.tsx` ~102–107, 174–198 · `SearchClient.tsx` ~143–150
   **Shipped:** add-slide only exists when `vlist.length > 0`. Empty list shows the default bottle card (SKU fields) plus the small "+ Add a version" control — not the dashed add panel as the whole card.
-- [ ] **B-04** (high) My Bar stars/sort still use `bottles.elo_global`.
+- [x] **B-04** (high) My Bar stars/sort still use `bottles.elo_global`.
   The 3.0 trigger only writes `bottle_variants.elo_global`. Search uses variant Elo; My Bar does not. After the 1500 rebaseline, tastings will not move My Bar stars.
   `src/app/mybar/page.tsx` ~39–104 · `MyBarClient.tsx` `calcStarsFromElo`
+  **Shipped:** My Bar reads/sorts/scales from `default_variant_elo` (fallback `bottle_elo_global`), same as Search. Live check at fix time: 3 SKUs had moved variant Elo; 0 had moved `bottles.elo_global`.
 - [ ] **B-05** (critical) My Bar drops `variant_id`, so Add Back / Remove hit the default variant.
   Query selects `variant_id` then never copies it onto the card payload. Restock/remove fall back to `resolveDefaultVariantId`. Finish a store pick → Add Back restocks the standard bottle; Remove can demote the wrong row.
   `src/app/mybar/page.tsx` ~20–73 · `MyBarClient.tsx` ~161–221
