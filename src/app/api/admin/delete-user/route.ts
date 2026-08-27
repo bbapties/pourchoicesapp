@@ -5,7 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Accept either env name — local/docs use SUPABASE_SERVICE_ROLE; some Vercel envs
+  // were set as SUPABASE_SERVICE_ROLE_KEY (B-21).
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   if (!serviceKey || !url) {

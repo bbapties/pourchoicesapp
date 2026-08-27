@@ -78,15 +78,13 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
 
-    const { data } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
+    // B-18: anon can no longer read public.users; check existence via a SECURITY
+    // DEFINER RPC that returns only a boolean.
+    const { data: exists } = await supabase.rpc("email_exists", { p_email: email });
 
     setIsLoading(false);
 
-    if (data) {
+    if (exists) {
       setPath("login");
       goToStep("password", "forward");
     } else {

@@ -73,19 +73,16 @@ These ship before any new feature. Do them in this order.
 
 Gated: auth / RLS / env. Ask Brian before changing.
 
-- [ ] **B-18** (confirm / critical) Anon `SELECT` on `public.users`.
-  Login wizard looks up email while logged out. If policy is `USING (true)`, the public anon key can dump every tester's email/username/role.
-  `src/app/page.tsx` ~80–84
-- [ ] **B-19** (confirm / high) `users.role` must not be self-updatable.
-  If RLS is "update own row," a user can `update users set role = 'admin'`. Signup insert could include `role: 'admin'`.
-- [ ] **B-20** (confirm / high) `delete_user_cascade` must re-check `is_admin()` inside the SECURITY DEFINER function.
-  Browser clients can `supabase.rpc(...)`. The API 403 is not enough.
-  `src/app/api/admin/delete-user/route.ts` ~53–56
-- [ ] **B-21** (confirm / high) Vercel env name for service role.
-  Route reads `SUPABASE_SERVICE_ROLE_KEY`; local/docs use `SUPABASE_SERVICE_ROLE`. Admin user-delete 500s if Vercel only has the latter.
-  `delete-user/route.ts` ~8–16 · `AGENTS.md`
-- [ ] **B-22** (high) QA admin account has a weak password on public prod.
-  `claude@pourchoicesapp.com` can verify/delete bottles and cascade-delete users. Rotate or demote before testers arrive. ROADMAP documents the weak password.
+- [x] **B-18** (critical) Anon `SELECT` on `public.users` (`USING(true)`) let the anon key dump every email/username/role. **FIXED (Claude, 2026-08-27).**
+  `Public read users` policy scoped to `{authenticated}`; the logged-out login email-check now calls a SECURITY DEFINER RPC `email_exists(email)` that returns only a boolean (`page.tsx`). `sql/b18-b19-auth-hardening-migration.sql`. NOTE: authenticated users can still read other rows (usernames needed for feed/admin) — a `public_profiles` view to hide others' email/role is a follow-up.
+- [x] **B-19** (high) `users.role` was self-updatable. **FIXED (Claude, 2026-08-27).**
+  `BEFORE INSERT/UPDATE` trigger `protect_user_role()` resets `role` for non-admin authenticated callers (INSERT → 'user'; UPDATE → keeps old); service-role SQL (no `auth.uid()`) and admins unaffected. Verified: non-admin self-escalate blocked, admin allowed, service-role allowed. Same migration.
+- [x] **B-20** (high) `delete_user_cascade` admin re-check. **CONFIRMED SAFE — no change.**
+  The SECURITY DEFINER function already re-checks `role='admin'` (via `auth_id=auth.uid()`) and blocks self-delete. `src/app/api/admin/delete-user/route.ts`.
+- [x] **B-21** (high) Service-role env name mismatch. **FIXED (Claude, 2026-08-27).**
+  Route now reads `SUPABASE_SERVICE_ROLE_KEY ?? SUPABASE_SERVICE_ROLE`. **Still set the correct env in Vercel** (either name now works). `delete-user/route.ts`.
+- [ ] **B-22** (high) QA admin account has a weak password on public prod. **Brian's action — cannot be done in code.**
+  `claude@pourchoicesapp.com` / `grokbuild@pourchoicesapp.com` can verify/delete bottles + cascade-delete users. Rotate the password in Supabase (or delete the account) before testers arrive. Claude won't handle credentials.
 - [ ] **B-23** (high) Elo can be farmed via extra `tasting_results` inserts.
   Trigger fires on every insert. Session owner can INSERT/UPDATE/DELETE own results. DELETE does not unwind Elo.
   `sql/3.0-migration.sql` ~93–250
