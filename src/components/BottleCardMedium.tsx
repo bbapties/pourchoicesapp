@@ -10,8 +10,10 @@ export interface BottleCardMediumData {
   stars?: number | null;
   image_url?: string;
   addedAt?: string;
+  dateLabel?: string;
   provisional?: boolean;
   currentlyOwned?: boolean;
+  tasted?: boolean;
 }
 
 function StarRating({ value }: { value: number }) {
@@ -58,12 +60,14 @@ interface BottleCardMediumProps {
 export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
   const provisional = bottle.provisional ?? false;
   const owned = bottle.currentlyOwned ?? true; // default true for backwards compat
+  const tasted = bottle.tasted ?? false;
   const checkColor = provisional ? '#FFD700' : '#ffffff';
   const earmarkColor = owned ? '#22c55e' : '#9ca3af'; // green if owned, gray if empty
 
   return (
     <div className="relative flex flex-col border-b border-gray-300 hover:bg-gray-100 transition-colors pb-6">
-      {/* Earmark — green if owned, gray if finished, yellow ✓ if provisional */}
+      {/* Earmark — owned/empty only. Tasted-only bottles were never in the bar. */}
+      {!tasted && (
       <div style={{ position: 'absolute', top: 0, right: 0, width: 28, height: 28 }}>
         <div style={{ position: 'absolute', inset: 0, background: earmarkColor, clipPath: 'polygon(100% 0, 100% 100%, 0 0)' }} />
         <span style={{
@@ -72,6 +76,7 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
           textShadow: provisional ? '0 0 2px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4)' : 'none',
         }}>✓</span>
       </div>
+      )}
 
       {/* Main row: image + attributes */}
       <div className="flex items-start p-3 gap-3">
@@ -120,7 +125,7 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
       {/* Added date — anchored bottom-right for visual balance */}
       {bottle.addedAt && (
         <span className="absolute bottom-1.5 right-3 text-xs text-gray-400">
-          Added {formatDate(bottle.addedAt)}
+          {bottle.dateLabel || 'Added'} {formatDate(bottle.addedAt)}
         </span>
       )}
     </div>

@@ -117,10 +117,79 @@ export default async function MyBarPage() {
     .map((r) => r.default_variant_elo ?? r.bottle_elo_global)
     .filter((e): e is number => e != null);
 
+  // Tasted = variants this user ranked that they do not own and never finished
+  // (tasting-only). Excludes star-guess placeholders (no tasting_results) and
+  // bottles already on Owned / Empty. One card per variant.
+  let tastedCollection: any[] = [];
+  const { data: sessions } = await supabase
+    .from("tasting_sessions")
+    .select("id")
+    .eq("user_id", publicUser.id);
+  const sessionIds = (sessions || []).map((s) => s.id as string);
+  if (sessionIds.length > 0) {
+    const { data: results } = await supabase
+      .from("tasting_results")
+      .select("winner_variant_id, loser_variant_id, winner_bottle_id, loser_bottle_id, created_at")
+      .in("tasting_session_id", sessionIds);
+
+    const lastTastedAt: Record<string, string> = {};
+    const variantIds = new Set<string>();
+    for (const r of results || []) {
+      const stamp = r.created_at as string | null;
+      for (const vid of [r.winner_variant_id, r.loser_variant_id] as (string | null)[]) {
+        if (!vid) continue;
+        variantIds.add(vid);
+        if (stamp && (!lastTastedAt[vid] || stamp > lastTastedAt[vid])) lastTastedAt[vid] = stamp;
+      }
+    }
+
+    const ownedOrEmptyVariant = new Set<string>();
+    for (const r of [...(ownedBottles || []), ...(emptyBottles || [])] as UbRow[]) {
+      if (r.variant_id) ownedOrEmptyVariant.add(r.variant_id);
+    }
+    const tastedOnlyIds = [...variantIds].filter((id) => !ownedOrEmptyVariant.has(id));
+
+    if (tastedOnlyIds.length > 0) {
+      const { data: vdetails } = await supabase
+        .from("all_variant_details")
+        .select(
+          "variant_id, bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, variant_is_default, variant_elo_global, variant_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_batch, attr_release_year, attr_store_pick_name, attr_nose, attr_palate, attr_finish"
+        )
+        .in("variant_id", tastedOnlyIds)
+        .order("variant_elo_global", { ascending: false, nullsFirst: false });
+
+      tastedCollection = (vdetails || []).map((d: any) => ({
+        bottle_id: d.bottle_id,
+        variant_id: d.variant_id,
+        bottle_name: d.bottle_name,
+        bottle_distillery: d.bottle_distillery,
+        bottle_category: d.bottle_category,
+        bottle_style: d.bottle_style,
+        bottle_verified: d.variant_verified,
+        default_variant_elo: d.variant_elo_global,
+        attr_frontimage_url: d.attr_frontimage_url,
+        attr_backimage_url: d.attr_backimage_url,
+        attr_age: d.attr_age,
+        attr_proof: d.attr_proof,
+        attr_nose: d.attr_nose,
+        attr_palate: d.attr_palate,
+        attr_finish: d.attr_finish,
+        attr_batch: d.attr_batch,
+        attr_release_year: d.attr_release_year,
+        attr_store_pick_name: d.attr_store_pick_name,
+        variant_is_default: d.variant_is_default,
+        addedAt: lastTastedAt[d.variant_id] ?? null,
+        times_had: 0,
+        tasted: true,
+      }));
+    }
+  }
+
   return (
     <MyBarClient
       ownedCollection={ownedCollection}
       emptyCollection={emptyCollection}
+      tastedCollection={tastedCollection}
       allBottlesElo={allBottlesElo}
       publicUserId={publicUser.id}
     />

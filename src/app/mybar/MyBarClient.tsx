@@ -15,6 +15,7 @@ import { logActivity } from "@/lib/activities";
 interface MyBarClientProps {
   ownedCollection: any[];
   emptyCollection: any[];
+  tastedCollection: any[];
   allBottlesElo: number[];
   publicUserId: string;
 }
@@ -50,23 +51,32 @@ function calcStarsFromElo(elo: number | null | undefined, minElo: number, maxElo
 }
 
 
-function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: boolean) {
+function variantSubtitle(d: any): string | undefined {
+  if (d.attr_store_pick_name) return String(d.attr_store_pick_name);
+  if (d.attr_batch) return `Batch ${d.attr_batch}`;
+  if (d.attr_release_year) return String(d.attr_release_year);
+  return d.bottle_style;
+}
+
+function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: boolean, tasted: boolean) {
   return {
-    id: d.bottle_id,
+    id: tasted ? (d.variant_id || d.bottle_id) : d.bottle_id,
     name: d.bottle_name,
     distillery: d.bottle_distillery,
     category: d.bottle_category,
-    style: d.bottle_style,
+    style: tasted ? variantSubtitle(d) : d.bottle_style,
     proof: d.attr_proof,
     image_url: d.attr_frontimage_url,
     stars: calcStarsFromElo(eloOf(d), minElo, maxElo),
     addedAt: d.addedAt,
+    dateLabel: tasted ? "Tasted" : "Added",
     provisional: !d.bottle_verified,
     currentlyOwned,
+    tasted,
   };
 }
 
-export default function MyBarClient({ ownedCollection: initialOwned, emptyCollection: initialEmpty, allBottlesElo, publicUserId }: MyBarClientProps) {
+export default function MyBarClient({ ownedCollection: initialOwned, emptyCollection: initialEmpty, tastedCollection: initialTasted, allBottlesElo, publicUserId }: MyBarClientProps) {
   const { minElo, maxElo } = useMemo(() => {
     if (!allBottlesElo.length) return { minElo: 1500, maxElo: 1500 };
     return { maxElo: Math.max(...allBottlesElo), minElo: Math.min(...allBottlesElo) };
@@ -74,6 +84,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
 
   const [rawOwned, setRawOwned] = useState<any[]>(initialOwned);
   const [rawEmpty, setRawEmpty] = useState<any[]>(initialEmpty);
+  const [rawTasted, setRawTasted] = useState<any[]>(initialTasted);
 
   const [activeTab, setActiveTab] = useState<TabOption>('owned');
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,11 +93,11 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   const [filter, setFilter] = useState<FilterState>({ step: 'closed', field: null, value: null });
   const [selectedBottle, setSelectedBottle] = useState<BottleDetails | null>(null);
 
-  const activeRaw = activeTab === 'owned' ? rawOwned : activeTab === 'empty' ? rawEmpty : [];
+  const activeRaw = activeTab === 'owned' ? rawOwned : activeTab === 'empty' ? rawEmpty : rawTasted;
 
   // Shared filter logic — used for both active tab cards and per-tab counts
-  const applySearchAndFilter = useCallback((raw: any[], isOwned: boolean) => {
-    let cards = raw.map(d => mapToCardData(d, minElo, maxElo, isOwned));
+  const applySearchAndFilter = useCallback((raw: any[], isOwned: boolean, tasted: boolean) => {
+    let cards = raw.map(d => mapToCardData(d, minElo, maxElo, isOwned, tasted));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       cards = cards.filter(c =>
@@ -108,25 +119,28 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
 
   // Counts for each tab — always reflect active search + filter
   const tabCounts = useMemo(() => ({
-    owned: applySearchAndFilter(rawOwned, true).length,
-    empty: applySearchAndFilter(rawEmpty, false).length,
-  }), [rawOwned, rawEmpty, applySearchAndFilter]);
+    owned: applySearchAndFilter(rawOwned, true, false).length,
+    empty: applySearchAndFilter(rawEmpty, false, false).length,
+    tasted: applySearchAndFilter(rawTasted, false, true).length,
+  }), [rawOwned, rawEmpty, rawTasted, applySearchAndFilter]);
 
   const filteredCards = useMemo(() => {
     const isOwned = activeTab === 'owned';
-    const cards = applySearchAndFilter(activeRaw, isOwned);
+    const cards = applySearchAndFilter(activeRaw, isOwned, activeTab === 'tasted');
     if (sortBy === 'az') return [...cards].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (sortBy === 'za') return [...cards].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
     return cards; // global/null = server Elo order
   }, [activeRaw, activeTab, applySearchAndFilter, sortBy]);
 
-  const handleCardClick = (bottleId: string) => {
-    const raw = activeRaw.find(r => r.bottle_id === bottleId);
+  const handleCardClick = (cardId: string) => {
+    const raw = activeTab === 'tasted'
+      ? activeRaw.find(r => r.variant_id === cardId || r.bottle_id === cardId)
+      : activeRaw.find(r => r.bottle_id === cardId);
     if (!raw) return;
-    const variantIds: string[] = raw.attr_variant_ids || [];
-    const batches: string[] = raw.attr_batch || [];
-    const releaseYears: string[] = raw.attr_release_year || [];
-    const storePickNames: string[] = raw.attr_store_pick_name || [];
+    const variantIds: string[] = raw.attr_variant_ids || (raw.variant_id ? [raw.variant_id] : []);
+    const batches: string[] = Array.isArray(raw.attr_batch) ? raw.attr_batch : (raw.attr_batch ? [raw.attr_batch] : []);
+    const releaseYears: string[] = Array.isArray(raw.attr_release_year) ? raw.attr_release_year : (raw.attr_release_year ? [String(raw.attr_release_year)] : []);
+    const storePickNames: string[] = Array.isArray(raw.attr_store_pick_name) ? raw.attr_store_pick_name : (raw.attr_store_pick_name ? [raw.attr_store_pick_name] : []);
     setSelectedBottle({
       id: raw.bottle_id,
       name: raw.bottle_name,
@@ -138,13 +152,15 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       age: raw.attr_age,
       elo_global: eloOf(raw) ?? undefined,
       verified: raw.bottle_verified,
-      lastActivity: formatLastActivity({
-        currently_owned: activeTab === "owned",
-        variant_id: raw.variant_id ?? null,
-        times_had: raw.times_had ?? 1,
-        created_at: raw.created_at,
-        updated_at: raw.updated_at,
-      }),
+      lastActivity: activeTab === "tasted"
+        ? (raw.addedAt ? `Tasted · ${new Date(raw.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : undefined)
+        : formatLastActivity({
+            currently_owned: activeTab === "owned",
+            variant_id: raw.variant_id ?? null,
+            times_had: raw.times_had ?? 1,
+            created_at: raw.created_at,
+            updated_at: raw.updated_at,
+          }),
       timesHad: raw.times_had,
       frontImageUrl: raw.attr_frontimage_url,
       backImageUrl: raw.attr_backimage_url,
@@ -154,8 +170,9 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           releaseYear: releaseYears[i],
           batch: batches[i],
           storePickName: storePickNames[i],
+          isDefault: !!raw.variant_is_default,
         }))
-        .filter(v => v.releaseYear || v.batch || v.storePickName),
+        .filter(v => v.releaseYear || v.batch || v.storePickName || (activeTab === 'tasted' && v.variantId)),
       nose: raw.attr_nose,
       palate: raw.attr_palate,
       finish: raw.attr_finish,
@@ -191,9 +208,26 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
         ? prev.map(r => r.bottle_id === bottleId ? next : r)
         : [...prev, next]);
       setRawEmpty(prev => prev.filter(r => r.bottle_id !== bottleId));
+    } else {
+      const tastedRow = rawTasted.find(r => r.bottle_id === bottleId && (resolvedVariant == null || r.variant_id === resolvedVariant))
+        || rawTasted.find(r => r.bottle_id === bottleId);
+      if (tastedRow) {
+        setRawOwned(prev => [...prev, {
+          ...tastedRow,
+          variant_id: resolvedVariant ?? tastedRow.variant_id,
+          times_had: result.timesHad,
+          addedAt: now,
+          updated_at: now,
+          tasted: false,
+        }]);
+      }
     }
+    setRawTasted(prev => prev.filter(r => {
+      if (resolvedVariant) return r.variant_id !== resolvedVariant;
+      return r.bottle_id !== bottleId;
+    }));
     toast.success("Added to My Bar!");
-  }, [publicUserId, rawEmpty, rawOwned]);
+  }, [publicUserId, rawEmpty, rawOwned, rawTasted]);
 
   const handleToggleOwnership = useCallback(async (bottleId: string) => {
     // Mark as Empty: flip the ownership row for THIS variant (B-05). Scoping to
@@ -410,20 +444,14 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
               ? `In My Bar (${tabCounts.owned})`
               : tab === 'empty'
               ? `Empty Bottles (${tabCounts.empty})`
-              : 'Tasted (0)'}
+              : `Tasted (${tabCounts.tasted})`}
           </button>
         ))}
       </div>
 
       {/* Scrollable content — AppShell already applies marginTop: 132px */}
       <div data-coach="mybar.list">
-        {activeTab === 'tasted' ? (
-          <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
-            <div className="text-5xl mb-4">🥃</div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No tastings yet</h3>
-            <p className="text-gray-500 text-sm">Complete blind tastings to see your results here</p>
-          </div>
-        ) : filteredCards.length === 0 ? (
+        {filteredCards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
             <div className="text-5xl mb-4">🥃</div>
             {activeTab === 'owned' ? (
@@ -435,13 +463,22 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
                   {searchQuery || filterActive ? 'Try adjusting your search or filters' : 'Head to Search to find your first bottle'}
                 </p>
               </>
-            ) : (
+            ) : activeTab === 'empty' ? (
               <>
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
                   {searchQuery || filterActive ? 'No bottles match' : 'No empty bottles yet'}
                 </h3>
                 <p className="text-gray-500 text-sm">
                   {searchQuery || filterActive ? 'Try adjusting your search or filters' : 'Bottles you finish will appear here'}
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  {searchQuery || filterActive ? 'No bottles match' : 'No tastings yet'}
+                </h3>
+                <p className="text-gray-500 text-sm">
+                  {searchQuery || filterActive ? 'Try adjusting your search or filters' : 'Complete a blind tasting to see bottles here. Ones you own stay in My Bar.'}
                 </p>
               </>
             )}
@@ -463,7 +500,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
         <BottleDetailView
           bottle={selectedBottle}
           onClose={() => setSelectedBottle(null)}
-          inCollection={true}
+          inCollection={activeTab !== 'tasted'}
           currentlyOwned={activeTab === 'owned'}
           publicUserId={publicUserId}
           onAddToBar={handleAddToBar}

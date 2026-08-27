@@ -211,7 +211,7 @@ export const COACH_CATALOG: CoachItem[] = [
       {
         route: "/mybar",
         anchor: "mybar.list",
-        caption: "Owned bottles live here. Mark one finished when it is empty. A new account can be empty — that is normal.",
+        caption: "Owned bottles live here. Mark one finished when it is empty. Blind-tasted bottles you don't own show under Tasted.",
       },
     ],
   },
