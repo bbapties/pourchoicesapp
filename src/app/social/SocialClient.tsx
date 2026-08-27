@@ -212,9 +212,9 @@ export default function SocialClient() {
                 key={row.id}
                 type="button"
                 onClick={() => openBottle(row.bottleId)}
-                className="w-full text-left flex items-stretch p-3 border-b border-gray-300 hover:bg-gray-100"
+                className="w-full text-left flex items-center p-3 border-b border-gray-300 hover:bg-gray-100"
               >
-                <div className="w-8 flex-shrink-0 mr-2 overflow-hidden">
+                <div className="w-8 h-14 flex-shrink-0 mr-2 overflow-hidden">
                   {row.bottleImageUrl ? (
                     <img
                       src={row.bottleImageUrl}

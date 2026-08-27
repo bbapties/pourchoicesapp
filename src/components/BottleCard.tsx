@@ -108,15 +108,15 @@ interface BottleCardProps {
 
 export default function BottleCard({ bottle }: BottleCardProps) {
   return (
-    <div className={`relative flex items-stretch p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
+    <div className={`relative flex items-center p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
       <EarmarkCorner
         inCollection={bottle.inCollection ?? false}
         currentlyOwned={bottle.currentlyOwned ?? false}
         provisional={bottle.provisional ?? false}
       />
 
-      {/* Image — fills the card height (no wasted padding), whole bottle shown, transparent (no gray box) */}
-      <div className="w-8 flex-shrink-0 mr-2 overflow-hidden">
+      {/* Image — fixed frame; the bottle is forced to fit it and can never change the card height */}
+      <div className="w-8 h-16 flex-shrink-0 mr-2 overflow-hidden">
         {bottle.image_url ? (
           <img
             src={bottle.image_url}
