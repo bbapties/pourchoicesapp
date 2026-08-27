@@ -44,8 +44,10 @@ display-only manual star "guess" wiped to a 1500 baseline on first tasting. Buil
 - [x] **3.0 Variant-aware Elo engine + data model** — LIVE on prod DB + verified 2026-08-26 (app code
   committed local, not pushed). The Elo engine is a Supabase trigger (extended, not rewritten);
   `user_bottles` re-keyed per-variant; all Elo rebaselined to 1500; tasting-table RLS fixed. See HANDOFF.
-- [ ] **3.1 Stars everywhere + manual guess** ← NEXT
-- [ ] **3.2 Solo Mode 2 (self-serve) flow** — the core loop (no in-app reveal)
+- [x] **3.1 Stars everywhere + manual guess** — DONE (committed local `209d72a`, verified 2026-08-26).
+  Guess captured in the Have-a-drink flow (post-pour prompt) + editable on detail when in bar; Elo hidden
+  everywhere (shown as 0-5 stars); locked Elo-star + message once tasted. Slider input.
+- [ ] **3.2 Solo Mode 2 (self-serve) flow** — the core loop (no in-app reveal) ← NEXT
 - [ ] **3.3 Solo Mode 1 (guest helper) flow** — handoff + secret mapping + in-app reveal
 - [ ] **3.4 Group sessions** — host/join via short code; per-person reveal + Elo
 - [ ] **3.5 Trimmings** — per-glass notes, My Bar "Tasted" tab, Social `tasted` activity + session-detail view, coaches
