@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Search, Users, GlassWater, User as UserIcon, Shield } from "lucide-react";
+import { Search, Users, GlassWater, Wine, User as UserIcon, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CurrentUserProvider, useCurrentUser } from "@/lib/useCurrentUser";
@@ -25,6 +25,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     { href: "/search",  icon: <Search size={24} />,      label: "Search"  },
     { href: "/social",  icon: <Users size={24} />,       label: "Social"  },
     { href: "/mybar",   icon: <GlassWater size={24} />,  label: "My Bar"  },
+    { href: "/taste",   icon: <Wine size={24} />,        label: "Drink"   },
     { href: "/profile", icon: <UserIcon size={24} />,    label: "Profile" },
   ];
   if (isAdmin) {
@@ -37,7 +38,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <main
         className="flex-1 overflow-y-auto min-h-0"
         style={{
-          marginTop: pathname === "/search" ? "128px" : pathname === "/mybar" ? "132px" : pathname === "/social" ? "56px" : "0px",
+          marginTop: pathname === "/search" ? "128px" : pathname === "/mybar" ? "132px" : (pathname === "/social" || pathname === "/taste") ? "56px" : "0px",
           marginBottom: isAuthPage ? "0px" : "calc(64px + env(safe-area-inset-bottom))",
         }}
       >
@@ -54,6 +55,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               href === "/search" ? "nav.search"
               : href === "/social" ? "nav.social"
               : href === "/mybar" ? "nav.mybar"
+              : href === "/taste" ? "nav.taste"
               : href === "/profile" ? "nav.profile"
               : undefined;
             const showDot = announceRoutes.has(href) && !active;
