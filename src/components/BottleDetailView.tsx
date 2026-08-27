@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Pencil, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { type BottleDetails } from "@/lib/types";
@@ -10,6 +10,9 @@ import VariantSelectSheet from "@/components/VariantSelectSheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import PourSheet from "@/components/PourSheet";
 import MoreSheet from "@/components/MoreSheet";
+import RatePromptSheet from "@/components/RatePromptSheet";
+import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
+import { supabase } from "@/lib/supabase";
 import { fieldsForVariant, fetchVariantsForSku } from "@/lib/variants";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { uploadBottleImage } from "@/lib/uploadBottleImage";
@@ -85,6 +88,13 @@ export default function BottleDetailView({
   const [isPouring, setIsPouring] = useState(false);
   const [lastActivityLabel, setLastActivityLabel] = useState<string | undefined>(bottle.lastActivity);
   const [localBottle, setLocalBottle] = useState<BottleDetails>(bottle);
+  // 3.1: manual star "guess" + Elo->star display state (Elo numbers stay hidden).
+  const [ratingStars, setRatingStarsState] = useState<number | null>(null);
+  const [hasTasted, setHasTasted] = useState(false);
+  const [personalElo, setPersonalElo] = useState<number | null>(null);
+  const [showRatePrompt, setShowRatePrompt] = useState(false);
+  const [ratingSaving, setRatingSaving] = useState(false);
+  const [gRange, setGRange] = useState<{ min: number; max: number } | null>(null);
   const swipeX = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { authId } = useCurrentUser();
@@ -115,6 +125,36 @@ export default function BottleDetailView({
   ].filter(Boolean) as string[];
   const hasNotes = !!(shown.nose || shown.palate || shown.finish);
   const showImage = !!imageUrl && !imgError;
+
+  // 3.1: Elo is shown ONLY as a 0-5 star (scaled to the global range); the number stays hidden.
+  const scaleStar = (elo: number | null | undefined): number | null => {
+    const n = elo == null ? null : Number(elo);
+    if (n == null || Number.isNaN(n) || !gRange || gRange.max === gRange.min) return null;
+    return Math.min(5, Math.max(0, ((n - gRange.min) / (gRange.max - gRange.min)) * 5));
+  };
+  const globalStar = scaleStar(shown.elo);
+  // My rating: the manual guess while untasted; the (locked) Elo-derived star once tasted.
+  const myStar = hasTasted ? scaleStar(personalElo) : ratingStars;
+  const canEditGuess = !hasTasted && ownedLocally; // in your bar + not yet blind-tasted
+
+  // Compact read-only 0-5 star display (Elo numbers stay hidden).
+  const starBar = (value: number | null) => {
+    if (value == null) return <span className="text-gray-400">—</span>;
+    const pct = (Math.min(5, Math.max(0, value)) / 5) * 100;
+    return (
+      <span className="inline-flex items-center gap-1">
+        <span className="relative inline-flex">
+          <span className="flex gap-0.5 text-gray-300">
+            {[0, 1, 2, 3, 4].map((i) => <Star key={i} size={15} fill="currentColor" strokeWidth={0} />)}
+          </span>
+          <span className="absolute inset-0 overflow-hidden flex gap-0.5 text-charcoal" style={{ width: `${pct}%` }}>
+            {[0, 1, 2, 3, 4].map((i) => <Star key={i} size={15} fill="currentColor" strokeWidth={0} className="flex-shrink-0" />)}
+          </span>
+        </span>
+        <span className="text-xs tabular-nums text-gray-500">{value.toFixed(1)}</span>
+      </span>
+    );
+  };
 
   // 7.6: one state-dependent primary action + a More sheet, keyed off collection state.
   const collectionState: 'none' | 'owned' | 'empty' = !inCollectionLocally
@@ -158,6 +198,41 @@ export default function BottleDetailView({
     });
     return () => { cancelled = true; };
   }, [bottle.id, inCollection, currentlyOwned, publicUserId, authId]);
+
+  // 3.1: rating state for the CURRENT variant (guess / tasted? / personal Elo) — refetch on swipe.
+  useEffect(() => {
+    let cancelled = false;
+    const vId = currentVariant?.variantId ?? null;
+    if (publicUserId) {
+      fetchUserRatingState(publicUserId, bottle.id, vId).then((s) => {
+        if (cancelled) return;
+        setRatingStarsState(s.ratingStars);
+        setHasTasted(s.hasTasted);
+        setPersonalElo(s.personalElo);
+      });
+    } else {
+      setRatingStarsState(null);
+      setHasTasted(false);
+      setPersonalElo(null);
+    }
+    return () => { cancelled = true; };
+  }, [bottle.id, currentVariant?.variantId, publicUserId]);
+
+  // 3.1: global star range (exclude store picks) for scaling Elo -> stars. Fetched once per open.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [maxRes, minRes] = await Promise.all([
+        supabase.from('bottle_variants').select('elo_global').is('store_pick_name', null).not('elo_global', 'is', null).order('elo_global', { ascending: false }).limit(1),
+        supabase.from('bottle_variants').select('elo_global').is('store_pick_name', null).not('elo_global', 'is', null).order('elo_global', { ascending: true }).limit(1),
+      ]);
+      if (cancelled) return;
+      const max = maxRes.data?.[0]?.elo_global;
+      const min = minRes.data?.[0]?.elo_global;
+      if (max != null && min != null) setGRange({ min: Number(min), max: Number(max) });
+    })();
+    return () => { cancelled = true; };
+  }, [bottle.id]);
 
   const goVariant = (dir: number) => {
     if (!showPager || isEditing) return;
@@ -395,9 +470,38 @@ export default function BottleDetailView({
         toast.success("Pour logged");
       }
       onActivityLogged?.();
+      // 3.1: after a (non-blind) pour, prompt for the manual star guess if not yet blind-tasted.
+      if (pourType !== "blind" && !hasTasted) setShowRatePrompt(true);
     } finally {
       setIsPouring(false);
     }
+  };
+
+  // 3.1: save/skip the manual star guess for the current variant.
+  const handleSaveRating = async (stars: number) => {
+    if (!publicUserId || ratingSaving) return;
+    setRatingSaving(true);
+    try {
+      const res = await setRatingStars({
+        userId: publicUserId,
+        bottleId: bottle.id,
+        variantId: currentVariant?.variantId ?? null,
+        stars,
+      });
+      if (res.error) {
+        toast.error("Could not save your rating");
+        return;
+      }
+      setRatingStarsState(Math.round(Math.min(5, Math.max(0, stars)) * 10) / 10);
+      setShowRatePrompt(false);
+      toast.success("Rating saved");
+    } finally {
+      setRatingSaving(false);
+    }
+  };
+
+  const handleLockedRatingTap = () => {
+    toast("This is auto-calculated from your tasting history — do more blind tastings to adjust it.");
   };
 
   const handleDelete = async () => {
@@ -651,8 +755,8 @@ export default function BottleDetailView({
                 </div>
                 <div className="border-t border-gray-200 mt-2 pt-2 text-sm space-y-1.5">
                   <div>
-                    <div className="text-[11px] text-gray-500">Global Elo</div>
-                    <div>{shown.elo ?? '—'}</div>
+                    <div className="text-[11px] text-gray-500">Global rating</div>
+                    <div>{starBar(globalStar)}</div>
                   </div>
                   <div>
                     <div className="text-[11px] text-gray-500">Verified</div>
@@ -675,6 +779,27 @@ export default function BottleDetailView({
           <div className="flex items-center justify-between text-sm mb-3">
             <span className="text-gray-500">My last activity</span>
             <span>{lastActivityLabel || 'None'}</span>
+          </div>
+        )}
+
+        {/* 3.1: My rating — manual guess while untasted, locked Elo star once tasted */}
+        {!isEditing && !onAddSlide && publicUserId && (
+          <div className="flex items-center justify-between text-sm mb-3 -mt-1">
+            <span className="text-gray-500">My rating</span>
+            {hasTasted ? (
+              <button type="button" onClick={handleLockedRatingTap} className="inline-flex items-center gap-1.5">
+                {starBar(myStar)}
+                <span className="text-[10px] text-gray-400">(from tastings)</span>
+              </button>
+            ) : canEditGuess ? (
+              <button type="button" onClick={() => setShowRatePrompt(true)} className="inline-flex items-center gap-1 underline decoration-dotted underline-offset-2">
+                {ratingStars != null ? starBar(ratingStars) : <span className="text-gray-500">Tap to rate</span>}
+              </button>
+            ) : ratingStars != null ? (
+              starBar(ratingStars)
+            ) : (
+              <span className="text-gray-400">None</span>
+            )}
           </div>
         )}
         {!isEditing && localBottle.timesHad != null && localBottle.timesHad > 0 && (
@@ -907,6 +1032,18 @@ export default function BottleDetailView({
           bottleName={localBottle.name}
           isSaving={isPouring}
           onSelect={handlePour}
+        />
+      )}
+
+      {publicUserId && (
+        <RatePromptSheet
+          open={showRatePrompt}
+          onOpenChange={setShowRatePrompt}
+          bottleName={localBottle.name}
+          initialStars={ratingStars}
+          isSaving={ratingSaving}
+          onSave={handleSaveRating}
+          onSkip={() => setShowRatePrompt(false)}
         />
       )}
 
