@@ -151,7 +151,13 @@ export default function DrinkClient({
 
   const afterPick = () => {
     if (picks.length < MIN_PICKS) { toast(`Pick at least ${MIN_PICKS} bottles`); return; }
-    setStep(mode === "self" ? "label" : "handoff");
+    if (mode === "helper") {
+      // Lineup may have changed — never reuse a prior secret mapping.
+      setGlassAssignment([]);
+      setStep("handoff");
+    } else {
+      setStep("label");
+    }
   };
 
   // Self: taster knows the bottles (physical reveal already done) -> rank by name.
@@ -161,10 +167,19 @@ export default function DrinkClient({
   };
 
   // Helper: randomize glass assignment (secret from taster) for the helper to pour.
+  // Freeze after the first shuffle so Back/Continue can't silently re-deal poured glasses.
   const helperContinue = () => {
-    const shuffled = shuffle(picks);
-    setGlassAssignment(shuffled.map((p, i) => ({ letter: letter(i), pick: p })));
+    if (glassAssignment.length === 0) {
+      const shuffled = shuffle(picks);
+      setGlassAssignment(shuffled.map((p, i) => ({ letter: letter(i), pick: p })));
+    }
     setStep("helperSetup");
+  };
+
+  const restartHelperLineup = () => {
+    setGlassAssignment([]);
+    setRankOrder([]);
+    setStep("pick");
   };
 
   // Helper: taster ranks the LETTERS blind (names hidden until reveal). Start in letter order.
@@ -206,9 +221,12 @@ export default function DrinkClient({
   };
 
   const back = () => {
+    // Helper secret screens are not in the back stack — going handback → helperSetup
+    // would show the taster the bottle→letter mapping.
+    if (step === "helperSetup" || step === "handback") return;
     const map: Record<Step, Step> = {
       home: "home", done: "done", pourPick: "home", mode: "home", pick: "mode",
-      label: "pick", handoff: "pick", helperSetup: "handoff", handback: "helperSetup",
+      label: "pick", handoff: "pick", helperSetup: "helperSetup", handback: "handback",
       rank: mode === "self" ? "label" : "handback",
     };
     setStep(map[step]);
@@ -293,7 +311,8 @@ export default function DrinkClient({
 
   const primaryBtn = "w-full rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-40";
   const secondaryBtn = "w-full rounded-lg border border-charcoal py-3 text-sm font-medium text-charcoal";
-  const showBack = step !== "home" && step !== "done";
+  const helperSecretStep = step === "helperSetup" || step === "handback";
+  const showBack = step !== "home" && step !== "done" && !helperSecretStep;
   const headerTitle = step === "home" || step === "pourPick" ? "Drink" : "Blind Tasting";
 
   return (
@@ -441,6 +460,7 @@ export default function DrinkClient({
               ))}
             </div>
             <button type="button" onClick={() => setStep("handback")} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>Done pouring — hand back</button>
+            <button type="button" onClick={restartHelperLineup} className={`${secondaryBtn} mt-2`}>Wrong bottles? Pick again</button>
           </div>
         )}
 
