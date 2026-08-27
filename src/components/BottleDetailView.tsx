@@ -1074,12 +1074,9 @@ export default function BottleDetailView({
           busy={isSaving}
           onAddVariant={openAddVariant}
           onAddAnother={collectionState === 'owned' ? handleAddAnother : undefined}
+          onHaveADrink={() => { setShowMoreSheet(false); setShowPourSheet(true); }}
+          onBlindTasting={() => startBlindTasting("more")}
           onMarkEmpty={collectionState === 'owned' ? handleMarkEmpty : undefined}
-          onBlindTasting={
-            collectionState === 'owned'
-              ? () => startBlindTasting("more")
-              : undefined
-          }
           onRemove={() => { setShowMoreSheet(false); setShowDeleteConfirm(true); }}
         />
       )}

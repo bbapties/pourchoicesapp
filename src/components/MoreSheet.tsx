@@ -13,7 +13,9 @@ interface MoreSheetProps {
   onAddAnother?: () => void;
   /** Soft delete — hidden from My Bar, kept in history. Owned state. */
   onMarkEmpty?: () => void;
-  /** Start a blind tasting pre-seeded with this bottle. Owned state. */
+  /** Log a pour (neat / rocks / mixed) or start a blind tasting. */
+  onHaveADrink?: () => void;
+  /** Start a blind tasting pre-seeded with this bottle. */
   onBlindTasting?: () => void;
   /** Hard delete — removes all rows + history. Owned + empty states. */
   onRemove?: () => void;
@@ -34,14 +36,16 @@ export default function MoreSheet({
   onAddVariant,
   onAddAnother,
   onMarkEmpty,
+  onHaveADrink,
   onBlindTasting,
   onRemove,
 }: MoreSheetProps) {
   const rows: Row[] = [];
   if (onAddVariant) rows.push({ label: "Add a variant", hint: "A batch, release, or your store pick", onClick: onAddVariant });
   if (onAddAnother) rows.push({ label: "Add another", hint: "You bought another bottle of this", onClick: onAddAnother });
-  if (onMarkEmpty) rows.push({ label: "Mark as Empty", hint: "Hidden from My Bar, kept in your history", onClick: onMarkEmpty });
+  if (onHaveADrink) rows.push({ label: "Have a drink", hint: "Neat, rocks, mixed, or start a blind tasting", onClick: onHaveADrink });
   if (onBlindTasting) rows.push({ label: "Blind tasting", hint: "Rank this against 2–5 bottles", onClick: onBlindTasting });
+  if (onMarkEmpty) rows.push({ label: "Mark as Empty", hint: "Hidden from My Bar, kept in your history", onClick: onMarkEmpty });
   if (onRemove) rows.push({ label: "Remove from collection", hint: "Deletes all history. Only if added by mistake.", onClick: onRemove, danger: true });
 
   return (

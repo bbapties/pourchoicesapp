@@ -7,8 +7,13 @@ import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import { saveTasting, type TastingPick } from "@/lib/tastings";
+import { logActivity, type PourType } from "@/lib/activities";
+import { logClick } from "@/lib/events";
+import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
+import PourSheet from "@/components/PourSheet";
+import RatePromptSheet from "@/components/RatePromptSheet";
 
-type Step = "home" | "mode" | "pick" | "label" | "handoff" | "helperSetup" | "handback" | "rank" | "done";
+type Step = "home" | "pourPick" | "mode" | "pick" | "label" | "handoff" | "helperSetup" | "handback" | "rank" | "done";
 type Mode = "self" | "helper";
 
 type CatalogBottle = {
@@ -54,6 +59,13 @@ export default function DrinkClient({
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [result, setResult] = useState<RankItem[] | null>(null);
+  const [pourTarget, setPourTarget] = useState<CatalogBottle | null>(null);
+  const [showPourSheet, setShowPourSheet] = useState(false);
+  const [isPouring, setIsPouring] = useState(false);
+  const [showRatePrompt, setShowRatePrompt] = useState(false);
+  const [ratingSaving, setRatingSaving] = useState(false);
+  const [ratingStars, setRatingStarsState] = useState<number | null>(null);
+  const [hasTasted, setHasTasted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,22 +200,101 @@ export default function DrinkClient({
   };
 
   const reset = () => {
-    setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery(""); setStep("home");
+    setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
+    setPourTarget(null); setShowPourSheet(false); setShowRatePrompt(false); setStep("home");
     if (seedBottleId) router.replace("/taste");
   };
 
   const back = () => {
     const map: Record<Step, Step> = {
-      home: "home", done: "done", mode: "home", pick: "mode",
+      home: "home", done: "done", pourPick: "home", mode: "home", pick: "mode",
       label: "pick", handoff: "pick", helperSetup: "handoff", handback: "helperSetup",
       rank: mode === "self" ? "label" : "handback",
     };
     setStep(map[step]);
   };
 
+  const openPourFor = async (b: CatalogBottle) => {
+    setPourTarget(b);
+    setShowPourSheet(true);
+    const s = await fetchUserRatingState(publicUserId, b.bottleId, b.variantId);
+    setHasTasted(s.hasTasted);
+    setRatingStarsState(s.ratingStars);
+  };
+
+  const handleDrinkPour = async (pourType: PourType) => {
+    if (!pourTarget || isPouring) return;
+    if (pourType === "blind") {
+      logClick("blind_tasting", {
+        userId: publicUserId,
+        targetId: pourTarget.bottleId,
+        metadata: { source: "drink_tab", variant_id: pourTarget.variantId },
+      });
+      seeded.current = true;
+      setPicks([pourTarget]);
+      setShowPourSheet(false);
+      setStep("mode");
+      return;
+    }
+    logClick("have_a_drink", {
+      userId: publicUserId,
+      targetId: pourTarget.bottleId,
+      metadata: { pour_type: pourType, variant_id: pourTarget.variantId, source: "drink_tab" },
+    });
+    setIsPouring(true);
+    try {
+      const result = await logActivity({
+        userId: publicUserId,
+        bottleId: pourTarget.bottleId,
+        variantId: pourTarget.variantId,
+        action: "drank",
+        pourType,
+      });
+      if (result.error) {
+        toast.error("Could not log this pour");
+        return;
+      }
+      setShowPourSheet(false);
+      toast.success("Pour logged");
+      if (!hasTasted) setShowRatePrompt(true);
+      else {
+        setPourTarget(null);
+        setQuery("");
+        setStep("home");
+      }
+    } finally {
+      setIsPouring(false);
+    }
+  };
+
+  const handleSaveRating = async (stars: number) => {
+    if (!pourTarget || ratingSaving) return;
+    setRatingSaving(true);
+    try {
+      const res = await setRatingStars({
+        userId: publicUserId,
+        bottleId: pourTarget.bottleId,
+        variantId: pourTarget.variantId,
+        stars,
+      });
+      if (res.error) {
+        toast.error("Could not save your rating");
+        return;
+      }
+      setShowRatePrompt(false);
+      toast.success("Rating saved");
+      setPourTarget(null);
+      setQuery("");
+      setStep("home");
+    } finally {
+      setRatingSaving(false);
+    }
+  };
+
   const primaryBtn = "w-full rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-40";
   const secondaryBtn = "w-full rounded-lg border border-charcoal py-3 text-sm font-medium text-charcoal";
   const showBack = step !== "home" && step !== "done";
+  const headerTitle = step === "home" || step === "pourPick" ? "Drink" : "Blind Tasting";
 
   return (
     <div className="max-w-md mx-auto">
@@ -211,7 +302,7 @@ export default function DrinkClient({
         {showBack && (
           <button type="button" aria-label="Back" onClick={back} className="p-1 text-charcoal"><ChevronLeft size={22} /></button>
         )}
-        <h1 className="flex-1 text-center text-base font-semibold text-charcoal">Blind Tasting</h1>
+        <h1 className="flex-1 text-center text-base font-semibold text-charcoal">{headerTitle}</h1>
         {showBack && <span className="w-6" />}
       </header>
 
@@ -220,11 +311,34 @@ export default function DrinkClient({
         {step === "home" && (
           <div className="flex flex-col items-center text-center pt-10 gap-4">
             <Wine size={48} className="text-charcoal" />
-            <h2 className="text-lg font-semibold text-charcoal">Run a blind tasting</h2>
-            <p className="text-sm text-gray-500 max-w-xs">Rank 2–5 bottles blind. Your ranking updates your personal and the global scores.</p>
+            <h2 className="text-lg font-semibold text-charcoal">Drink</h2>
+            <p className="text-sm text-gray-500 max-w-xs">Log a pour, or rank 2–5 bottles blind. Blind rankings update your personal and the global scores.</p>
             <div className="w-full mt-2 space-y-2">
-              <button type="button" data-coach="taste.start" onClick={() => setStep("mode")} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>Start a blind tasting</button>
+              <button type="button" data-coach="taste.pour" onClick={() => { setQuery(""); setStep("pourPick"); }} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>Have a drink</button>
+              <button type="button" data-coach="taste.start" onClick={() => setStep("mode")} className={secondaryBtn}>Start a blind tasting</button>
               <button type="button" onClick={() => toast("Joining someone's tasting is coming soon")} className={secondaryBtn}>Join a blind (enter code)</button>
+            </div>
+          </div>
+        )}
+
+        {/* POUR PICK — single bottle for a regular drink (or jump into a tasting) */}
+        {step === "pourPick" && (
+          <div className="pt-2">
+            <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search for a bottle..."
+              className="w-full rounded-full border border-charcoal px-4 h-10 text-base bg-ivory text-charcoal mb-3" />
+            <p className="text-xs text-gray-500 mb-2">Pick a bottle to log a pour or start a blind tasting</p>
+            <div className="space-y-1 mb-8">
+              {filtered.map((b) => (
+                <button key={b.bottleId} type="button" onClick={() => openPourFor(b)}
+                  className="w-full flex items-center justify-between rounded-lg border p-3 text-left"
+                  style={{ borderColor: "#D1D5DB" }}>
+                  <span>
+                    <span className="block text-sm font-medium text-charcoal">{b.name}</span>
+                    <span className="block text-xs text-gray-500">{b.distillery}</span>
+                  </span>
+                </button>
+              ))}
+              {filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">No bottles found</p>}
             </div>
           </div>
         )}
@@ -411,6 +525,40 @@ export default function DrinkClient({
             </div>
           </div>
         </div>
+      )}
+
+      {pourTarget && (
+        <PourSheet
+          open={showPourSheet}
+          onOpenChange={setShowPourSheet}
+          bottleName={pourTarget.name}
+          isSaving={isPouring}
+          onSelect={handleDrinkPour}
+        />
+      )}
+
+      {pourTarget && (
+        <RatePromptSheet
+          open={showRatePrompt}
+          onOpenChange={(open) => {
+            setShowRatePrompt(open);
+            if (!open) {
+              setPourTarget(null);
+              setQuery("");
+              setStep("home");
+            }
+          }}
+          bottleName={pourTarget.name}
+          initialStars={ratingStars}
+          isSaving={ratingSaving}
+          onSave={handleSaveRating}
+          onSkip={() => {
+            setShowRatePrompt(false);
+            setPourTarget(null);
+            setQuery("");
+            setStep("home");
+          }}
+        />
       )}
 
       <Toaster position="top-center" style={{ top: "64px" }} />
