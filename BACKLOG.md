@@ -6,13 +6,16 @@ Format: `- [ ] Short description — why it matters`
 ## UX / Quality of Life
 - [x] First-use / What's new coaches (shipped 7.11 — live-UI tour + digest; catalog `src/lib/coaches.ts`)
 - [x] Replay tutorial from Profile (shipped 2026-08-23 with Phase 4 — resets `seen_coach_ids`, reloads to `/search`, core tour replays)
+- [ ] **Tutorial + admin What's new rewrite** — **pulled into Phase 8.3**. New-user core tour (include Drink); admin publish/unpublish so What's new doesn't auto-pile every `announce: true`. See PHASE8.md.
+- [ ] **PWA install prompt (Android + iOS)** — **pulled into Phase 8.2**. First URL visit, if not installed: install as an app (recommended) vs continue in browser. See PHASE8.md.
+- [ ] **Admin push notifications** — **pulled into Phase 8.5**. Profile toggle default on; admin send to all or one user. Needs the 8.2 service worker. See PHASE8.md.
 - [ ] Haptic feedback on key interactions (add to bar, tasting reveal)
 - [ ] Pull-to-refresh on search and My Bar lists
 - [ ] Keyboard dismissal on mobile when tapping outside search bar
 
 ## Search & Discovery
-- [ ] Search history / recent searches
-- [ ] Barcode scanner shortcut in the add modal
+- [ ] Search history / recent searches (events already capture `event_type='search'`; UI still unbuilt)
+- [x] **Barcode scan as a search option** — **pulled into Phase 8.4** (not just the add modal). Camera on every bottle-search screen (Search + Drink picker) + catalog barcode seed. See PHASE8.md.
 
 ## History / Activity Log
 - [ ] Shared transaction history page (accessible from My Bar + Profile) — text-based log of all activity: bottles added/finished/deleted, tastings completed, rankings changed, DB contributions. Not a visual UI, just a chronological list with timestamps. (Social tab is the public feed; this item is still the personal/audit log.)
@@ -22,7 +25,7 @@ Format: `- [ ] Short description — why it matters`
 - [x] Global activity feed tab (shipped 2026-08-22 as `/social`; Taste removed from nav)
 
 ## Bottle Detail Page
-- [ ] Notify a user when an admin approves/rejects their suggested edit — surface the admin's `review_note` (stored on `suggested_edits` as of 7.8). Needs a notification system; 7.8 only stores the note.
+- [ ] Notify a user when an admin approves/rejects their suggested edit — surface the admin's `review_note` (stored on `suggested_edits` as of 7.8). **Push system is Phase 8.5**; this notice is v2 on top of that, not the v1 admin blast.
 - [ ] UX refinement pass — layout, button placement, stats section structure (defer until all functionality is working)
 - [ ] Personal comments on a variant — per-user notes, saved instantly, no moderation (deferred from the Phase 7 detail revamp)
 - [ ] Third image slot on variants — badge / detail close-up (the Front/Back toggle is built to extend)
@@ -55,8 +58,9 @@ Format: `- [ ] Short description — why it matters`
 ## Profile
 - [ ] Avatar / profile photo
 - [ ] Stats summary (# tastings, # bottles, top-ranked bottle)
+- [ ] Notifications toggle — **pulled into Phase 8.5** (default on; OS permission is separate)
 
-## Design / Polish (POST-FUNCTIONALITY — do not touch until Phase 4)
+## Design / Polish (POST-FUNCTIONALITY — do not touch until Phase 5)
 - [ ] Apply full Playfair Display + Inter fonts
 - [ ] Amber/gold/charcoal/ivory color system
 - [ ] Indicator earmark animations

@@ -91,6 +91,11 @@ Indexes: `(user_id, created_at)`, `(event_type, created_at)`, `(session_id)`. RL
 Add more events freely as you build (see the standing rule). Not yet wired: filters/sorts,
 coach/tour interactions, add-to-bar click (its success is already in `activities`).
 
+**Phase 8 (planned — record here when they land):** `pwa_prompt_shown` / `pwa_install_clicked` /
+`pwa_continue_browser`; `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown` /
+`whatsnew_show_me`; `search` with `metadata.mode = 'barcode'`; `push_permission` /
+`push_subscribe` / `push_send`. Tasting-complete `activities.tasted` still waits on the 3.5 CHECK.
+
 ---
 
 ## Standing rule for agents (part of the build checklist)

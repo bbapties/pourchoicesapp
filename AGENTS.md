@@ -11,9 +11,11 @@ docs, then switches. This file is the standing context both agents load every se
 ## Read-first order (every session, before writing any code)
 1. **AGENTS.md** (this file) — rules, stack, guardrails.
 2. **[HANDOFF.md](HANDOFF.md)** — where the last agent stopped, the next step, open decisions.
-3. **[ROADMAP.md](ROADMAP.md)** — the phase checklist; source of truth for what's done vs pending.
-4. **[BACKLOG.md](BACKLOG.md)** — deferred items. Do **not** pull these into the current phase.
-5. **[TELEMETRY.md](TELEMETRY.md)** — instrumentation policy: capture events/activity/usage generously so future features (badges, analytics) already have data. Log as you build.
+3. **[ROADMAP.md](ROADMAP.md)** — the phase checklist; source of truth for what's done vs pending. **Current work = Phase 8.**
+4. **[PHASE8.md](PHASE8.md)** — pre-beta narrative, feature stories (PWA, tutorial, barcode, push), ordered waves.
+5. **[BUGS.md](BUGS.md)** — canonical bug queue from the 2026-08-27 review. Tick boxes when shipped.
+6. **[BACKLOG.md](BACKLOG.md)** — deferred items. Do **not** pull these into the current phase unless PHASE8/ROADMAP already did.
+7. **[TELEMETRY.md](TELEMETRY.md)** — instrumentation policy: capture events/activity/usage generously so future features (badges, analytics) already have data. Log as you build.
 
 Then summarize the current state back to Brian and confirm the next step **before** editing.
 
@@ -23,9 +25,8 @@ Then summarize the current state back to Brian and confirm the next step **befor
 Pour Choices — a mobile-first spirits app to discover, rate, and collect bottles, with an
 Elo ranking system and (future) blind tastings. Live at **www.pourchoicesapp.com**.
 
-**Current nav (logged in):** Search / Social / My Bar / Profile (+ Admin if `users.role = 'admin'`).
-Taste is gone — `/taste` redirects to `/social`. Login lands on `/mybar`.
-Profile is still a coming-soon stub (sign out only). Blind tasting UI is not built.
+**Current nav (logged in):** Search / Social / My Bar / Drink / Profile (+ Admin if `users.role = 'admin'`).
+Login lands on `/mybar`. Drink is `/taste` (both solo blind-tasting modes shipped). Profile is real (username, email, replay tutorial, feedback, sign out). Group tasting (3.4) is still a stub.
 
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · shadcn/ui + Radix ·
 Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
@@ -83,6 +84,8 @@ node scripts/_psql.mjs "SELECT 1 AS ok;"
 | `AGENTS.md` | Standing rules, stack, guardrails, relay protocol (this file) |
 | `HANDOFF.md` | **Live baton** — current focus, where we stopped, next step, decisions, landmines |
 | `ROADMAP.md` | Phase checklist — what's done vs pending (canonical for scope/status) |
+| `PHASE8.md` | Pre-beta cut — waves, feature stories (PWA, tutorial, barcode, push), PR split |
+| `BUGS.md` | Bug queue (B-01…) from the 2026-08-27 review; tick when shipped |
 | `BACKLOG.md` | Deferred / do-not-pull-in list |
 | `TELEMETRY.md` | Instrumentation policy — event/activity/usage tracking; what's logged, the proposed generic events table |
 | `DB_Schema.txt.txt` | Supabase schema dump (note: may lag reality — see HANDOFF drift notes) |

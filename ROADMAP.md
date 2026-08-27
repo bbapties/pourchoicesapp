@@ -2,6 +2,7 @@
 
 **Philosophy:** Functionality first. Black/grey/white wireframe visuals until Phase 5 (the design phase).
 **Commit rule:** One feature or fix per commit. Test before every commit.
+**WE ARE HERE:** **Phase 8 — Pre-beta cut.** Stories in [PHASE8.md](PHASE8.md); bugs in [BUGS.md](BUGS.md).
 **Test checklist before every push:**
   - [ ] Works locally (localhost:3000)
   - [ ] Works on mobile (192.168.68.74:3000)
@@ -54,10 +55,9 @@ display-only manual star "guess" wiped to a 1500 baseline on first tasting. Buil
   2026-08-26). App randomizes the secret pour, instructs the helper, taster ranks blind letters, app reveals.
   Both solo tasting modes now work end-to-end.
 - [ ] **3.4 Group sessions** — host/join via short code; per-person reveal + Elo ⏸ PAUSED (needs schema +
-  realtime + multi-device testing best done with Brian awake)
+  realtime + multi-device testing). **Out of the pre-beta cut** — do not start during Phase 8 unless Brian says so.
 - [ ] **3.5 Trimmings** — per-glass notes, My Bar "Tasted" tab, Social `tasted` activity + session-detail view,
-  coaches ⏸ PARTLY PAUSED (Social `tasted` + session-detail need additive schema: `activities.action` CHECK
-  + a session-link column — get Brian's go first)
+  coaches. Social `tasted` + session-detail still need additive schema. **Tasted tab pulled forward into Phase 8.1 (B-06)** so testers aren't lied to; the rest stays paused.
 
 Original story-level checklist (maps into 3.2–3.4 above; kept for AC reference):
 - [ ] 3.1 Tasting picker — select 2–5 bottles, tray fills (Stories 6.29–6.30)
@@ -212,6 +212,63 @@ Epic C — Actions & moderation
   - Exit: `users.seen_coach_ids`; existing accounts seeded with `core.done`; Skip/Got it persist; greyscale overlay + digest sheet. New user-facing PRs add a catalog row.
 
 Notes: 7.4/7.5 done (carousel + per-variant images). 7.7 pours attach `variant_id` of the visible slide. Live blind tastings wait on Phase 3. New user-facing PRs add a `src/lib/coaches.ts` row. Deferred to BACKLOG: personal comments, flavor tagging → charts, 3rd image slot, follows/likes/comments.
+
+---
+
+## Phase 8 — Pre-beta cut  ·  WE ARE HERE (2026-08-27)
+Goal: testers get a trustworthy first session (URL → install → signup → tour → search/drink), plus barcode scan and admin push. Full narrative + feature stories: **[PHASE8.md](PHASE8.md)**. Bug IDs: **[BUGS.md](BUGS.md)**.
+
+Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-detail (schema), Phase 5 polish, 6.4 CSV (unless barcode seeding needs a thin import). Do not pull those in unless Brian says so.
+
+### 8.0 Prod safety (confirm on live DB / Vercel — ask before changing)
+- [ ] B-18 anon `SELECT` on `public.users` (login email lookup)
+- [ ] B-19 `users.role` not self-updatable
+- [ ] B-20 `delete_user_cascade` re-checks `is_admin()` inside the function
+- [ ] B-21 Vercel `SUPABASE_SERVICE_ROLE_KEY` vs local `SUPABASE_SERVICE_ROLE`
+- [ ] B-22 rotate/demote QA admin password (Brian)
+- [ ] Prod-verify 3.0–3.3 on www.pourchoicesapp.com (still pending)
+
+### 8.1 Trust bugs (minimum before invite: B-01 … B-08)
+- [ ] B-01 Stop "tastings aren't live" copy; wire More / pour-blind to Drink
+- [ ] B-02 Helper-mode Back leak + re-shuffle
+- [ ] B-03 Default bottles flash as "+ Add a version"
+- [ ] B-04 My Bar stars from `default_variant_elo`
+- [ ] B-05 Persist My Bar `variant_id`; Add Back / Remove the right variant
+- [ ] B-06 Wire Tasted tab **or** hide it (don't lie with Tasted (0))
+- [ ] B-07 `saveTasting` one transaction / no double Elo
+- [ ] B-08 Signup uses same username rules as Profile; no orphan Auth users
+- [ ] B-09 … B-17 (1b cluster — scoped empty, store-pick flash, VariantSelectSheet both ids, search `.or()` escape, etc.)
+
+### 8.2 PWA — install as an app (Android + iOS)
+- [ ] Manifest + icons + apple-touch / theme-color
+- [ ] Service worker (app-shell; needed later for push)
+- [ ] First-visit prompt: Install (recommended) vs Continue in browser; skip if already installed
+- [ ] iOS: instructional Add to Home Screen (no programmatic install)
+- [ ] Events: `pwa_prompt_shown` / `pwa_install_clicked` / `pwa_continue_browser`
+
+### 8.3 Tutorial + admin What's new
+- [ ] Discovery with Brian: new-user core steps (must include Drink)
+- [ ] Rewrite `COACH_CATALOG` core flags/copy to match
+- [ ] Admin publish/unpublish for What's new (stop auto-piling every `announce: true`)
+- [ ] Replay tutorial still replays **core** only
+- [ ] Events: `tour_*` / `whatsnew_*`
+
+### 8.4 Barcode scan + catalog seed
+- [ ] Census: how many `bottles.barcode` are filled
+- [ ] Shared scan sheet on **every** bottle search (Search tab + Drink picker)
+- [ ] Exact lookup → open bottle; miss → provisional add with barcode filled
+- [ ] Seed existing SKUs (script/preview; no invented codes)
+- [ ] Coach `search.barcode`; `search` event `mode: 'barcode'`
+
+### 8.5 Admin push notifications
+- [ ] Profile Notifications toggle, **default on**
+- [ ] Web Push (VAPID, server-only private key) + SW handler — needs 8.2
+- [ ] Admin: send to everyone **or** one user
+- [ ] Optional: What's new "also send as push"
+- [ ] Browser-only users stay on What's new (no fake desktop-notification strategy in v1)
+
+### 8.6 Remaining bugs
+- [ ] Everything still **open** in [BUGS.md](BUGS.md) after 8.0–8.5. High remaining first (B-23 Elo farming, B-24 store-pick RLS, B-31 SKU vs variant UI, B-58 feedback UPDATE, B-59 uploads), then medium, then low. Elo math (B-50/B-57) = ask Brian before changing.
 
 ---
 
