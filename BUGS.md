@@ -83,12 +83,10 @@ Gated: auth / RLS / env. Ask Brian before changing.
   Route now reads `SUPABASE_SERVICE_ROLE_KEY ?? SUPABASE_SERVICE_ROLE`. **Still set the correct env in Vercel** (either name now works). `delete-user/route.ts`.
 - [ ] **B-22** (high) QA admin account has a weak password on public prod. **Brian's action — cannot be done in code.**
   `claude@pourchoicesapp.com` / `grokbuild@pourchoicesapp.com` can verify/delete bottles + cascade-delete users. Rotate the password in Supabase (or delete the account) before testers arrive. Claude won't handle credentials.
-- [ ] **B-23** (high) Elo can be farmed via extra `tasting_results` inserts.
-  Trigger fires on every insert. Session owner can INSERT/UPDATE/DELETE own results. DELETE does not unwind Elo.
-  `sql/3.0-migration.sql` ~93–250
-- [ ] **B-24** (high) Store-pick "privacy" is client-side only.
-  Any authed client can `select` `bottle_variants` / the views. UI filters hide them; RLS does not.
-  `src/lib/variants.ts` · `sql/7.9-migration.sql`
+- [x] **B-23** (high) Elo could be farmed via `tasting_results` writes — **tier-1 FIXED (Claude, 2026-08-27).**
+  The user policy was `ALL` (INSERT/UPDATE/DELETE). Split into **SELECT + INSERT only** for own results (via session ownership); admins keep read; UPDATE/DELETE removed for users, killing the delete-reinsert Elo inflation and result tampering. The app only ever INSERTs (saveTasting), so no code change. `sql/b23-b24-security-migration.sql`. **Tier-2 (post-beta):** RPC-gate + rate-limit tasting writes; not done (do not rewrite the Elo trigger).
+- [x] **B-24** (high) Store-pick privacy was client-side only. **FIXED (Claude, 2026-08-27).**
+  `bottle_variants` SELECT now filters store picks server-side (`store_pick_name IS NULL OR created_by IN (my auth/public id)`); the broad `ALL` "Auth insert/update" policy (which also granted SELECT) was split into INSERT+UPDATE; and `all_bottle_details`/`all_variant_details` are now `security_invoker=true` so the viewer's RLS applies through them. Verified with `SET ROLE authenticated`: a non-creator no longer sees another user's store pick in the variant arrays; the creator does; globals unaffected. Same migration.
 
 ---
 
