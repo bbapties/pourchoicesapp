@@ -233,7 +233,7 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 - [x] B-01 Stop "tastings aren't live" copy; wire More / pour-blind to Drink
       (follow-up: Drink tab + More both offer **Have a drink** *and* **Blind tasting**)
 - [x] B-02 Helper-mode Back leak + re-shuffle
-- [ ] B-03 Default bottles flash as "+ Add a version"
+- [x] B-03 Default bottles flash as "+ Add a version"
 - [ ] B-04 My Bar stars from `default_variant_elo`
 - [ ] B-05 Persist My Bar `variant_id`; Add Back / Remove the right variant
 - [ ] B-06 Wire Tasted tab **or** hide it (don't lie with Tasted (0))

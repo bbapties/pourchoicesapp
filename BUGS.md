@@ -20,9 +20,10 @@ These ship before any new feature. Do them in this order.
   Rank → Back → handback → Back lands on helper setup (bottle → glass letters). Continue from handoff shuffles again after glasses are poured.
   `src/app/taste/DrinkClient.tsx` ~144–150, 259–276
   **Shipped:** Back is hidden on helperSetup + handback. `back()` no-ops on those steps. Helper shuffle is frozen after the first deal; changing the lineup (afterPick / "Wrong bottles? Pick again") clears it so a new deal is intentional.
-- [ ] **B-03** (high) Default bottles flash as the "+ Add a version" slide.
+- [x] **B-03** (high) Default bottles flash as the "+ Add a version" slide.
   Search/My Bar/Social build `variants` by filtering to batch/year/store-pick, so a default-only SKU opens with `vlist=[]`. While logged in the virtual add-slide becomes the whole card (no image, no Add to My Bar) until `fetchVariantsForSku` returns. Failed fetch stays stuck.
   `BottleDetailView.tsx` ~102–107, 174–198 · `SearchClient.tsx` ~143–150
+  **Shipped:** add-slide only exists when `vlist.length > 0`. Empty list shows the default bottle card (SKU fields) plus the small "+ Add a version" control — not the dashed add panel as the whole card.
 - [ ] **B-04** (high) My Bar stars/sort still use `bottles.elo_global`.
   The 3.0 trigger only writes `bottle_variants.elo_global`. Search uses variant Elo; My Bar does not. After the 1500 rebaseline, tastings will not move My Bar stars.
   `src/app/mybar/page.tsx` ~39–104 · `MyBarClient.tsx` `calcStarsFromElo`
