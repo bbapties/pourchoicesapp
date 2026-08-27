@@ -764,7 +764,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center p-3 border-b border-gray-300">
-                <Skeleton className="w-12 h-12 rounded flex-shrink-0 bg-gray-300" />
+                <Skeleton className="w-10 h-16 rounded flex-shrink-0 bg-gray-300" />
                 <div className="ml-3 flex-1 space-y-1">
                   <Skeleton className="h-4 w-3/4 bg-gray-300" />
                   <Skeleton className="h-3 w-1/2 bg-gray-300" />
