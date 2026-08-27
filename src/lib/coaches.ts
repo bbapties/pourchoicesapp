@@ -41,6 +41,21 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    id: "search.barcode",
+    title: "Scan a barcode",
+    body: "Tap the scan icon in the search bar to find a bottle by its barcode — or add it if it is new.",
+    route: "/search",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/search",
+        anchor: "search.scan",
+        caption: "Tap to scan a bottle's barcode with your camera. If we do not have it, you jump straight to adding it.",
+      },
+    ],
+  },
+  {
     id: "bottle.have_a_drink",
     title: "Have a drink",
     body: "Log a pour on any bottle — even if it is not in My Bar.",

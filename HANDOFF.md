@@ -14,6 +14,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 
 **Single next step for Claude:**
 - **Wave 1b — next is B-13** (Search interpolates the query into a PostgREST `.or()` — injection/robustness). `SearchClient.tsx` ~398–399.
+- **Barcode scanner SHIPPED** (Claude, 2026-08-27, off-list per Brian — Phase 8.4 search side): a `ScanLine` icon on the right edge of the Search bar opens a full-screen camera scanner (`BarcodeScannerSheet`, ZXing `@zxing/browser`). On a successful scan, `lookupBottleByBarcode` (`lib/barcode.ts`, matches UPC-A/EAN-13 candidate forms) opens the matching bottle, or jumps to Add Bottle with the barcode pre-filled. `ProvisionalSheet` gained a `barcode` field + `initialBarcode` prop (persists to `bottles.barcode`). New event `click/barcode_scan` + coach `search.barcode`. **Only the Search bar so far** — reusable `BarcodeScannerSheet` can be dropped into My Bar's search next. Camera needs HTTPS (prod ✓); verify on a real phone. Barcode *contract* (normalization/uniqueness) still worth aligning as barcodes get seeded.
 - **B-11 SHIPPED** (Claude, 2026-08-27): `VariantSelectSheet` store-pick queries match `created_by IN (authId, publicUserId)` → no duplicate store picks from the id mismatch.
 - **B-12 SHIPPED** (Claude, 2026-08-27): Search "my last activity" uses the ownership row (owned, else `times_had>=1`), not an unordered `[0]` → tasting-only rows no longer mislabel as "Finished".
 - **B-09 SHIPPED** (Claude, 2026-08-27): Social Mark as Empty now variant-scoped like My Bar.

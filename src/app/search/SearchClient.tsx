@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Search, Plus, ChevronDown, Check, X } from "lucide-react";
+import { Search, Plus, ChevronDown, Check, X, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
@@ -15,6 +15,8 @@ import ProvisionalSheet from "@/components/ProvisionalSheet";
 import { type BottleDetails } from "@/lib/types";
 import BottleDetailView from "@/components/BottleDetailView";
 import { isVariantVisibleToViewer } from "@/lib/variants";
+import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
+import { lookupBottleByBarcode } from "@/lib/barcode";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, type UserBottleRow } from "@/lib/userBottles";
 import { logActivity } from "@/lib/activities";
 import { logEvent, logClick } from "@/lib/events";
@@ -46,6 +48,8 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const [hasMore, setHasMore] = useState(true);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [selectedBottle, setSelectedBottle] = useState<BottleDetails | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState<string | undefined>(undefined);
 
   // Infinite scroll refs — sync guards (state updates are too slow)
   const isLoadingMoreRef = useRef(false);
@@ -391,6 +395,36 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     });
   };
 
+  // Open a bottle straight from its SKU id (used by the barcode scanner).
+  const openBottleById = async (bottleId: string) => {
+    const { data, error } = await (supabase.from("all_bottle_details") as any)
+      .select(BOTTLE_SELECT)
+      .eq("bottle_id", bottleId)
+      .maybeSingle();
+    if (error || !data) { toast.error("Couldn't open that bottle"); return; }
+    handleBottleClick(mapBottleResult(data));
+  };
+
+  // Barcode scan result: open the matching bottle, or jump to Add Bottle prefilled.
+  const handleScan = async (code: string) => {
+    setShowScanner(false);
+    const match = await lookupBottleByBarcode(code);
+    logClick("barcode_scan", {
+      userId: publicUserId,
+      surface: "/search",
+      targetId: match?.id,
+      metadata: { matched: !!match },
+    });
+    if (match) {
+      toast.success(`Found: ${match.name}`);
+      await openBottleById(match.id);
+    } else {
+      toast.message("No match — add this bottle");
+      setScannedBarcode(code);
+      setShowAddSheet(true);
+    }
+  };
+
   const searchBottles = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
       setBottles([]);
@@ -628,8 +662,17 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
             placeholder="Search bottles, distilleries, categories..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="rounded-full pl-10 h-10 text-base border-charcoal focus:border-charcoal bg-ivory text-charcoal placeholder:text-charcoal placeholder:opacity-60"
+            className="rounded-full pl-10 pr-11 h-10 text-base border-charcoal focus:border-charcoal bg-ivory text-charcoal placeholder:text-charcoal placeholder:opacity-60"
           />
+          <button
+            type="button"
+            onClick={() => setShowScanner(true)}
+            aria-label="Scan barcode"
+            data-coach="search.scan"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-charcoal rounded-full hover:bg-charcoal/10"
+          >
+            <ScanLine className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
@@ -812,11 +855,19 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         )}
       </div>
 
+      {/* Barcode scanner */}
+      <BarcodeScannerSheet
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onDetected={handleScan}
+      />
+
       {/* Provisional Add Sheet */}
       <ProvisionalSheet
         open={showAddSheet}
-        onOpenChange={setShowAddSheet}
+        onOpenChange={(o) => { setShowAddSheet(o); if (!o) setScannedBarcode(undefined); }}
         onBottleAdded={handleBottleAdded}
+        initialBarcode={scannedBarcode}
       />
 
       {/* FAB for Add Bottle */}

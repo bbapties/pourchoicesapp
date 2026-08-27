@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -34,6 +34,7 @@ const formSchema = z.object({
   name: z.string().min(1, "Bottle name is required"),
   distillery: z.string().optional(),
   category: z.string().min(1, "Please select a category"),
+  barcode: z.string().optional(),
   image: z.instanceof(File).optional(),
 });
 
@@ -43,9 +44,10 @@ interface ProvisionalSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBottleAdded?: (bottle?: any) => void;
+  initialBarcode?: string; // pre-fill when arriving from a barcode scan with no match
 }
 
-export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: ProvisionalSheetProps) {
+export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, initialBarcode }: ProvisionalSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // One-step store pick: adding a brand-new bottle can also create the user's
@@ -62,8 +64,15 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
       name: "",
       distillery: "",
       category: "Whiskey" as const,
+      barcode: "",
     },
   });
+
+  // Pre-fill the barcode when the sheet opens from a scan with no match.
+  useEffect(() => {
+    if (open) form.setValue("barcode", initialBarcode ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialBarcode]);
 
   const onSubmit = async (data: FormData) => {
     console.log("Starting bottle submission with data:", data);
@@ -87,6 +96,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
         name: data.name,
         distillery: data.distillery || null,
         category: data.category,
+        barcode: data.barcode?.trim() || null,
         verified: false, // DB column is 'verified' per schema cache error
         elo_global: 1500, // Default ELO
         created_by: user.id,
@@ -262,6 +272,25 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded }: 
                         </option>
                       ))}
                     </select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="barcode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-charcoal">Barcode (UPC)</FormLabel>
+                  <FormControl>
+                    <Input
+                      className="bg-ivory text-charcoal border-charcoal"
+                      inputMode="numeric"
+                      placeholder="e.g., 080244009236"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
