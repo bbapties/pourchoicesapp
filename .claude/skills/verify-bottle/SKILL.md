@@ -37,9 +37,9 @@ Find duplicate/near-duplicate rows (same name, or same distillery + overlapping 
 - Batch/allocated releases legitimately share one UPC across batches (e.g. Elijah Craig Barrel Proof: `096749002368` on 4 batches) — not an error; scan maps to the product line, user picks the variant. Note it; don't invent a unique code.
 
 ### 4. Image (self-host — no hotlinks)
-1. Source an **official brand asset** first (distillery site/CMS); verify the URL actually returns an image (legacy DB URLs are often dead 404s). Else clean the existing draft image.
-2. Clean: `python .claude/skills/verify-bottle/scripts/clean_image.py <in> <out.png>` — trim to bottle, center, transparent bg.
-3. Upload: `node .claude/skills/verify-bottle/scripts/upload_image.mjs <out.png> bottle-images variants/<variant_id>/front.png` (from repo root). Bucket `bottle-images` exists (public). Prints the public URL. (Uploading a file is harmless even if the suggestion is later rejected — worst case an orphan file.)
+1. Source the best **official brand asset**: don't just reuse the DB's URL (often a dead 404). Actively **search the brand's own site** — many are Shopify (`cdn/shop/files/...`), where the browser tools can read the real `<img>`/`srcset` and you can pull a high-res size (e.g. `_2048x`). Official marketing images are fine even with text around the bottle — rembg isolates the bottle. Fall back to the existing draft only if no official asset exists.
+2. Clean: `python .claude/skills/verify-bottle/scripts/clean_image.py <in> <out.png> [--crop L,T,R,B]` — uses **rembg** (ML) to isolate the bottle from ANY background, then tight-trims + centers on transparency. Already-transparent PNGs skip rembg. `--crop` first (source px) to drop flanking marketing text before removal. rembg is installed; if missing: `python -m pip install rembg onnxruntime` (first run downloads a ~1GB model).
+3. Upload: `node .claude/skills/verify-bottle/scripts/upload_image.mjs <out.png> bottle-images variants/<variant_id>/front.png` (from repo root). Bucket `bottle-images` exists (public). Prints the public URL. (Uploading is harmless even if the suggestion is later rejected — worst case an orphan file.)
 4. Emit a `frontimage_url` suggestion pointing at that URL.
 
 ### 5. Hand off for review
