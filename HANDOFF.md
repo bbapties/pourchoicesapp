@@ -8,7 +8,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `ac1ff14` (Claude: verify-bottle skill + QUEUE_SPEC). Grok's last app commit: `fa4a0b1` (B-06 Tasted tab). **Everything is on origin/MVP-v3.**
+- **Tip:** `8536f00` (Claude: queue enhancements — barcode/extras editable + suggested merge/delete). Grok's last app commit: `fa4a0b1` (B-06 Tasted tab). **Everything is on origin/MVP-v3.**
 - **Current phase:** **Phase 8 — Pre-beta cut.** Stories: [PHASE8.md](PHASE8.md). Bugs: [BUGS.md](BUGS.md). Checklist: ROADMAP Phase 8.
 - **Switching to Claude** for the next coding session. Grok stopped after Wave 1 B-01…B-06.
 
@@ -17,7 +17,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - After B-07: **B-08** (signup username validation + no orphan Auth user). Then Wave 1b (B-09…B-17) unless Brian reorders.
 - **Do not start** PWA / tutorial / barcode / push (8.2–8.5), 3.4 group, or B-74 until Wave 1 minimum (B-01…B-08) is done, unless Brian says so.
 - **Gated / ask first:** Wave 0 (B-18…B-22 RLS/env/QA password), B-07 RPC, B-74 id cleanup. Auth/schema = Brian's go, snapshot first.
-- Side lane (not next): `.claude/skills/verify-bottle/QUEUE_SPEC.md` — two app gaps (barcode/extras as editable fields; `__merge__`/`__delete__` in the suggest-edit queue). Data-lane skill already exists. Do **after** B-07/B-08 unless Brian pulls it forward.
+- Side lane — **DONE (`8536f00`, Brian pulled forward)**: the two QUEUE_SPEC gaps are shipped — `barcode`/`extras` are first-class editable fields, and `__merge__`/`__delete__` structural suggestions ride the admin queue (approve = guarded hard-delete of the loser bottle, blocked if owned/in a tasting; confirm dialog + red intent label). tsc/build/lint green; structural delete+cascade verified via rolled-back DB dry-run. **Blanton's is filed as a live test:** 6 pending suggestions from Claude (`submission_group b1a70000-…0001`) — 5 field enrichments on keeper `997fd174` (barcode/extras/nose/palate/finish) + 1 `__merge__` removing loser `75a83cd3`. Awaiting Brian's review/approve in Admin ▸ Bottles, then his `verified` flip. Blanton's **image deferred** (no live official transparent PNG; draft has a complex background — needs a clean source or an ML bg-removal tool like `rembg`, ask before installing).
 
 **Why Phase 8 exists (Brian, 2026-08-27):** before inviting 10–15 testers, (1) log the review findings as bugs and work them, (2) barcode scan on every bottle search + seed barcodes, (3) rewrite new-user tutorial + admin-controlled What's new, (4) PWA install prompt (Android + iOS, strongly suggest install), (5) admin push to all or one user (Profile notifications default on). Order is in PHASE8.md — first-session path is URL → install → signup → tour → search/drink, so trust bugs then PWA then tutorial then barcode then push.
 **TESTING NOTE:** Grok uses the **Grok QA account** (`grokbuild@pourchoicesapp.com` / username `GrokBuildAdmin` / role `admin`). Claude uses `claude@pourchoicesapp.com`. Ask Brian for the password rather than committing it. Do NOT test on Brian's Lakehouse account. A real tasting moves **shared global Elo** — after QA, delete the test session and reset touched `bottle_variants.elo_global` (+ QA `user_bottles`) to 1500. Both QA admins are temporary/weak-password; **B-22** still applies (rotate or demote before the public invite if testers could guess them).
