@@ -85,8 +85,10 @@ Indexes: `(user_id, created_at)`, `(event_type, created_at)`, `(session_id)`. RL
 - `error` — uncaught JS errors + unhandled promise rejections (`EventTracker` window listeners).
 - `search` — `metadata = { query, result_count, mode }` (`SearchClient.searchBottles`). The
   highest-value event: feeds a future "recent searches" + discovery insights.
-- `click` — `bottle_open` (SearchClient; not otherwise in `activities`) and `have_a_drink` intent
-  (BottleDetailView). More clicks can be added anytime (fail-open + jsonb).
+- `click` — `bottle_open` (SearchClient; not otherwise in `activities`), `have_a_drink` intent
+  (BottleDetailView; `pour_type` in metadata), and `blind_tasting` (BottleDetailView Have-a-drink →
+  Blind or More → Blind tasting; metadata `{ source: 'pour'|'more', variant_id }`). Blind does
+  **not** write an `activities.drank` row — it opens `/taste` with the bottle pre-seeded.
 
 Add more events freely as you build (see the standing rule). Not yet wired: filters/sorts,
 coach/tour interactions, add-to-bar click (its success is already in `activities`).

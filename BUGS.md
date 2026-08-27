@@ -12,9 +12,10 @@ Status key: **open** · **confirm** (must check live DB / Vercel, don't "fix" un
 
 These ship before any new feature. Do them in this order.
 
-- [ ] **B-01** (high) Blind-tasting copy is stale on the bottle card.
+- [x] **B-01** (high) Blind-tasting copy is stale on the bottle card.
   Pour sheet, More sheet, and post-pour toast still say "aren't live yet" / "Not live yet". More → Blind tasting only toasts; Have a drink → Blind logs a pour and does not open `/taste`. Real flow is the Drink tab.
   `src/components/PourSheet.tsx` ~10 · `MoreSheet.tsx` ~16–44 · `BottleDetailView.tsx` ~467–468, 1059–1062
+  **Shipped:** copy updated; Have a drink → Blind and More → Blind tasting open `/taste?bottle=&variant=` with the bottle pre-seeded (no `drank` activity). DrinkClient lands on the mode step with that bottle already in the lineup.
 - [ ] **B-02** (high) Guest-helper Back leaks the secret mapping, then re-shuffles.
   Rank → Back → handback → Back lands on helper setup (bottle → glass letters). Continue from handoff shuffles again after glasses are poured.
   `src/app/taste/DrinkClient.tsx` ~144–150, 259–276

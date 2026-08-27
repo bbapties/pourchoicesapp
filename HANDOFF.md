@@ -8,11 +8,11 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** `450fb10` (Phase 8 docs). App tip unchanged. This session also **created the Grok QA admin** on prod (no app-code change).
+- **Last commit:** pending this session's B-01. App was `b452aee` (Grok QA docs) before that.
 - **Current phase:** **Phase 8 — Pre-beta cut.** Phase 3 core loop (3.0–3.3) is shipped; 3.4 group + 3.5 Social `tasted` are **paused out of the beta cut**. Full stories + order: **[PHASE8.md](PHASE8.md)**. Bug queue: **[BUGS.md](BUGS.md)**. Checklist: **ROADMAP Phase 8**.
 
 **Single next step for the incoming agent:**
-- **Wave 0 confirms, then Wave 1 trust bugs, starting at B-01** (stop saying tastings aren't live; wire More / pour-blind to `/taste`). Do not start PWA / tutorial / barcode / push until Wave 1's minimum (B-01…B-08) is done, unless Brian reorders.
+- **B-01 is done** (this session). Next Wave 1 item is **B-02** (helper-mode Back leak + re-shuffle). Do not start PWA / tutorial / barcode / push until Wave 1's minimum (B-01…B-08) is done, unless Brian reorders.
 - **Wave 0 (ask Brian, don't poke auth/RLS/env without a go):** B-18 users-table anon read, B-19 role self-update, B-20 `delete_user_cascade` admin check, B-21 Vercel service-role env name, B-22 QA password rotate, plus prod-verify 3.0–3.3 on www.pourchoicesapp.com.
 - **3.4 / 3.5 Social `tasted` schema** still need Brian's go but are **not** the next build. Tasted **tab** (B-06) is pulled into Wave 1 so testers aren't shown `Tasted (0)` after a real tasting.
 
@@ -31,8 +31,8 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 **Product surface (so you do not rebuild what exists):**
 - Nav: Search / Social / My Bar / Drink / Profile (+ Admin). Drink = `/taste` (solo self-serve + guest-helper shipped). Login → `/mybar`. Profile = username/email/replay tutorial/feedback/sign out. Join-a-blind is a stub (3.4).
 - Bottle detail: carousel over **default + variants** (swipe / arrows / dots). One variant → no pager. Fields that swap: images, Elo, verified, age, proof, notes, tasting notes. SKU identity (name, distillery, category) stays. Front/Back + zoom live.
-- Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / blind. **B-01:** blind still toasts "not live" and does not open Drink — fix in Phase 8.1. Writes `activities` with optional `variant_id` of the visible carousel slide.
-- Actions (7.6): one state-dependent primary + a `MoreSheet`. **none** → Add to My Bar (primary) + Have a drink. **owned** → Have a drink (primary) + More (Add another / Mark as Empty / Blind tasting stub / Remove). **empty** → Add Back (primary) + Have a drink + More (Remove). **B-01:** More → Blind tasting is still a stub toast. Suggest-edit pencil stays separate (top bar). Mark as Empty = soft delete (`currently_owned=false`, kept in history). Add Back = restock (`onAddToBar`), which bumps `times_had`.
+- Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / **blind**. Neat/rocks/mixed write `activities.drank` (optional `variant_id` of the visible carousel slide). **Blind (B-01) opens `/taste?bottle=&variant=`** with that bottle pre-seeded — it does **not** log a pour.
+- Actions (7.6): one state-dependent primary + a `MoreSheet`. **none** → Add to My Bar (primary) + Have a drink. **owned** → Have a drink (primary) + More (Add another / Mark as Empty / **Blind tasting → Drink, pre-seeded** / Remove). **empty** → Add Back (primary) + Have a drink + More (Remove). Suggest-edit pencil stays separate (top bar). Mark as Empty = soft delete (`currently_owned=false`, kept in history). Add Back = restock (`onAddToBar`), which bumps `times_had`.
 - Suggest an edit (7.8): the top-bar pencil enters **inline edit-mode** over the visible version's fields; image area = upload target. Per-field gate: mine+unverified applies directly; else pending → admin. Append-only `suggested_edits`. Under-review banner. Admin reviews **inside the Bottles queue** (`BottlesTab`) with per-field Approve/Reject + optional reason; approve keeps verified.
 - Add a variant (7.9): the card's second contribution action. **Global variant** (batch/release-year, everyone sees, `verified=false` → admin queue) vs **store pick** (private to creator). Save choice on both: **database-only** (creates the version, logs `added_to_db`, no `user_bottles`) vs **add-to-bar**. Entry points: a virtual **"+ Add a version" carousel slide** (every bottle swipeable now), an explicit "+ Add a version" control by the pager, and a More-sheet "Add a variant" row. Flow reuses `VariantSelectSheet` with `mode="contribute"`. `AddVariantSheet.tsx` is **deleted**.
 - **Store-pick scoping (7.9):** store picks are private to their creator — everywhere variants show (detail carousel `fetchVariantsForSku`, All-Variants leaderboard + count in `SearchClient`, the "N versions" badge) they filter `store_pick_name IS NULL OR created_by IN (my authId, my publicId)`. Matching **both** ids works around the `created_by` inconsistency.
@@ -81,6 +81,13 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-27 — Grok (B-01: wire bottle-card Blind to Drink)
+- Stale "aren't live yet" copy removed from PourSheet, MoreSheet, and the post-pour / More toasts.
+- Have a drink → Blind and More → Blind tasting now `router.push('/taste?bottle=&variant=')`. DrinkClient fetches that SKU (not limited to the 300-name window), lands on the **mode** step with the bottle already in the lineup ("Starting with X. Pick 1–4 more after this.").
+- Blind does **not** write `activities.drank` (would show on Social before they rank). Neat/rocks/mixed still log a pour + star prompt.
+- Click event `blind_tasting` `{ source: 'pour'|'more', variant_id }`.
+- Next: **B-02** helper-mode Back leak.
 
 ### 2026-08-27 — Grok (Grok QA admin account on prod)
 - Brian asked for a Grok equivalent of the Claude QA admin so prod catalog/admin work is attributable.
