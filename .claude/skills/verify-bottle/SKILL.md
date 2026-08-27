@@ -1,62 +1,61 @@
 ---
 name: verify-bottle
-description: Verify a Pour Choices bottle end-to-end — research & enrich real data, dedupe rows, validate/add the barcode, self-host a clean product image, then flip verified=true. Use when Brian says "verify <bottle>", "verify the next bottle", or works the bottle data-cleanup lane.
+description: Verify a Pour Choices bottle end-to-end — research & enrich real data, dedupe rows, validate/add the barcode, self-host a clean product image — and file it all as pending suggested_edits for Brian's in-app review. Use when Brian says "verify <bottle>", "verify the next bottle", or works the bottle data-cleanup lane.
 ---
 
 # verify-bottle
 
-Turns one **unverified** bottle in the Pour Choices DB into clean, trustworthy, `verified = true` data. This is the data-only lane (runs parallel to Grok's code lane by Brian's explicit OK — the lanes don't overlap). Read `AGENTS.md` guardrails first.
+Turns one **unverified** bottle into clean, trustworthy data — but instead of writing the live tables directly, it files every change as a **pending `suggested_edits` row for Brian to review and approve in the app**. This is the data-only lane (runs parallel to Grok's code lane by Brian's explicit OK — the lanes don't overlap). Read `AGENTS.md` guardrails first.
 
 ## Golden rules
+- **Review-gated, not direct.** All changes are inserted as `status='pending'` `suggested_edits` rows, `submitted_by = 7063602c-1604-4d04-aa59-2b74fdd5af6d` (Claude Code Agent, public.users), grouped by one `submission_group` UUID per bottle. Brian approves in the admin queue; the app applies them. Do NOT write `bottles`/`bottle_variants` directly (the Buffalo Trace pilot on 2026-08-27 was the one-time exception).
 - **Never trust existing field data** — the Nov-2025 seed import is full of corruption (see Known landmines). Re-derive from research.
-- **Snapshot before every write.** Each write script snapshots the affected rows into a `backup_*` schema. Keep it that way.
-- **Destructive SQL runs via the bundled file-runner**, not inline — the auto-mode classifier blocks raw DELETE/UPDATE in Bash. Run from the repo root so `.env.local` (with `DATABASE_URL`) resolves. `scripts/_psql.mjs` in the repo is for read-only queries.
-- **Barcode-only ≠ verified.** All five steps must pass before flipping `verified`.
-- Bottle data lives on TWO tables: `bottles` and `bottle_variants` (variant-first model; images + per-release notes live on the variant, `bottles_id` FK). Fix both.
+- **The `verified` flip is Brian's, not ours.** Approving suggestions does not set `verified`. Brian flips `verified=true` as his explicit sign-off after reviewing a bottle.
+- Bottle data lives on TWO tables: `bottles` (identity) and `bottle_variants` (per-release: proof, age, notes, images; `bottles_id` FK). Route each field to the right one.
+- SQL: read-only via repo `scripts/_psql.mjs`; inserts via the bundled `scripts/run_sql_file.mjs` (snapshots + transactional; run from repo root so `.env.local` resolves).
 
 ## Ownership / id quirk (important)
-`public.users.id` ≠ `auth.users.id` for the same person (linked by email, not id).
-- `bottles.created_by/updated_by` and `bottle_variants.updated_by` FK → **auth.users**. Brian = `d65ef6f6-…` there. Never set these to a `public.users` id (FK fails).
-- `events.user_id` FK → **public.users**. Brian (The_Lake_House) = `7878be89-…`; PourChoicesOG (real user) = `dbaf1f8d-…`.
+`public.users.id` ≠ `auth.users.id` (linked by email). `bottles.created_by/updated_by` + `bottle_variants.updated_by` FK → **auth.users** (Brian = `d65ef6f6`). `events.user_id` + `suggested_edits.submitted_by/reviewed_by` FK → **public.users** (Claude = `7063602c`, Brian/The_Lake_House = `7878be89`, PourChoicesOG = `dbaf1f8d`).
 
-## The pipeline
+## Field → target table routing (matches src/lib/suggestedEdits.ts)
+- **identity → `bottles`**: name, distillery, category, style, volume, **barcode**, **extras**
+- **variant → `bottle_variants`**: proof, age, nose, palate, finish, batch, release_year, frontimage_url, backimage_url
+
+`barcode` and `extras` are not yet first-class in the app's editable-field UI — file them anyway (the generic mechanism carries them); see QUEUE_SPEC.md for the Grok work to label them nicely.
+
+## The pipeline (each step emits pending suggestions)
 
 ### 1. Research & enrich
-Pull the real product facts (WebSearch/WebFetch): proof + ABV, age statement, mashbill/grain bill, volume, distillery, and **official tasting notes** (prefer the distillery's own site/CMS). Correct `category` (Bourbon/Rye/Whiskey/Tequila/…), `style`, `name` (full official label). Store mashbill etc. in `extras` (JSON-as-text, matching existing format).
+Pull real facts (WebSearch/WebFetch): proof+ABV, age, mashbill/grain bill, volume, distillery, official tasting notes (prefer the distillery's own site/CMS). For each field whose verified value differs from the current value, emit a suggestion (old_value = current, new_value = verified). Correct category/style/name. Put mashbill etc. in `extras` (JSON-as-text).
 
-### 2. Dedupe
-Search for duplicate/near-duplicate rows (same name, or same distillery + overlapping name). If a true duplicate exists, pick ONE keeper (prefer the row with a valid barcode and/or one that's in a real user's `user_bottles`), **fold the better fields from the loser into the keeper**, then delete the loser + its variant(s) + any backfilled `bottle_added` event whose `target_id` = the loser variant. Check `user_bottles` / `tasting_*` don't reference the loser first.
+### 2. Dedupe → suggested delete/merge
+Find duplicate/near-duplicate rows (same name, or same distillery + overlapping name). If a true duplicate exists, file a **suggested merge** (keeper = the row with a valid barcode and/or one in a real user's `user_bottles`): encode as a `suggested_edits` row with `field='__merge__'`, `bottle_id=` loser, `old_value=` loser id, `new_value=` keeper id. For a pure junk row, file `field='__delete__'`, `new_value=` reason. These render as "Suggested merge/delete" and are applied by the handler described in QUEUE_SPEC.md (Grok). Never delete rows directly.
 
 ### 3. Barcode
-- If present: validate it's a numeric UPC-A (12) / EAN-13 (13) with a correct check digit, AND confirm via research it maps to THIS exact product + size. Enforce uniqueness across `bottles`.
-- If missing: research the real 750ml UPC and add it.
-- Batch/allocated releases (e.g. Elijah Craig Barrel Proof) legitimately **share one UPC across batches** — that's not an error; the scan maps to the product line and the user picks the variant. Note it; don't force a fake unique code.
-- Coordinate with Grok on the barcode storage/normalization contract (canonical form the column stores + scanner normalizes to; a UNIQUE constraint; a `lookupByBarcode()` helper). Test mapping by running the exact-match query directly.
+- Present: validate numeric UPC-A(12)/EAN-13(13) + correct check digit, confirm via research it maps to THIS product + size, enforce uniqueness across `bottles`. If wrong, emit a `barcode` suggestion.
+- Missing: research the real 750ml UPC, emit a `barcode` suggestion.
+- Batch/allocated releases legitimately share one UPC across batches (e.g. Elijah Craig Barrel Proof: `096749002368` on 4 batches) — not an error; scan maps to the product line, user picks the variant. Note it; don't invent a unique code.
 
 ### 4. Image (self-host — no hotlinks)
-Every legacy image is a fragile external hotlink. Replace with a self-hosted, background-free, centered shot.
-1. Source an **official brand asset** first (distillery site/CMS). Verify the URL actually returns an image (legacy DB URLs are often dead 404s). If none found by legal means, fall back to cleaning the existing draft image.
-2. Clean it: `scripts/clean_image.py <in> <out>` — trims to the bottle, centers, keeps/*makes* transparent background (official PNGs are usually already transparent; Pillow handles trim+pad).
-3. Upload: `node scripts/upload_image.mjs <cleaned.png> bottle-images variants/<variant_id>/front.png` (run from repo root). Bucket `bottle-images` already exists (public). Prints the public URL.
-4. Set that URL on the variant's `frontimage_url` (and the bottle's).
+1. Source an **official brand asset** first (distillery site/CMS); verify the URL actually returns an image (legacy DB URLs are often dead 404s). Else clean the existing draft image.
+2. Clean: `python .claude/skills/verify-bottle/scripts/clean_image.py <in> <out.png>` — trim to bottle, center, transparent bg.
+3. Upload: `node .claude/skills/verify-bottle/scripts/upload_image.mjs <out.png> bottle-images variants/<variant_id>/front.png` (from repo root). Bucket `bottle-images` exists (public). Prints the public URL. (Uploading a file is harmless even if the suggestion is later rejected — worst case an orphan file.)
+4. Emit a `frontimage_url` suggestion pointing at that URL.
 
-### 5. Verify
-Only after 1–4: `UPDATE ... SET verified = true, updated_at = now()` on the bottle AND its default variant. Confirm with a read-back.
-
-## How to run SQL (from repo root)
-- Read-only: `node scripts/_psql.mjs "SELECT …"`
-- Writes (snapshotted, transactional): write a `.sql` file, then
-  `node .claude/skills/verify-bottle/scripts/run_sql_file.mjs <file.sql>`
+### 5. Hand off for review
+Report the `submission_group` id and a summary of every suggested change (field, old→new, plus any merge/delete). Brian reviews in the admin queue, approves, then flips `verified=true` on the bottle + default variant as his sign-off.
 
 ## Known landmines (from the 2026-08-27 sweep)
-- **Corrupted notes:** the whole note was crammed into `nose` as `"<nose>. Palate:/Taste: <p>. Finish: <f>."`. The 36 parseable ones were bulk-decomposed 2026-08-27; new imports may reintroduce it.
-- **Missing barcodes:** ~27 bottles had none.
-- **Shared barcode:** `096749002368` on 4 Elijah Craig Barrel Proof batches (by design).
+- **Corrupted notes:** whole note crammed into `nose` as `"<nose>. Palate:/Taste: <p>. Finish: <f>."` — the 36 parseable ones were bulk-decomposed 2026-08-27; new imports may reintroduce it.
+- **Missing barcodes:** ~27 bottles had none. **Shared barcode:** `096749002368` on 4 Elijah Craig Barrel Proof batches (by design).
 - **Name-variant pairs to judge:** Blanton's Original vs Blanton's Single Barrel; Wild Turkey 101 vs 101 8-Year-Old.
 - **All images hotlinked**, many dead. Self-host as you verify.
 
-## Definition of done
-Single canonical row · correct category/style/name/proof/age/volume · clean split nose/palate/finish · enriched `extras` · validated unique (or intentionally shared) barcode · self-hosted transparent centered image · `verified = true` on bottle + variant · read-back confirms · snapshot exists.
+## Definition of done (per bottle)
+One pending `submission_group` covering: corrected identity (name/category/style/volume) · clean split nose/palate/finish · proof/age · enriched extras · validated barcode · self-hosted image URL · any needed merge/delete — all as reviewable old→new rows. Brian's approval + `verified` flip completes it.
+
+## Dependencies on Grok (see QUEUE_SPEC.md)
+`barcode`/`extras` as first-class editable fields, and handler/UI support for `__merge__`/`__delete__` suggestions. Until shipped, those rows are visible in the queue but not one-click applicable.
 
 ## Reference: pilot
-Buffalo Trace Kentucky Straight Bourbon (`4256976f`) was verified end-to-end on 2026-08-27 as the template for this skill.
+Buffalo Trace Kentucky Straight Bourbon (`4256976f`) verified end-to-end 2026-08-27 as the template (direct-write, pre-review-gate).
