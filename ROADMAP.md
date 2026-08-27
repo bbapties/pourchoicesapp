@@ -13,6 +13,7 @@
 
 ## Dev / QA accounts
 - **Claude QA account** — `claude@pourchoicesapp.com` / role `admin`. Dedicated account so Claude's QA and bottle/variant adds are attributable (`created_by`) and Claude can exercise admin screens. **Temporary — delete once the app is more built.** Weak password by design; never grant it anything the account shouldn't touch beyond admin, and treat it as compromisable on public prod.
+- **Grok QA account** — `grokbuild@pourchoicesapp.com` / username `GrokBuildAdmin` / role `admin`. Same deal for Grok (this session). Created 2026-08-27 so catalog/admin actions Grok performs in prod are attributable. **Temporary — delete after beta.** Weak password by design; treat as compromisable on public prod. Password is **not** stored in git — Brian has it; Grok should ask rather than commit it.
 
 ---
 

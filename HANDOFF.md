@@ -8,7 +8,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** `b014b6c` (Phase 3 docs) was the app/docs tip at the start of this Grok session. This session is **docs only** (Phase 8 plan + bug queue) — no app code.
+- **Last commit:** `450fb10` (Phase 8 docs). App tip unchanged. This session also **created the Grok QA admin** on prod (no app-code change).
 - **Current phase:** **Phase 8 — Pre-beta cut.** Phase 3 core loop (3.0–3.3) is shipped; 3.4 group + 3.5 Social `tasted` are **paused out of the beta cut**. Full stories + order: **[PHASE8.md](PHASE8.md)**. Bug queue: **[BUGS.md](BUGS.md)**. Checklist: **ROADMAP Phase 8**.
 
 **Single next step for the incoming agent:**
@@ -17,7 +17,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - **3.4 / 3.5 Social `tasted` schema** still need Brian's go but are **not** the next build. Tasted **tab** (B-06) is pulled into Wave 1 so testers aren't shown `Tasted (0)` after a real tasting.
 
 **Why Phase 8 exists (Brian, 2026-08-27):** before inviting 10–15 testers, (1) log the review findings as bugs and work them, (2) barcode scan on every bottle search + seed barcodes, (3) rewrite new-user tutorial + admin-controlled What's new, (4) PWA install prompt (Android + iOS, strongly suggest install), (5) admin push to all or one user (Profile notifications default on). Order is in PHASE8.md — first-session path is URL → install → signup → tour → search/drink, so trust bugs then PWA then tutorial then barcode then push.
-**TESTING NOTE:** use the **Claude QA account** for UI tests (`claude@pourchoicesapp.com`; login = email + password — see the `claude-qa-account` memory). Do NOT test on Brian's Lakehouse account. A real tasting moves **shared global Elo** — after QA, delete the test session and reset touched `bottle_variants.elo_global` (+ QA `user_bottles`) to 1500. **B-22:** rotate/demote this account's password before testers.
+**TESTING NOTE:** Grok uses the **Grok QA account** (`grokbuild@pourchoicesapp.com` / username `GrokBuildAdmin` / role `admin`). Claude uses `claude@pourchoicesapp.com`. Ask Brian for the password rather than committing it. Do NOT test on Brian's Lakehouse account. A real tasting moves **shared global Elo** — after QA, delete the test session and reset touched `bottle_variants.elo_global` (+ QA `user_bottles`) to 1500. Both QA admins are temporary/weak-password; **B-22** still applies (rotate or demote before the public invite if testers could guess them).
 
 **⚠️ Phase 3 — what is LIVE on the prod DB right now (from Story 3.0, applied 2026-08-26):**
 - **The Elo engine is a Supabase trigger** (`trig_update_elo_after_session` AFTER INSERT on `tasting_results`, fn `update_elo_for_session()`), NOT app code. It was EXTENDED to be **variant-level**: personal Elo → `user_bottles.elo` keyed per (user, variant); global Elo → `bottle_variants.elo_global`, with **store-pick global points rolling up to the parent SKU's default variant** (store pick's own global stays put; personal stays on the store pick). Flat **K=32**; upset credit via the expected-score term; win-rate dampener over the **last N head-to-heads of that specific pair** (personal 10 / global 20). The trigger uses a `new_results` transition table → the flow **must insert all pairwise rows for a session in ONE INSERT**. SQL: `sql/3.0-migration.sql` (re-runnable) + `sql/3.0-reset.sql` (one-time, already run) + `sql/3.0-snapshot.sql` (rollback).
@@ -81,6 +81,13 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-27 — Grok (Grok QA admin account on prod)
+- Brian asked for a Grok equivalent of the Claude QA admin so prod catalog/admin work is attributable.
+- Created `grokbuild@pourchoicesapp.com` / username `GrokBuildAdmin` / role `admin` / `seen_coach_ids={core.done}`. Login verified. Password not in git.
+- Username is `GrokBuildAdmin` (no spaces) — Profile rules are 3–20 `[A-Za-z0-9_-]`; "Grok Build Amdmin" would fail later edits. Typo Amdmin → Admin.
+- Brian: Drink flow was only stepped through; Elo + star ratings not really verified. Treat Phase 3 as shipped-but-lightly-tested; Wave 1 + a real tasting QA on this account still needed.
+- Next unchanged: Wave 0 confirms, then B-01.
 
 ### 2026-08-27 — Grok (Phase 8 plan + bug queue; no app code)
 - Cold session: read AGENTS/HANDOFF/ROADMAP/BACKLOG + Phase 3 plan, then reviewed the app (tastings/Elo, collection/search/detail, auth/admin). Git tip `b014b6c` on `MVP-v3`.
