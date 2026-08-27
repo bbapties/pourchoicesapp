@@ -112,12 +112,17 @@ export default function SocialClient() {
 
     let row: UserBottleRow | null = null;
     if (publicUserId) {
-      const { data: ub } = await supabase
+      // A (user, bottle) can now have multiple variant rows; prefer the ownership
+      // row (owned, then finished/was-owned) over tasting-only rows.
+      const { data: ubRows } = await supabase
         .from("user_bottles")
         .select("currently_owned, variant_id, times_had, created_at, updated_at")
         .eq("user_id", publicUserId)
         .eq("bottle_id", bottleId)
-        .maybeSingle();
+        .order("currently_owned", { ascending: false })
+        .order("times_had", { ascending: false })
+        .limit(1);
+      const ub = ubRows?.[0];
       if (ub) {
         row = {
           currently_owned: ub.currently_owned,
@@ -131,7 +136,7 @@ export default function SocialClient() {
 
     setSelectedRow(row);
     setSelectedOwned({
-      inCollection: !!row,
+      inCollection: !!row && (row.currently_owned || (row.times_had ?? 0) >= 1),
       currentlyOwned: !!row?.currently_owned,
     });
     setSelectedBottle(mapDetail(data, row));
@@ -142,8 +147,7 @@ export default function SocialClient() {
     const result = await addOrRestockUserBottle({
       userId: publicUserId,
       bottleId,
-      variantId,
-      existing: selectedRow,
+      variantId: variantId ?? selectedRow?.variant_id ?? null,
     });
     if ("error" in result) {
       toast.error("Failed to add to My Bar");
@@ -169,7 +173,8 @@ export default function SocialClient() {
       .from("user_bottles")
       .update({ currently_owned: false, updated_at: new Date().toISOString() })
       .eq("user_id", publicUserId)
-      .eq("bottle_id", bottleId);
+      .eq("bottle_id", bottleId)
+      .eq("currently_owned", true);
     if (error) { toast.error("Failed to update"); return; }
     await logActivity({ userId: publicUserId, bottleId, action: "finished" });
     setSelectedRow({ ...selectedRow, currently_owned: false, updated_at: new Date().toISOString() });
@@ -180,7 +185,7 @@ export default function SocialClient() {
 
   const handleDeleteFromBar = async (bottleId: string) => {
     if (!publicUserId) return;
-    const result = await removeUserBottle({ userId: publicUserId, bottleId });
+    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: selectedRow?.variant_id ?? null });
     if (result.error) { toast.error("Failed to remove"); return; }
     setSelectedRow(null);
     setSelectedOwned({ inCollection: false, currentlyOwned: false });

@@ -164,14 +164,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const result = await addOrRestockUserBottle({
       userId: publicUserId,
       bottleId,
-      variantId,
-      existing: existingRow
-        ? {
-            currently_owned: !!rawOwned.find(r => r.bottle_id === bottleId),
-            variant_id: existingRow.variant_id ?? null,
-            times_had: existingRow.times_had ?? 1,
-          }
-        : null,
+      variantId: variantId ?? existingRow?.variant_id ?? null,
     });
     if ("error" in result) {
       toast.error("Failed to add to My Bar");
@@ -196,11 +189,14 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   }, [publicUserId, rawEmpty, rawOwned]);
 
   const handleToggleOwnership = useCallback(async (bottleId: string) => {
+    // Mark as Empty: only flip currently-owned rows -> finished. Scoping to
+    // currently_owned = true leaves tasting-only rows (times_had = 0) untouched.
     const { error } = await supabase
       .from('user_bottles')
       .update({ currently_owned: false, updated_at: new Date().toISOString() })
       .eq('user_id', publicUserId)
-      .eq('bottle_id', bottleId);
+      .eq('bottle_id', bottleId)
+      .eq('currently_owned', true);
 
     if (error) { toast.error("Failed to update"); return; }
 
@@ -220,14 +216,16 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   }, [publicUserId, rawOwned]);
 
   const handleDeleteFromBar = useCallback(async (bottleId: string) => {
-    const result = await removeUserBottle({ userId: publicUserId, bottleId });
+    // Scope removal to the owned variant so tasting-only rows keep their Elo.
+    const ownedRow = rawOwned.find(r => r.bottle_id === bottleId) || rawEmpty.find(r => r.bottle_id === bottleId);
+    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: ownedRow?.variant_id ?? null });
     if (result.error) { toast.error("Failed to remove"); return; }
 
     setRawOwned(prev => prev.filter(r => r.bottle_id !== bottleId));
     setRawEmpty(prev => prev.filter(r => r.bottle_id !== bottleId));
     setSelectedBottle(null);
     toast.success("Removed from collection");
-  }, [publicUserId]);
+  }, [publicUserId, rawOwned, rawEmpty]);
 
   // Filter dropdown handlers
   const filterActive = !!(filter.field && filter.value);

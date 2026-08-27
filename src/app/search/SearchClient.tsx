@@ -315,7 +315,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       const skuId = bottle.bottleId ?? bottle.id; // collection is tracked at the SKU level
       return {
         ...bottle,
-        inCollection: skuId in userBottlesMap,
+        // "In collection" = an OWNERSHIP row exists (owned now, or finished/was-owned).
+        // Tasting-only rows (times_had = 0) do not count as being in the collection.
+        inCollection: userBottlesMap[skuId]?.some(r => r.currently_owned || (r.times_had ?? 0) >= 1) ?? false,
         currentlyOwned: userBottlesMap[skuId]?.some(r => r.currently_owned) ?? false,
       };
     });
@@ -478,12 +480,11 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const handleAddToBar = useCallback(async (bottleId: string, variantId?: string | null) => {
     if (!publicUserId) { toast.error("Not logged in"); return; }
 
-    const existing = userBottlesMap[bottleId]?.[0] ?? null;
+    const ownedRow = userBottlesMap[bottleId]?.find(r => r.currently_owned || (r.times_had ?? 0) >= 1);
     const result = await addOrRestockUserBottle({
       userId: publicUserId,
       bottleId,
-      variantId,
-      existing,
+      variantId: variantId ?? ownedRow?.variant_id ?? null,
     });
     if ("error" in result) {
       toast.error("Failed to add to My Bar");
@@ -491,16 +492,20 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     }
 
     const now = new Date().toISOString();
-    setUserBottlesMap(prev => ({
-      ...prev,
-      [bottleId]: [{
+    const resolvedVariant = variantId ?? ownedRow?.variant_id ?? null;
+    setUserBottlesMap(prev => {
+      const rows = prev[bottleId] ? [...prev[bottleId]] : [];
+      const idx = rows.findIndex(r => r.variant_id === resolvedVariant);
+      const nextRow: UserBottleRow = {
         currently_owned: true,
-        variant_id: variantId ?? existing?.variant_id ?? null,
+        variant_id: resolvedVariant,
         times_had: result.timesHad,
-        created_at: existing?.created_at ?? now,
+        created_at: idx >= 0 ? rows[idx].created_at ?? now : now,
         updated_at: now,
-      }],
-    }));
+      };
+      if (idx >= 0) rows[idx] = nextRow; else rows.push(nextRow);
+      return { ...prev, [bottleId]: rows };
+    });
     toast.success("Added to My Bar!");
   }, [publicUserId, userBottlesMap]);
 
@@ -509,15 +514,21 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     const rows = userBottlesMap[bottleId];
     if (!rows?.length) return;
 
-    // Toggle the first (no-variant) row as the primary ownership indicator
-    const primaryRow = rows.find(r => r.variant_id === null) ?? rows[0];
+    // Toggle the ownership row (owned, else a finished/was-owned row), scoped to its
+    // variant so tasting-only rows (times_had = 0) are never flipped.
+    const primaryRow = rows.find(r => r.currently_owned)
+      ?? rows.find(r => (r.times_had ?? 0) >= 1)
+      ?? rows[0];
     const newOwned = !primaryRow.currently_owned;
-    const { error } = await supabase
+    let updateQuery = supabase
       .from('user_bottles')
       .update({ currently_owned: newOwned, updated_at: new Date().toISOString() })
       .eq('user_id', publicUserId)
-      .eq('bottle_id', bottleId)
-      .is('variant_id', primaryRow.variant_id);
+      .eq('bottle_id', bottleId);
+    updateQuery = primaryRow.variant_id
+      ? updateQuery.eq('variant_id', primaryRow.variant_id)
+      : updateQuery.is('variant_id', null);
+    const { error } = await updateQuery;
 
     if (error) { toast.error("Failed to update"); return; }
 
@@ -541,17 +552,21 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const handleDeleteFromBar = useCallback(async (bottleId: string) => {
     if (!publicUserId) return;
 
-    const result = await removeUserBottle({ userId: publicUserId, bottleId });
+    const ownedRow = userBottlesMap[bottleId]?.find(r => r.currently_owned || (r.times_had ?? 0) >= 1);
+    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: ownedRow?.variant_id ?? null });
     if (result.error) { toast.error("Failed to remove from collection"); return; }
 
+    // Drop only the ownership row for that variant; keep any tasting-only rows.
     setUserBottlesMap(prev => {
+      const remaining = (prev[bottleId] ?? []).filter(r => r.variant_id !== (ownedRow?.variant_id ?? null));
       const next = { ...prev };
-      delete next[bottleId]; // removes all rows for this bottle
+      if (remaining.length) next[bottleId] = remaining;
+      else delete next[bottleId];
       return next;
     });
 
     toast.success("Removed from collection");
-  }, [publicUserId]);
+  }, [publicUserId, userBottlesMap]);
 
   // DB-level count for filtered browse mode — needed because the list is paginated
   const [filteredBrowseCount, setFilteredBrowseCount] = useState<number | null>(null);
@@ -815,7 +830,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         <BottleDetailView
           bottle={selectedBottle}
           onClose={() => setSelectedBottle(null)}
-          inCollection={selectedBottle.id in userBottlesMap}
+          inCollection={userBottlesMap[selectedBottle.id]?.some(r => r.currently_owned || (r.times_had ?? 0) >= 1) ?? false}
           currentlyOwned={userBottlesMap[selectedBottle.id]?.some(r => r.currently_owned) ?? false}
           publicUserId={publicUserId ?? undefined}
           onAddToBar={handleAddToBar}

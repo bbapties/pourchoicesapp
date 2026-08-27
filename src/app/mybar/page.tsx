@@ -23,11 +23,15 @@ export default async function MyBarPage() {
     .select(userBottleSelect)
     .eq('user_id', publicUser.id)
     .eq('currently_owned', true);
+  // Empty = finished bottles that were actually owned (times_had >= 1).
+  // Tasting-only rows (times_had = 0, created by the Elo trigger for bottles you
+  // blind-tasted but never owned) are excluded here — they belong to the Tasted tab.
   const { data: emptyBottles } = await supabase
     .from('user_bottles')
     .select(userBottleSelect)
     .eq('user_id', publicUser.id)
-    .eq('currently_owned', false);
+    .eq('currently_owned', false)
+    .gte('times_had', 1);
 
   const ownedIds = (ownedBottles || []).map(r => r.bottle_id);
   const emptyIds = (emptyBottles || []).map(r => r.bottle_id);
