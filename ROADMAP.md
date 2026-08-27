@@ -47,8 +47,10 @@ display-only manual star "guess" wiped to a 1500 baseline on first tasting. Buil
 - [x] **3.1 Stars everywhere + manual guess** — DONE (committed local `209d72a`, verified 2026-08-26).
   Guess captured in the Have-a-drink flow (post-pour prompt) + editable on detail when in bar; Elo hidden
   everywhere (shown as 0-5 stars); locked Elo-star + message once tasted. Slider input.
-- [ ] **3.2 Solo Mode 2 (self-serve) flow** — the core loop (no in-app reveal) ← NEXT
-- [ ] **3.3 Solo Mode 1 (guest helper) flow** — handoff + secret mapping + in-app reveal
+- [x] **3.2 Solo Mode 2 (self-serve) flow** — DONE (committed local `291be12`, verified end-to-end on
+  the QA account 2026-08-26). "Drink" nav tab → /taste; pick 2-5 → auto A-E label → rank → save →
+  Elo scored via the trigger. `lib/tastings.ts`, `src/app/taste/DrinkClient.tsx`.
+- [ ] **3.3 Solo Mode 1 (guest helper) flow** — handoff + secret mapping + in-app reveal ← NEXT
 - [ ] **3.4 Group sessions** — host/join via short code; per-person reveal + Elo
 - [ ] **3.5 Trimmings** — per-glass notes, My Bar "Tasted" tab, Social `tasted` activity + session-detail view, coaches
 
