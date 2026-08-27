@@ -8,13 +8,22 @@ import { supabase } from "@/lib/supabase";
 // Field name == column name on the target table in every case here.
 export type EditableField =
   | "name" | "distillery" | "category" | "style" | "volume"   // identity -> bottles
+  | "barcode" | "extras"                                      // identity -> bottles
   | "proof" | "age" | "nose" | "palate" | "finish"            // variant  -> bottle_variants
   | "batch" | "release_year" | "frontimage_url" | "backimage_url";
+
+// Structural (row-level) suggestions ride the same queue via a sentinel `field`.
+// They are NOT column updates — approve runs a guarded delete/merge instead.
+export const STRUCTURAL_FIELDS = ["__merge__", "__delete__"] as const;
+export function isStructuralField(field: string): boolean {
+  return field === "__merge__" || field === "__delete__";
+}
 
 type FieldLevel = "identity" | "variant";
 
 const FIELD_LEVEL: Record<EditableField, FieldLevel> = {
   name: "identity", distillery: "identity", category: "identity", style: "identity", volume: "identity",
+  barcode: "identity", extras: "identity",
   proof: "variant", age: "variant", nose: "variant", palate: "variant", finish: "variant",
   batch: "variant", release_year: "variant", frontimage_url: "variant", backimage_url: "variant",
 };
@@ -38,6 +47,10 @@ export function fieldLabel(field: string): string {
     case "release_year": return "Release year";
     case "frontimage_url": return "Front image";
     case "backimage_url": return "Back image";
+    case "barcode": return "Barcode";
+    case "extras": return "Details / extras";
+    case "__merge__": return "Merge — remove duplicate";
+    case "__delete__": return "Delete bottle";
     default: return field;
   }
 }
@@ -237,12 +250,48 @@ export async function fetchPendingSuggestions(): Promise<{ rows: AdminSuggestion
   return { rows };
 }
 
+/**
+ * Approve a structural (delete/merge) suggestion: a guarded hard-delete of the
+ * target bottle. For a merge, the keeper's better fields ride as their own field
+ * suggestions on the keeper; this row only removes the loser. Blocked if the row
+ * is referenced by any user's bar or a tasting (resolve those manually first).
+ * Deleting the bottle CASCADE-removes this suggested_edits row itself, so there
+ * is no separate 'approved' audit row to write.
+ */
+async function applyStructuralSuggestion(
+  row: AdminSuggestion
+): Promise<{ error?: string }> {
+  const loser = row.bottleId;
+
+  const [ub, td, trw, trl] = await Promise.all([
+    supabase.from("user_bottles").select("id", { count: "exact", head: true }).eq("bottle_id", loser),
+    supabase.from("tasting_details").select("id", { count: "exact", head: true }).eq("bottle_id", loser),
+    supabase.from("tasting_results").select("id", { count: "exact", head: true }).eq("winner_bottle_id", loser),
+    supabase.from("tasting_results").select("id", { count: "exact", head: true }).eq("loser_bottle_id", loser),
+  ]);
+  const refs = (ub.count ?? 0) + (td.count ?? 0) + (trw.count ?? 0) + (trl.count ?? 0);
+  if (refs > 0) {
+    return { error: "Blocked — this bottle is in a user's bar or a tasting. Resolve those first." };
+  }
+
+  const { error: vErr } = await supabase.from("bottle_variants").delete().eq("bottles_id", loser);
+  if (vErr) return { error: vErr.message };
+  const { data, error } = await supabase.from("bottles").delete().eq("id", loser).select("id");
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) {
+    return { error: "Nothing deleted — check admin permissions (RLS) on bottles." };
+  }
+  return {};
+}
+
 /** Approve: apply the new value to the golden row, keep verified, close the record. */
 export async function approveSuggestion(
   row: AdminSuggestion,
   note: string,
   reviewerUserId: string
 ): Promise<{ error?: string }> {
+  if (isStructuralField(row.field)) return applyStructuralSuggestion(row);
+
   const targetId = row.targetTable === "bottle_variants" ? row.variantId : row.bottleId;
   if (!targetId) return { error: "Missing target id" };
 

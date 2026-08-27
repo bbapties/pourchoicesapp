@@ -9,6 +9,7 @@ import {
   approveSuggestion,
   rejectSuggestion,
   fieldLabel,
+  isStructuralField,
   type AdminSuggestion,
 } from "@/lib/suggestedEdits";
 
@@ -68,11 +69,16 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   }, [suggestions]);
 
   const doApprove = async (row: AdminSuggestion) => {
+    if (isStructuralField(row.field)) {
+      const verb = row.field === "__delete__" ? "delete" : "merge (remove duplicate)";
+      if (!window.confirm(`Permanently ${verb} "${row.bottleName}"? This cannot be undone.`)) return;
+    }
     setSugBusy(row.id);
     const res = await approveSuggestion(row, sugNotes[row.id] ?? "", publicUserId);
     setSugBusy(null);
     if (res.error) { toast.error(`Approve failed: ${res.error}`); return; }
-    toast.success(`Applied ${fieldLabel(row.field)}`);
+    toast.success(isStructuralField(row.field) ? `Removed ${row.bottleName}` : `Applied ${fieldLabel(row.field)}`);
+    if (isStructuralField(row.field)) load();
     loadSuggestions();
   };
 
@@ -334,7 +340,13 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                       {fieldLabel(r.field)} · by {r.submittedByName} · {new Date(r.createdAt).toLocaleDateString()}
                     </div>
                     <div className="mt-1">
-                      {isImageField(r.field) ? (
+                      {isStructuralField(r.field) ? (
+                        <span className="text-red-700">
+                          {r.field === "__delete__"
+                            ? "Remove this bottle from the catalog"
+                            : `Merge — remove this duplicate${r.newValue ? ` (keep ${r.newValue})` : ""}`}
+                        </span>
+                      ) : isImageField(r.field) ? (
                         <div className="flex items-center gap-3">
                           <div className="text-center">
                             <div className="text-[10px] text-gray-400">current</div>
