@@ -8,7 +8,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Last commit:** pending this session's B-01. App was `b452aee` (Grok QA docs) before that.
+- **Last commit:** this session — B-01 + Drink hub (pour or blind everywhere). Pushing to `MVP-v3`.
 - **Current phase:** **Phase 8 — Pre-beta cut.** Phase 3 core loop (3.0–3.3) is shipped; 3.4 group + 3.5 Social `tasted` are **paused out of the beta cut**. Full stories + order: **[PHASE8.md](PHASE8.md)**. Bug queue: **[BUGS.md](BUGS.md)**. Checklist: **ROADMAP Phase 8**.
 
 **Single next step for the incoming agent:**
@@ -31,8 +31,9 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 **Product surface (so you do not rebuild what exists):**
 - Nav: Search / Social / My Bar / Drink / Profile (+ Admin). Drink = `/taste` (solo self-serve + guest-helper shipped). Login → `/mybar`. Profile = username/email/replay tutorial/feedback/sign out. Join-a-blind is a stub (3.4).
 - Bottle detail: carousel over **default + variants** (swipe / arrows / dots). One variant → no pager. Fields that swap: images, Elo, verified, age, proof, notes, tasting notes. SKU identity (name, distillery, category) stays. Front/Back + zoom live.
-- Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / **blind**. Neat/rocks/mixed write `activities.drank` (optional `variant_id` of the visible carousel slide). **Blind (B-01) opens `/taste?bottle=&variant=`** with that bottle pre-seeded — it does **not** log a pour.
-- Actions (7.6): one state-dependent primary + a `MoreSheet`. **none** → Add to My Bar (primary) + Have a drink. **owned** → Have a drink (primary) + More (Add another / Mark as Empty / **Blind tasting → Drink, pre-seeded** / Remove). **empty** → Add Back (primary) + Have a drink + More (Remove). Suggest-edit pencil stays separate (top bar). Mark as Empty = soft delete (`currently_owned=false`, kept in history). Add Back = restock (`onAddToBar`), which bumps `times_had`.
+- Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / **blind**. Neat/rocks/mixed write `activities.drank` (optional `variant_id` of the visible carousel slide). **Blind opens `/taste?bottle=&variant=`** with that bottle pre-seeded — it does **not** log a pour.
+- **Drink tab (`/taste`)** is a hub: **Have a drink** (pick one bottle → same pour sheet) **or** **Start a blind tasting**. Join-a-blind is still a stub.
+- Actions (7.6): one state-dependent primary + a `MoreSheet`. **none** → Add to My Bar (primary) + Have a drink. **owned / empty** More includes **Have a drink** (pour sheet) **and** **Blind tasting** (Drink, pre-seeded). Owned also: Add another / Mark as Empty / Remove. Empty: Remove. Suggest-edit pencil stays separate (top bar). Mark as Empty = soft delete (`currently_owned=false`, kept in history). Add Back = restock (`onAddToBar`), which bumps `times_had`.
 - Suggest an edit (7.8): the top-bar pencil enters **inline edit-mode** over the visible version's fields; image area = upload target. Per-field gate: mine+unverified applies directly; else pending → admin. Append-only `suggested_edits`. Under-review banner. Admin reviews **inside the Bottles queue** (`BottlesTab`) with per-field Approve/Reject + optional reason; approve keeps verified.
 - Add a variant (7.9): the card's second contribution action. **Global variant** (batch/release-year, everyone sees, `verified=false` → admin queue) vs **store pick** (private to creator). Save choice on both: **database-only** (creates the version, logs `added_to_db`, no `user_bottles`) vs **add-to-bar**. Entry points: a virtual **"+ Add a version" carousel slide** (every bottle swipeable now), an explicit "+ Add a version" control by the pager, and a More-sheet "Add a variant" row. Flow reuses `VariantSelectSheet` with `mode="contribute"`. `AddVariantSheet.tsx` is **deleted**.
 - **Store-pick scoping (7.9):** store picks are private to their creator — everywhere variants show (detail carousel `fetchVariantsForSku`, All-Variants leaderboard + count in `SearchClient`, the "N versions" badge) they filter `store_pick_name IS NULL OR created_by IN (my authId, my publicId)`. Matching **both** ids works around the `created_by` inconsistency.
@@ -81,6 +82,13 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-27 — Grok (Drink hub: pour OR blind, everywhere)
+- Drink tab is no longer blind-only. Home is **Have a drink** (pick one → pour sheet) **and** **Start a blind tasting**. Header on those steps is "Drink".
+- More sheet (owned + empty) now has **Have a drink** (opens pour sheet) **and** **Blind tasting** (pre-seeds Drink).
+- Pour sheet from Drink-tab pick: Blind jumps into the tasting mode step with that bottle selected.
+- Coach `taste.pour` (announce). Click `source: 'drink_tab'`.
+- Next still **B-02** after this ships.
 
 ### 2026-08-27 — Grok (B-01: wire bottle-card Blind to Drink)
 - Stale "aren't live yet" copy removed from PourSheet, MoreSheet, and the post-pour / More toasts.
