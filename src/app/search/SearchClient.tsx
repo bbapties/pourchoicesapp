@@ -435,10 +435,13 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     setIsLoading(true);
     try {
       const isBottles = viewMode === 'bottles';
-      const term = searchTerm;
-      const orClause = isBottles
-        ? `bottle_name.ilike.%${term}%,bottle_distillery.ilike.%${term}%,bottle_category.ilike.%${term}%,bottle_style.ilike.%${term}%,bottle_barcode.ilike.%${term}%,attr_age.ilike.%${term}%,attr_nose.ilike.%${term}%,attr_palate.ilike.%${term}%,attr_finish.ilike.%${term}%`
-        : `bottle_name.ilike.%${term}%,bottle_distillery.ilike.%${term}%,bottle_category.ilike.%${term}%,bottle_style.ilike.%${term}%,bottle_barcode.ilike.%${term}%,attr_age.ilike.%${term}%,attr_batch.ilike.%${term}%,attr_store_pick_name.ilike.%${term}%,attr_nose.ilike.%${term}%,attr_palate.ilike.%${term}%,attr_finish.ilike.%${term}%`;
+      // B-13: quote + escape the value so commas, parentheses, apostrophes, or quotes
+      // in the term (e.g. "Maker's Mark", "batch 1, 2") don't break the PostgREST .or().
+      const v = `"%${searchTerm.replace(/[\\"]/g, (c) => "\\" + c)}%"`;
+      const fields = isBottles
+        ? ["bottle_name", "bottle_distillery", "bottle_category", "bottle_style", "bottle_barcode", "attr_age", "attr_nose", "attr_palate", "attr_finish"]
+        : ["bottle_name", "bottle_distillery", "bottle_category", "bottle_style", "bottle_barcode", "attr_age", "attr_batch", "attr_store_pick_name", "attr_nose", "attr_palate", "attr_finish"];
+      const orClause = fields.map((f) => `${f}.ilike.${v}`).join(",");
 
       // Cast to any: a union table name + .or() overflows Supabase's typed query builder.
       let sq = (supabase.from(isBottles ? "all_bottle_details" : "all_variant_details") as any)
@@ -449,7 +452,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
 
-      if (error) { setBottles([]); return; }
+      if (error) { setBottles([]); toast.error("Couldn't run that search — try different terms."); return; }
 
       const termLower = searchTerm.toLowerCase();
       const filteredResults = (searchResults || []).filter((row: any) => {
@@ -551,14 +554,16 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     toast.success("Added to My Bar!");
   }, [publicUserId, userBottlesMap]);
 
-  const handleToggleOwnership = useCallback(async (bottleId: string) => {
+  const handleToggleOwnership = useCallback(async (bottleId: string, variantId?: string | null) => {
     if (!publicUserId) return;
     const rows = userBottlesMap[bottleId];
     if (!rows?.length) return;
 
-    // Toggle the ownership row (owned, else a finished/was-owned row), scoped to its
-    // variant so tasting-only rows (times_had = 0) are never flipped.
-    const primaryRow = rows.find(r => r.currently_owned)
+    // Toggle the VISIBLE variant's row (B-15), falling back to the ownership row
+    // (owned, else finished/was-owned), scoped to its variant so tasting-only rows
+    // (times_had = 0) are never flipped.
+    const primaryRow = (variantId ? rows.find(r => r.variant_id === variantId) : undefined)
+      ?? rows.find(r => r.currently_owned)
       ?? rows.find(r => (r.times_had ?? 0) >= 1)
       ?? rows[0];
     const newOwned = !primaryRow.currently_owned;
@@ -591,10 +596,12 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     toast.success(newOwned ? "Back in Your Bar!" : "Marked as Finished");
   }, [publicUserId, userBottlesMap]);
 
-  const handleDeleteFromBar = useCallback(async (bottleId: string) => {
+  const handleDeleteFromBar = useCallback(async (bottleId: string, variantId?: string | null) => {
     if (!publicUserId) return;
 
-    const ownedRow = userBottlesMap[bottleId]?.find(r => r.currently_owned || (r.times_had ?? 0) >= 1);
+    // Remove the VISIBLE variant's row (B-15), falling back to the ownership row.
+    const ownedRow = (variantId ? userBottlesMap[bottleId]?.find(r => r.variant_id === variantId) : undefined)
+      ?? userBottlesMap[bottleId]?.find(r => r.currently_owned || (r.times_had ?? 0) >= 1);
     const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: ownedRow?.variant_id ?? null });
     if (result.error) { toast.error("Failed to remove from collection"); return; }
 

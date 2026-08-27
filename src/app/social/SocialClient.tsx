@@ -114,14 +114,27 @@ export default function SocialClient() {
       return;
     }
 
+    // B-17: if the user context hasn't resolved yet (a quick tap right after load),
+    // resolve the ids on demand so we don't show "Add to My Bar" on an owned bottle.
+    let uid = publicUserId;
+    let aid = authId;
+    if (!uid) {
+      const { data: { user } } = await supabase.auth.getUser();
+      aid = user?.id ?? aid;
+      if (user) {
+        const { data: u } = await supabase.from("users").select("id").eq("auth_id", user.id).maybeSingle();
+        uid = u?.id ?? null;
+      }
+    }
+
     let row: UserBottleRow | null = null;
-    if (publicUserId) {
+    if (uid) {
       // A (user, bottle) can now have multiple variant rows; prefer the ownership
       // row (owned, then finished/was-owned) over tasting-only rows.
       const { data: ubRows } = await supabase
         .from("user_bottles")
         .select("currently_owned, variant_id, times_had, created_at, updated_at")
-        .eq("user_id", publicUserId)
+        .eq("user_id", uid)
         .eq("bottle_id", bottleId)
         .order("currently_owned", { ascending: false })
         .order("times_had", { ascending: false })
@@ -143,7 +156,7 @@ export default function SocialClient() {
       inCollection: !!row && (row.currently_owned || (row.times_had ?? 0) >= 1),
       currentlyOwned: !!row?.currently_owned,
     });
-    setSelectedBottle(mapDetail(data, row, [authId, publicUserId]));
+    setSelectedBottle(mapDetail(data, row, [aid, uid]));
   };
 
   const handleAddToBar = async (bottleId: string, variantId?: string | null) => {
@@ -171,29 +184,31 @@ export default function SocialClient() {
     load(true);
   };
 
-  const handleToggleOwnership = async (bottleId: string) => {
+  const handleToggleOwnership = async (bottleId: string, variantId?: string | null) => {
     if (!publicUserId || !selectedRow) return;
-    // Scope to the card's variant (B-09): user_bottles is one row per (user, variant),
-    // so marking empty must target this variant only — not every version of the SKU.
+    // Scope to the VISIBLE variant (B-15), falling back to the opened row's variant
+    // (B-09): user_bottles is one row per (user, variant), so marking empty must
+    // target this variant only — not every version of the SKU.
+    const vId = variantId ?? selectedRow.variant_id ?? null;
     let q = supabase
       .from("user_bottles")
       .update({ currently_owned: false, updated_at: new Date().toISOString() })
       .eq("user_id", publicUserId)
       .eq("bottle_id", bottleId)
       .eq("currently_owned", true);
-    q = selectedRow.variant_id ? q.eq("variant_id", selectedRow.variant_id) : q.is("variant_id", null);
+    q = vId ? q.eq("variant_id", vId) : q.is("variant_id", null);
     const { error } = await q;
     if (error) { toast.error("Failed to update"); return; }
-    await logActivity({ userId: publicUserId, bottleId, action: "finished" });
+    await logActivity({ userId: publicUserId, bottleId, action: "finished", variantId: vId });
     setSelectedRow({ ...selectedRow, currently_owned: false, updated_at: new Date().toISOString() });
     setSelectedOwned({ inCollection: true, currentlyOwned: false });
     toast.success("Marked as Finished");
     load(true);
   };
 
-  const handleDeleteFromBar = async (bottleId: string) => {
+  const handleDeleteFromBar = async (bottleId: string, variantId?: string | null) => {
     if (!publicUserId) return;
-    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: selectedRow?.variant_id ?? null });
+    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: variantId ?? selectedRow?.variant_id ?? null });
     if (result.error) { toast.error("Failed to remove"); return; }
     setSelectedRow(null);
     setSelectedOwned({ inCollection: false, currentlyOwned: false });

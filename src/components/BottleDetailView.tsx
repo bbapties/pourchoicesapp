@@ -39,8 +39,8 @@ interface BottleDetailViewProps {
   currentlyOwned?: boolean;
   publicUserId?: string;
   onAddToBar?: (bottleId: string, variantId?: string | null) => Promise<void>;
-  onToggleOwnership?: (bottleId: string) => Promise<void>;
-  onDeleteFromBar?: (bottleId: string) => Promise<void>;
+  onToggleOwnership?: (bottleId: string, variantId?: string | null) => Promise<void>;
+  onDeleteFromBar?: (bottleId: string, variantId?: string | null) => Promise<void>;
   onEditSaved?: (updated: Partial<BottleDetails>) => void;
   onActivityLogged?: () => void;
 }
@@ -280,7 +280,7 @@ export default function BottleDetailView({
       if (!inCollectionLocally || !ownedLocally) {
         if (!publicUserId) {
           if (!onAddToBar) return;
-          await onAddToBar(bottle.id, null);
+          await onAddToBar(bottle.id, currentVariant?.variantId ?? null);
           setInCollectionLocally(true);
           setOwnedLocally(true);
           return;
@@ -290,7 +290,7 @@ export default function BottleDetailView({
         return;
       }
       if (!onToggleOwnership) return;
-      await onToggleOwnership(bottle.id);
+      await onToggleOwnership(bottle.id, currentVariant?.variantId ?? null);
       setOwnedLocally(false);
     } finally {
       setIsSaving(false);
@@ -303,7 +303,7 @@ export default function BottleDetailView({
     setShowMoreSheet(false);
     setIsSaving(true);
     try {
-      await onToggleOwnership(bottle.id);
+      await onToggleOwnership(bottle.id, currentVariant?.variantId ?? null);
       setOwnedLocally(false);
     } finally {
       setIsSaving(false);
@@ -530,7 +530,7 @@ export default function BottleDetailView({
     if (isDeleting || !onDeleteFromBar) return;
     setIsDeleting(true);
     try {
-      await onDeleteFromBar(bottle.id);
+      await onDeleteFromBar(bottle.id, currentVariant?.variantId ?? null);
       setInCollectionLocally(false);
       setOwnedLocally(false);
       setShowDeleteConfirm(false);

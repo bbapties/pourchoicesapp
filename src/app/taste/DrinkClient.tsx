@@ -548,7 +548,7 @@ export default function DrinkClient({
             <p className="text-sm text-gray-500 mb-4">This updates your personal and the global scores and can&apos;t be undone.</p>
             <div className="flex gap-2">
               <button type="button" onClick={() => setConfirming(false)} disabled={saving} className="flex-1 rounded-lg border border-charcoal py-2.5 text-sm font-medium text-charcoal disabled:opacity-50">Not yet</button>
-              <button type="button" onClick={handleSave} disabled={saving} className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "#2F2F2F" }}>{saving ? "Saving..." : "Yes, reveal"}</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "#2F2F2F" }}>{saving ? "Saving..." : mode === "helper" ? "Yes, reveal" : "Save ranking"}</button>
             </div>
           </div>
         </div>

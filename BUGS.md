@@ -56,20 +56,16 @@ These ship before any new feature. Do them in this order.
   Both the previous-store list and the reuse-existing check now match `created_by IN (authId, publicUserId)` (via `.in(...)`), so a store pick stamped with the user's public id is found and reused instead of duplicated. Added `publicUserId` to the fetch effect deps. `VariantSelectSheet.tsx`.
 - [x] **B-12** (high) Search "My last activity" could show Finished on a tasting-only row. **FIXED (Claude, 2026-08-27).**
   `handleBottleClick` no longer takes an unordered `userBottlesMap[skuId][0]`; it uses the ownership row only (`currently_owned`, else `times_had >= 1`). A tasting-only row (`times_had = 0`, never owned) now yields no "Finished" label instead of mislabeling the SKU. `SearchClient.tsx`.
-- [ ] **B-13** (medium) Search interpolates the query into PostgREST `.or()`.
-  Apostrophe/comma (`Maker's Mark`, `batch 1, 2`) can break the filter. Failed search sets `bottles=[]` with no toast.
-  `SearchClient.tsx` ~396–410
-- [ ] **B-14** (medium) Confirm sheet always says "Yes, reveal" in self-serve (no in-app reveal).
-  `DrinkClient.tsx` ~352–356
-- [ ] **B-15** (medium) Collection actions ignore the visible carousel variant.
-  Empty/Remove/toggle mutate a "primary" SKU row, not `currentVariant`.
-  `BottleDetailView.tsx` · Search/My Bar handlers
-- [ ] **B-16** (medium) Add Back from Empty does not switch My Bar to In My Bar.
-  Bottle vanishes from Empty; user stays on Empty and thinks it failed.
-  `MyBarClient.tsx` ~183–186
-- [ ] **B-17** (medium) Social collection status races `publicUserId`.
-  Opening a feed item before user resolve shows Add to My Bar on a bottle they own.
-  `SocialClient.tsx` ~67, 114
+- [x] **B-13** (medium) Search interpolated the query into PostgREST `.or()`. **FIXED (Claude, 2026-08-27).**
+  The value is now double-quoted + escaped (`"%term%"`, with `\`/`"` escaped) so commas, parentheses, apostrophes, or quotes (`Maker's Mark`, `batch 1, 2`) can't break the filter; a query error now shows a toast instead of silently emptying results. `SearchClient.tsx`.
+- [x] **B-14** (medium) Confirm sheet said "Yes, reveal" even in self-serve. **FIXED (Claude, 2026-08-27).**
+  The confirm button is now mode-aware: "Yes, reveal" for helper, "Save ranking" for self-serve (no in-app reveal there). `DrinkClient.tsx`.
+- [x] **B-15** (medium) Collection actions ignored the visible carousel variant. **FIXED (Claude, 2026-08-27).**
+  `BottleDetailView` now passes `currentVariant.variantId` to `onAddToBar`/`onToggleOwnership`/`onDeleteFromBar` (signatures gained the variant arg); Search/My Bar/Social handlers prefer that variant (fallback to the SKU's ownership row), so Empty/Remove/toggle hit the version you are looking at.
+- [x] **B-16** (medium) Add Back from Empty didn't switch My Bar to In My Bar. **FIXED (Claude, 2026-08-27).**
+  `handleAddToBar` now `setActiveTab('owned')` on a successful add, so the restocked bottle appears instead of vanishing from Empty. `MyBarClient.tsx`.
+- [x] **B-17** (medium) Social collection status raced `publicUserId`. **FIXED (Claude, 2026-08-27).**
+  `openBottle` resolves the auth/public id on demand (via `auth.getUser` → `users`) when the context hasn't resolved yet, so a quick tap no longer shows Add to My Bar on an owned bottle. `SocialClient.tsx`.
 
 ---
 

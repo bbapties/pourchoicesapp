@@ -278,6 +278,9 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       toast.error("Failed to add to My Bar");
       return;
     }
+    // B-16: the bottle is now owned — land on In My Bar so it doesn't just vanish
+    // from the Empty (or Tasted) tab and look like the restock failed.
+    setActiveTab('owned');
 
     const row = existingRow;
     if (row) {
@@ -314,17 +317,19 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     toast.success("Added to My Bar!");
   }, [publicUserId, rawEmpty, rawOwned, rawTasted]);
 
-  const handleToggleOwnership = useCallback(async (bottleId: string) => {
-    // Mark as Empty: flip the ownership row for THIS variant (B-05). Scoping to
-    // currently_owned = true leaves tasting-only rows (times_had = 0) untouched.
+  const handleToggleOwnership = useCallback(async (bottleId: string, variantId?: string | null) => {
+    // Mark as Empty: flip the ownership row for the VISIBLE variant (B-15), falling
+    // back to the SKU's owned row. Scoping to currently_owned = true leaves
+    // tasting-only rows (times_had = 0) untouched (B-05).
     const row = rawOwned.find(r => r.bottle_id === bottleId);
+    const vId = variantId ?? row?.variant_id ?? null;
     let q = supabase
       .from('user_bottles')
       .update({ currently_owned: false, updated_at: new Date().toISOString() })
       .eq('user_id', publicUserId)
       .eq('bottle_id', bottleId)
       .eq('currently_owned', true);
-    if (row?.variant_id) q = q.eq('variant_id', row.variant_id);
+    if (vId) q = q.eq('variant_id', vId);
     const { error } = await q;
 
     if (error) { toast.error("Failed to update"); return; }
@@ -333,7 +338,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       userId: publicUserId,
       bottleId,
       action: "finished",
-      variantId: row?.variant_id ?? null,
+      variantId: vId,
     });
 
     if (row) {
@@ -344,10 +349,12 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     toast.success("Marked as Finished");
   }, [publicUserId, rawOwned]);
 
-  const handleDeleteFromBar = useCallback(async (bottleId: string) => {
-    // Scope removal to the owned variant so tasting-only rows keep their Elo.
+  const handleDeleteFromBar = useCallback(async (bottleId: string, variantId?: string | null) => {
+    // Scope removal to the VISIBLE variant (B-15), falling back to the SKU's owned
+    // row, so tasting-only rows keep their Elo.
     const ownedRow = rawOwned.find(r => r.bottle_id === bottleId) || rawEmpty.find(r => r.bottle_id === bottleId);
-    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: ownedRow?.variant_id ?? null });
+    const vId = variantId ?? ownedRow?.variant_id ?? null;
+    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: vId });
     if (result.error) { toast.error("Failed to remove"); return; }
 
     setRawOwned(prev => prev.filter(r => r.bottle_id !== bottleId));
