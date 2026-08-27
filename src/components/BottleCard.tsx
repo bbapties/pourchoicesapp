@@ -115,13 +115,13 @@ export default function BottleCard({ bottle }: BottleCardProps) {
         provisional={bottle.provisional ?? false}
       />
 
-      {/* Image — tall, left-aligned, fit the whole bottle (not cropped) */}
-      <div className="w-10 h-16 rounded flex-shrink-0 mr-2 overflow-hidden">
+      {/* Image — portrait, fits the whole bottle (not cropped), transparent so no gray box */}
+      <div className="w-9 h-14 flex-shrink-0 mr-2 overflow-hidden">
         {bottle.image_url ? (
           <img
             src={bottle.image_url}
             alt={bottle.name}
-            className="w-full h-full object-contain object-left"
+            className="w-full h-full object-contain"
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).querySelector('.placeholder')?.classList.remove('hidden'); }}
           />
         ) : null}

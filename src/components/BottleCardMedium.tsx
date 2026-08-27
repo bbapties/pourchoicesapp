@@ -80,10 +80,10 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
 
       {/* Main row: image + attributes */}
       <div className="flex items-start p-3 gap-3">
-        {/* Image */}
-        <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0 overflow-hidden">
+        {/* Image — portrait, fits the whole bottle (not cropped), transparent so no gray box */}
+        <div className="w-10 h-16 flex-shrink-0 overflow-hidden">
           {bottle.image_url ? (
-            <img src={bottle.image_url} alt={bottle.name} className="w-full h-full object-cover"
+            <img src={bottle.image_url} alt={bottle.name} className="w-full h-full object-contain"
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).querySelector('.placeholder')?.classList.remove('hidden'); }} />
           ) : null}
           <div className={`placeholder w-full h-full ${bottle.image_url ? 'hidden' : ''}`}>

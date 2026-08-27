@@ -214,12 +214,12 @@ export default function SocialClient() {
                 onClick={() => openBottle(row.bottleId)}
                 className="w-full text-left flex items-start p-3 border-b border-gray-300 hover:bg-gray-100"
               >
-                <div className="w-12 h-12 bg-gray-200 rounded flex-shrink-0 mr-3 overflow-hidden">
+                <div className="w-9 h-14 flex-shrink-0 mr-2 overflow-hidden">
                   {row.bottleImageUrl ? (
                     <img
                       src={row.bottleImageUrl}
                       alt={row.bottleName}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   ) : (
                     <BottlePlaceholderImage />
