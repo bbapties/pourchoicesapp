@@ -376,7 +376,12 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
   const handleBottleClick = (bottle: any) => {
     const skuId = bottle.bottleId ?? bottle.id;
-    const row = userBottlesMap[skuId]?.[0];
+    // B-12: only an ownership row (owned, or previously owned via times_had >= 1) drives
+    // "my last activity" — a tasting-only row (times_had = 0, never owned) must not
+    // render as "Finished". Previously took an unordered [0], which could be that row.
+    const skuRows = userBottlesMap[skuId];
+    const row = skuRows?.find(r => r.currently_owned)
+      ?? skuRows?.find(r => (r.times_had ?? 0) >= 1);
     logClick("bottle_open", { userId: publicUserId, surface: "/search", targetId: skuId, metadata: { mode: viewMode } });
     setSelectedBottle({
       ...bottle,

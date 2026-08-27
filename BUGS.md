@@ -52,12 +52,10 @@ These ship before any new feature. Do them in this order.
   `SocialClient.handleToggleOwnership` now scopes the `currently_owned=false` update to the card's `variant_id` (`.eq(variant_id)` / `.is(variant_id,null)`), matching My Bar (B-05) and the per-(user,variant) `user_bottles` model — finishing one version no longer empties the whole SKU. My Bar half already shipped with B-05. `SocialClient.tsx`.
 - [x] **B-10** (high) Other people's store picks could flash in the initial carousel. **FIXED (Claude, 2026-08-27).**
   The variant arrays that seed the carousel from a list row are now filtered client-side by the same predicate as `fetchVariantsForSku` — new shared helper `isVariantVisibleToViewer(storePickName, createdBy, [authId, publicId])` in `lib/variants.ts` (globals always; store picks only to their creator, matching auth OR public id). Applied in SearchClient `mapBottleResult`, MyBarClient `handleCardClick`, and SocialClient `mapDetail`. Also added `attr_variant_created_by` to My Bar's `detailFields` and Social's `DETAIL_SELECT` so both can filter (Search already had it). tsc/build/lint clean.
-- [ ] **B-11** (high) `VariantSelectSheet` only matches `created_by = authId`.
-  Previous-store list and reuse query miss rows stamped with `public.users.id` → duplicate store picks.
-  `VariantSelectSheet.tsx` ~88–93, 140–166
-- [ ] **B-12** (high) Search "My last activity" can show Finished on a tasting-only row.
-  Uses unordered `userBottlesMap[skuId][0]`. Social orders owned/times_had correctly.
-  `SearchClient.tsx` ~374–383 · `userBottles.ts` ~20–28
+- [x] **B-11** (high) `VariantSelectSheet` only matched `created_by = authId`. **FIXED (Claude, 2026-08-27).**
+  Both the previous-store list and the reuse-existing check now match `created_by IN (authId, publicUserId)` (via `.in(...)`), so a store pick stamped with the user's public id is found and reused instead of duplicated. Added `publicUserId` to the fetch effect deps. `VariantSelectSheet.tsx`.
+- [x] **B-12** (high) Search "My last activity" could show Finished on a tasting-only row. **FIXED (Claude, 2026-08-27).**
+  `handleBottleClick` no longer takes an unordered `userBottlesMap[skuId][0]`; it uses the ownership row only (`currently_owned`, else `times_had >= 1`). A tasting-only row (`times_had = 0`, never owned) now yields no "Finished" label instead of mislabeling the SKU. `SearchClient.tsx`.
 - [ ] **B-13** (medium) Search interpolates the query into PostgREST `.or()`.
   Apostrophe/comma (`Maker's Mark`, `batch 1, 2`) can break the filter. Failed search sets `bottles=[]` with no toast.
   `SearchClient.tsx` ~396–410

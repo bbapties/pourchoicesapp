@@ -13,7 +13,9 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - **Switching to Claude** for the next coding session. Grok stopped after Wave 1 B-01…B-06.
 
 **Single next step for Claude:**
-- **Wave 1b — next is B-11** (`VariantSelectSheet` only matches `created_by = authId`; previous-store list + reuse query miss rows stamped with `public.users.id` → duplicate store picks). `VariantSelectSheet.tsx` ~88–93, 140–166.
+- **Wave 1b — next is B-13** (Search interpolates the query into a PostgREST `.or()` — injection/robustness). `SearchClient.tsx` ~398–399.
+- **B-11 SHIPPED** (Claude, 2026-08-27): `VariantSelectSheet` store-pick queries match `created_by IN (authId, publicUserId)` → no duplicate store picks from the id mismatch.
+- **B-12 SHIPPED** (Claude, 2026-08-27): Search "my last activity" uses the ownership row (owned, else `times_had>=1`), not an unordered `[0]` → tasting-only rows no longer mislabel as "Finished".
 - **B-09 SHIPPED** (Claude, 2026-08-27): Social Mark as Empty now variant-scoped like My Bar.
 - **B-10 SHIPPED** (Claude, 2026-08-27): carousel seed no longer flashes others' store picks — shared `isVariantVisibleToViewer` helper filters the seed arrays in Search/My Bar/Social (added `attr_variant_created_by` to My Bar + Social selects).
 - **One-step store pick SHIPPED** (Claude, 2026-08-27): `ProvisionalSheet` (Add New Bottle) now has an optional "Also add my store pick" section (store name required + optional proof/batch). One submit creates the SKU, the **public default** variant, AND the user's **private store-pick** variant (`is_default=false`, `created_by`=auth id) — best-effort so a store-pick failure never loses the bottle. Also cleaned a stray `store_pick_name='test'` that was sitting on Buffalo Trace's default (would have hidden BT's default from other users post-B-10). Verified via rolled-back DB test.

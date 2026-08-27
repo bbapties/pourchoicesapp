@@ -45,6 +45,9 @@ export default function VariantSelectSheet({
   onContributed,
 }: VariantSelectSheetProps) {
   const { authId, publicUserId } = useCurrentUser();
+  // Store-pick created_by may be an auth id OR a public id (B-11) — match either so
+  // the previous-store list and the reuse-existing check don't miss the user's own picks.
+  const myIds = [authId, publicUserId].filter(Boolean) as string[];
   const isContribute = mode === "contribute";
   const [isFetching, setIsFetching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -89,7 +92,7 @@ export default function VariantSelectSheet({
       supabase
         .from("bottle_variants")
         .select("store_pick_name")
-        .eq("created_by", authId)
+        .in("created_by", myIds)
         .not("store_pick_name", "is", null),
     ]).then(([batchRes, storeRes]) => {
       setBatchVariants(batchRes.data ?? []);
@@ -103,7 +106,8 @@ export default function VariantSelectSheet({
       setMyStores(stores);
       setIsFetching(false);
     });
-  }, [open, bottle.id, authId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, bottle.id, authId, publicUserId]);
 
   const handleAdd = async () => {
     if (isAdding) return;
@@ -161,8 +165,9 @@ export default function VariantSelectSheet({
           .from("bottle_variants")
           .select("id")
           .eq("bottles_id", bottle.id)
-          .eq("created_by", authId)
+          .in("created_by", myIds)
           .eq("store_pick_name", storeName.trim())
+          .limit(1)
           .maybeSingle();
         if (existing) {
           await complete(existing.id);
