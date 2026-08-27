@@ -42,6 +42,26 @@ type DeleteTarget =
   | { kind: "bottle"; id: string; label: string; ownerNames: string[]; variantCount: number }
   | { kind: "variant"; id: string; label: string; ownerNames: string[] };
 
+// Read-only field dump for the verify-review modal.
+type BottleDetail = {
+  bottleId: string;
+  name: string;
+  loading?: boolean;
+  distillery?: string | null;
+  category?: string | null;
+  style?: string | null;
+  volume?: string | null;
+  barcode?: string | null;
+  extras?: string | null;
+  proof?: number | null;
+  age?: string | null;
+  nose?: string | null;
+  palate?: string | null;
+  finish?: string | null;
+  frontimage_url?: string | null;
+  verified?: boolean;
+};
+
 export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   const [queue, setQueue] = useState<QueueBottle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +72,47 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   const [suggestions, setSuggestions] = useState<AdminSuggestion[]>([]);
   const [sugNotes, setSugNotes] = useState<Record<string, string>>({});
   const [sugBusy, setSugBusy] = useState<string | null>(null);
+  const [detail, setDetail] = useState<BottleDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  // Read-only detail for the admin to review every field (incl. barcode) before verifying.
+  const openDetail = async (bottleId: string, fallbackName: string) => {
+    setDetail({ bottleId, name: fallbackName, loading: true });
+    setDetailLoading(true);
+    const [{ data: b }, { data: v }] = await Promise.all([
+      supabase
+        .from("bottles")
+        .select("id, name, distillery, category, style, volume, barcode, proof, age, nose, palate, finish, extras, frontimage_url, verified")
+        .eq("id", bottleId)
+        .maybeSingle(),
+      supabase
+        .from("bottle_variants")
+        .select("proof, age, nose, palate, finish, frontimage_url, verified")
+        .eq("bottles_id", bottleId)
+        .eq("is_default", true)
+        .maybeSingle(),
+    ]);
+    setDetailLoading(false);
+    if (!b) { toast.error("Could not load details"); setDetail(null); return; }
+    // Display values resolve from the default variant, falling back to the bottle (mirrors search view).
+    setDetail({
+      bottleId,
+      name: b.name,
+      distillery: b.distillery,
+      category: b.category,
+      style: b.style,
+      volume: b.volume,
+      barcode: b.barcode,
+      extras: b.extras,
+      proof: v?.proof ?? b.proof,
+      age: v?.age ?? b.age,
+      nose: v?.nose ?? b.nose,
+      palate: v?.palate ?? b.palate,
+      finish: v?.finish ?? b.finish,
+      frontimage_url: v?.frontimage_url ?? b.frontimage_url,
+      verified: b.verified,
+    });
+  };
 
   const loadSuggestions = async () => {
     const { rows } = await fetchPendingSuggestions();
@@ -102,7 +163,8 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
       supabase
         .from("bottle_variants")
         .select("id, bottles_id, batch, release_year, store_pick_name, proof, age, created_by, created_at")
-        .eq("verified", false),
+        .eq("verified", false)
+        .eq("is_default", false), // the default variant IS the bottle — verified with it, never a separate queue row
     ]);
 
     if (bottlesRes.error || variantsRes.error) {
@@ -218,6 +280,14 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
     if (!data || data.length === 0) {
       toast.error("Nothing changed — check admin permissions (RLS) on " + opts.table + ".");
       return;
+    }
+    // Verifying the bottle co-verifies its default variant (they represent the same SKU).
+    if (opts.table === "bottles") {
+      await supabase
+        .from("bottle_variants")
+        .update({ verified: true })
+        .eq("bottles_id", opts.id)
+        .eq("is_default", true);
     }
     await logActivity({
       userId: publicUserId,
@@ -410,9 +480,14 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
           <li key={b.id} className="border border-gray-200 rounded bg-white">
             {/* Bottle header */}
             <div className="px-3 py-3 flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => openDetail(b.id, b.name)}
+                className="min-w-0 flex-1 text-left"
+                title="View all details"
+              >
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-charcoal truncate">{b.name}</span>
+                  <span className="font-semibold text-sm text-charcoal truncate underline decoration-dotted underline-offset-2">{b.name}</span>
                   {b.parentVerified ? (
                     <span className="text-[10px] uppercase tracking-wide bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">
                       bottle verified
@@ -429,7 +504,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                 <div className="text-xs text-gray-400 mt-1">
                   Submitted by {b.submittedBy} · {new Date(b.created_at).toLocaleDateString()}
                 </div>
-              </div>
+              </button>
               {!b.parentVerified && (
                 <div className="flex flex-col gap-1.5 shrink-0">
                   <button
@@ -497,6 +572,66 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
           </li>
         )}
       </ul>
+
+      {/* Read-only detail — review every field before verifying */}
+      {detail && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
+          <div className="bg-white rounded-lg w-full max-w-md p-5 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <h2 className="font-semibold text-charcoal">{detail.name}</h2>
+              <button onClick={() => setDetail(null)} className="text-gray-400 text-lg leading-none">×</button>
+            </div>
+
+            {detailLoading ? (
+              <div className="text-sm text-gray-500">Loading…</div>
+            ) : (
+              <div className="space-y-3">
+                {detail.frontimage_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={detail.frontimage_url} alt={detail.name} className="mx-auto h-40 object-contain" />
+                )}
+                <dl className="text-sm">
+                  {([
+                    ["Distillery", detail.distillery],
+                    ["Category", detail.category],
+                    ["Style", detail.style],
+                    ["Proof", detail.proof != null ? String(detail.proof) : null],
+                    ["Age", detail.age],
+                    ["Size", detail.volume],
+                    ["Barcode", detail.barcode],
+                    ["Nose", detail.nose],
+                    ["Palate", detail.palate],
+                    ["Finish", detail.finish],
+                    ["Extras", detail.extras],
+                  ] as [string, string | null | undefined][]).map(([label, value]) => (
+                    <div key={label} className="flex gap-2 py-1 border-b border-gray-100">
+                      <dt className="w-24 shrink-0 text-gray-400">{label}</dt>
+                      <dd className={`flex-1 break-words ${value ? "text-charcoal" : "text-red-500 italic"}`}>
+                        {value || "— missing —"}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button onClick={() => setDetail(null)} className="px-3 py-2 text-sm text-gray-600">Close</button>
+                  {!detail.verified && (
+                    <button
+                      onClick={async () => {
+                        await verify({ table: "bottles", id: detail.bottleId, bottleId: detail.bottleId, label: detail.name });
+                        setDetail(null);
+                      }}
+                      className="px-3 py-2 text-sm bg-green-700 text-white rounded"
+                    >
+                      Verify
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Delete confirm with impact preview */}
       {target && (
