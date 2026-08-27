@@ -28,9 +28,10 @@ These ship before any new feature. Do them in this order.
   The 3.0 trigger only writes `bottle_variants.elo_global`. Search uses variant Elo; My Bar does not. After the 1500 rebaseline, tastings will not move My Bar stars.
   `src/app/mybar/page.tsx` ~39–104 · `MyBarClient.tsx` `calcStarsFromElo`
   **Shipped:** My Bar reads/sorts/scales from `default_variant_elo` (fallback `bottle_elo_global`), same as Search. Live check at fix time: 3 SKUs had moved variant Elo; 0 had moved `bottles.elo_global`.
-- [ ] **B-05** (critical) My Bar drops `variant_id`, so Add Back / Remove hit the default variant.
+- [x] **B-05** (critical) My Bar drops `variant_id`, so Add Back / Remove hit the default variant.
   Query selects `variant_id` then never copies it onto the card payload. Restock/remove fall back to `resolveDefaultVariantId`. Finish a store pick → Add Back restocks the standard bottle; Remove can demote the wrong row.
   `src/app/mybar/page.tsx` ~20–73 · `MyBarClient.tsx` ~161–221
+  **Shipped:** owned/empty payloads copy `variant_id` from the user_bottles row. Add Back / Remove / Mark as Empty are scoped to that variant. (SKU-collapsed cards for multiple owned variants = B-31, still open.)
 - [ ] **B-06** (high) My Bar "Tasted" tab is a hard-coded empty stub.
   Always `Tasted (0)` / "No tastings yet" even after a real tasting. Tasting-only rows have nowhere to live. Either wire it (reads `tasting_results` + `user_bottles`) or hide the tab until 3.5.
   `MyBarClient.tsx` ~392–415 · `mybar/page.tsx` ~26–34
@@ -48,6 +49,7 @@ These ship before any new feature. Do them in this order.
 - [ ] **B-09** (high) Mark as Empty is SKU-wide in My Bar + Social (Search is variant-scoped).
   Owning default + store pick, finishing one marks both empty.
   `MyBarClient.tsx` ~191–199 · `SocialClient.tsx` ~170–177
+  **My Bar half shipped with B-05** (Mark as Empty scopes to the card's `variant_id`). Social still SKU-wide.
 - [ ] **B-10** (high) Other people's store picks can flash in the initial carousel.
   Unfiltered `attr_store_pick_*` arrays seed the card; `fetchVariantsForSku` filters correctly only after refetch. Social `DETAIL_SELECT` omits `attr_variant_created_by`.
   `SearchClient.tsx` ~143–150 · `MyBarClient.tsx` ~146–153 · `SocialClient.tsx` ~51–58
