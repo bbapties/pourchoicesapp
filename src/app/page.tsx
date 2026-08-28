@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 type AuthPath = "unknown" | "login" | "signup";
 type StepId = "email" | "username" | "password";
 
+const PASSWORD_MIN = 8;
+
 export default function Home() {
   const router = useRouter();
 
@@ -33,6 +35,7 @@ export default function Home() {
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // On mount: check session, hold splash for 1.5s minimum.
   // Only set authChecked (show Get Started) if there is NO session.
@@ -129,6 +132,12 @@ export default function Home() {
       }
       router.replace("/mybar");
     } else {
+      // B-25: enforce a client-side password minimum (server min may be lower/unset).
+      if (password.length < PASSWORD_MIN) {
+        setError(`Password must be at least ${PASSWORD_MIN} characters.`);
+        setIsLoading(false);
+        return;
+      }
       const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
       if (signUpError) {
         setError(signUpError.message);
@@ -161,6 +170,20 @@ export default function Home() {
       router.replace("/mybar");
     }
     setIsLoading(false);
+  };
+
+  // B-26: send a password reset email (login path, when the user forgot it).
+  const handleForgotPassword = async () => {
+    if (!email || isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    setNotice(null);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setIsLoading(false);
+    if (resetError) { setError(resetError.message); return; }
+    setNotice("Check your email for a link to reset your password.");
   };
 
   const handleBack = () => {
@@ -317,7 +340,11 @@ export default function Home() {
                     onKeyDown={(e) => onKey(e, handlePasswordSubmit)}
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base outline-none focus:border-gray-600"
                   />
+                  {path === "signup" && !error && (
+                    <p className="text-xs text-gray-400">At least {PASSWORD_MIN} characters.</p>
+                  )}
                   {error && <p className="text-red-600 text-sm">{error}</p>}
+                  {notice && <p className="text-green-700 text-sm">{notice}</p>}
                   <button
                     onClick={handlePasswordSubmit}
                     disabled={!password || isLoading}
@@ -329,6 +356,16 @@ export default function Home() {
                       ? "Log In"
                       : "Create Account"}
                   </button>
+                  {path === "login" && (
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={isLoading}
+                      className="w-full text-sm text-gray-500 underline underline-offset-2 disabled:opacity-40"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
                 </div>
               )}
             </div>

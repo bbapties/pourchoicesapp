@@ -92,12 +92,12 @@ Gated: auth / RLS / env. Ask Brian before changing.
 
 ## Auth / signup / profile
 
-- [ ] **B-25** (high) No password minimum in the app (unless Supabase Auth is configured).
-  `src/app/page.tsx` ~270–300
-- [ ] **B-26** (high) No forgot-password / reset on the only auth surface.
-  `src/app/page.tsx`
-- [ ] **B-27** (medium) Username uniqueness is case-sensitive in DB, case-insensitive in the app.
-  `Lakehouse` vs `lakehouse` both succeed. `src/lib/profile.ts` ~33–48
+- [x] **B-25** (high) No app password minimum. **FIXED (Claude, 2026-08-27).**
+  Signup now rejects passwords shorter than `PASSWORD_MIN` (8) client-side, with a hint under the field. `src/app/page.tsx`.
+- [x] **B-26** (high) No forgot-password/reset. **FIXED (Claude, 2026-08-27).**
+  Login step has a "Forgot password?" link → `resetPasswordForEmail(redirectTo=/reset-password)`; new `/reset-password` page consumes the recovery session and sets a new password (min 8 + confirm), then routes to /mybar. **Supabase config needed:** add `https://www.pourchoicesapp.com/reset-password` (and localhost) to Auth → URL Configuration → Redirect URLs, and ensure the "Reset password" email template is enabled. `src/app/page.tsx` · `src/app/reset-password/page.tsx`.
+- [x] **B-27** (medium) Username uniqueness was case-sensitive in DB, case-insensitive in app. **FIXED (Claude, 2026-08-27).**
+  Added unique index `users_username_lower_key ON users(lower(username))` — the DB now enforces case-insensitive uniqueness (no `Lakehouse`/`lakehouse` split); the app's `ilike` pre-check + 23505 handling stay consistent. `sql/b27-username-ci-unique-migration.sql`.
 - [ ] **B-28** (medium) Signup does not reuse `validateUsername` (3–20, `[A-Za-z0-9_-]`).
   Covered in spirit by B-08; keep until signup calls the same helper.
 - [ ] **B-29** (low) Delete-user partial failure leaves an Auth orphan.
