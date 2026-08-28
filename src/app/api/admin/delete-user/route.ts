@@ -69,6 +69,15 @@ export async function POST(req: Request) {
     const admin = createClient(url, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // B-29: the catalog keeps the user's authorship (bottles/variants
+    // created_by/updated_by FK -> auth.users). Detach it first so deleting the
+    // auth row doesn't 500 with an FK violation and leave an Auth orphan.
+    await admin.from("bottles").update({ created_by: null }).eq("created_by", target.auth_id);
+    await admin.from("bottles").update({ updated_by: null }).eq("updated_by", target.auth_id);
+    await admin.from("bottle_variants").update({ created_by: null }).eq("created_by", target.auth_id);
+    await admin.from("bottle_variants").update({ updated_by: null }).eq("updated_by", target.auth_id);
+
     const { error: authErr } = await admin.auth.admin.deleteUser(target.auth_id);
     if (authErr) {
       return NextResponse.json(

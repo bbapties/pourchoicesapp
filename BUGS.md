@@ -98,11 +98,10 @@ Gated: auth / RLS / env. Ask Brian before changing.
   Login step has a "Forgot password?" link → `resetPasswordForEmail(redirectTo=/reset-password)`; new `/reset-password` page consumes the recovery session and sets a new password (min 8 + confirm), then routes to /mybar. **Supabase config needed:** add `https://www.pourchoicesapp.com/reset-password` (and localhost) to Auth → URL Configuration → Redirect URLs, and ensure the "Reset password" email template is enabled. `src/app/page.tsx` · `src/app/reset-password/page.tsx`.
 - [x] **B-27** (medium) Username uniqueness was case-sensitive in DB, case-insensitive in app. **FIXED (Claude, 2026-08-27).**
   Added unique index `users_username_lower_key ON users(lower(username))` — the DB now enforces case-insensitive uniqueness (no `Lakehouse`/`lakehouse` split); the app's `ilike` pre-check + 23505 handling stay consistent. `sql/b27-username-ci-unique-migration.sql`.
-- [ ] **B-28** (medium) Signup does not reuse `validateUsername` (3–20, `[A-Za-z0-9_-]`).
-  Covered in spirit by B-08; keep until signup calls the same helper.
-- [ ] **B-29** (low) Delete-user partial failure leaves an Auth orphan.
-  Public cascade can succeed, then `auth.users` delete 500s (`partial: true`).
-  `delete-user/route.ts` ~65–80
+- [x] **B-28** (medium) Signup reuses `validateUsername`. **DONE (via B-08, verified 2026-08-27).**
+  `handleUsernameSubmit` calls `validateUsername` from `lib/profile` (3–20, `[A-Za-z0-9_-]`) + a case-insensitive uniqueness pre-check before `auth.signUp`. Same helper as Profile. `src/app/page.tsx`.
+- [x] **B-29** (low) Delete-user could leave an Auth orphan. **FIXED (Claude, 2026-08-27).**
+  Root cause: the deleted user's catalog authorship (`bottles`/`bottle_variants` `created_by`/`updated_by` FK → `auth.users`) blocked the `auth.users` delete with an FK violation after the public cascade. The route now detaches that authorship (sets those columns NULL via the service-role client) before `auth.admin.deleteUser`, so the delete completes cleanly. `delete-user/route.ts`.
 - [ ] **B-30** (low) No self-serve account delete / data export on Profile.
 
 ---
