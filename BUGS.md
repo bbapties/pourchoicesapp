@@ -81,8 +81,8 @@ Gated: auth / RLS / env. Ask Brian before changing.
   The SECURITY DEFINER function already re-checks `role='admin'` (via `auth_id=auth.uid()`) and blocks self-delete. `src/app/api/admin/delete-user/route.ts`.
 - [x] **B-21** (high) Service-role env name mismatch. **FIXED (Claude, 2026-08-27).**
   Route now reads `SUPABASE_SERVICE_ROLE_KEY ?? SUPABASE_SERVICE_ROLE`. **Still set the correct env in Vercel** (either name now works). `delete-user/route.ts`.
-- [ ] **B-22** (high) QA admin account has a weak password on public prod. **Brian's action — cannot be done in code.**
-  `claude@pourchoicesapp.com` / `grokbuild@pourchoicesapp.com` can verify/delete bottles + cascade-delete users. Rotate the password in Supabase (or delete the account) before testers arrive. Claude won't handle credentials.
+- [x] **B-22** (high) QA admin accounts had weak passwords + admin on public prod. **RESOLVED by demotion (Claude, 2026-08-27).**
+  `claude@` and `grokbuild@` demoted `admin → user` (Brian confirmed all admin work is on `The_Lake_House`). A weak password on a regular test account can no longer verify/delete bottles or cascade-delete users. Roles snapshotted in `backup_notes_fix.qa_roles` (reversible). **The_Lake_House is now the sole admin** — keep its password strong. Agents make DB changes via service-role SQL, not the app.
 - [x] **B-23** (high) Elo could be farmed via `tasting_results` writes — **tier-1 FIXED (Claude, 2026-08-27).**
   The user policy was `ALL` (INSERT/UPDATE/DELETE). Split into **SELECT + INSERT only** for own results (via session ownership); admins keep read; UPDATE/DELETE removed for users, killing the delete-reinsert Elo inflation and result tampering. The app only ever INSERTs (saveTasting), so no code change. `sql/b23-b24-security-migration.sql`. **Tier-2 (post-beta):** RPC-gate + rate-limit tasting writes; not done (do not rewrite the Elo trigger).
 - [x] **B-24** (high) Store-pick privacy was client-side only. **FIXED (Claude, 2026-08-27).**
