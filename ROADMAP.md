@@ -257,10 +257,10 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 
 ### 8.4 Barcode scan + catalog seed
 - [ ] Census: how many `bottles.barcode` are filled
-- [ ] Shared scan sheet on **every** bottle search (Search tab + Drink picker)
-- [ ] Exact lookup → open bottle; miss → provisional add with barcode filled
-- [ ] Seed existing SKUs (script/preview; no invented codes)
-- [ ] Coach `search.barcode`; `search` event `mode: 'barcode'`
+- [~] Shared scan sheet on bottle search — **done on Search + My Bar** (`BarcodeScannerSheet`, Claude 2026-08-27); Drink picker still pending
+- [x] Exact lookup → open bottle; miss → provisional add with barcode filled (`lib/barcode.ts`, Claude 2026-08-27)
+- [ ] Seed existing SKUs (script/preview; no invented codes) — only Buffalo Trace has a verified barcode so far; Blanton's/Eagle Rare pending Brian's approval
+- [x] Coach `search.barcode`; event `click/barcode_scan { matched }` (Claude 2026-08-27)
 
 ### 8.5 Admin push notifications
 - [ ] Profile Notifications toggle, **default on**
