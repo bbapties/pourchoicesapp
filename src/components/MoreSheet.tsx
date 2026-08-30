@@ -11,7 +11,7 @@ interface MoreSheetProps {
   onAddVariant?: () => void;
   /** Restock a bottle you already own (opens variant picker). Owned state. */
   onAddAnother?: () => void;
-  /** Soft delete — hidden from My Bar, kept in history. Owned state. */
+  /** Soft delete — moves to Empty Bottles, kept in history. Owned state. */
   onMarkEmpty?: () => void;
   /** Log a pour (neat / rocks / mixed) or start a blind tasting. */
   onHaveADrink?: () => void;
@@ -45,8 +45,8 @@ export default function MoreSheet({
   if (onAddAnother) rows.push({ label: "Add another", hint: "You bought another bottle of this", onClick: onAddAnother });
   if (onHaveADrink) rows.push({ label: "Have a drink", hint: "Neat, rocks, mixed, or start a blind tasting", onClick: onHaveADrink });
   if (onBlindTasting) rows.push({ label: "Blind tasting", hint: "Rank this against 2–5 bottles", onClick: onBlindTasting });
-  if (onMarkEmpty) rows.push({ label: "Mark as Empty", hint: "Hidden from My Bar, kept in your history", onClick: onMarkEmpty });
-  if (onRemove) rows.push({ label: "Remove from collection", hint: "Deletes all history. Only if added by mistake.", onClick: onRemove, danger: true });
+  if (onMarkEmpty) rows.push({ label: "Mark as Empty", hint: "Moves to Empty Bottles, kept in your history", onClick: onMarkEmpty });
+  if (onRemove) rows.push({ label: "Remove from collection", hint: "Only if added by mistake — a tasting keeps its rating", onClick: onRemove, danger: true });
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

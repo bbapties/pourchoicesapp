@@ -346,7 +346,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
   const handleSortSelect = (option: SortOption) => {
     if (option === 'yours') {
-      toast("Taste some bottles to unlock your personal rankings");
+      toast("My Ranks sorting is coming soon");
       setShowSortMenu(false);
       return;
     }
