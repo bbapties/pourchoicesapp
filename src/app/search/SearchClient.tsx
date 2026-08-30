@@ -61,6 +61,8 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const [userBottlesMap, setUserBottlesMap] = useState<Record<string, UserBottleRow[]>>({});
   // B-31 earmark: bottle_ids the viewer has drunk or blind-tasted (ownership handled separately).
   const [hadItSet, setHadItSet] = useState<Set<string>>(new Set());
+  // S4 My Ranks: skuId -> the viewer's own star rating (max across their rows for that SKU).
+  const [personalStarMap, setPersonalStarMap] = useState<Record<string, number>>({});
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
   const [authId, setAuthId] = useState<string | null>(null);
 
@@ -216,7 +218,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
       const { data, error } = await supabase
         .from('user_bottles')
-        .select('bottle_id, currently_owned, variant_id, times_had, created_at, updated_at')
+        .select('bottle_id, currently_owned, variant_id, times_had, created_at, updated_at, rating_stars')
         .eq('user_id', publicUser.id);
 
       if (error) {
@@ -225,6 +227,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       }
 
       const map: Record<string, UserBottleRow[]> = {};
+      const starMap: Record<string, number> = {};
       (data || []).forEach(row => {
         if (!map[row.bottle_id]) map[row.bottle_id] = [];
         map[row.bottle_id].push({
@@ -234,8 +237,11 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
           created_at: row.created_at,
           updated_at: row.updated_at,
         });
+        const s = row.rating_stars == null ? null : Number(row.rating_stars);
+        if (s != null && !Number.isNaN(s)) starMap[row.bottle_id] = Math.max(starMap[row.bottle_id] ?? 0, s);
       });
       setUserBottlesMap(map);
+      setPersonalStarMap(starMap);
 
       // B-31 earmark: "had it" spans more than ownership — a drink or a blind tasting counts too
       // (BOTTLE_ACTIONS.md). Collect bottle_ids the user drank or tasted. Fail-open: on any error
@@ -370,12 +376,20 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
     if (sortBy === 'az') return [...annotated].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (sortBy === 'za') return [...annotated].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+    if (sortBy === 'yours') {
+      // My Ranks (S4): the viewer's own star rating, highest first; unrated bottles fall to the end.
+      return [...annotated].sort((a, b) => {
+        const sa = personalStarMap[a.bottleId ?? a.id] ?? -1;
+        const sb = personalStarMap[b.bottleId ?? b.id] ?? -1;
+        return sb - sa;
+      });
+    }
     return annotated; // global/null = server Elo order
-  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet]);
+  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, personalStarMap]);
 
   const handleSortSelect = (option: SortOption) => {
-    if (option === 'yours') {
-      toast("My Ranks sorting is coming soon");
+    if (option === 'yours' && Object.keys(personalStarMap).length === 0) {
+      toast("Rate some bottles to use My Ranks");
       setShowSortMenu(false);
       return;
     }
@@ -385,7 +399,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
   const filterActive = !!(filter.field && filter.value);
   const filterValueOptions = filter.field === 'category' ? CATEGORY_VALUES : VERIFIED_VALUES;
-  const sortActive = sortBy !== null && sortBy !== 'yours';
+  const sortActive = sortBy !== null;
 
   const handleFilterButtonClick = () => {
     setFilter(f => ({ ...f, step: f.step === 'closed' ? 'field' : 'closed' }));
@@ -801,7 +815,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
             className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-charcoal transition-colors"
             style={sortActive ? { backgroundColor: '#2F2F2F', color: '#FFFFFF', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
           >
-            {sortBy && sortBy !== 'yours' ? SORT_LABELS[sortBy] : 'Sort by'}
+            {sortBy ? SORT_LABELS[sortBy] : 'Sort by'}
             <ChevronDown size={13} />
           </button>
 
