@@ -40,6 +40,7 @@ export type OwnershipRow = {
   variant_id: string | null;
   currently_owned: boolean;
   times_had?: number | null;
+  owned_count?: number | null; // B-32: current quantity on the shelf
 };
 
 interface BottleDetailViewProps {
@@ -94,7 +95,7 @@ export default function BottleDetailView({
   // B-31: local ownership overrides, keyed by variant_id, for versions the user acts on while
   // the sheet is open. Merged over ownershipRows at render. inCollectionLocally/ownedLocally are
   // DERIVED per shown-variant (no longer SKU-wide booleans). Reset when the bottle changes.
-  const [ownershipOverrides, setOwnershipOverrides] = useState<Record<string, { currently_owned: boolean; times_had: number }>>({});
+  const [ownershipOverrides, setOwnershipOverrides] = useState<Record<string, { currently_owned: boolean; times_had: number; owned_count: number }>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -138,11 +139,16 @@ export default function BottleDetailView({
   const currentVariant = onAddSlide ? undefined : vlist[variantIndex];
   const shown = fieldsForVariant(localBottle, currentVariant);
 
-  // B-31: ownership map = the SKU's ownershipRows overlaid with this session's local overrides.
+  // B-31/B-32: ownership map = the SKU's ownershipRows overlaid with this session's local overrides.
+  type OwnCell = { currently_owned: boolean; times_had: number; owned_count: number };
   const skuHasRows = (ownershipRows?.length ?? 0) > 0;
-  const ownershipMap: Record<string, { currently_owned: boolean; times_had: number }> = {};
+  const ownershipMap: Record<string, OwnCell> = {};
   for (const r of ownershipRows ?? []) {
-    if (r.variant_id) ownershipMap[r.variant_id] = { currently_owned: r.currently_owned, times_had: r.times_had ?? 0 };
+    if (r.variant_id) ownershipMap[r.variant_id] = {
+      currently_owned: r.currently_owned,
+      times_had: r.times_had ?? 0,
+      owned_count: r.owned_count ?? (r.currently_owned ? 1 : 0),
+    };
   }
   for (const [vId, o] of Object.entries(ownershipOverrides)) ownershipMap[vId] = o;
 
@@ -151,24 +157,24 @@ export default function BottleDetailView({
   // SKU-level fallback so un-wired callers behave exactly as before.
   const currentVariantId = currentVariant?.variantId ?? null;
   const currentOwnership = (() => {
-    // 1. The shown variant has a row (from ownershipRows or a local action) → use it.
     if (currentVariantId && ownershipMap[currentVariantId]) {
       const r = ownershipMap[currentVariantId];
-      return { inColl: r.currently_owned || r.times_had >= 1, owned: r.currently_owned };
+      return { inColl: r.currently_owned || r.times_had >= 1, owned: r.currently_owned, ownedCount: r.owned_count };
     }
-    // 2. Only when we hold the SKU's FULL row set (Search) can we say a known variant with no
-    //    row is genuinely un-owned — the actual B-31 fix.
-    if (skuHasRows && currentVariantId) return { inColl: false, owned: false };
+    if (skuHasRows && currentVariantId) return { inColl: false, owned: false, ownedCount: 0 };
     if (skuHasRows) {
-      // Default/unknown variant before the list loads → SKU aggregate over the full rows.
       const vals = Object.values(ownershipMap);
-      return { inColl: vals.some(v => v.currently_owned || v.times_had >= 1), owned: vals.some(v => v.currently_owned) };
+      return {
+        inColl: vals.some(v => v.currently_owned || v.times_had >= 1),
+        owned: vals.some(v => v.currently_owned),
+        ownedCount: vals.reduce((n, v) => n + (v.owned_count ?? 0), 0),
+      };
     }
-    // 3. No full row set (My Bar / Social pinning-only) → previous SKU-level behavior.
-    return { inColl: inCollection, owned: currentlyOwned };
+    return { inColl: inCollection, owned: currentlyOwned, ownedCount: currentlyOwned ? 1 : 0 };
   })();
   const inCollectionLocally = currentOwnership.inColl;
   const ownedLocally = currentOwnership.owned;
+  const ownedCount = currentOwnership.ownedCount;
 
   // Optimistically patch one variant's ownership after an add / empty / remove.
   const patchOwnership = (
@@ -178,11 +184,13 @@ export default function BottleDetailView({
   ) => {
     if (!vId) return;
     setOwnershipOverrides(prev => {
-      const cur = prev[vId] ?? ownershipMap[vId] ?? { currently_owned: false, times_had: 0 };
+      const cur = prev[vId] ?? ownershipMap[vId] ?? { currently_owned: false, times_had: 0, owned_count: 0 };
       let times_had = cur.times_had;
-      if (owned || opts?.emptied) times_had = Math.max(times_had, 1); // stays in history
-      if (opts?.removed) times_had = 0;                               // hard remove clears it
-      return { ...prev, [vId]: { currently_owned: owned, times_had } };
+      let owned_count = cur.owned_count ?? (cur.currently_owned ? 1 : 0);
+      if (opts?.removed) { times_had = 0; owned_count = 0; }
+      else if (opts?.emptied) { times_had = Math.max(times_had, 1); owned_count = Math.max(0, owned_count - 1); }
+      else if (owned) { times_had = Math.max(times_had, 1); owned_count = owned_count + 1; }
+      return { ...prev, [vId]: { currently_owned: owned_count > 0, times_had, owned_count } };
     });
   };
 
@@ -1057,7 +1065,9 @@ export default function BottleDetailView({
         {/* 7.6: ownership status + one state-dependent primary action + More sheet */}
         {!isEditing && inCollectionLocally && (
           <div className="text-center text-xs text-gray-500 mb-2">
-            {collectionState === 'owned' ? '✓ In My Bar' : 'Empty — kept in your history'}
+            {collectionState === 'owned'
+              ? `✓ In My Bar${ownedCount > 1 ? ` · you own ${ownedCount}` : ''}`
+              : 'Empty — kept in your history'}
           </div>
         )}
 

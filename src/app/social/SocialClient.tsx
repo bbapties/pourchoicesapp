@@ -20,6 +20,7 @@ import {
   addOrRestockUserBottle,
   formatLastActivity,
   removeUserBottle,
+  markVariantEmpty,
   type UserBottleRow,
 } from "@/lib/userBottles";
 
@@ -190,18 +191,11 @@ export default function SocialClient() {
     // (B-09): user_bottles is one row per (user, variant), so marking empty must
     // target this variant only — not every version of the SKU.
     const vId = variantId ?? selectedRow.variant_id ?? null;
-    let q = supabase
-      .from("user_bottles")
-      .update({ currently_owned: false, updated_at: new Date().toISOString() })
-      .eq("user_id", publicUserId)
-      .eq("bottle_id", bottleId)
-      .eq("currently_owned", true);
-    q = vId ? q.eq("variant_id", vId) : q.is("variant_id", null);
-    const { error } = await q;
-    if (error) { toast.error("Failed to update"); return; }
-    await logActivity({ userId: publicUserId, bottleId, action: "finished", variantId: vId });
-    setSelectedRow({ ...selectedRow, currently_owned: false, updated_at: new Date().toISOString() });
-    setSelectedOwned({ inCollection: true, currentlyOwned: false });
+    // B-32 "finish one": owned_count-1, emptied_count+1 (markVariantEmpty logs 'finished').
+    const res = await markVariantEmpty({ userId: publicUserId, bottleId, variantId: vId });
+    if ("error" in res) { toast.error("Failed to update"); return; }
+    setSelectedRow({ ...selectedRow, currently_owned: res.ownedCount > 0, updated_at: new Date().toISOString() });
+    setSelectedOwned({ inCollection: true, currentlyOwned: res.ownedCount > 0 });
     toast.success("Marked as Finished");
     load(true);
   };

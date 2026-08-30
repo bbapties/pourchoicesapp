@@ -17,7 +17,7 @@ import BottleDetailView from "@/components/BottleDetailView";
 import { isVariantVisibleToViewer } from "@/lib/variants";
 import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
-import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, type UserBottleRow } from "@/lib/userBottles";
+import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty, type UserBottleRow } from "@/lib/userBottles";
 import { logActivity } from "@/lib/activities";
 import { logEvent, logClick } from "@/lib/events";
 
@@ -218,7 +218,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
       const { data, error } = await supabase
         .from('user_bottles')
-        .select('bottle_id, currently_owned, variant_id, times_had, created_at, updated_at, rating_stars')
+        .select('bottle_id, currently_owned, variant_id, times_had, owned_count, created_at, updated_at, rating_stars')
         .eq('user_id', publicUser.id);
 
       if (error) {
@@ -234,6 +234,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
           currently_owned: row.currently_owned,
           variant_id: row.variant_id ?? null,
           times_had: row.times_had ?? 1,
+          owned_count: row.owned_count ?? (row.currently_owned ? 1 : 0),
           created_at: row.created_at,
           updated_at: row.updated_at,
         });
@@ -617,34 +618,19 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       ?? rows.find(r => r.currently_owned)
       ?? rows.find(r => (r.times_had ?? 0) >= 1)
       ?? rows[0];
-    const newOwned = !primaryRow.currently_owned;
-    let updateQuery = supabase
-      .from('user_bottles')
-      .update({ currently_owned: newOwned, updated_at: new Date().toISOString() })
-      .eq('user_id', publicUserId)
-      .eq('bottle_id', bottleId);
-    updateQuery = primaryRow.variant_id
-      ? updateQuery.eq('variant_id', primaryRow.variant_id)
-      : updateQuery.is('variant_id', null);
-    const { error } = await updateQuery;
-
-    if (error) { toast.error("Failed to update"); return; }
-
-    await logActivity({
-      userId: publicUserId,
-      bottleId,
-      action: newOwned ? "added_to_collection" : "finished",
-    });
+    // onToggleOwnership from the detail = "finish one" (B-32): owned_count-1, emptied_count+1.
+    const res = await markVariantEmpty({ userId: publicUserId, bottleId, variantId: primaryRow.variant_id ?? null });
+    if ("error" in res) { toast.error("Failed to update"); return; }
 
     setUserBottlesMap(prev => ({
       ...prev,
       [bottleId]: prev[bottleId].map(r =>
         r.variant_id === primaryRow.variant_id
-          ? { ...r, currently_owned: newOwned, updated_at: new Date().toISOString() }
+          ? { ...r, currently_owned: res.ownedCount > 0, updated_at: new Date().toISOString() }
           : r
       ),
     }));
-    toast.success(newOwned ? "Back in Your Bar!" : "Marked as Finished");
+    toast.success("Marked as Finished");
   }, [publicUserId, userBottlesMap]);
 
   const handleDeleteFromBar = useCallback(async (bottleId: string, variantId?: string | null) => {

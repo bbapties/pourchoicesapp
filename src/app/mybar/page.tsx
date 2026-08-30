@@ -17,13 +17,15 @@ export default async function MyBarPage() {
 
   if (!publicUser) redirect('/');
 
-  const userBottleSelect = 'bottle_id, variant_id, created_at, updated_at, times_had';
+  const userBottleSelect = 'bottle_id, variant_id, created_at, updated_at, times_had, owned_count, emptied_count';
   type UbRow = {
     bottle_id: string;
     variant_id: string | null;
     created_at: string;
     updated_at: string | null;
     times_had: number | null;
+    owned_count: number | null;
+    emptied_count: number | null;
   };
   // One SKU card per tab (B-31 still collapses multi-variant). Keep the first
   // user_bottles row's variant_id so Add Back / Remove don't fall back to default (B-05).
@@ -34,24 +36,29 @@ export default async function MyBarPage() {
     }
     return map;
   };
+  // B-32: aggregate a count column across a SKU's rows (a SKU may own/empty several variants).
+  const sumBySku = (rows: UbRow[], key: 'owned_count' | 'emptied_count') => {
+    const m = new Map<string, number>();
+    for (const r of rows) m.set(r.bottle_id, (m.get(r.bottle_id) ?? 0) + (r[key] ?? 0));
+    return m;
+  };
 
+  // B-32: owned = any owned_count > 0; empty = any emptied_count > 0. A SKU can be in BOTH.
   const { data: ownedBottles } = await supabase
     .from('user_bottles')
     .select(userBottleSelect)
     .eq('user_id', publicUser.id)
-    .eq('currently_owned', true);
-  // Empty = finished bottles that were actually owned (times_had >= 1).
-  // Tasting-only rows (times_had = 0, created by the Elo trigger for bottles you
-  // blind-tasted but never owned) are excluded here — they belong to the Tasted tab.
+    .gt('owned_count', 0);
   const { data: emptyBottles } = await supabase
     .from('user_bottles')
     .select(userBottleSelect)
     .eq('user_id', publicUser.id)
-    .eq('currently_owned', false)
-    .gte('times_had', 1);
+    .gt('emptied_count', 0);
 
   const ownedIds = (ownedBottles || []).map(r => r.bottle_id);
   const emptyIds = (emptyBottles || []).map(r => r.bottle_id);
+  const ownedCountBySku = sumBySku((ownedBottles || []) as UbRow[], 'owned_count');
+  const emptiedCountBySku = sumBySku((emptyBottles || []) as UbRow[], 'emptied_count');
 
   const detailFields = `
     bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style,
@@ -82,6 +89,7 @@ export default async function MyBarPage() {
         created_at: ub?.created_at,
         updated_at: ub?.updated_at || ub?.created_at,
         times_had: ub?.times_had ?? 1,
+        owned_count: ownedCountBySku.get(d.bottle_id) ?? 1, // B-32: current quantity on the shelf
       };
     });
   }
@@ -103,6 +111,7 @@ export default async function MyBarPage() {
         created_at: ub?.created_at,
         updated_at: ub?.updated_at || ub?.created_at,
         times_had: ub?.times_had ?? 1,
+        emptied_count: emptiedCountBySku.get(d.bottle_id) ?? 1, // B-32: lifetime finished for this SKU
       };
     });
   }

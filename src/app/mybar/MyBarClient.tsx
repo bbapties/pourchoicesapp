@@ -12,7 +12,7 @@ import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
 import { type BottleDetails } from "@/lib/types";
-import { addOrRestockUserBottle, formatLastActivity, removeUserBottle } from "@/lib/userBottles";
+import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty } from "@/lib/userBottles";
 import { logActivity } from "@/lib/activities";
 import { isVariantVisibleToViewer } from "@/lib/variants";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -79,6 +79,8 @@ function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: b
     provisional: !d.bottle_verified,
     currentlyOwned,
     tasted,
+    // B-32: quantity for the tab — current owned on In My Bar, lifetime finished on Empty.
+    quantity: currentlyOwned ? (d.owned_count ?? 1) : (!tasted ? (d.emptied_count ?? 1) : undefined),
   };
 }
 
@@ -338,27 +340,19 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     // tasting-only rows (times_had = 0) untouched (B-05).
     const row = rawOwned.find(r => r.bottle_id === bottleId);
     const vId = variantId ?? row?.variant_id ?? null;
-    let q = supabase
-      .from('user_bottles')
-      .update({ currently_owned: false, updated_at: new Date().toISOString() })
-      .eq('user_id', publicUserId)
-      .eq('bottle_id', bottleId)
-      .eq('currently_owned', true);
-    if (vId) q = q.eq('variant_id', vId);
-    const { error } = await q;
-
-    if (error) { toast.error("Failed to update"); return; }
-
-    await logActivity({
-      userId: publicUserId,
-      bottleId,
-      action: "finished",
-      variantId: vId,
-    });
+    // B-32 "finish one": owned_count-1, emptied_count+1 (markVariantEmpty logs 'finished').
+    const res = await markVariantEmpty({ userId: publicUserId, bottleId, variantId: vId });
+    if ("error" in res) { toast.error("Failed to update"); return; }
 
     if (row) {
-      setRawOwned(prev => prev.filter(r => r.bottle_id !== bottleId));
-      setRawEmpty(prev => [...prev, { ...row, addedAt: new Date().toISOString(), updated_at: new Date().toISOString() }]);
+      const emptyRow = { ...row, emptied_count: res.emptiedCount, addedAt: new Date().toISOString(), updated_at: new Date().toISOString() };
+      setRawEmpty(prev => [...prev.filter(r => r.bottle_id !== bottleId || r.variant_id !== vId), emptyRow]);
+      if (res.ownedCount > 0) {
+        // still own one or more — keep it In My Bar too (a variant can be in both tabs).
+        setRawOwned(prev => prev.map(r => r.bottle_id === bottleId ? { ...r, owned_count: res.ownedCount } : r));
+      } else {
+        setRawOwned(prev => prev.filter(r => r.bottle_id !== bottleId));
+      }
     }
     setSelectedBottle(null);
     toast.success("Marked as Finished");

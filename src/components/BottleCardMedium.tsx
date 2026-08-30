@@ -14,6 +14,7 @@ export interface BottleCardMediumData {
   provisional?: boolean;
   currentlyOwned?: boolean;
   tasted?: boolean;
+  quantity?: number; // B-32: how many (owned on In My Bar, finished on Empty); shown when > 1
 }
 
 function StarRating({ value }: { value: number }) {
@@ -93,8 +94,13 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
 
         {/* Attribute grid */}
         <div className="flex-1 min-w-0 pr-6">
-          {/* Name */}
-          <h3 className="font-semibold text-gray-900 truncate mb-1">{bottle.name}</h3>
+          {/* Name (+ quantity when you have more than one) */}
+          <h3 className="font-semibold text-gray-900 truncate mb-1">
+            {bottle.name}
+            {(bottle.quantity ?? 1) > 1 && (
+              <span className="ml-1.5 text-xs font-semibold text-gray-500 align-middle">×{bottle.quantity}</span>
+            )}
+          </h3>
           {/* Row 1: distillery (2/3) | category (1/3 right-aligned) */}
           <div className="flex gap-2 mb-1">
             <span className="flex-[2] text-sm text-gray-600 truncate">{bottle.distillery || '—'}</span>

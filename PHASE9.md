@@ -34,6 +34,41 @@ The S1–S5 sections below are the original plan; S4/S5 shifted per the above.
 
 ---
 
+## Wave 2 — next 10 stories (approved 2026-08-30; keystone-first, QA on the Claude account)
+
+Gated decisions approved by Brian: additive `owned_count`/`emptied_count` columns; a
+`SECURITY DEFINER` aggregate-guess RPC; tightened RLS on feedback/suggested_edits + upload
+sanitization. **Still explicitly gated (do NOT touch without a fresh go):** B-74 auth-id vs
+public-id cleanup (own snapshot + go), and the Elo trigger math (B-49/B-50 ask-first).
+
+1. **Two-count ownership + card-per-variant My Bar** (B-32; B.1/B.2). Additive `owned_count` +
+   `emptied_count` on `user_bottles`, backfilled (`owned_count = currently_owned?1:0`,
+   `emptied_count = (!owned && times_had>=1)?1:0`), `currently_owned` kept synced (`owned_count>0`)
+   so all existing reads still work. My Bar tabs + counts read the new columns; a variant can be in
+   both tabs. Wire My Bar/Social detail ownership to full per-variant rows (finishes B-31).
+2. **Blind tastings feel finished** (D.1; B-51, B-47). Completing a tasting posts one
+   `did a blind tasting` activity → a ranked results view; wipe the manual guess on first tasting;
+   log the tasting event.
+3. **Ratings pre-tasting** (A.2/D.2; B-41). `SECURITY DEFINER` RPC returns per-variant AVG of guess
+   stars (aggregate only). Global star falls back to it until a blind tasting exists; search list
+   star = avg(my, global). Fix last-activity tasting-only mislabel.
+4. **Harden user-writable data** (B-58, B-59). feedback/suggested_edits truly append-only at the DB
+   (submitter can't change status/admin_note/value post-submit); sanitize + size-cap uploads.
+5. **Honest search/browse numbers** (B-34, B-38, B-37). All-Variants count/Elo exclude others'
+   store picks; browse+filter counts match the list; block empty/dup global variants.
+6. **Honest Remove -> social feed cascade** (B.4). Hard-deleting an erroneous add/pour removes its
+   feed post; reversing a mistaken empty removes the finished post. Needs an activities DELETE
+   policy (own rows).
+7. **Drink picker overhaul** (B-48, B-54). Beyond the 300-SKU cap; allow store picks/variants; log
+   search/click events.
+8. **Barcode two-zone chooser + wishlist-in-history** (A.1 completion + minor). Full "in your bar"
+   multi-version callout; add `wishlisted` to the history-modal timeline.
+9. **Telemetry integrity** (B-60, B-61). Events rate-limit / anon guard; page_views stamp the real
+   user once resolved.
+10. **Docs + small trust polish** (B-70/71/72/73 docs; B-44 nav crowding; B-42/B-40 edge cases).
+
+---
+
 ## S1 — Per-variant history modal  *(safest; app-only, read-only)*
 > "As a user, I tap the history icon on a version and see my counts plus a timeline of every
 > interaction with it — adds, pours (with style), tastings, empties, removes."

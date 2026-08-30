@@ -5,6 +5,7 @@ export type UserBottleRow = {
   currently_owned: boolean;
   variant_id: string | null;
   times_had: number;
+  owned_count?: number | null; // B-32: current quantity on the shelf
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -62,11 +63,11 @@ export async function addOrRestockUserBottle(opts: {
   const variantId = opts.variantId ?? (await resolveDefaultVariantId(opts.bottleId));
   if (!variantId) return { error: "no default variant for bottle" };
 
-  // Restock an existing (user, bottle, variant) row → bump times_had.
+  // Restock an existing (user, bottle, variant) row → bump times_had + owned_count (B-32).
   const restock = async (): Promise<{ timesHad: number; variantId: string } | { error: string }> => {
     const { data: rows, error: readErr } = await supabase
       .from("user_bottles")
-      .select("id, currently_owned, times_had")
+      .select("id, currently_owned, times_had, owned_count")
       .eq("user_id", opts.userId)
       .eq("bottle_id", opts.bottleId)
       .eq("variant_id", variantId)
@@ -76,9 +77,10 @@ export async function addOrRestockUserBottle(opts: {
     if (!row) return { error: "row not found" };
     // times_had = 0 means the row was tasting-only; owning it starts the count at 1.
     const timesHad = (row.times_had ?? 0) >= 1 ? (row.times_had ?? 1) + 1 : 1;
+    const ownedCount = ((row as { owned_count?: number }).owned_count ?? 0) + 1; // one more on the shelf
     const { error } = await supabase
       .from("user_bottles")
-      .update({ currently_owned: true, updated_at: now, times_had: timesHad })
+      .update({ currently_owned: true, updated_at: now, times_had: timesHad, owned_count: ownedCount })
       .eq("id", row.id);
     if (error) return { error: error.message };
     await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "added_to_collection", variantId });
@@ -101,6 +103,7 @@ export async function addOrRestockUserBottle(opts: {
     variant_id: variantId,
     currently_owned: true,
     times_had: 1,
+    owned_count: 1, // B-32: one on the shelf
     created_at: now,
     updated_at: now,
   });
@@ -143,9 +146,10 @@ export async function removeUserBottle(opts: {
 
   const hasTasting = row.elo != null && Number(row.elo) !== 1500;
   if (hasTasting) {
+    // Remove from the shelf but keep the row (its Elo → Tasted). B-32: clear owned_count too.
     const { error } = await supabase
       .from("user_bottles")
-      .update({ currently_owned: false, times_had: 0, updated_at: new Date().toISOString() })
+      .update({ currently_owned: false, times_had: 0, owned_count: 0, updated_at: new Date().toISOString() })
       .eq("id", row.id);
     if (error) return { error: error.message };
   } else {
@@ -154,4 +158,43 @@ export async function removeUserBottle(opts: {
   }
   await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "removed_from_collection", variantId });
   return {};
+}
+
+/**
+ * B-32: "finish one" — decrement the current-owned count by 1 and increment the emptied
+ * (lifetime-finished) count. currently_owned is kept in sync (owned_count>0). One (user,
+ * bottle, variant) row; a variant can end up In My Bar AND Empty at once. Logs `finished`.
+ */
+export async function markVariantEmpty(opts: {
+  userId: string;
+  bottleId: string;
+  variantId?: string | null;
+}): Promise<{ ownedCount: number; emptiedCount: number } | { error: string }> {
+  const variantId = opts.variantId ?? (await resolveDefaultVariantId(opts.bottleId));
+  let query = supabase
+    .from("user_bottles")
+    .select("id, owned_count, emptied_count")
+    .eq("user_id", opts.userId)
+    .eq("bottle_id", opts.bottleId)
+    .eq("currently_owned", true);
+  query = variantId ? query.eq("variant_id", variantId) : query.is("variant_id", null);
+  const { data: rows, error: readErr } = await query.limit(1);
+  if (readErr) return { error: readErr.message };
+  const row = rows?.[0] as { id: string; owned_count?: number; emptied_count?: number } | undefined;
+  if (!row) return { error: "no owned row to finish" };
+
+  const ownedCount = Math.max(0, (row.owned_count ?? 1) - 1);
+  const emptiedCount = (row.emptied_count ?? 0) + 1;
+  const { error } = await supabase
+    .from("user_bottles")
+    .update({
+      owned_count: ownedCount,
+      emptied_count: emptiedCount,
+      currently_owned: ownedCount > 0,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id);
+  if (error) return { error: error.message };
+  await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "finished", variantId });
+  return { ownedCount, emptiedCount };
 }
