@@ -994,7 +994,9 @@ export default function BottleDetailView({
         {inCollectionLocally && showDeleteConfirm && (
           <div className="mt-2 border border-red-300 rounded p-2 bg-red-50 text-xs">
             <p className="text-gray-700 mb-2">
-              This removes all tastings and history. Only use if added by mistake.
+              {hasTasted
+                ? "This takes it off your shelf but keeps your rating — it'll move to your Tasted list. A completed blind tasting is never deleted."
+                : "This removes it from your bar. Only use if you added it by mistake."}
             </p>
             <div className="flex gap-3">
               <button
@@ -1002,7 +1004,7 @@ export default function BottleDetailView({
                 disabled={isDeleting}
                 className="text-red-600 font-semibold hover:text-red-800 disabled:opacity-50"
               >
-                {isDeleting ? 'Removing...' : 'Yes, Delete'}
+                {isDeleting ? 'Removing...' : hasTasted ? 'Remove from bar' : 'Yes, delete'}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
