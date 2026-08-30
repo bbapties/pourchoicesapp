@@ -139,6 +139,29 @@ unidentified account. **Brian: eyeball these on a real account with mixed owners
 
 ## Log (newest first)
 
+### 2026-08-30 — Claude (PHASE9 Wave 2 — next-10 stories, in progress)
+- Brian approved the gated decisions (additive columns, aggregate RPC, RLS hardening) and asked for
+  the next 10 stories (PHASE9.md "Wave 2"). Building + QA-testing each on the **Claude QA account**
+  (`claude@`, verified it's that account) and deploying. **B-74 + Elo math stay gated.**
+- **Also fixed (from live QA):** `f7a5d39`→`7b5789b` wishlist auto-clear didn't fire (the variant
+  sheet passes null for "Standard bottle" → `autoClearWishlist(null)` bailed). Resolves null→default
+  now; verified wishlist→0 / owned→1 on the QA account.
+- **Shipped so far (prod):**
+  1. **B-32 two-count ownership** (`5e4cfce`) — additive `owned_count`/`emptied_count` on
+     `user_bottles` (applied to prod; backfilled to preserve tab membership; `currently_owned`
+     kept synced; rollback `sql/two-count-snapshot.sql`). My Bar tabs + counts from the new columns
+     (a SKU can be in both tabs; card shows ×N; detail "you own N"); `markVariantEmpty` lib centralizes
+     "finish one" across the 3 clients. **QA'd:** seeded owned 2/emptied 1 → both tabs + ×2;
+     mark-empty → owned 2→1, emptied 1→2. My Bar still SKU-collapses (separate cards per owned variant
+     = follow-up).
+  2. **D.1/B-51/B-47 tastings feel finished** (`97a1742`) — completing a tasting posts a `tasted`
+     activity (activities CHECK widened, applied to prod; rollback `sql/tasted-activity-snapshot.sql`)
+     → Social "did a blind tasting with it" + history; wipes the manual guess. **QA'd:** `tasted`
+     activity renders on the feed. Ranked "click for details" results view = follow-up.
+- **Remaining (PHASE9.md Wave 2, #3–#10):** ratings aggregate RPC (#3), append-only + upload hardening
+  (#4), honest search numbers (#5), Remove→feed cascade (#6), drink picker (#7), barcode chooser +
+  wishlist-in-history (#8), telemetry integrity (#9), docs polish (#10).
+
 ### 2026-08-30 — Claude (END SESSION — PHASE9: 5 model build-out stories, autonomous)
 - Continued the autonomous mandate: planned [PHASE9.md](PHASE9.md) from the model, then built +
   deployed the next 5 stories safest-first (app-only or additive; snapshots for schema).
