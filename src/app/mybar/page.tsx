@@ -185,11 +185,55 @@ export default async function MyBarPage() {
     }
   }
 
+  // Wishlist (B.5) = variants the user flagged. One card per variant; opens not-in-collection.
+  let wishlistCollection: any[] = [];
+  const { data: wishRows } = await supabase
+    .from('wishlists')
+    .select('variant_id, created_at')
+    .eq('user_id', publicUser.id);
+  const wishVariantIds = (wishRows || []).map((w) => w.variant_id as string).filter(Boolean);
+  if (wishVariantIds.length > 0) {
+    const wishAddedAt: Record<string, string> = {};
+    for (const w of wishRows || []) if (w.variant_id) wishAddedAt[w.variant_id as string] = w.created_at as string;
+    const { data: vdetails } = await supabase
+      .from('all_variant_details')
+      .select(
+        'variant_id, bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, variant_is_default, variant_elo_global, variant_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_batch, attr_release_year, attr_store_pick_name, attr_nose, attr_palate, attr_finish'
+      )
+      .in('variant_id', wishVariantIds)
+      .order('variant_elo_global', { ascending: false, nullsFirst: false });
+    wishlistCollection = (vdetails || []).map((d: any) => ({
+      bottle_id: d.bottle_id,
+      variant_id: d.variant_id,
+      bottle_name: d.bottle_name,
+      bottle_distillery: d.bottle_distillery,
+      bottle_category: d.bottle_category,
+      bottle_style: d.bottle_style,
+      bottle_verified: d.variant_verified,
+      default_variant_elo: d.variant_elo_global,
+      attr_frontimage_url: d.attr_frontimage_url,
+      attr_backimage_url: d.attr_backimage_url,
+      attr_age: d.attr_age,
+      attr_proof: d.attr_proof,
+      attr_nose: d.attr_nose,
+      attr_palate: d.attr_palate,
+      attr_finish: d.attr_finish,
+      attr_batch: d.attr_batch,
+      attr_release_year: d.attr_release_year,
+      attr_store_pick_name: d.attr_store_pick_name,
+      variant_is_default: d.variant_is_default,
+      addedAt: wishAddedAt[d.variant_id] ?? null,
+      times_had: 0,
+      wishlist: true,
+    }));
+  }
+
   return (
     <MyBarClient
       ownedCollection={ownedCollection}
       emptyCollection={emptyCollection}
       tastedCollection={tastedCollection}
+      wishlistCollection={wishlistCollection}
       allBottlesElo={allBottlesElo}
       publicUserId={publicUser.id}
     />

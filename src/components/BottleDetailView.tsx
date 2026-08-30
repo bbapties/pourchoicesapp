@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { X, ChevronLeft, ChevronRight, Pencil, Star, History } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Pencil, Star, History, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { type BottleDetails } from "@/lib/types";
@@ -14,6 +14,7 @@ import MoreSheet from "@/components/MoreSheet";
 import HistoryModal from "@/components/HistoryModal";
 import RatePromptSheet from "@/components/RatePromptSheet";
 import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
+import { fetchWishlistVariantIds, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 import { supabase } from "@/lib/supabase";
 import { fieldsForVariant, fetchVariantsForSku } from "@/lib/variants";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -107,6 +108,9 @@ export default function BottleDetailView({
   const [showPourSheet, setShowPourSheet] = useState(false);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  // B.5 wishlist: variant ids the viewer has wishlisted (fetched on open) + toggle guard.
+  const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
+  const [wishlistBusy, setWishlistBusy] = useState(false);
   const [isPouring, setIsPouring] = useState(false);
   const [lastActivityLabel, setLastActivityLabel] = useState<string | undefined>(bottle.lastActivity);
   const [localBottle, setLocalBottle] = useState<BottleDetails>(bottle);
@@ -179,6 +183,40 @@ export default function BottleDetailView({
       if (opts?.removed) times_had = 0;                               // hard remove clears it
       return { ...prev, [vId]: { currently_owned: owned, times_had } };
     });
+  };
+
+  const isWishlisted = !!currentVariantId && wishlistedIds.has(currentVariantId);
+
+  const toggleWishlist = async () => {
+    if (!publicUserId || !currentVariantId || wishlistBusy) return;
+    const was = wishlistedIds.has(currentVariantId);
+    setWishlistBusy(true);
+    setWishlistedIds(prev => {
+      const n = new Set(prev);
+      if (was) n.delete(currentVariantId); else n.add(currentVariantId);
+      return n;
+    });
+    const res = was
+      ? await removeFromWishlist(publicUserId, currentVariantId)
+      : await addToWishlist(publicUserId, bottle.id, currentVariantId);
+    if (res.error) {
+      setWishlistedIds(prev => { // revert on failure
+        const n = new Set(prev);
+        if (was) n.add(currentVariantId); else n.delete(currentVariantId);
+        return n;
+      });
+      toast.error("Couldn't update wishlist");
+    } else {
+      toast.success(was ? "Removed from wishlist" : "Added to wishlist");
+    }
+    setWishlistBusy(false);
+  };
+
+  // B.5: adding a wishlisted version to the bar auto-clears its wishlist flag ("you got it!").
+  const autoClearWishlist = (vId: string | null | undefined) => {
+    if (!publicUserId || !vId || !wishlistedIds.has(vId)) return;
+    removeFromWishlist(publicUserId, vId);
+    setWishlistedIds(prev => { const n = new Set(prev); n.delete(vId); return n; });
   };
   const hasBackImage = !!shown.backImageUrl;
   const imageUrl = imageSide === 'front' ? shown.frontImageUrl : shown.backImageUrl;
@@ -261,6 +299,9 @@ export default function BottleDetailView({
       });
       userHasPendingForBottle(bottle.id, publicUserId).then((p) => {
         if (!cancelled) setHasPending(p);
+      });
+      fetchWishlistVariantIds(publicUserId).then((ids) => {
+        if (!cancelled) setWishlistedIds(ids);
       });
     }
     fetchVariantsForSku(bottle.id, [authId, publicUserId]).then((variants) => {
@@ -351,6 +392,7 @@ export default function BottleDetailView({
           if (!onAddToBar) return;
           await onAddToBar(bottle.id, currentVariant?.variantId ?? null);
           patchOwnership(currentVariantId, true);
+          autoClearWishlist(currentVariantId);
           return;
         }
         setIsSaving(false);
@@ -630,14 +672,29 @@ export default function BottleDetailView({
             isEditing ? (
               <span className="text-sm text-gray-500 px-2 py-1">Editing…</span>
             ) : (
-              <button
-                onClick={enterEdit}
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-black px-2 py-1"
-                title="Suggest an edit to this bottle"
-                data-coach="bottle.suggest_edit"
-              >
-                <Pencil className="w-4 h-4" /> Suggest edit
-              </button>
+              <div className="flex items-center gap-1">
+                {!onAddSlide && currentVariantId && (
+                  <button
+                    onClick={toggleWishlist}
+                    disabled={wishlistBusy}
+                    className="flex items-center gap-1 text-sm px-2 py-1 disabled:opacity-50"
+                    style={{ color: isWishlisted ? '#2F2F2F' : '#9ca3af' }}
+                    title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                    aria-pressed={isWishlisted}
+                  >
+                    <Bookmark className="w-4 h-4" fill={isWishlisted ? 'currentColor' : 'none'} />
+                    {isWishlisted ? 'Wishlisted' : 'Wishlist'}
+                  </button>
+                )}
+                <button
+                  onClick={enterEdit}
+                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-black px-2 py-1"
+                  title="Suggest an edit to this bottle"
+                  data-coach="bottle.suggest_edit"
+                >
+                  <Pencil className="w-4 h-4" /> Suggest edit
+                </button>
+              </div>
             )
           ) : (
             <div className="w-10 h-10" />
@@ -1191,6 +1248,7 @@ export default function BottleDetailView({
             if (!onAddToBar) return;
             await onAddToBar(bottle.id, variantId);
             patchOwnership(variantId, true);
+            autoClearWishlist(variantId);
             setShowVariantSelect(false);
             onClose();
           }}
@@ -1213,6 +1271,7 @@ export default function BottleDetailView({
             if (onAddToBar) {
               await onAddToBar(bottle.id, variantId);
               patchOwnership(variantId, true);
+              autoClearWishlist(variantId);
             }
             setShowAddVariant(false);
             toast.success("Version added to My Bar");

@@ -12,7 +12,8 @@ export type ActivityAction =
   | "added_to_db"
   | "suggested_edit"
   | "verified"
-  | "removed_from_collection";
+  | "removed_from_collection"
+  | "wishlisted";
 
 export type PourType = "neat" | "rocks" | "mixed" | "blind";
 
@@ -59,6 +60,8 @@ export function formatActivityLine(row: {
       return `Verified · ${date}`;
     case "removed_from_collection":
       return `Removed · ${date}`;
+    case "wishlisted":
+      return `Wishlisted · ${date}`;
     default:
       return date;
   }
@@ -79,6 +82,7 @@ export function formatFeedAction(action: ActivityAction, pourType?: PourType | n
   if (action === "suggested_edit") return "suggested an edit";
   if (action === "verified") return "verified it";
   if (action === "removed_from_collection") return "removed it from their collection";
+  if (action === "wishlisted") return "added it to their wishlist";
   return action;
 }
 
