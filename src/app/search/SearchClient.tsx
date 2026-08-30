@@ -57,6 +57,8 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
   // user_bottles map: bottle_id → array of ownership rows (multiple variants per bottle supported)
   const [userBottlesMap, setUserBottlesMap] = useState<Record<string, UserBottleRow[]>>({});
+  // B-31 earmark: bottle_ids the viewer has drunk or blind-tasted (ownership handled separately).
+  const [hadItSet, setHadItSet] = useState<Set<string>>(new Set());
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
   const [authId, setAuthId] = useState<string | null>(null);
 
@@ -232,6 +234,28 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         });
       });
       setUserBottlesMap(map);
+
+      // B-31 earmark: "had it" spans more than ownership — a drink or a blind tasting counts too
+      // (BOTTLE_ACTIONS.md). Collect bottle_ids the user drank or tasted. Fail-open: on any error
+      // the set stays empty and the earmark simply falls back to ownership.
+      const had = new Set<string>();
+      const [{ data: drinks }, { data: sess }] = await Promise.all([
+        supabase.from('activities').select('bottle_id').eq('user_id', publicUser.id).eq('action', 'drank'),
+        supabase.from('tasting_sessions').select('id').eq('user_id', publicUser.id),
+      ]);
+      (drinks || []).forEach((d: { bottle_id: string | null }) => { if (d.bottle_id) had.add(d.bottle_id); });
+      const sessionIds = (sess || []).map((s: { id: string }) => s.id);
+      if (sessionIds.length) {
+        const { data: results } = await supabase
+          .from('tasting_results')
+          .select('winner_bottle_id, loser_bottle_id')
+          .in('tasting_session_id', sessionIds);
+        (results || []).forEach((r: { winner_bottle_id: string | null; loser_bottle_id: string | null }) => {
+          if (r.winner_bottle_id) had.add(r.winner_bottle_id);
+          if (r.loser_bottle_id) had.add(r.loser_bottle_id);
+        });
+      }
+      setHadItSet(had);
     }
 
     fetchUserBottles();
@@ -320,12 +344,15 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
     let annotated = base.map(bottle => {
       const skuId = bottle.bottleId ?? bottle.id; // collection is tracked at the SKU level
+      const inCollection = userBottlesMap[skuId]?.some(r => r.currently_owned || (r.times_had ?? 0) >= 1) ?? false;
       return {
         ...bottle,
         // "In collection" = an OWNERSHIP row exists (owned now, or finished/was-owned).
         // Tasting-only rows (times_had = 0) do not count as being in the collection.
-        inCollection: userBottlesMap[skuId]?.some(r => r.currently_owned || (r.times_had ?? 0) >= 1) ?? false,
+        inCollection,
         currentlyOwned: userBottlesMap[skuId]?.some(r => r.currently_owned) ?? false,
+        // "Had it" (earmark) = owned/past OR drank OR blind-tasted — any relationship (B-31).
+        hadIt: inCollection || hadItSet.has(skuId),
       };
     });
 
@@ -342,7 +369,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     if (sortBy === 'az') return [...annotated].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (sortBy === 'za') return [...annotated].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
     return annotated; // global/null = server Elo order
-  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap]);
+  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet]);
 
   const handleSortSelect = (option: SortOption) => {
     if (option === 'yours') {

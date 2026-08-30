@@ -11,6 +11,7 @@ export interface Bottle {
   stars?: number | null; // 0.00–5.00 scaled from global Elo
   inCollection?: boolean;    // bottle_id exists in user_bottles
   currentlyOwned?: boolean;  // user_bottles.currently_owned = true
+  hadIt?: boolean;           // owned/past OR drank OR blind-tasted — drives the earmark (B-31)
   variantCount?: number;     // Bottles view: SKU roll-up count; badge shown when > 1
   variantLabel?: string;     // All Variants view: per-variant tag (Default / Batch 302 / 2021 …)
 }
@@ -43,26 +44,23 @@ function StarRating({ value }: { value: number }) {
   );
 }
 
-// Earmark matrix (top-right corner):
-// not in collection, not provisional  → none
-// not in collection, provisional      → subtle yellow dot
-// in collection, owned, not prov      → green triangle + white ✓
-// in collection, owned, provisional   → green triangle + yellow ✓
-// in collection, not owned, not prov  → light grey triangle + white ✓
-// in collection, not owned, prov      → light grey triangle + yellow ✓
+// Earmark matrix (top-right corner) — two dimensions: verified × had-it (BOTTLE_ACTIONS.md B.1):
+//   verified   + never had  → none
+//   unverified + never had  → subtle yellow dot
+//   verified   + had it      → green triangle + white ✓
+//   unverified + had it      → green triangle + yellow ✓
+// "Had it" spans ownership (now or past), a pour, or a blind tasting — no owned-vs-past split.
 function EarmarkCorner({
-  inCollection,
-  currentlyOwned,
+  hadIt,
   provisional,
 }: {
-  inCollection: boolean;
-  currentlyOwned: boolean;
+  hadIt: boolean;
   provisional: boolean;
 }) {
-  if (!inCollection && !provisional) return null;
+  if (!hadIt && !provisional) return null;
 
-  // Provisional only: subtle yellow dot, no triangle
-  if (!inCollection) {
+  // Never had it, just unverified: subtle yellow dot, no triangle
+  if (!hadIt) {
     return (
       <div style={{
         position: 'absolute',
@@ -76,8 +74,8 @@ function EarmarkCorner({
     );
   }
 
-  // In collection: triangle + checkmark
-  const triangleColor = currentlyOwned ? '#22c55e' : '#d1d5db';
+  // Had it: green triangle + checkmark (yellow check when the bottle is unverified)
+  const triangleColor = '#22c55e';
   const checkColor = provisional ? '#FFD700' : '#ffffff';
 
   return (
@@ -96,7 +94,6 @@ function EarmarkCorner({
         lineHeight: 1,
         color: checkColor,
         fontWeight: 'bold',
-        textShadow: provisional && !currentlyOwned ? '0 0 2px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4)' : 'none',
       }}>✓</span>
     </div>
   );
@@ -110,8 +107,7 @@ export default function BottleCard({ bottle }: BottleCardProps) {
   return (
     <div className={`relative flex items-center p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
       <EarmarkCorner
-        inCollection={bottle.inCollection ?? false}
-        currentlyOwned={bottle.currentlyOwned ?? false}
+        hadIt={bottle.hadIt ?? bottle.inCollection ?? false}
         provisional={bottle.provisional ?? false}
       />
 
