@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { X, ChevronLeft, ChevronRight, Pencil, Star } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Pencil, Star, History } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { type BottleDetails } from "@/lib/types";
@@ -11,6 +11,7 @@ import VariantSelectSheet from "@/components/VariantSelectSheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import PourSheet from "@/components/PourSheet";
 import MoreSheet from "@/components/MoreSheet";
+import HistoryModal from "@/components/HistoryModal";
 import RatePromptSheet from "@/components/RatePromptSheet";
 import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
 import { supabase } from "@/lib/supabase";
@@ -105,6 +106,7 @@ export default function BottleDetailView({
   const [showAddVariant, setShowAddVariant] = useState(false);
   const [showPourSheet, setShowPourSheet] = useState(false);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [isPouring, setIsPouring] = useState(false);
   const [lastActivityLabel, setLastActivityLabel] = useState<string | undefined>(bottle.lastActivity);
   const [localBottle, setLocalBottle] = useState<BottleDetails>(bottle);
@@ -865,11 +867,23 @@ export default function BottleDetailView({
           </div>
         </div>
 
-        {/* My last activity */}
+        {/* My last activity (+ history modal when the viewer has interacted with this version) */}
         {!isEditing && (
           <div className="flex items-center justify-between text-sm mb-3">
             <span className="text-gray-500">My last activity</span>
-            <span>{lastActivityLabel || 'None'}</span>
+            <span className="inline-flex items-center gap-2">
+              <span>{lastActivityLabel || 'None'}</span>
+              {publicUserId && !onAddSlide && currentVariantId && (hasTasted || inCollectionLocally || !!lastActivityLabel) && (
+                <button
+                  type="button"
+                  onClick={() => setShowHistory(true)}
+                  aria-label="View your history with this version"
+                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500"
+                >
+                  <History className="w-4 h-4" />
+                </button>
+              )}
+            </span>
           </div>
         )}
 
@@ -1152,6 +1166,18 @@ export default function BottleDetailView({
           onBlindTasting={() => startBlindTasting("more")}
           onMarkEmpty={collectionState === 'owned' ? handleMarkEmpty : undefined}
           onRemove={() => { setShowMoreSheet(false); setShowDeleteConfirm(true); }}
+        />
+      )}
+
+      {publicUserId && (
+        <HistoryModal
+          open={showHistory}
+          onClose={() => setShowHistory(false)}
+          bottleName={localBottle.name}
+          versionLabel={subtitle}
+          userId={publicUserId}
+          bottleId={bottle.id}
+          variantId={currentVariantId}
         />
       )}
 
