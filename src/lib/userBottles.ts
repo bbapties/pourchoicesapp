@@ -54,22 +54,26 @@ export async function addOrRestockUserBottle(opts: {
   userId: string;
   bottleId: string;
   variantId?: string | null;
-}): Promise<{ timesHad: number } | { error: string }> {
+}): Promise<{ timesHad: number; variantId: string } | { error: string }> {
   const now = new Date().toISOString();
+  // Resolve to the real variant UUID up front and return it, so optimistic callers key
+  // their local row on the same id the DB row carries (B-35: was keyed variant_id=null
+  // while the DB row held the default UUID → a phantom row until refresh).
   const variantId = opts.variantId ?? (await resolveDefaultVariantId(opts.bottleId));
   if (!variantId) return { error: "no default variant for bottle" };
 
-  const { data: rows, error: readErr } = await supabase
-    .from("user_bottles")
-    .select("id, currently_owned, times_had")
-    .eq("user_id", opts.userId)
-    .eq("bottle_id", opts.bottleId)
-    .eq("variant_id", variantId)
-    .limit(1);
-  if (readErr) return { error: readErr.message };
-
-  const row = rows?.[0];
-  if (row) {
+  // Restock an existing (user, bottle, variant) row → bump times_had.
+  const restock = async (): Promise<{ timesHad: number; variantId: string } | { error: string }> => {
+    const { data: rows, error: readErr } = await supabase
+      .from("user_bottles")
+      .select("id, currently_owned, times_had")
+      .eq("user_id", opts.userId)
+      .eq("bottle_id", opts.bottleId)
+      .eq("variant_id", variantId)
+      .limit(1);
+    if (readErr) return { error: readErr.message };
+    const row = rows?.[0];
+    if (!row) return { error: "row not found" };
     // times_had = 0 means the row was tasting-only; owning it starts the count at 1.
     const timesHad = (row.times_had ?? 0) >= 1 ? (row.times_had ?? 1) + 1 : 1;
     const { error } = await supabase
@@ -78,8 +82,18 @@ export async function addOrRestockUserBottle(opts: {
       .eq("id", row.id);
     if (error) return { error: error.message };
     await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "added_to_collection", variantId });
-    return { timesHad };
-  }
+    return { timesHad, variantId };
+  };
+
+  const { data: rows, error: readErr } = await supabase
+    .from("user_bottles")
+    .select("id")
+    .eq("user_id", opts.userId)
+    .eq("bottle_id", opts.bottleId)
+    .eq("variant_id", variantId)
+    .limit(1);
+  if (readErr) return { error: readErr.message };
+  if (rows?.[0]) return restock();
 
   const { error } = await supabase.from("user_bottles").insert({
     user_id: opts.userId,
@@ -90,9 +104,15 @@ export async function addOrRestockUserBottle(opts: {
     created_at: now,
     updated_at: now,
   });
-  if (error) return { error: error.message };
+  if (error) {
+    // Concurrent add of the same (user, bottle, variant) hit the partial unique index
+    // (B-36). Recover by restocking the row the other write just created, instead of
+    // surfacing a generic "Failed to add".
+    if ((error as { code?: string }).code === "23505") return restock();
+    return { error: error.message };
+  }
   await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "added_to_collection", variantId });
-  return { timesHad: 1 };
+  return { timesHad: 1, variantId };
 }
 
 /**

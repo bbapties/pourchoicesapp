@@ -173,7 +173,7 @@ export default function SocialClient() {
     const now = new Date().toISOString();
     const nextRow: UserBottleRow = {
       currently_owned: true,
-      variant_id: variantId ?? selectedRow?.variant_id ?? null,
+      variant_id: result.variantId, // B-35: the variant the DB wrote, not a null guess
       times_had: result.timesHad,
       created_at: selectedRow?.created_at ?? now,
       updated_at: now,

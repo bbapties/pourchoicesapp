@@ -282,11 +282,13 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     // from the Empty (or Tasted) tab and look like the restock failed.
     setActiveTab('owned');
 
+    // B-35: key optimistic rows on the variant the DB actually wrote, never a null guess.
+    const writtenVariant = result.variantId;
     const row = existingRow;
     if (row) {
       const next = {
         ...row,
-        variant_id: resolvedVariant ?? row.variant_id ?? null,
+        variant_id: writtenVariant,
         addedAt: now,
         times_had: result.timesHad,
         created_at: row.created_at || now,
@@ -297,12 +299,12 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
         : [...prev, next]);
       setRawEmpty(prev => prev.filter(r => r.bottle_id !== bottleId));
     } else {
-      const tastedRow = rawTasted.find(r => r.bottle_id === bottleId && (resolvedVariant == null || r.variant_id === resolvedVariant))
+      const tastedRow = rawTasted.find(r => r.bottle_id === bottleId && r.variant_id === writtenVariant)
         || rawTasted.find(r => r.bottle_id === bottleId);
       if (tastedRow) {
         setRawOwned(prev => [...prev, {
           ...tastedRow,
-          variant_id: resolvedVariant ?? tastedRow.variant_id,
+          variant_id: writtenVariant,
           times_had: result.timesHad,
           addedAt: now,
           updated_at: now,

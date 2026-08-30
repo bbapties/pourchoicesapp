@@ -537,7 +537,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     }
 
     const now = new Date().toISOString();
-    const resolvedVariant = variantId ?? ownedRow?.variant_id ?? null;
+    // Use the variant the DB actually wrote (B-35) — not a possibly-null local guess —
+    // so the optimistic row matches the persisted row and doesn't leave a phantom.
+    const resolvedVariant = result.variantId;
     setUserBottlesMap(prev => {
       const rows = prev[bottleId] ? [...prev[bottleId]] : [];
       const idx = rows.findIndex(r => r.variant_id === resolvedVariant);
