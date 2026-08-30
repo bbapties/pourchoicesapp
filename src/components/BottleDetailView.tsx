@@ -246,7 +246,9 @@ export default function BottleDetailView({
   const globalStar = scaleStar(shown.elo);
   // My rating: the manual guess while untasted; the (locked) Elo-derived star once tasted.
   const myStar = hasTasted ? scaleStar(personalElo) : ratingStars;
-  const canEditGuess = !hasTasted && ownedLocally; // in your bar + not yet blind-tasted
+  // D.2: a manual guess is editable given ANY prior contact (owned/past, or a logged pour/
+  // activity) — not just current ownership — as long as there's no real blind-tasting Elo yet.
+  const canEditGuess = !hasTasted && (inCollectionLocally || !!lastActivityLabel);
 
   // Compact read-only 0-5 star display (Elo numbers stay hidden).
   const starBar = (value: number | null) => {
