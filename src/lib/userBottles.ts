@@ -25,6 +25,8 @@ export function formatLastActivity(row?: UserBottleRow | null): string | undefin
     const date = formatActivityDate(ts);
     return date ? `Added · ${date}` : undefined;
   }
+  // B-41: a tasting-only row (never owned: times_had < 1) must not read as "Finished".
+  if ((row.times_had ?? 0) < 1) return undefined;
   const date = formatActivityDate(row.updated_at || row.created_at);
   return date ? `Finished · ${date}` : undefined;
 }

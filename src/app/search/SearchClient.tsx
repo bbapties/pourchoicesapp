@@ -362,6 +362,14 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         currentlyOwned: userBottlesMap[skuId]?.some(r => r.currently_owned) ?? false,
         // "Had it" (earmark) = owned/past OR drank OR blind-tasted — any relationship (B-31).
         hadIt: inCollection || hadItSet.has(skuId),
+        // A.2: the list card star is the average of my rating and the global rating (whichever
+        // exist); the detail breaks the two apart.
+        stars: (() => {
+          const mine = personalStarMap[skuId];
+          const global = bottle.stars as number | null | undefined;
+          if (mine != null && global != null) return (mine + global) / 2;
+          return mine ?? global ?? null;
+        })(),
       };
     });
 

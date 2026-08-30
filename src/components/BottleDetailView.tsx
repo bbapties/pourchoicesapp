@@ -120,6 +120,8 @@ export default function BottleDetailView({
   const [ratingStars, setRatingStarsState] = useState<number | null>(null);
   const [hasTasted, setHasTasted] = useState(false);
   const [personalElo, setPersonalElo] = useState<number | null>(null);
+  // D.2: community guess-average star for a variant with no real global Elo yet.
+  const [communityGuessStar, setCommunityGuessStar] = useState<number | null>(null);
   const [showRatePrompt, setShowRatePrompt] = useState(false);
   const [ratingSaving, setRatingSaving] = useState(false);
   const [gRange, setGRange] = useState<{ min: number; max: number } | null>(null);
@@ -256,7 +258,10 @@ export default function BottleDetailView({
     if (n == null || Number.isNaN(n) || !gRange || gRange.max === gRange.min) return null;
     return Math.min(5, Math.max(0, ((n - gRange.min) / (gRange.max - gRange.min)) * 5));
   };
-  const globalStar = scaleStar(shown.elo);
+  // D.2: real global Elo once a blind tasting has moved it off the 1500 baseline; until then the
+  // community star falls back to the average of everyone's manual guesses (already 0-5, no scaling).
+  const hasRealGlobal = shown.elo != null && Number(shown.elo) !== 1500;
+  const globalStar = hasRealGlobal ? scaleStar(shown.elo) : communityGuessStar;
   // My rating: the manual guess while untasted; the (locked) Elo-derived star once tasted.
   const myStar = hasTasted ? scaleStar(personalElo) : ratingStars;
   // D.2: a manual guess is editable given ANY prior contact (owned/past, or a logged pour/
@@ -333,6 +338,7 @@ export default function BottleDetailView({
   useEffect(() => {
     let cancelled = false;
     const vId = currentVariant?.variantId ?? null;
+    setCommunityGuessStar(null);
     if (publicUserId) {
       fetchUserRatingState(publicUserId, bottle.id, vId).then((s) => {
         if (cancelled) return;
@@ -344,6 +350,15 @@ export default function BottleDetailView({
       setRatingStarsState(null);
       setHasTasted(false);
       setPersonalElo(null);
+    }
+    // D.2: community guess-average for this variant (aggregate RPC; fail-open). Only meaningful
+    // while there's no real global Elo yet — see globalStar below.
+    if (vId) {
+      supabase.rpc("variant_guess_avg", { variant_ids: [vId] }).then(({ data }) => {
+        if (cancelled) return;
+        const row = (data as { avg_stars: number | null }[] | null)?.[0];
+        setCommunityGuessStar(row?.avg_stars != null ? Number(row.avg_stars) : null);
+      });
     }
     return () => { cancelled = true; };
   }, [bottle.id, currentVariant?.variantId, publicUserId]);
