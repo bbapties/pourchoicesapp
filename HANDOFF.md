@@ -158,9 +158,21 @@ unidentified account. **Brian: eyeball these on a real account with mixed owners
      activity (activities CHECK widened, applied to prod; rollback `sql/tasted-activity-snapshot.sql`)
      → Social "did a blind tasting with it" + history; wipes the manual guess. **QA'd:** `tasted`
      activity renders on the feed. Ranked "click for details" results view = follow-up.
-- **Remaining (PHASE9.md Wave 2, #3–#10):** ratings aggregate RPC (#3), append-only + upload hardening
-  (#4), honest search numbers (#5), Remove→feed cascade (#6), drink picker (#7), barcode chooser +
-  wishlist-in-history (#8), telemetry integrity (#9), docs polish (#10).
+  3. **A.2/D.2/B-41 ratings pre-tasting** (`1371a40`) — new SECURITY DEFINER RPC
+     `variant_guess_avg(uuid[])` (aggregate only; applied to prod, rollback
+     `sql/variant-guess-avg-snapshot.sql`). Detail Global star falls back to the guess-average until
+     a blind tasting moves `elo_global` off 1500; search card star = avg(my, global); B-41 last-activity
+     no longer mislabels tasting-only as "Finished". **QA'd:** guess of 4 → Global 4.0 + card 4.00.
+  4. **B-58/B-59 harden user-writable data** (`e04aa1e`) — BEFORE UPDATE trigger
+     `protect_submission_update` (applied to prod, rollback `sql/submission-hardening-snapshot.sql`)
+     freezes moderation columns: feedback submitter can only attach a screenshot; suggested_edits
+     submitter can only cancel their own pending row. Uploads allow-list MIME + derive ext + 8 MB cap.
+     **QA'd via SET ROLE:** self-approve/tamper frozen, cancel works.
+  5. **B-38/B-37 honest search** (`aa5fcd5`) — browse filter runs in the query (list matches the
+     banner count; **QA'd:** Whiskey → 43 with only whiskeys, Gin → 0/0); new global variants require
+     a batch/year + dedupe. B-34 was already resolved by B-24 (security_invoker view scopes the count).
+- **Remaining (PHASE9.md Wave 2, #6–#10):** Remove→feed cascade (#6), drink picker (#7), barcode
+  chooser + wishlist-in-history (#8), telemetry integrity (#9), docs polish (#10).
 
 ### 2026-08-30 — Claude (END SESSION — PHASE9: 5 model build-out stories, autonomous)
 - Continued the autonomous mandate: planned [PHASE9.md](PHASE9.md) from the model, then built +

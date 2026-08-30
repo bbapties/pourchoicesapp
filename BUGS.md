@@ -133,7 +133,7 @@ Gated: auth / RLS / env. Ask Brian before changing.
   "Remove from bar"); untasted keeps the mistake-correction copy. `BottleDetailView.tsx`.
   **Deferred:** the full B.4 hard-delete-cascades-to-social-feed behavior (needs an activities
   DELETE policy — gated/RLS) is not done this session.
-- [ ] **B-34** (medium) Search All Variants banner count/Elo include others' store picks.
+- [x] **B-34** **FIXED via B-24 (2026-08-30): all_variant_details is security_invoker so the page count is RLS-scoped (non-creator sees 102=104-2 store picks). No code change.** -- (medium) Search All Variants banner count/Elo include others' store picks.
   Server page fetch is unscoped; client browse is scoped. Count vs list mismatch.
   `search/page.tsx` ~14–31
 - [x] **B-35** (medium) Search optimistic restock keys `variant_id: null` while the DB row is the default UUID. **FIXED (Claude, 2026-08-30).**
@@ -142,9 +142,9 @@ Gated: auth / RLS / env. Ask Brian before changing.
 - [x] **B-36** (medium) `addOrRestockUserBottle` is read-then-insert, no `ON CONFLICT`. **FIXED (Claude, 2026-08-30).**
   A concurrent add that trips the partial unique index (23505) now recovers by restocking the row
   the other write created, instead of surfacing "Failed to add to My Bar". `userBottles.ts`.
-- [ ] **B-37** (medium) Contribute flow can insert empty global variants (blank proof/batch/year). No uniqueness on (bottle, batch, year).
+- [x] **B-37** **FIXED (2026-08-30, PHASE9 #5): new global variant requires a batch/release year + dedupes (bottle,batch,year). VariantSelectSheet.tsx.** -- (medium) Contribute flow can insert empty global variants (blank proof/batch/year). No uniqueness on (bottle, batch, year).
   `VariantSelectSheet.tsx` ~151–177
-- [ ] **B-38** (medium) Browse + filter is client-side on the first page.
+- [x] **B-38** **FIXED (2026-08-30, PHASE9 #5): browse filter runs in the query + reloads on change, so the list matches the banner count. SearchClient.tsx.** -- (medium) Browse + filter is client-side on the first page.
   Banner can say 40 matches while the list shows the 4 that were in the first 30 Elo rows.
   `SearchClient.tsx` ~325–333, 571–595
 - [x] **B-39** (medium) Search "Yours" sort still toasts "Taste some bottles to unlock…" even after tastings exist. **FULLY FIXED (Claude, 2026-08-30, PHASE9 S4).**
@@ -154,7 +154,7 @@ Gated: auth / RLS / env. Ask Brian before changing.
   case explains itself. `SearchClient.tsx`.
 - [ ] **B-40** (low) `setRatingStars` inserts a tasting-only `user_bottles` row (pour itself does not). Contradicts a strict reading of "drinks never create user_bottles."
   `ratings.ts` ~89–98
-- [ ] **B-41** (low) `formatLastActivity` has no tasting-only branch (not-owned always reads as Finished).
+- [x] **B-41** **FIXED (2026-08-30, PHASE9 #3): formatLastActivity returns undefined for a tasting-only row instead of Finished. userBottles.ts.** -- (low) `formatLastActivity` has no tasting-only branch (not-owned always reads as Finished).
   `userBottles.ts` ~19–28
 - [ ] **B-42** (low) Search toggle can set `currently_owned=true` without incrementing `times_had` (dead path if Add Back stays on restock).
   `SearchClient.tsx` ~522–525
@@ -182,7 +182,7 @@ Gated: auth / RLS / env. Ask Brian before changing.
 
 ## Tastings / Elo (remaining)
 
-- [ ] **B-47** (medium) Manual star guess is not wiped on first tasting.
+- [x] **B-47** **FIXED (2026-08-30, PHASE9 #2): saveTasting clears rating_stars for tasted variants on first tasting. tastings.ts.** -- (medium) Manual star guess is not wiped on first tasting.
   Trigger `ON CONFLICT` only updates `elo`. UI hides the guess only if `hasBlindTasted()` is true; that helper ignores query errors (`count ?? 0` → false) so the card can stay editable after a real tasting.
   `sql/3.0-migration.sql` ~162–170 · `ratings.ts` · `BottleDetailView.tsx` ~136–138
 - [ ] **B-48** (medium) Drink picker catalog is 300 SKUs, name/distillery substring, default variant only.
@@ -194,7 +194,7 @@ Gated: auth / RLS / env. Ask Brian before changing.
 - [ ] **B-50** (medium) Pair win-rate of 0 zeroes the entire Elo swing.
   `swing = K * (1 - expected) * win_rate`. After a 10–0 streak a reversal moves 0. Existing engine math — flag, don't rewrite without Brian.
   `sql/3.0-migration.sql` ~139–157, 207–208
-- [ ] **B-51** (medium) Completing a tasting writes no `activities` and no `events` row.
+- [x] **B-51** **FIXED (2026-08-30, PHASE9 #2): a tasting posts a tasted activity to Social + history. tastings.ts.** -- (medium) Completing a tasting writes no `activities` and no `events` row.
   Schema CHECK has no `'tasted'` (known 3.5). TELEMETRY policy not met for the new surface.
   `DrinkClient.tsx` `handleSave` · `tastings.ts`
 - [ ] **B-52** (medium) `removeUserBottle` treats `elo === 1500` as never tasted (hard-delete). A net-zero tasting is lost.
@@ -209,9 +209,9 @@ Gated: auth / RLS / env. Ask Brian before changing.
 
 ## Admin / feedback / telemetry / storage
 
-- [ ] **B-58** (high) Feedback / suggested_edits UPDATE lets the submitter change any column on their row (status, admin_note, new_value after submit).
+- [x] **B-58** **FIXED (2026-08-30, PHASE9 #4): trigger protect_submission_update freezes moderation columns for non-admins (feedback screenshot-only; suggested_edits cancel-only). Verified via SET ROLE.** -- (high) Feedback / suggested_edits UPDATE lets the submitter change any column on their row (status, admin_note, new_value after submit).
   Not actually append-only at the DB. `sql/feedback-migration.sql` ~75–88 · `sql/7.8-migration.sql` ~75–90
-- [ ] **B-59** (high) Public `bottle-images` + unsanitized upload.
+- [x] **B-59** **FIXED (2026-08-30, PHASE9 #4): uploads allow-list MIME, derive ext from it, cap 8MB. uploadBottleImage.ts, feedback.ts.** -- (high) Public `bottle-images` + unsanitized upload.
   Extension from `file.name`; `contentType` client-supplied; no size cap. Feedback screenshots are world-readable public URLs.
   `uploadBottleImage.ts` · `feedback.ts` ~41–58
 - [ ] **B-60** (medium) Events table: unbounded anon inserts (`user_id IS NULL`), no rate limit, free-form jsonb.
