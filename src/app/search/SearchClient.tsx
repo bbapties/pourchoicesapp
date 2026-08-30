@@ -50,6 +50,8 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const [selectedBottle, setSelectedBottle] = useState<BottleDetails | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | undefined>(undefined);
+  // S3: on a barcode hit, open pinned to the version the viewer already owns (else default-first).
+  const [scanPinVariantId, setScanPinVariantId] = useState<string | null>(null);
 
   // Infinite scroll refs — sync guards (state updates are too slow)
   const isLoadingMoreRef = useRef(false);
@@ -405,7 +407,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     if (main) main.scrollTop = 0;
   };
 
-  const handleBottleClick = (bottle: any) => {
+  const handleBottleClick = (bottle: any, pinVariantId: string | null = null) => {
     const skuId = bottle.bottleId ?? bottle.id;
     // B-12: only an ownership row (owned, or previously owned via times_had >= 1) drives
     // "my last activity" — a tasting-only row (times_had = 0, never owned) must not
@@ -414,6 +416,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     const row = skuRows?.find(r => r.currently_owned)
       ?? skuRows?.find(r => (r.times_had ?? 0) >= 1);
     logClick("bottle_open", { userId: publicUserId, surface: "/search", targetId: skuId, metadata: { mode: viewMode } });
+    setScanPinVariantId(pinVariantId); // S3: default-first unless a scan pinned the owned version
     setSelectedBottle({
       ...bottle,
       id: skuId, // detail view fetches variants + collection status by SKU id
@@ -423,16 +426,17 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   };
 
   // Open a bottle straight from its SKU id (used by the barcode scanner).
-  const openBottleById = async (bottleId: string) => {
+  const openBottleById = async (bottleId: string, pinVariantId: string | null = null) => {
     const { data, error } = await (supabase.from("all_bottle_details") as any)
       .select(BOTTLE_SELECT)
       .eq("bottle_id", bottleId)
       .maybeSingle();
     if (error || !data) { toast.error("Couldn't open that bottle"); return; }
-    handleBottleClick(mapBottleResult(data));
+    handleBottleClick(mapBottleResult(data), pinVariantId);
   };
 
-  // Barcode scan result: open the matching bottle, or jump to Add Bottle prefilled.
+  // Barcode scan result: open the matching bottle (pinned to the version you own, if any),
+  // or jump to Add Bottle prefilled.
   const handleScan = async (code: string) => {
     setShowScanner(false);
     const match = await lookupBottleByBarcode(code);
@@ -443,8 +447,12 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       metadata: { matched: !!match },
     });
     if (match) {
-      toast.success(`Found: ${match.name}`);
-      await openBottleById(match.id);
+      // S3 "in your bar": if you own a version of this SKU, land on it instead of default-first.
+      const rows = userBottlesMap[match.id] || [];
+      const ownedRow = rows.find(r => r.currently_owned) ?? rows.find(r => (r.times_had ?? 0) >= 1);
+      const ownedCount = rows.filter(r => r.currently_owned || (r.times_had ?? 0) >= 1).length;
+      toast.success(ownedCount > 0 ? `In your bar: ${match.name}` : `Found: ${match.name}`);
+      await openBottleById(match.id, ownedRow?.variant_id ?? null);
     } else {
       toast.message("No match — add this bottle");
       setScannedBarcode(code);
@@ -928,6 +936,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
           inCollection={userBottlesMap[selectedBottle.id]?.some(r => r.currently_owned || (r.times_had ?? 0) >= 1) ?? false}
           currentlyOwned={userBottlesMap[selectedBottle.id]?.some(r => r.currently_owned) ?? false}
           ownershipRows={userBottlesMap[selectedBottle.id]}
+          initialVariantId={scanPinVariantId}
           publicUserId={publicUserId ?? undefined}
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}
