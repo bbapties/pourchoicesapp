@@ -32,11 +32,25 @@ import {
 } from "@/lib/activities";
 import { logClick } from "@/lib/events";
 
+/** One user_bottles row for this SKU, as the list surfaces already carry it (B-31). */
+export type OwnershipRow = {
+  variant_id: string | null;
+  currently_owned: boolean;
+  times_had?: number | null;
+};
+
 interface BottleDetailViewProps {
   bottle: BottleDetails;
   onClose: () => void;
   inCollection?: boolean;
   currentlyOwned?: boolean;
+  /** B-31: per-variant ownership rows for this SKU. When provided, each carousel slide shows
+   *  its OWN ownership state instead of the SKU-wide booleans. Absent → falls back to the
+   *  inCollection/currentlyOwned booleans (previous SKU-level behavior). */
+  ownershipRows?: OwnershipRow[];
+  /** B-31: open the carousel pinned to this variant (My Bar / Social open the version you
+   *  tapped). Absent → default-first. */
+  initialVariantId?: string | null;
   publicUserId?: string;
   onAddToBar?: (bottleId: string, variantId?: string | null) => Promise<void>;
   onToggleOwnership?: (bottleId: string, variantId?: string | null) => Promise<void>;
@@ -59,6 +73,8 @@ export default function BottleDetailView({
   onClose,
   inCollection = false,
   currentlyOwned = false,
+  ownershipRows,
+  initialVariantId,
   publicUserId,
   onAddToBar,
   onToggleOwnership,
@@ -72,8 +88,10 @@ export default function BottleDetailView({
   const [notesOpen, setNotesOpen] = useState(false);
   const [showZoom, setShowZoom] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const [inCollectionLocally, setInCollectionLocally] = useState(inCollection);
-  const [ownedLocally, setOwnedLocally] = useState(currentlyOwned);
+  // B-31: local ownership overrides, keyed by variant_id, for versions the user acts on while
+  // the sheet is open. Merged over ownershipRows at render. inCollectionLocally/ownedLocally are
+  // DERIVED per shown-variant (no longer SKU-wide booleans). Reset when the bottle changes.
+  const [ownershipOverrides, setOwnershipOverrides] = useState<Record<string, { currently_owned: boolean; times_had: number }>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -112,6 +130,54 @@ export default function BottleDetailView({
   const onAddSlide = addSlideEnabled && variantIndex >= vlist.length;
   const currentVariant = onAddSlide ? undefined : vlist[variantIndex];
   const shown = fieldsForVariant(localBottle, currentVariant);
+
+  // B-31: ownership map = the SKU's ownershipRows overlaid with this session's local overrides.
+  const skuHasRows = (ownershipRows?.length ?? 0) > 0;
+  const ownershipMap: Record<string, { currently_owned: boolean; times_had: number }> = {};
+  for (const r of ownershipRows ?? []) {
+    if (r.variant_id) ownershipMap[r.variant_id] = { currently_owned: r.currently_owned, times_had: r.times_had ?? 0 };
+  }
+  for (const [vId, o] of Object.entries(ownershipOverrides)) ownershipMap[vId] = o;
+
+  // Ownership of the CURRENTLY-SHOWN variant. A known variant with no row = not owned (the B-31
+  // fix). Unknown variant (default before the variant list loads) or no rows passed at all →
+  // SKU-level fallback so un-wired callers behave exactly as before.
+  const currentVariantId = currentVariant?.variantId ?? null;
+  const currentOwnership = (() => {
+    // 1. The shown variant has a row (from ownershipRows or a local action) → use it.
+    if (currentVariantId && ownershipMap[currentVariantId]) {
+      const r = ownershipMap[currentVariantId];
+      return { inColl: r.currently_owned || r.times_had >= 1, owned: r.currently_owned };
+    }
+    // 2. Only when we hold the SKU's FULL row set (Search) can we say a known variant with no
+    //    row is genuinely un-owned — the actual B-31 fix.
+    if (skuHasRows && currentVariantId) return { inColl: false, owned: false };
+    if (skuHasRows) {
+      // Default/unknown variant before the list loads → SKU aggregate over the full rows.
+      const vals = Object.values(ownershipMap);
+      return { inColl: vals.some(v => v.currently_owned || v.times_had >= 1), owned: vals.some(v => v.currently_owned) };
+    }
+    // 3. No full row set (My Bar / Social pinning-only) → previous SKU-level behavior.
+    return { inColl: inCollection, owned: currentlyOwned };
+  })();
+  const inCollectionLocally = currentOwnership.inColl;
+  const ownedLocally = currentOwnership.owned;
+
+  // Optimistically patch one variant's ownership after an add / empty / remove.
+  const patchOwnership = (
+    vId: string | null | undefined,
+    owned: boolean,
+    opts?: { emptied?: boolean; removed?: boolean },
+  ) => {
+    if (!vId) return;
+    setOwnershipOverrides(prev => {
+      const cur = prev[vId] ?? ownershipMap[vId] ?? { currently_owned: false, times_had: 0 };
+      let times_had = cur.times_had;
+      if (owned || opts?.emptied) times_had = Math.max(times_had, 1); // stays in history
+      if (opts?.removed) times_had = 0;                               // hard remove clears it
+      return { ...prev, [vId]: { currently_owned: owned, times_had } };
+    });
+  };
   const hasBackImage = !!shown.backImageUrl;
   const imageUrl = imageSide === 'front' ? shown.frontImageUrl : shown.backImageUrl;
 
@@ -182,8 +248,7 @@ export default function BottleDetailView({
     setVariantIndex(0);
     setImageSide("front");
     setImgError(false);
-    setInCollectionLocally(inCollection);
-    setOwnedLocally(currentlyOwned);
+    setOwnershipOverrides({}); // B-31: drop last bottle's optimistic ownership patches
     setLastActivityLabel(bottle.lastActivity);
     setIsEditing(false);
     setHasPending(false);
@@ -199,10 +264,12 @@ export default function BottleDetailView({
     fetchVariantsForSku(bottle.id, [authId, publicUserId]).then((variants) => {
       if (cancelled || !variants.length) return;
       setLocalBottle((prev) => ({ ...prev, variants }));
-      setVariantIndex(0);
+      // B-31: open pinned to the version the caller tapped (My Bar / Social), else default-first.
+      const pinIdx = initialVariantId ? variants.findIndex((v) => v.variantId === initialVariantId) : -1;
+      setVariantIndex(pinIdx > 0 ? pinIdx : 0);
     });
     return () => { cancelled = true; };
-  }, [bottle.id, inCollection, currentlyOwned, publicUserId, authId]);
+  }, [bottle.id, initialVariantId, publicUserId, authId]);
 
   // 3.1: rating state for the CURRENT variant (guess / tasted? / personal Elo) — refetch on swipe.
   useEffect(() => {
@@ -281,8 +348,7 @@ export default function BottleDetailView({
         if (!publicUserId) {
           if (!onAddToBar) return;
           await onAddToBar(bottle.id, currentVariant?.variantId ?? null);
-          setInCollectionLocally(true);
-          setOwnedLocally(true);
+          patchOwnership(currentVariantId, true);
           return;
         }
         setIsSaving(false);
@@ -291,7 +357,7 @@ export default function BottleDetailView({
       }
       if (!onToggleOwnership) return;
       await onToggleOwnership(bottle.id, currentVariant?.variantId ?? null);
-      setOwnedLocally(false);
+      patchOwnership(currentVariantId, false, { emptied: true });
     } finally {
       setIsSaving(false);
     }
@@ -304,7 +370,7 @@ export default function BottleDetailView({
     setIsSaving(true);
     try {
       await onToggleOwnership(bottle.id, currentVariant?.variantId ?? null);
-      setOwnedLocally(false);
+      patchOwnership(currentVariantId, false, { emptied: true });
     } finally {
       setIsSaving(false);
     }
@@ -531,8 +597,7 @@ export default function BottleDetailView({
     setIsDeleting(true);
     try {
       await onDeleteFromBar(bottle.id, currentVariant?.variantId ?? null);
-      setInCollectionLocally(false);
-      setOwnedLocally(false);
+      patchOwnership(currentVariantId, false, { removed: true });
       setShowDeleteConfirm(false);
     } finally {
       setIsDeleting(false);
@@ -1099,8 +1164,7 @@ export default function BottleDetailView({
           onAdd={async (variantId) => {
             if (!onAddToBar) return;
             await onAddToBar(bottle.id, variantId);
-            setInCollectionLocally(true);
-            setOwnedLocally(true);
+            patchOwnership(variantId, true);
             setShowVariantSelect(false);
             onClose();
           }}
@@ -1122,8 +1186,7 @@ export default function BottleDetailView({
           onAdd={async (variantId) => {
             if (onAddToBar) {
               await onAddToBar(bottle.id, variantId);
-              setInCollectionLocally(true);
-              setOwnedLocally(true);
+              patchOwnership(variantId, true);
             }
             setShowAddVariant(false);
             toast.success("Version added to My Bar");

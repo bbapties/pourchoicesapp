@@ -283,6 +283,7 @@ export default function SocialClient() {
           onClose={() => setSelectedBottle(null)}
           inCollection={selectedOwned.inCollection}
           currentlyOwned={selectedOwned.currentlyOwned}
+          initialVariantId={selectedRow?.variant_id ?? null}
           publicUserId={publicUserId ?? undefined}
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}

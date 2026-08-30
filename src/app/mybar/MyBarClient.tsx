@@ -101,6 +101,8 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   // Ownership for the open detail. Set from the active tab for collection cards,
   // and fetched for a scanned bottle that may not be in the collection.
   const [selectedOwned, setSelectedOwned] = useState<{ inCollection: boolean; currentlyOwned: boolean }>({ inCollection: false, currentlyOwned: false });
+  // B-31: open the detail pinned to the version the user tapped (My Bar cards are per-variant).
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | undefined>(undefined);
   const [showAddSheet, setShowAddSheet] = useState(false);
@@ -194,6 +196,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       extras: raw.attr_extras,
     });
     setSelectedOwned({ inCollection: activeTab !== 'tasted', currentlyOwned: activeTab === 'owned' });
+    setSelectedVariantId(raw.variant_id ?? null);
   };
 
   // Open a bottle straight from its SKU id (barcode scanner) with its real
@@ -227,6 +230,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const createdBys: string[] = Array.isArray(data.attr_variant_created_by) ? data.attr_variant_created_by : [];
 
     setSelectedOwned({ inCollection, currentlyOwned });
+    setSelectedVariantId(null); // scanned/deep-opened → default-first
     setSelectedBottle({
       id: data.bottle_id,
       name: data.bottle_name,
@@ -604,6 +608,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           onClose={() => setSelectedBottle(null)}
           inCollection={selectedOwned.inCollection}
           currentlyOwned={selectedOwned.currentlyOwned}
+          initialVariantId={selectedVariantId}
           publicUserId={publicUserId}
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}

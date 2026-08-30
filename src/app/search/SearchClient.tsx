@@ -900,6 +900,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
           onClose={() => setSelectedBottle(null)}
           inCollection={userBottlesMap[selectedBottle.id]?.some(r => r.currently_owned || (r.times_had ?? 0) >= 1) ?? false}
           currentlyOwned={userBottlesMap[selectedBottle.id]?.some(r => r.currently_owned) ?? false}
+          ownershipRows={userBottlesMap[selectedBottle.id]}
           publicUserId={publicUserId ?? undefined}
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}
