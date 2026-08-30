@@ -102,7 +102,7 @@ Gated: auth / RLS / env. Ask Brian before changing.
   `handleUsernameSubmit` calls `validateUsername` from `lib/profile` (3–20, `[A-Za-z0-9_-]`) + a case-insensitive uniqueness pre-check before `auth.signUp`. Same helper as Profile. `src/app/page.tsx`.
 - [x] **B-29** (low) Delete-user could leave an Auth orphan. **FIXED (Claude, 2026-08-27).**
   Root cause: the deleted user's catalog authorship (`bottles`/`bottle_variants` `created_by`/`updated_by` FK → `auth.users`) blocked the `auth.users` delete with an FK violation after the public cascade. The route now detaches that authorship (sets those columns NULL via the service-role client) before `auth.admin.deleteUser`, so the delete completes cleanly. `delete-user/route.ts`.
-- [ ] **B-30** (low) No self-serve account delete / data export on Profile.
+- [ ] **B-30** (low, **DEFERRED — long-term**) No self-serve account delete / data export on Profile. Moved to BACKLOG (Profile) 2026-08-28 at Brian's call; do not pull into the current wave unless Brian raises it. Was a feature, not a trust bug.
 
 ---
 

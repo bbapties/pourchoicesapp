@@ -56,6 +56,7 @@ Format: `- [ ] Short description — why it matters`
 - [x] Activity feed — drink events (neat / rocks / mixed / blind) surface as "so-and-so poured X" (shipped as Social tab, 2026-08-21; global feed, SKU-level)
 
 ## Profile
+- [ ] **Self-serve account delete + data export (B-30)** — deferred long-term 2026-08-28 (Brian's call). A regular user needs a self-callable delete path (the admin `delete-user` route is admin-only → a self-delete RPC/route) plus a data-export bundle. Do not build unless Brian raises it.
 - [ ] Avatar / profile photo
 - [ ] Stats summary (# tastings, # bottles, top-ranked bottle)
 - [ ] Notifications toggle — **pulled into Phase 8.5** (default on; OS permission is separate)
