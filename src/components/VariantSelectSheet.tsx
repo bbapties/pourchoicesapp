@@ -159,6 +159,28 @@ export default function VariantSelectSheet({
       }
       // standard + store pick: just the store name, no batch/proof
 
+      // B-37: a NEW GLOBAL variant (not a store pick) must carry a distinguishing field and must
+      // not duplicate an existing (bottle, batch, release_year) — otherwise it's a blank/dup that
+      // pollutes the catalog. (Store picks are distinguished by store name, handled below.)
+      if (bottleKind.kind === "new_variant" && !isStorePick) {
+        const b = newBatch.trim();
+        const y = newReleaseYear.trim();
+        if (!b && !y) {
+          toast.error("Add a batch or release year to create a new version.");
+          return;
+        }
+        const { data: globals } = await supabase
+          .from("bottle_variants")
+          .select("id, batch, release_year")
+          .eq("bottles_id", bottle.id)
+          .is("store_pick_name", null);
+        const dup = (globals || []).find(
+          (g: { batch: string | null; release_year: string | null }) =>
+            (g.batch ?? "") === b && String(g.release_year ?? "") === y,
+        );
+        if (dup) { await complete(dup.id); return; }
+      }
+
       // For non-new-variant paths, try to reuse an existing matching row
       if (bottleKind.kind !== "new_variant" && isStorePick) {
         const { data: existing } = await supabase

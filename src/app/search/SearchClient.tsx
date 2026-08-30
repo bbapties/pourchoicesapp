@@ -291,6 +291,13 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       let q = (supabase.from(isBottles ? "all_bottle_details" : "all_variant_details") as any)
         .select(isBottles ? BOTTLE_SELECT : VARIANT_SELECT);
       if (!isBottles) q = scopeVariantQuery(q);
+      // B-38: apply the active filter in the QUERY so the paginated list matches the banner
+      // count (was filtered client-side on only the first page → count/list mismatch).
+      if (filter.field === 'category' && filter.value) {
+        q = q.eq('bottle_category', filter.value);
+      } else if (filter.field === 'verified' && filter.value) {
+        q = q.eq(isBottles ? 'bottle_verified' : 'variant_verified', filter.value === 'Verified');
+      }
       const { data, error } = await q
         .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
         .range(offset, offset + limit - 1);
@@ -319,9 +326,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       else { setIsLoadingMore(false); isLoadingMoreRef.current = false; }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, minElo, maxElo, authId, publicUserId]);
+  }, [viewMode, minElo, maxElo, authId, publicUserId, filter.field, filter.value]);
 
-  // Initial browse load (re-runs when the mode changes)
+  // Initial browse load (re-runs when the mode changes or the filter changes — B-38)
   useEffect(() => {
     loadDefaultBottles(true);
   }, [loadDefaultBottles]);
