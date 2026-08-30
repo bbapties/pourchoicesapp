@@ -13,7 +13,8 @@ export type ActivityAction =
   | "suggested_edit"
   | "verified"
   | "removed_from_collection"
-  | "wishlisted";
+  | "wishlisted"
+  | "tasted";
 
 export type PourType = "neat" | "rocks" | "mixed" | "blind";
 
@@ -62,6 +63,8 @@ export function formatActivityLine(row: {
       return `Removed · ${date}`;
     case "wishlisted":
       return `Wishlisted · ${date}`;
+    case "tasted":
+      return `Blind tasting · ${date}`;
     default:
       return date;
   }
@@ -83,6 +86,7 @@ export function formatFeedAction(action: ActivityAction, pourType?: PourType | n
   if (action === "verified") return "verified it";
   if (action === "removed_from_collection") return "removed it from their collection";
   if (action === "wishlisted") return "added it to their wishlist";
+  if (action === "tasted") return "did a blind tasting with it";
   return action;
 }
 

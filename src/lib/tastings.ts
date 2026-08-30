@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/activities";
 
 /** One bottle in a tasting lineup (a specific variant of a SKU). */
 export type TastingPick = {
@@ -95,6 +96,27 @@ export async function saveTasting(opts: {
     });
   // Return sessionId even on failure so the caller can retry against the SAME session.
   if (rErr) return { sessionId, error: rErr.message };
+
+  // B-47: a real blind tasting supersedes any manual star guess — clear rating_stars for the
+  // tasted variants (the display already switches to the Elo star; this stops a stale guess).
+  await supabase
+    .from("user_bottles")
+    .update({ rating_stars: null })
+    .eq("user_id", opts.userId)
+    .in("variant_id", picks.map((p) => p.variantId))
+    .not("rating_stars", "is", null);
+
+  // B-51: post ONE `tasted` activity per session (anchored on the winner bottle) so the tasting
+  //   shows on the Social feed + per-variant history. Only on first creation (a reused sessionId
+  //   is a retry) so it never double-posts.
+  if (!opts.sessionId) {
+    await logActivity({
+      userId: opts.userId,
+      bottleId: picks[0].bottleId,
+      action: "tasted",
+      variantId: picks[0].variantId,
+    });
+  }
 
   return { sessionId };
 }
