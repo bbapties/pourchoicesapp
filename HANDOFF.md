@@ -8,13 +8,26 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `b2875e1` (pushed). **Working tree clean; everything on origin/MVP-v3.**
-- **Current phase:** **Phase 8 — Pre-beta cut.** Stories: [PHASE8.md](PHASE8.md). Bugs: [BUGS.md](BUGS.md).
-  **NEW source of truth for bottle behavior:** [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md) — the full
-  greenfield model of every user↔bottle action (agreed with Brian 2026-08-29..30). Read it before
-  touching collection/consumption/evaluation UI.
-- **Autonomous Claude session** (Brian away at disc golf, full approval to build + deploy). Committed
-  the model, ran the gap analysis, shipped the next 5 stories to prod, wrote this baton.
+- **Tip:** `8314a03` (about to push). **Working tree clean once the doc commit lands.**
+- **Current phase:** **Phase 8 wrap-up → Phase 9 build-out.** Model = [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md)
+  (every user↔bottle action, agreed 2026-08-29..30). PHASE9 plan + status = [PHASE9.md](PHASE9.md).
+  Read the model before touching collection/consumption/evaluation UI.
+- **Two autonomous Claude sessions** (Brian away, full approval to build + deploy). First shipped the
+  model + 5 Phase-8 stories (`b2875e1`). Second (this one) shipped 5 PHASE9 stories (`8314a03`).
+
+**PHASE9 shipped this session (all on prod):** S1 per-variant **history modal**; S2 **wishlist**
+(new `wishlists` table applied to prod — additive, rollback `sql/wishlist-snapshot.sql`; detail
+toggle + My Bar Wishlist tab + social post + auto-clear on add); S3 **barcode "in your bar"** (a scan
+opens pinned to the version you own); **D.2 guess-gating** broadened (any prior contact); S4 real
+**"My Ranks" sort** (own ratings). tsc + build green; preview smoke test passed (wishlist tab/toggle
+render, detail per-variant, no console/server errors).
+
+**Deferred, NOT force-shipped blind (see PHASE9.md for why):**
+- **Ratings aggregate** (community-guess global fallback + search avg-star) — needs a SECURITY
+  DEFINER aggregate RPC because `user_bottles` RLS hides other users' rating rows. **Gated.**
+- **Two-count ownership + card-per-variant My Bar (B-32)** — core-collection-screen rewrite; needs
+  authenticated QA. Additive schema is designed in PHASE9.md S5 but not applied.
+- **Book-page drag-follow swipe** — Phase-5 polish (full-card swipe already works).
 
 **State — what shipped this session (all pushed to prod MVP-v3):**
 - **`BOTTLE_ACTIONS.md`** — the locked interaction model (buckets A–F). This reshaped the bug queue:
@@ -125,6 +138,32 @@ unidentified account. **Brian: eyeball these on a real account with mixed owners
 ---
 
 ## Log (newest first)
+
+### 2026-08-30 — Claude (END SESSION — PHASE9: 5 model build-out stories, autonomous)
+- Continued the autonomous mandate: planned [PHASE9.md](PHASE9.md) from the model, then built +
+  deployed the next 5 stories safest-first (app-only or additive; snapshots for schema).
+- **Shipped to prod** (`9869795`, `f7a5d39`, `975f53b`, `d48e1cf`, `8314a03`): S1 per-variant
+  **history modal** (read-only over activities + tastings); S2 **wishlist** — new `public.wishlists`
+  table + widened activities check **applied to prod** (`sql/wishlist-migration.sql`, rollback
+  `sql/wishlist-snapshot.sql`), detail bookmark toggle + My Bar **Wishlist tab** (4 tabs now) +
+  `wishlisted` social post + auto-clear on add; S3 **barcode → land on the version you own**;
+  **D.2** guess editable on any prior contact (not owned-only); S4 real **"My Ranks" sort** (own
+  `rating_stars`, RLS-safe).
+- **Verification:** tsc + eslint (0 errors) + production build green; preview smoke test on the
+  existing logged-in session — Wishlist tab + empty state, detail wishlist toggle, per-variant
+  detail all render; only HMR-websocket dev noise in console, no app/server errors. **Did not
+  mutate** the preview account (unidentified) so wishlist WRITE + history-populated states are
+  unverified — Brian to eyeball on a real account.
+- **Deferred with reasons** (did not force to prod blind): ratings aggregate fallback (RLS → needs
+  aggregate RPC, gated); two-count/card-per-variant My Bar (core-screen rewrite → needs auth QA;
+  additive schema designed in PHASE9.md); book-page drag animation (Phase 5).
+- **Exact next:** with Brian — (1) the two-count ownership model + card-per-variant My Bar (B-32,
+  gated schema/derive decision), (2) an aggregate RPC for the community-guess rating fallback. Then
+  wire My Bar/Social detail ownership to full per-variant rows (completes B-31). B-74 + B-23 tier-2
+  still gated; Elo trigger untouched.
+- **3-line summary:** PHASE9 shipped 5 model stories (history, wishlist, barcode-pin, guess-gating,
+  My-Ranks) to prod `8314a03`; the two gated keystones (two-count My Bar, ratings aggregate) are
+  designed + documented for a QA'd session with Brian; verify wishlist/history on a real account.
 
 ### 2026-08-30 — Claude (END SESSION — bottle-interaction model + 5 model-aligned stories, autonomous)
 - **Long discovery with Brian → `BOTTLE_ACTIONS.md`** (commit `95c3e04`): a full greenfield spec of

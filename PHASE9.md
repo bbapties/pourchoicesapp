@@ -13,6 +13,27 @@ Build order = safest-first so guaranteed wins land even if a later story is defe
 
 ---
 
+## Status (2026-08-30, autonomous run)
+
+**Shipped to prod:** S1 history modal · S2 wishlist (schema live) · S3 barcode "in your bar"
+pinning · D.2 guess-gating broaden · **S4 = real "My Ranks" sort** (own ratings). Verified via
+tsc + build green + preview smoke test (wishlist tab + toggle + detail render, no console/server
+errors). Full authenticated QA still pending.
+
+**Deferred (not force-shipped blind — reasons):**
+- **Ratings aggregate (D.2 community-guess fallback + A.2 search avg-star):** both must read
+  *other users'* `user_bottles.rating_stars`, which RLS blocks. Needs a SECURITY DEFINER
+  aggregate RPC (gated infra) — do with Brian.
+- **S5 two-count ownership / card-per-variant My Bar (B.1/B.2/B-32):** a rewrite of the core
+  collection screen; too risky to deploy without authenticated QA. The additive schema is
+  designed (below) but not applied. Do in a QA'd session.
+- **Book-page drag-follow swipe (A.3):** the full-card swipe already works (pointer-level); the
+  drag-follow *animation* is Phase-5 polish.
+
+The S1–S5 sections below are the original plan; S4/S5 shifted per the above.
+
+---
+
 ## S1 — Per-variant history modal  *(safest; app-only, read-only)*
 > "As a user, I tap the history icon on a version and see my counts plus a timeline of every
 > interaction with it — adds, pours (with style), tastings, empties, removes."

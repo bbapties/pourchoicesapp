@@ -147,10 +147,11 @@ Gated: auth / RLS / env. Ask Brian before changing.
 - [ ] **B-38** (medium) Browse + filter is client-side on the first page.
   Banner can say 40 matches while the list shows the 4 that were in the first 30 Elo rows.
   `SearchClient.tsx` ~325–333, 571–595
-- [x] **B-39** (medium) Search "Yours" sort still toasts "Taste some bottles to unlock…" even after tastings exist. **COPY FIXED (Claude, 2026-08-30).**
-  The sort is a full stub; the toast no longer falsely tells tasted users to "taste some bottles" —
-  now "My Ranks sorting is coming soon." Real personal-Elo sort deferred (needs per-bottle personal
-  Elo on the search page). `SearchClient.tsx`.
+- [x] **B-39** (medium) Search "Yours" sort still toasts "Taste some bottles to unlock…" even after tastings exist. **FULLY FIXED (Claude, 2026-08-30, PHASE9 S4).**
+  "My Ranks" is now a real sort: SearchClient fetches the viewer's own `user_bottles.rating_stars`,
+  builds a per-SKU personal-star map, and sorts results by the viewer's own rating (highest first;
+  unrated last). Own-data only (RLS-safe). Sort chip/label treat 'yours' as active; empty-ratings
+  case explains itself. `SearchClient.tsx`.
 - [ ] **B-40** (low) `setRatingStars` inserts a tasting-only `user_bottles` row (pour itself does not). Contradicts a strict reading of "drinks never create user_bottles."
   `ratings.ts` ~89–98
 - [ ] **B-41** (low) `formatLastActivity` has no tasting-only branch (not-owned always reads as Finished).
