@@ -270,7 +270,16 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 - [ ] Browser-only users stay on What's new (no fake desktop-notification strategy in v1)
 
 ### 8.6 Remaining bugs
-- [ ] Everything still **open** in [BUGS.md](BUGS.md) after 8.0–8.5. High remaining first (B-23 Elo farming, B-24 store-pick RLS, B-31 SKU vs variant UI, B-58 feedback UPDATE, B-59 uploads), then medium, then low. Elo math (B-50/B-57) = ask Brian before changing.
+- [~] In progress. **Shipped 2026-08-30 (Claude, autonomous):** B-31 (per-variant detail ownership +
+  had-it earmark), B-33 (honest Remove copy), B-35/B-36 (restock correctness), B-39/B-43/B-66 (truthful
+  copy). **B-32 model-resolved** (dual-tab is intended) but its code needs the two-count ownership work.
+- [ ] Still **open** in [BUGS.md](BUGS.md): B-23 tier-2, B-24 follow-ups, **B-32 two-count model**,
+  B-34/37/38 search, B-58 feedback UPDATE, B-59 uploads, then medium/low. Elo math (B-50/B-57) = ask
+  Brian before changing.
+
+> **Bottle behavior is now specced in [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md)** — the agreed model for
+> every collection / consumption / evaluation action. Diff new work against it. Net-new pieces still to
+> build: two-count ownership (B-32), wishlist tab, per-variant history modal, global-guess rating fallback.
 
 ### 8.7 Id cleanup — before 3.4 / 8.5 (gated, auth)
 - [ ] **B-74** `public.users.id` ≠ `auth.users.id`. Do not assume they are equal. Standardize `created_by` (B-46) and any new `user_id` FKs. Snapshot + Brian's go. Until then: resolve via `users.auth_id`, match **both** ids on `created_by`. See BUGS.md B-74.

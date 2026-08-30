@@ -8,17 +8,45 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `5232438`. **Working tree clean; everything on origin/MVP-v3.** Grok's last app commit before this session was `fa4a0b1` (B-06).
-- **Current phase:** **Phase 8 — Pre-beta cut.** Stories: [PHASE8.md](PHASE8.md). Bugs: [BUGS.md](BUGS.md). Checklist: ROADMAP Phase 8.
-- **Handing back to Grok** after a long Claude session. Per-item detail is ticked in BUGS.md + the dated log below; this block is the clean snapshot.
+- **Tip:** `b2875e1` (pushed). **Working tree clean; everything on origin/MVP-v3.**
+- **Current phase:** **Phase 8 — Pre-beta cut.** Stories: [PHASE8.md](PHASE8.md). Bugs: [BUGS.md](BUGS.md).
+  **NEW source of truth for bottle behavior:** [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md) — the full
+  greenfield model of every user↔bottle action (agreed with Brian 2026-08-29..30). Read it before
+  touching collection/consumption/evaluation UI.
+- **Autonomous Claude session** (Brian away at disc golf, full approval to build + deploy). Committed
+  the model, ran the gap analysis, shipped the next 5 stories to prod, wrote this baton.
 
-**State — what's shipped this session (all on prod, per-item notes in BUGS.md):**
-- **Bug waves complete:** Wave 1 (B-01…B-08), Wave 1b (B-09…B-17), Wave 0 security (B-18…B-24), Auth/signup/profile (B-25…B-29). Only remaining open in these ranges is **B-30** (feature).
-- **Barcode scanner (Phase 8.4 search side)** on **Search + My Bar**: `BarcodeScannerSheet` (ZXing) → scan opens the matched bottle or jumps to Add Bottle prefilled. `lib/barcode.ts` (UPC-A/EAN-13 matching); `bottles.barcode` now editable in Add Bottle; one-step store-pick add in `ProvisionalSheet`.
-- **Bottle-data lane:** `verify-bottle` skill (`.claude/skills/verify-bottle/`) + review-gated `suggested_edits` flow (queue supports `barcode`/`extras` fields + `__merge__`/`__delete__`). Buffalo Trace fully verified. **Blanton's + Eagle Rare are PENDING Brian's approval** in Admin ▸ Bottles (groups `b1a70000-…0001`, `ea91e000-…0001`).
+**State — what shipped this session (all pushed to prod MVP-v3):**
+- **`BOTTLE_ACTIONS.md`** — the locked interaction model (buckets A–F). This reshaped the bug queue:
+  B-31 is now "per-variant everything + had-it earmark"; B-32 is a defined feature (dual-tab is
+  intended); B-33 is honest-Remove-copy. Net-new concepts captured (two-count ownership, wishlist
+  tab, per-variant history modal, global-guess rating fallback, book-page swipe) — **not yet built**.
+- **5 stories shipped** (app-only, no schema/auth/RLS — safe to deploy solo):
+  1. **B-33** honest Remove copy (`cce6582`) — conditional on `hasTasted`; no more "deletes history" lie.
+  2. **B-43/B-66/B-39** truthful copy (`6b8f063`) — MoreSheet "Moves to Empty", ImportTab, "My Ranks" toast.
+  3. **B-35/B-36** restock correctness (`a197f51`) — `addOrRestockUserBottle` returns the resolved
+     variant (no phantom null row) + recovers from the concurrent-add 23505 race.
+  4. **B-31** per-variant ownership on the detail carousel (`9730b27`) — each slide shows its own
+     ownership (fallback = old SKU-level when no rows passed); Search wired fully; My Bar/Social pin
+     to the tapped version.
+  5. **B-31 earmark** (`b2875e1`) — search card 4-state (verified × had-it); "had it" = owned/past
+     **+ drank + blind-tasted** (fail-open extra fetches).
 
-**Single next step:**
-- **B-30** — self-serve account delete + data export on Profile. A FEATURE: self-delete needs a path a regular user can call (the admin `delete-user` route is admin-only → a self-delete RPC/route), plus a data-export bundle. Then the **B-31…B-46 Collection/variants/search** cluster (B-31 SKU-vs-variant UI, B-32 dup SKU across tabs, B-33 remove-tasted are the high ones).
+**⚠ VERIFICATION GAP (important):** I could not do authenticated UI QA — the password-entry safety
+rule stands and Brian was away. Verified via **tsc + eslint (0 errors) + production build green +
+a live unauth+existing-session smoke test** (app boots, Search earmarks render, detail card opens
+per-variant with correct not-owned actions, zero console/server errors). **NOT exercised:** the
+*differential* per-variant ownership (a variant you own vs one you don't, side by side) and the
+**green** earmark — the logged-in preview session owned/tasted nothing and I would not mutate an
+unidentified account. **Brian: eyeball these on a real account with mixed ownership.**
+
+**Single next step (recommended):**
+- **B-32 / the two-count ownership model** — the biggest net-new piece of `BOTTLE_ACTIONS.md` (B.1/B.2):
+  per-variant **currently-owned + emptied** counts so a variant can sit in both My Bar tabs with real
+  numbers, card-per-variant My Bar, and the current-quantity display. This needs a **schema or
+  derived-from-activities decision** (gated — do with Brian). Then wire My Bar/Social detail ownership
+  to the full per-variant rows (currently pinning-only). After that: wishlist tab (B.5), per-variant
+  history modal (B.1), global-guess rating fallback (D.2).
 
 **⚠ Brian's config TODOs (not code):**
 - Supabase Auth → **URL Configuration**: add `https://www.pourchoicesapp.com/reset-password` (+ localhost) to **Redirect URLs** and enable the **Reset Password** email template (B-26), else the reset link won't return to the app.
@@ -97,6 +125,34 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ---
 
 ## Log (newest first)
+
+### 2026-08-30 — Claude (END SESSION — bottle-interaction model + 5 model-aligned stories, autonomous)
+- **Long discovery with Brian → `BOTTLE_ACTIONS.md`** (commit `95c3e04`): a full greenfield spec of
+  every user↔bottle action across six buckets (Find / Collection / Consumption / Evaluation /
+  Contribute / Social), each through the same lens (entry / stored / Elo / screens / activity / edges).
+  Key decisions: **two-count per-variant ownership** (currently-owned + emptied → a variant can be in
+  both My Bar tabs); **"had it" earmark** (owned/past OR drank OR tasted; verified × had-it 4-state);
+  **wishlist** (per-variant, own My Bar sub-tab, posts to social, auto-clears on add); **honest Remove**
+  (mistake-correction only, tastings never deletable, hard-deletes cascade to the feed); **guess rating**
+  (gated to prior contact; global falls back to the average of guesses until the first blind tasting);
+  per-variant **history modal**; **book-page** full-card swipe; barcode-miss → "add it now"; contribute
+  requires a proof photo for global variants. B-30 moved to long-term backlog.
+- **Then, on Brian's full autonomy grant, shipped the next 5 stories to prod** (app-only; no schema/
+  auth/RLS while he was away): B-33 honest Remove copy (`cce6582`); B-43/B-66/B-39 truthful copy
+  (`6b8f063`); B-35/B-36 restock correctness (`a197f51`); B-31 per-variant detail ownership + pin-to-
+  tapped (`9730b27`); B-31 "had it" earmark (`b2875e1`). Each its own commit; tsc + eslint (0 errors)
+  + production build green after each.
+- **Verification:** compile/build clean + a live smoke test on the dev server via an existing
+  logged-in preview session (Search renders, earmarks correct for never-had, detail opens per-variant
+  with correct not-owned actions, no console/server errors). **Could NOT verify** the differential
+  per-variant ownership or the green earmark — password-entry rule + empty preview account. Brian to
+  eyeball on a real mixed-ownership account.
+- **Exact next:** the **two-count ownership model (B-32)** — gated schema/derivation decision with
+  Brian — then wire My Bar/Social detail ownership to full per-variant rows, then wishlist tab /
+  history modal / guess-fallback. B-74 + B-23 tier-2 still gated; Elo trigger untouched.
+- **3-line summary:** `BOTTLE_ACTIONS.md` locks the bottle model; 5 model-aligned stories (B-31/33/
+  35/36/39/43/66) shipped to prod `b2875e1`; next is the two-count ownership model with Brian, and a
+  real-account eyeball of B-31's per-variant ownership + earmark.
 
 ### 2026-08-27 — Claude (END SESSION — Wave 1b/0 + auth sweep, barcode scanner, bottle-data lane)
 - **Pushed to `origin/MVP-v3`** through tip `5232438` (24 commits). Working tree clean (untracked `.claude/launch.json`, worktrees, weekly HTML only). tsc/build green on every push.

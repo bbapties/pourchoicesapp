@@ -108,36 +108,57 @@ Gated: auth / RLS / env. Ask Brian before changing.
 
 ## Collection / variants / search (remaining)
 
-- [ ] **B-31** (high) Collection UI is SKU-level; DB is per-variant.
-  Owning any version shows In My Bar on every carousel slide, including versions never added.
-  `SearchClient.tsx` ~318–321, 833–834 · `BottleDetailView.tsx` ~159–164
+- [x] **B-31** (high) Collection UI is SKU-level; DB is per-variant. **FIXED (Claude, 2026-08-30).**
+  `BottleDetailView` now derives ownership per shown variant from `ownershipRows` (the SKU's
+  user_bottles rows) instead of two SKU-wide booleans — a known variant with no row reads
+  not-owned; add/empty/remove patch per-variant overrides. Graceful fallback to the old SKU-level
+  props when no rows are passed. Search passes the full per-SKU rows; My Bar/Social pin the
+  carousel to the tapped version (`initialVariantId`) with ownership on the SKU-level fallback
+  (deeper per-variant My Bar data = B-32). Also reworked the search-card earmark to the model's
+  4-state (verified × had-it), where "had it" spans owned/past **+ drank + blind-tasted**.
+  `BottleDetailView.tsx` · `BottleCard.tsx` · `SearchClient.tsx` · `MyBarClient.tsx` · `SocialClient.tsx`.
+  Model: `BOTTLE_ACTIONS.md` A.2/A.3/B.1. tsc + build green; authenticated differential QA still pending.
 - [ ] **B-32** (high) Same SKU can appear in both My Bar tabs; times_had/dates last-write-wins on `bottle_id`.
   `mybar/page.tsx` ~36–88
-- [ ] **B-33** (high) Remove of a tasted bottle hides it everywhere.
-  Demotes to `times_had=0`; Empty requires `times_had>=1`; Tasted is stub. Copy says it deletes history but Elo is kept.
-  `userBottles.ts` ~124–130 · `BottleDetailView.tsx` ~970–971
+  **MODEL RESOLVED, code pending (2026-08-30):** per `BOTTLE_ACTIONS.md` B.2, a variant in both
+  sub-tabs is now *intended* (independent owned + emptied counts). The fix is to drive both tabs
+  off per-variant owned/emptied counts (card-per-variant), which needs the two-count data work
+  (add `emptied_count` or derive from activities) — deferred to a session with Brian for the
+  schema/derivation call. Not shipped this session.
+- [x] **B-33** (high) Remove of a tasted bottle hides it everywhere. **COPY FIXED (Claude, 2026-08-30).**
+  The demote-vs-delete behavior in `removeUserBottle` was already correct (a tasted row is demoted,
+  keeping Elo → shows in Tasted); the bug was the confirm copy *claiming* "removes all tastings and
+  history." Copy is now conditional on `hasTasted`: a tasted bottle reads "takes it off your shelf
+  but keeps your rating — moves to Tasted; a completed blind tasting is never deleted" (button
+  "Remove from bar"); untasted keeps the mistake-correction copy. `BottleDetailView.tsx`.
+  **Deferred:** the full B.4 hard-delete-cascades-to-social-feed behavior (needs an activities
+  DELETE policy — gated/RLS) is not done this session.
 - [ ] **B-34** (medium) Search All Variants banner count/Elo include others' store picks.
   Server page fetch is unscoped; client browse is scoped. Count vs list mismatch.
   `search/page.tsx` ~14–31
-- [ ] **B-35** (medium) Search optimistic restock keys `variant_id: null` while the DB row is the default UUID.
-  Phantom null row until refresh. `SearchClient.tsx` ~480–508
-- [ ] **B-36** (medium) `addOrRestockUserBottle` is read-then-insert, no `ON CONFLICT`.
-  Double-tap race → generic "Failed to add to My Bar". `userBottles.ts` ~62–95
+- [x] **B-35** (medium) Search optimistic restock keys `variant_id: null` while the DB row is the default UUID. **FIXED (Claude, 2026-08-30).**
+  `addOrRestockUserBottle` now returns the resolved variant UUID; Search / My Bar / Social key their
+  optimistic row on `result.variantId`, so no phantom null row. `userBottles.ts` · the three clients.
+- [x] **B-36** (medium) `addOrRestockUserBottle` is read-then-insert, no `ON CONFLICT`. **FIXED (Claude, 2026-08-30).**
+  A concurrent add that trips the partial unique index (23505) now recovers by restocking the row
+  the other write created, instead of surfacing "Failed to add to My Bar". `userBottles.ts`.
 - [ ] **B-37** (medium) Contribute flow can insert empty global variants (blank proof/batch/year). No uniqueness on (bottle, batch, year).
   `VariantSelectSheet.tsx` ~151–177
 - [ ] **B-38** (medium) Browse + filter is client-side on the first page.
   Banner can say 40 matches while the list shows the 4 that were in the first 30 Elo rows.
   `SearchClient.tsx` ~325–333, 571–595
-- [ ] **B-39** (medium) Search "Yours" sort still toasts "Taste some bottles to unlock…" even after tastings exist.
-  `SearchClient.tsx` ~340–345
+- [x] **B-39** (medium) Search "Yours" sort still toasts "Taste some bottles to unlock…" even after tastings exist. **COPY FIXED (Claude, 2026-08-30).**
+  The sort is a full stub; the toast no longer falsely tells tasted users to "taste some bottles" —
+  now "My Ranks sorting is coming soon." Real personal-Elo sort deferred (needs per-bottle personal
+  Elo on the search page). `SearchClient.tsx`.
 - [ ] **B-40** (low) `setRatingStars` inserts a tasting-only `user_bottles` row (pour itself does not). Contradicts a strict reading of "drinks never create user_bottles."
   `ratings.ts` ~89–98
 - [ ] **B-41** (low) `formatLastActivity` has no tasting-only branch (not-owned always reads as Finished).
   `userBottles.ts` ~19–28
 - [ ] **B-42** (low) Search toggle can set `currently_owned=true` without incrementing `times_had` (dead path if Add Back stays on restock).
   `SearchClient.tsx` ~522–525
-- [ ] **B-43** (low) More sheet "Hidden from My Bar" for Mark as Empty — it actually moves to Empty Bottles.
-  `MoreSheet.tsx` ~43
+- [x] **B-43** (low) More sheet "Hidden from My Bar" for Mark as Empty — it actually moves to Empty Bottles. **FIXED (Claude, 2026-08-30).**
+  Hint now "Moves to Empty Bottles, kept in your history." `MoreSheet.tsx`.
 - [ ] **B-44** (low) Five–six bottom nav items on a 375px thumb zone.
   `AppShell.tsx` ~24–33
 - [ ] **B-45** (low) Suggest-edit "mine" gate is auth-id only (`created_by === authId`).
@@ -204,8 +225,7 @@ Gated: auth / RLS / env. Ask Brian before changing.
   `middleware.ts` ~54–56
 - [ ] **B-65** (medium) Cookie `setAll` swallowed in Server Components; relies on middleware refresh. Paths the matcher skips won't get a new token during RSC render.
   `supabase-server.ts` ~14–24
-- [ ] **B-66** (low) CSV import tab still says "coming in Phase 3."
-  `ImportTab.tsx`
+- [x] **B-66** (low) CSV import tab still says "coming in Phase 3." **FIXED (Claude, 2026-08-30)** → "coming soon." `ImportTab.tsx`
 - [ ] **B-67** (low) `CoachHost` persist is last-write-wins on `seen_coach_ids` (two tabs can drop an id).
   `coaches.ts` ~245–259
 - [ ] **B-68** (low) Feedback/events have no size/rate limits (long messages, huge screenshots).
