@@ -17,6 +17,7 @@ import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
 import { fetchWishlistVariantIds, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 import { supabase } from "@/lib/supabase";
 import { fieldsForVariant, fetchVariantsForSku } from "@/lib/variants";
+import { resolveDefaultVariantId } from "@/lib/userBottles";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { uploadBottleImage } from "@/lib/uploadBottleImage";
 import {
@@ -213,10 +214,14 @@ export default function BottleDetailView({
   };
 
   // B.5: adding a wishlisted version to the bar auto-clears its wishlist flag ("you got it!").
-  const autoClearWishlist = (vId: string | null | undefined) => {
-    if (!publicUserId || !vId || !wishlistedIds.has(vId)) return;
-    removeFromWishlist(publicUserId, vId);
-    setWishlistedIds(prev => { const n = new Set(prev); n.delete(vId); return n; });
+  // The add flow passes null for the "Standard bottle" option, so resolve null -> the default
+  // variant before matching (the wishlist is keyed by the real variant id).
+  const autoClearWishlist = async (vId: string | null | undefined) => {
+    if (!publicUserId) return;
+    const effective = vId ?? (await resolveDefaultVariantId(bottle.id));
+    if (!effective || !wishlistedIds.has(effective)) return;
+    await removeFromWishlist(publicUserId, effective);
+    setWishlistedIds(prev => { const n = new Set(prev); n.delete(effective); return n; });
   };
   const hasBackImage = !!shown.backImageUrl;
   const imageUrl = imageSide === 'front' ? shown.frontImageUrl : shown.backImageUrl;
@@ -394,7 +399,7 @@ export default function BottleDetailView({
           if (!onAddToBar) return;
           await onAddToBar(bottle.id, currentVariant?.variantId ?? null);
           patchOwnership(currentVariantId, true);
-          autoClearWishlist(currentVariantId);
+          await autoClearWishlist(currentVariantId);
           return;
         }
         setIsSaving(false);
@@ -1250,7 +1255,7 @@ export default function BottleDetailView({
             if (!onAddToBar) return;
             await onAddToBar(bottle.id, variantId);
             patchOwnership(variantId, true);
-            autoClearWishlist(variantId);
+            await autoClearWishlist(variantId);
             setShowVariantSelect(false);
             onClose();
           }}
@@ -1273,7 +1278,7 @@ export default function BottleDetailView({
             if (onAddToBar) {
               await onAddToBar(bottle.id, variantId);
               patchOwnership(variantId, true);
-              autoClearWishlist(variantId);
+              await autoClearWishlist(variantId);
             }
             setShowAddVariant(false);
             toast.success("Version added to My Bar");
