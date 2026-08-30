@@ -38,11 +38,23 @@ function captureContext(): { user_agent: string | null; viewport: string | null;
  * path so a resolved report's image is trivial to purge. Returns both the
  * public URL (for display) and the storage path (for deletion).
  */
+// B-59: allow-list the image type, derive the extension from the validated MIME (never the
+// client filename), and cap the size.
+const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+const SCREENSHOT_MIME_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
 async function uploadScreenshot(
   file: File,
   feedbackId: string
 ): Promise<{ url: string | null; path: string | null; error: string | null }> {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const mime = (file.type || "").toLowerCase();
+  const ext = SCREENSHOT_MIME_EXT[mime];
+  if (!ext) return { url: null, path: null, error: "Unsupported image type" };
+  if (file.size > SCREENSHOT_MAX_BYTES) return { url: null, path: null, error: "Image too large (max 8 MB)" };
   const path = `feedback/${feedbackId}/${crypto.randomUUID()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
@@ -50,7 +62,7 @@ async function uploadScreenshot(
     .upload(path, file, {
       cacheControl: "3600",
       upsert: false,
-      contentType: file.type || undefined,
+      contentType: mime,
     });
   if (uploadError) return { url: null, path: null, error: uploadError.message };
 
