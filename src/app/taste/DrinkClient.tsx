@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronUp, ChevronDown, Check, Wine, Eye } from "lucide-react";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import { saveTasting, type TastingPick } from "@/lib/tastings";
 import { logActivity, type PourType } from "@/lib/activities";
-import { logClick } from "@/lib/events";
+import { logClick, logEvent } from "@/lib/events";
 import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
 import PourSheet from "@/components/PourSheet";
 import RatePromptSheet from "@/components/RatePromptSheet";
@@ -21,6 +21,8 @@ type CatalogBottle = {
   variantId: string;
   name: string;
   distillery: string | null;
+  // Variant tag ("Costco Pick", "2021", "Batch 3") — null for the default/plain SKU.
+  label?: string | null;
 };
 type RankItem = CatalogBottle & { glassLetter: string };
 
@@ -50,7 +52,12 @@ export default function DrinkClient({
   const seeded = useRef(false);
   const [step, setStep] = useState<Step>("home");
   const [mode, setMode] = useState<Mode>("self");
-  const [catalog, setCatalog] = useState<CatalogBottle[]>([]);
+  // B-48: server-side search over every variant (beyond the old 300-SKU cap), so any
+  // bottle, store pick, or batch can be lined up. `results` is the current query's rows.
+  const [results, setResults] = useState<CatalogBottle[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const [authId, setAuthId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [picks, setPicks] = useState<CatalogBottle[]>([]);
   // Helper mode: randomized glass -> bottle assignment, in letter order (A, B, C...).
@@ -70,27 +77,80 @@ export default function DrinkClient({
   const [ratingStars, setRatingStarsState] = useState<number | null>(null);
   const [hasTasted, setHasTasted] = useState(false);
 
+  // Resolve the viewer's auth id so store-pick scoping can match either id (B-46/B-74).
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("all_bottle_details")
-        .select("bottle_id, bottle_name, bottle_distillery, default_variant_id")
-        .order("bottle_name", { ascending: true })
-        .limit(300);
-      if (cancelled || !data) return;
-      const rows: CatalogBottle[] = data
-        .filter((d) => d.default_variant_id)
-        .map((d) => ({
+    supabase.auth.getUser().then(({ data }) => setAuthId(data.user?.id ?? null));
+  }, []);
+
+  // 7.9 store-pick scoping: global variants + only the viewer's own store picks. Match auth
+  // id OR public id — created_by is stored inconsistently across rows.
+  const myIds = useMemo(() => [authId, publicUserId].filter(Boolean) as string[], [authId, publicUserId]);
+  const myIdsKey = myIds.join(",");
+
+  // Variant tag for a non-default row so batches / store picks are distinguishable in the list.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rowLabel = (d: any): string | null => {
+    if (d.variant_is_default) return null;
+    const parts = [
+      d.attr_store_pick_name,
+      d.attr_release_year != null ? String(d.attr_release_year) : null,
+      d.attr_batch ? `Batch ${d.attr_batch}` : null,
+    ].filter(Boolean);
+    return parts.length ? parts.join(" · ") : "Variant";
+  };
+
+  // B-48/B-54: one debounced, scoped search over all_variant_details. Empty query = an
+  // alphabetical browse; a term ilike-matches name/distillery/batch/store pick. Errors surface
+  // (no more silent empty), and every search logs an event.
+  const runSearch = useCallback(async (term: string) => {
+    setSearching(true);
+    setSearchError(false);
+    try {
+      const t = term.trim();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let q = (supabase.from("all_variant_details") as any)
+        .select("variant_id, bottle_id, bottle_name, bottle_distillery, variant_is_default, attr_store_pick_name, attr_batch, attr_release_year");
+      if (t) {
+        // B-13: quote + escape so commas/parens/quotes in the term don't break the .or().
+        const v = `"%${t.replace(/[\\"]/g, (c) => "\\" + c)}%"`;
+        const fields = ["bottle_name", "bottle_distillery", "bottle_category", "bottle_style", "bottle_barcode", "attr_batch", "attr_store_pick_name"];
+        q = q.or(fields.map((f) => `${f}.ilike.${v}`).join(","));
+      }
+      q = myIds.length
+        ? q.or(`attr_store_pick_name.is.null,variant_created_by.in.(${myIds.join(",")})`)
+        : q.is("attr_store_pick_name", null);
+      const { data, error } = await q.order("bottle_name", { ascending: true }).limit(t ? 80 : 60);
+      if (error) { setSearchError(true); setResults([]); return; }
+      const rows: CatalogBottle[] = (data || [])
+        .filter((d: any) => d.variant_id)
+        .map((d: any) => ({
           bottleId: d.bottle_id,
-          variantId: d.default_variant_id as string,
+          variantId: d.variant_id as string,
           name: d.bottle_name,
           distillery: d.bottle_distillery,
+          label: rowLabel(d),
         }));
-      setCatalog(rows);
-    })();
-    return () => { cancelled = true; };
-  }, []);
+      setResults(rows);
+      logEvent({
+        eventType: "search",
+        userId: publicUserId,
+        surface: "/taste",
+        metadata: { query: t, result_count: rows.length },
+      });
+    } catch {
+      setSearchError(true);
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myIdsKey, publicUserId]);
+
+  // Debounced: re-run when the term changes or once the auth id resolves (rescopes store picks).
+  useEffect(() => {
+    const timer = setTimeout(() => { runSearch(query); }, 250);
+    return () => clearTimeout(timer);
+  }, [query, runSearch]);
 
   // Pre-seed from bottle-card Blind (Have a drink or More). Skip home → land on mode
   // with that bottle already in the lineup. Fetch by id so we aren't limited to the
@@ -121,23 +181,18 @@ export default function DrinkClient({
     return () => { cancelled = true; };
   }, [seedBottleId, seedVariantId]);
 
+  // Keep already-picked / pre-seeded rows visible even when they're outside the current
+  // result set. Rows are keyed per variant now, so two batches of one SKU can co-exist.
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const base = q
-      ? catalog.filter((b) => b.name.toLowerCase().includes(q) || (b.distillery ?? "").toLowerCase().includes(q))
-      : catalog;
-    const shown = base.slice(0, 60);
-    // Keep already-picked / pre-seeded bottles visible even if they're outside the
-    // 300-name catalog window or the 60-row slice.
-    const extra = picks.filter((p) => !shown.some((s) => s.bottleId === p.bottleId));
-    return extra.length ? [...extra, ...shown] : shown;
-  }, [catalog, query, picks]);
+    const extra = picks.filter((p) => !results.some((r) => r.variantId === p.variantId));
+    return extra.length ? [...extra, ...results] : results;
+  }, [results, picks]);
 
-  const isPicked = (id: string) => picks.some((p) => p.bottleId === id);
+  const isPicked = (variantId: string) => picks.some((p) => p.variantId === variantId);
 
   const togglePick = (b: CatalogBottle) => {
-    if (isPicked(b.bottleId)) {
-      setPicks((prev) => prev.filter((p) => p.bottleId !== b.bottleId));
+    if (isPicked(b.variantId)) {
+      setPicks((prev) => prev.filter((p) => p.variantId !== b.variantId));
     } else {
       if (picks.length >= MAX_PICKS) { toast(`Up to ${MAX_PICKS} bottles per tasting`); return; }
       setPicks((prev) => [...prev, b]);
@@ -240,6 +295,11 @@ export default function DrinkClient({
   };
 
   const openPourFor = async (b: CatalogBottle) => {
+    logClick("drink_bottle_open", {
+      userId: publicUserId,
+      targetId: b.bottleId,
+      metadata: { variant_id: b.variantId, source: "drink_tab" },
+    });
     setPourTarget(b);
     setShowPourSheet(true);
     const s = await fetchUserRatingState(publicUserId, b.bottleId, b.variantId);
@@ -355,16 +415,18 @@ export default function DrinkClient({
             <p className="text-xs text-gray-500 mb-2">Pick a bottle to log a pour or start a blind tasting</p>
             <div className="space-y-1 mb-8">
               {filtered.map((b) => (
-                <button key={b.bottleId} type="button" onClick={() => openPourFor(b)}
+                <button key={b.variantId} type="button" onClick={() => openPourFor(b)}
                   className="w-full flex items-center justify-between rounded-lg border p-3 text-left"
                   style={{ borderColor: "#D1D5DB" }}>
                   <span>
                     <span className="block text-sm font-medium text-charcoal">{b.name}</span>
-                    <span className="block text-xs text-gray-500">{b.distillery}</span>
+                    <span className="block text-xs text-gray-500">{[b.distillery, b.label].filter(Boolean).join(" · ")}</span>
                   </span>
                 </button>
               ))}
-              {filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">No bottles found</p>}
+              {searching && filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">Searching...</p>}
+              {!searching && searchError && <p className="text-center text-sm text-red-500 py-8">Couldn&apos;t load bottles. Check your connection and try again.</p>}
+              {!searching && !searchError && filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">No bottles found</p>}
             </div>
           </div>
         )}
@@ -395,20 +457,22 @@ export default function DrinkClient({
             <p className="text-xs text-gray-500 mb-2">Selected {picks.length}/{MAX_PICKS} · pick {MIN_PICKS}–{MAX_PICKS}</p>
             <div className="space-y-1 mb-24">
               {filtered.map((b) => {
-                const picked = isPicked(b.bottleId);
+                const picked = isPicked(b.variantId);
                 return (
-                  <button key={b.bottleId} type="button" onClick={() => togglePick(b)}
+                  <button key={b.variantId} type="button" onClick={() => togglePick(b)}
                     className="w-full flex items-center justify-between rounded-lg border p-3 text-left"
                     style={picked ? { backgroundColor: "#2F2F2F", color: "#FFFFFF", borderColor: "#2F2F2F" } : { borderColor: "#D1D5DB" }}>
                     <span>
                       <span className="block text-sm font-medium">{b.name}</span>
-                      <span className="block text-xs opacity-70">{b.distillery}</span>
+                      <span className="block text-xs opacity-70">{[b.distillery, b.label].filter(Boolean).join(" · ")}</span>
                     </span>
                     {picked && <Check size={18} />}
                   </button>
                 );
               })}
-              {filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">No bottles found</p>}
+              {searching && filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">Searching...</p>}
+              {!searching && searchError && <p className="text-center text-sm text-red-500 py-8">Couldn&apos;t load bottles. Check your connection and try again.</p>}
+              {!searching && !searchError && filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">No bottles found</p>}
             </div>
             <div className="fixed bottom-16 left-0 right-0 p-3 bg-ivory border-t border-charcoal">
               <div className="max-w-md mx-auto">
