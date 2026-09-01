@@ -13,17 +13,23 @@ import { logEvent } from "@/lib/events";
  * too (userId null), so the pre-login funnel is visible.
  */
 export default function EventTracker() {
-  const { publicUserId } = useCurrentUser();
+  const { publicUserId, loading } = useCurrentUser();
   const pathname = usePathname();
 
   // Latest userId, read by handlers without making them a render dependency.
   const userIdRef = useRef<string | null>(publicUserId);
   userIdRef.current = publicUserId;
 
-  // page_view — fire once per pathname (not again when userId resolves).
+  // page_view — B-61: wait until auth resolves before logging, so a signed-in user's
+  // page_view is stamped with their id (not the null it holds during the first render).
+  // Then log each pathname exactly once (a later login/logout won't re-log the same path).
+  const lastLoggedPath = useRef<string | null>(null);
   useEffect(() => {
-    logEvent({ eventType: "page_view", userId: userIdRef.current, surface: pathname });
-  }, [pathname]);
+    if (loading) return;
+    if (lastLoggedPath.current === pathname) return;
+    lastLoggedPath.current = pathname;
+    logEvent({ eventType: "page_view", userId: publicUserId, surface: pathname });
+  }, [pathname, loading, publicUserId]);
 
   // Global client-error capture — attach once.
   useEffect(() => {
