@@ -960,7 +960,7 @@ export default function BottleDetailView({
             <span className="text-gray-500">My last activity</span>
             <span className="inline-flex items-center gap-2">
               <span>{lastActivityLabel || 'None'}</span>
-              {publicUserId && !onAddSlide && currentVariantId && (hasTasted || inCollectionLocally || !!lastActivityLabel) && (
+              {publicUserId && !onAddSlide && currentVariantId && (hasTasted || inCollectionLocally || !!lastActivityLabel || wishlistedIds.has(currentVariantId)) && (
                 <button
                   type="button"
                   onClick={() => setShowHistory(true)}

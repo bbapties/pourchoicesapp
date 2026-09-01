@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 /** One row in the per-variant interaction timeline (BOTTLE_ACTIONS.md B.1 history modal). */
 export type HistoryItem = {
-  kind: "added" | "emptied" | "drank" | "removed" | "tasted" | "edit";
+  kind: "added" | "emptied" | "drank" | "removed" | "tasted" | "edit" | "wishlisted";
   pourType?: string | null;
   at: string; // ISO
   label: string;
@@ -24,6 +24,7 @@ const ACTION_LABEL: Record<string, string> = {
   finished: "Marked empty",
   removed_from_collection: "Removed from bar",
   suggested_edit: "Suggested an edit",
+  wishlisted: "Wishlisted",
 };
 
 /**
@@ -71,6 +72,8 @@ export async function fetchVariantHistory(
         timeline.push({ kind: "removed", at, label: ACTION_LABEL[action] });
       } else if (action === "suggested_edit") {
         timeline.push({ kind: "edit", at, label: ACTION_LABEL[action] });
+      } else if (action === "wishlisted") {
+        timeline.push({ kind: "wishlisted", at, label: ACTION_LABEL[action] });
       }
     }
 
