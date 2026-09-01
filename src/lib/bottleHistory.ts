@@ -6,6 +6,7 @@ export type HistoryItem = {
   pourType?: string | null;
   at: string; // ISO
   label: string;
+  activityId?: string; // set for deletable hand-logged items (pours) — B.4
 };
 
 export type VariantHistory = {
@@ -42,7 +43,7 @@ export async function fetchVariantHistory(
     const [{ data: acts }, { data: sessions }] = await Promise.all([
       supabase
         .from("activities")
-        .select("action, pour_type, created_at")
+        .select("id, action, pour_type, created_at")
         .eq("user_id", userId)
         .eq("bottle_id", bottleId)
         .eq("variant_id", variantId)
@@ -61,7 +62,7 @@ export async function fetchVariantHistory(
       else if (action === "drank") counts.pours += 1;
 
       if (action === "drank") {
-        timeline.push({ kind: "drank", pourType: a.pour_type, at, label: `Poured${a.pour_type ? ` · ${a.pour_type}` : ""}` });
+        timeline.push({ kind: "drank", pourType: a.pour_type, at, label: `Poured${a.pour_type ? ` · ${a.pour_type}` : ""}`, activityId: (a as { id?: string }).id });
       } else if (action === "added_to_collection") {
         timeline.push({ kind: "added", at, label: ACTION_LABEL[action] });
       } else if (action === "finished") {

@@ -154,11 +154,24 @@ export async function removeUserBottle(opts: {
       .update({ currently_owned: false, times_had: 0, owned_count: 0, updated_at: new Date().toISOString() })
       .eq("id", row.id);
     if (error) return { error: error.message };
+    await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "removed_from_collection", variantId });
   } else {
+    // Mistaken add (no tasting history): hard-delete the row AND erase its "added to collection"
+    // feed/history post so the mistake leaves no trace (B.4 cascade). No "removed" post either.
     const { error } = await supabase.from("user_bottles").delete().eq("id", row.id);
     if (error) return { error: error.message };
+    let aq = supabase
+      .from("activities")
+      .select("id")
+      .eq("user_id", opts.userId)
+      .eq("bottle_id", opts.bottleId)
+      .eq("action", "added_to_collection")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (variantId) aq = aq.eq("variant_id", variantId);
+    const { data: addRows } = await aq;
+    if (addRows?.[0]?.id) await supabase.from("activities").delete().eq("id", addRows[0].id);
   }
-  await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "removed_from_collection", variantId });
   return {};
 }
 

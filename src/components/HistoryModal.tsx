@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { fetchVariantHistory, type VariantHistory } from "@/lib/bottleHistory";
+import { deleteActivity } from "@/lib/activities";
 
 interface HistoryModalProps {
   open: boolean;
@@ -31,6 +33,7 @@ export default function HistoryModal({
 }: HistoryModalProps) {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<VariantHistory | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -41,6 +44,19 @@ export default function HistoryModal({
     });
     return () => { cancelled = true; };
   }, [open, userId, bottleId, variantId]);
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    const res = await deleteActivity(id);
+    if (res.error) {
+      toast.error("Couldn't delete that pour");
+    } else {
+      toast.success("Pour removed");
+      const h = await fetchVariantHistory(userId, bottleId, variantId);
+      setHistory(h);
+    }
+    setDeletingId(null);
+  };
 
   if (!open) return null;
 
@@ -93,7 +109,20 @@ export default function HistoryModal({
                   {history.timeline.map((item, i) => (
                     <li key={i} className="flex items-center justify-between px-2 py-2.5">
                       <span className="text-sm text-charcoal">{item.label}</span>
-                      <span className="text-xs text-gray-500 tabular-nums flex-shrink-0 ml-3">{fmtDate(item.at)}</span>
+                      <span className="flex items-center gap-2 flex-shrink-0 ml-3">
+                        <span className="text-xs text-gray-500 tabular-nums">{fmtDate(item.at)}</span>
+                        {item.activityId && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item.activityId!)}
+                            disabled={deletingId === item.activityId}
+                            aria-label="Delete this pour"
+                            className="text-gray-400 hover:text-red-600 disabled:opacity-40"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </span>
                     </li>
                   ))}
                 </ul>

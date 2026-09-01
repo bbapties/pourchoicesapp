@@ -132,6 +132,17 @@ export async function logActivity(opts: {
   return {};
 }
 
+/**
+ * B.4: delete one of the viewer's own hand-logged activities (a pour / add / finished), which
+ * also removes it from the Social feed. RLS only permits deleting your own drank/added/finished
+ * rows — tastings are permanent.
+ */
+export async function deleteActivity(id: string): Promise<{ error?: string }> {
+  const { error } = await supabase.from("activities").delete().eq("id", id);
+  if (error) return { error: error.message };
+  return {};
+}
+
 export async function fetchLastActivityForBottle(
   userId: string,
   bottleId: string
