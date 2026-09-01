@@ -37,20 +37,27 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // On mount: check session, hold splash for 1.5s minimum.
-  // Only set authChecked (show Get Started) if there is NO session.
-  // If session exists, navigate away while still showing the splash — no flash.
+  // On mount: check auth, hold splash for 1.5s minimum.
+  // Only set authChecked (show Get Started) if there is NO authenticated user.
+  // If authenticated, navigate away while still showing the splash — no flash.
+  //
+  // Use getUser() (validates the token against the Auth server) — the SAME check the
+  // middleware uses to gate /mybar. getSession() only trusts the cookie, so a stale or
+  // unrefreshable token made this redirect to /mybar while the middleware bounced it back
+  // to / — an infinite /<->/mybar loop (the page_view flood since 2026-08-27).
   useEffect(() => {
-    const sessionCheck = supabase.auth.getSession();
+    const authCheck = supabase.auth.getUser();
     const minDelay = new Promise<void>((resolve) => setTimeout(resolve, 1500));
 
-    Promise.all([sessionCheck, minDelay]).then(([{ data: { session } }]) => {
-      if (session) {
-        router.replace("/mybar");
-      } else {
-        setAuthChecked(true);
-      }
-    });
+    Promise.all([authCheck, minDelay])
+      .then(([{ data: { user } }]) => {
+        if (user) {
+          router.replace("/mybar");
+        } else {
+          setAuthChecked(true);
+        }
+      })
+      .catch(() => setAuthChecked(true)); // offline / auth error -> show login, never hang on splash
   }, [router]);
 
   // Progress bar calculation
