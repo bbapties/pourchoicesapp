@@ -8,14 +8,18 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `48f3b00` (+ this doc commit). **Working tree clean; everything on origin/MVP-v3.**
+- **Tip:** `173debc` (+ this doc commit). **Working tree clean; everything on origin/MVP-v3.**
 - **Current phase:** **Phase 9 build-out (Wave 2).** Model = [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md);
   plan + status = [PHASE9.md](PHASE9.md). Read the model before touching collection/consumption/
   evaluation UI.
-- **PHASE9 Wave 2: 6 of 10 stories shipped this session** (two-count ownership, tasting visibility,
-  ratings fallback, submission hardening, honest search, feed cascade — all QA'd on the Claude
-  account + deployed). **Next up = #7 drink picker** (see the Wave-2 log entry + PHASE9.md #7–#10).
+- **PHASE9 Wave 2: 8 of 10 stories shipped** (two-count ownership, tasting visibility,
+  ratings fallback, submission hardening, honest search, feed cascade, **#7 drink picker**,
+  **#8 wishlist-in-history + barcode two-zone chooser**). **Next up = #9 telemetry integrity**
+  (B-60/B-61), then #10 docs + small polish (see PHASE9.md Wave 2 + the 2026-09-01 log entry).
   Continue one story at a time.
+- **⚠ Needs a real-device eyeball (#8 barcode):** the two-zone "in your bar" chooser only fires on a
+  camera scan where you own a NON-default version of a barcoded SKU — not exercisable in the preview
+  (no camera). All other scan paths reduce to today's behavior. Wishlist-in-history WAS QA'd on Claude.
 
 **PHASE9 shipped this session (all on prod):** S1 per-variant **history modal**; S2 **wishlist**
 (new `wishlists` table applied to prod — additive, rollback `sql/wishlist-snapshot.sql`; detail
@@ -141,7 +145,35 @@ unidentified account. **Brian: eyeball these on a real account with mixed owners
 
 ## Log (newest first)
 
-### 2026-08-30 — Claude (PHASE9 Wave 2 — next-10 stories, in progress)
+### 2026-09-01 — Claude (PHASE9 Wave 2 — #7 + #8 shipped)
+- Resumed Wave 2 at 6/10. Brian on mobile via remote; QA ran on the **Claude QA account**
+  (`claude@`, already logged in — verified via Profile). Note: `computer` clicks time out on the
+  hidden pane in this remote setup, so UI QA was driven through `javascript_tool` DOM clicks +
+  `get_page_text` (reliable) instead of screenshots.
+- **#7 drink picker overhaul (`e6bf768`, B-48/B-54) — QA'd + pushed.** Replaced the mount-time
+  300-SKU cap + client filter with a debounced, scoped server search over `all_variant_details`.
+  Any bottle is now findable; store picks/batches appear as their own labeled rows and are
+  pickable (picks keyed per variant, so two versions of one SKU co-exist in a lineup); fetch
+  errors surface; search + `drink_bottle_open` click events log. **Verified on Claude:** `blanton`
+  hits, `weller` -> "No bottles found", both Bib & Tucker versions selectable (2/5), picked rows
+  stay visible across searches. No writes, so no cleanup.
+- **#8 wishlist-in-history (`9f5c2d5`) — QA'd + pushed.** `wishlisted` activities now render as a
+  timeline row in the history modal, and the modal's entry icon appears for a wishlist-only variant
+  (gate was owned/tasted/last-activity only — added `wishlistedIds.has(currentVariantId)` in
+  `BottleDetailView`). **Verified on Claude:** wishlisted Blanton's -> history icon appeared ->
+  "Wishlisted - Sep 1, 2026" row; test wishlist row + activity deleted after (`c2dcda89…`,
+  `df427f35…`).
+- **#8 barcode two-zone chooser (`173debc`, A.1 completion) — build-verified, pushed on Brian's OK.**
+  A barcode hit where the viewer owns NON-default versions now shows an "in your bar" chooser (open
+  the standard bottle, or jump to an owned version, each labeled). Owning only the default / nothing
+  still opens the standard bottle directly (S3 path, unchanged). Implemented in `SearchClient` only
+  (it has the pin plumbing); **MyBar still opens default on scan — follow-up.** Also removed a dead
+  `logActivity` import in SearchClient. **NOT exercised:** the camera scan path (no camera in the
+  preview) — Brian to scan a barcoded SKU on a real device while owning a non-default version.
+- tsc + eslint (0 errors) + production build green before each push.
+- **Single next step:** **#9 telemetry integrity** (B-60/B-61) — events rate-limit / anon guard;
+  page_views stamp the real user once resolved. Then #10 docs + small polish. **Still gated:** B-74
+  auth-id cleanup, Elo math (B-49/B-50).
 - Brian approved the gated decisions (additive columns, aggregate RPC, RLS hardening) and asked for
   the next 10 stories (PHASE9.md "Wave 2"). Building + QA-testing each on the **Claude QA account**
   (`claude@`, verified it's that account) and deploying. **B-74 + Elo math stay gated.**
