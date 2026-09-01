@@ -36,14 +36,18 @@ The S1–S5 sections below are the original plan; S4/S5 shifted per the above.
 
 ## Wave 2 — next 10 stories (approved 2026-08-30; keystone-first, QA on the Claude account)
 
-> **Status (2026-09-01): #1–#8 SHIPPED to prod.** #1 two-count (`5e4cfce`),
+> **Status (2026-09-01): #1–#9 SHIPPED to prod.** #1 two-count (`5e4cfce`),
 > #2 tastings-finished (`97a1742`), #3 ratings fallback (`1371a40`), #4 submission hardening
 > (`e04aa1e`), #5 honest search (`aa5fcd5`), #6 feed cascade (`48f3b00`),
-> #7 drink picker (`e6bf768`), #8 wishlist-in-history (`9f5c2d5`) + barcode two-zone (`173debc`).
-> **Remaining: #9 telemetry integrity, #10 docs + small polish.**
+> #7 drink picker (`e6bf768`), #8 wishlist-in-history (`9f5c2d5`) + barcode two-zone (`173debc`),
+> #9 telemetry integrity (`3ef5583`). **Remaining: #10 docs + small polish.**
+> **Also this session:** found + fixed a prod `/`<->`/mybar` redirect loop that had flooded the
+> events table (~1.1M page_views since 2026-08-27) — `page.tsx` getUser (`034b94f`) + middleware
+> stale-cookie clear (`4210e1c`); loop rows purged. See HANDOFF 2026-09-01 (cont.).
 > Follow-ups noted along the way: card-per-variant My Bar (separate cards per owned variant),
-> the ranked "click for details" tasting-results view (D.1), and a **real-device barcode scan**
-> of the #8 two-zone chooser (camera path not exercisable in the preview).
+> the ranked "click for details" tasting-results view (D.1), a **real-device barcode scan**
+> of the #8 two-zone chooser (camera path not exercisable in the preview), and MyBar/Drink-picker
+> barcode scan (two-zone is Search-only today).
 
 Gated decisions approved by Brian: additive `owned_count`/`emptied_count` columns; a
 `SECURITY DEFINER` aggregate-guess RPC; tightened RLS on feedback/suggested_edits + upload

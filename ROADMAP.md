@@ -273,10 +273,13 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 - [~] In progress. **Shipped 2026-08-30 (Claude, autonomous):** B-31 (per-variant detail ownership +
   had-it earmark), B-33 (honest Remove copy), B-35/B-36 (restock correctness), B-39/B-43/B-66 (truthful
   copy). **B-32 model-resolved** (dual-tab is intended) but its code needs the two-count ownership work.
-- [~] **PHASE9 Wave 2 (2026-08-30/09-01): 8/10 shipped** — #1 two-count, #2 tastings-finished,
+- [~] **PHASE9 Wave 2 (2026-08-30/09-01): 9/10 shipped** — #1 two-count, #2 tastings-finished,
   #3 ratings fallback, #4 submission hardening, #5 honest search, #6 feed cascade, **#7 drink picker
-  (B-48/B-54)**, **#8 wishlist-in-history + barcode two-zone chooser (A.1)**. Remaining: #9 telemetry
-  integrity (B-60/B-61), #10 docs + polish. See [PHASE9.md](PHASE9.md).
+  (B-48/B-54)**, **#8 wishlist-in-history + barcode two-zone chooser (A.1)**, **#9 telemetry integrity
+  (B-60/B-61)**. Remaining: #10 docs + polish. See [PHASE9.md](PHASE9.md).
+- [x] **Prod incident (2026-09-01): `/`<->`/mybar` redirect-loop events flood** (~1.1M page_views
+  since 2026-08-27, getSession-vs-getUser mismatch). Fixed: `page.tsx` getUser (`034b94f`) + middleware
+  stale-cookie clear (`4210e1c`); loop rows purged. See HANDOFF.
 - [ ] Still **open** in [BUGS.md](BUGS.md): B-23 tier-2, B-24 follow-ups, **B-32 two-count model**,
   B-34/37/38 search, B-58 feedback UPDATE, B-59 uploads, then medium/low. Elo math (B-50/B-57) = ask
   Brian before changing.

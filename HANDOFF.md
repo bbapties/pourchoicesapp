@@ -8,18 +8,29 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `173debc` (+ this doc commit). **Working tree clean; everything on origin/MVP-v3.**
+- **Tip:** `4210e1c` (+ this doc commit). **Working tree clean; everything on origin/MVP-v3.**
 - **Current phase:** **Phase 9 build-out (Wave 2).** Model = [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md);
   plan + status = [PHASE9.md](PHASE9.md). Read the model before touching collection/consumption/
   evaluation UI.
-- **PHASE9 Wave 2: 8 of 10 stories shipped** (two-count ownership, tasting visibility,
-  ratings fallback, submission hardening, honest search, feed cascade, **#7 drink picker**,
-  **#8 wishlist-in-history + barcode two-zone chooser**). **Next up = #9 telemetry integrity**
-  (B-60/B-61), then #10 docs + small polish (see PHASE9.md Wave 2 + the 2026-09-01 log entry).
-  Continue one story at a time.
+- **PHASE9 Wave 2: 9 of 10 stories shipped** (two-count ownership, tasting visibility,
+  ratings fallback, submission hardening, honest search, feed cascade, #7 drink picker,
+  #8 wishlist-in-history + barcode two-zone chooser, **#9 telemetry integrity**). **Next up =
+  #10 docs + small polish** (B-70/71/72/73 docs, B-44 nav crowding, B-42/B-40 edge cases). Continue
+  one story at a time.
+- **✅ RESOLVED THIS SESSION — prod events flood incident.** A `/`<->`/mybar` redirect loop had been
+  writing ~300 page_views/min since 2026-08-27 (~1.1M null-user rows). Cause: login page decided its
+  redirect with `getSession()` (trusts the cookie) while middleware gated `/mybar` with `getUser()`
+  (validates) — a stale/unrefreshable token bounced forever. **Fixed:** `page.tsx` now uses `getUser()`
+  (`034b94f`); middleware clears stale `sb-*-auth-token` cookies on the auth redirect so already-looping
+  old-bundle clients stop too (`4210e1c`). Flood confirmed 0/min (clean cutoff 23:17 UTC). **Purged**
+  the 1,124,674 loop rows (5 loop session_ids) — events table back to ~1,686 real rows.
 - **⚠ Needs a real-device eyeball (#8 barcode):** the two-zone "in your bar" chooser only fires on a
   camera scan where you own a NON-default version of a barcoded SKU — not exercisable in the preview
   (no camera). All other scan paths reduce to today's behavior. Wishlist-in-history WAS QA'd on Claude.
+- **⚠ Landmine (auth):** `getSession()` (trusts cookie) vs `getUser()` (validates) must not disagree
+  across a redirect boundary. `useCurrentUser` still uses `getSession()` for client UX reads — fine (it
+  doesn't redirect), but don't build a NEW redirect off `getSession()`. Rarer un-fixed loop: a VALID
+  token whose `public.users` row is missing still bounces `/mybar`->`/` (B-08 prevents new ones).
 
 **PHASE9 shipped this session (all on prod):** S1 per-variant **history modal**; S2 **wishlist**
 (new `wishlists` table applied to prod — additive, rollback `sql/wishlist-snapshot.sql`; detail
@@ -144,6 +155,31 @@ unidentified account. **Brian: eyeball these on a real account with mixed owners
 ---
 
 ## Log (newest first)
+
+### 2026-09-01 (cont.) — Claude (#9 telemetry integrity + prod redirect-loop incident)
+- **#9 telemetry integrity (`3ef5583`, B-60/B-61) — shipped + QA'd.** B-61: `EventTracker` waits for
+  `useCurrentUser` to resolve (`loading=false`) before logging a page_view, then logs each pathname
+  once, stamped with the real user (verified: client-side navs to /search//mybar//profile carried the
+  Claude id). B-60: client rate-cap + field/metadata truncation in `events.ts`; a `BEFORE INSERT`
+  trigger `guard_event_insert` (applied to prod, rollback `sql/events-hardening-snapshot.sql`) bounds
+  field lengths + jsonb size so a raw anon insert can't bypass it (verified via a direct oversized
+  insert -> clamped, 6KB metadata -> `{_truncated}`).
+- **PROD INCIDENT found during #9 QA + fixed.** The events table was 99.98% one thing: a `/`<->`/mybar`
+  redirect loop writing ~300 page_views/min since **2026-08-27 16:46** (~1.1M rows, 5 stuck clients
+  looping since Aug 29, each ~250k rows). **Root cause:** login page redirected via `getSession()`
+  (cookie-trusting) while middleware gated `/mybar` via `getUser()` (validating) — introduced the day
+  the middleware moved to `getUser()`. A dead/unrefreshable token bounced forever, all null-user.
+  **Fixes (Brian approved auth changes, reviewed each diff):** (1) `page.tsx` uses `getUser()` so the
+  client's redirect decision matches the server (`034b94f`); (2) middleware clears stale
+  `sb-*-auth-token` cookies on the auth redirect, so already-looping clients on the OLD bundle also
+  stop (browser honors Set-Cookie on the RSC redirect) (`4210e1c`). **Verified:** insert rate stepped
+  down as clients dropped off, then a clean cutoff to **0/min at 23:17 UTC**, held 13+ min. **Purged**
+  the 1,124,674 loop rows by their 5 session_ids; events table now ~1,686 real rows.
+- tsc + eslint (0 errors) + production build green before each push.
+- **Single next step:** **#10 docs + small polish** (B-70/71/72/73 docs; B-44 nav crowding; B-42/B-40
+  edge cases). **Still gated:** B-74 auth-id cleanup, Elo math (B-49/B-50). Also open: real-device
+  barcode scan of the #8 two-zone chooser; MyBar scan still opens default (two-zone is Search-only);
+  Drink-picker barcode scan (8.4).
 
 ### 2026-09-01 — Claude (PHASE9 Wave 2 — #7 + #8 shipped)
 - Resumed Wave 2 at 6/10. Brian on mobile via remote; QA ran on the **Claude QA account**
