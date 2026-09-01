@@ -18,7 +18,6 @@ import { isVariantVisibleToViewer } from "@/lib/variants";
 import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty, type UserBottleRow } from "@/lib/userBottles";
-import { logActivity } from "@/lib/activities";
 import { logEvent, logClick } from "@/lib/events";
 
 const DEFAULT_PAGE_SIZE = 30;
@@ -52,6 +51,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const [scannedBarcode, setScannedBarcode] = useState<string | undefined>(undefined);
   // S3: on a barcode hit, open pinned to the version the viewer already owns (else default-first).
   const [scanPinVariantId, setScanPinVariantId] = useState<string | null>(null);
+  // A.1 two-zone: a barcode hit where the viewer owns NON-default versions shows a chooser
+  // (open the standard bottle, or jump straight to an owned version).
+  const [scanChoice, setScanChoice] = useState<{ bottleId: string; name: string; versions: { variantId: string; label: string }[] } | null>(null);
 
   // Infinite scroll refs — sync guards (state updates are too slow)
   const isLoadingMoreRef = useRef(false);
@@ -477,12 +479,35 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       metadata: { matched: !!match },
     });
     if (match) {
-      // S3 "in your bar": if you own a version of this SKU, land on it instead of default-first.
+      // A.1 two-zone: fetch the SKU (default id + per-variant labels) so we can single out the
+      // NON-default versions the viewer owns. Owning only the default (or nothing) opens the
+      // standard bottle directly; owning store picks/batches shows an "in your bar" chooser.
+      const { data: sku } = await (supabase.from("all_bottle_details") as any)
+        .select(BOTTLE_SELECT).eq("bottle_id", match.id).maybeSingle();
+      const defaultVid: string | null = sku?.default_variant_id ?? null;
+      const vids: string[] = sku?.attr_variant_ids || [];
+      const storePicks: (string | null)[] = sku?.attr_store_pick_name || [];
+      const years: (string | number | null)[] = sku?.attr_release_year || [];
+      const batches: (string | null)[] = sku?.attr_batch || [];
+      const labelFor = (vid: string): string => {
+        const i = vids.indexOf(vid);
+        if (i < 0) return "Version";
+        const parts = [storePicks[i], years[i] != null ? String(years[i]) : null, batches[i] ? `Batch ${batches[i]}` : null].filter(Boolean);
+        return parts.length ? parts.join(" · ") : "Version";
+      };
       const rows = userBottlesMap[match.id] || [];
-      const ownedRow = rows.find(r => r.currently_owned) ?? rows.find(r => (r.times_had ?? 0) >= 1);
-      const ownedCount = rows.filter(r => r.currently_owned || (r.times_had ?? 0) >= 1).length;
-      toast.success(ownedCount > 0 ? `In your bar: ${match.name}` : `Found: ${match.name}`);
-      await openBottleById(match.id, ownedRow?.variant_id ?? null);
+      const ownedRows = rows.filter(r => r.currently_owned || (r.times_had ?? 0) >= 1);
+      const nonDefaultOwned = ownedRows.filter(r => r.variant_id && r.variant_id !== defaultVid);
+      if (nonDefaultOwned.length > 0) {
+        setScanChoice({
+          bottleId: match.id,
+          name: match.name,
+          versions: nonDefaultOwned.map(r => ({ variantId: r.variant_id as string, label: labelFor(r.variant_id as string) })),
+        });
+      } else {
+        toast.success(ownedRows.length > 0 ? `In your bar: ${match.name}` : `Found: ${match.name}`);
+        await openBottleById(match.id, null);
+      }
     } else {
       toast.message("No match — add this bottle");
       setScannedBarcode(code);
@@ -920,6 +945,37 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         onClose={() => setShowScanner(false)}
         onDetected={handleScan}
       />
+
+      {/* A.1 barcode two-zone chooser: standard bottle + the owned non-default versions */}
+      {scanChoice && (
+        <div className="fixed inset-0 z-[60] bg-black/40 flex items-end sm:items-center justify-center" onClick={() => setScanChoice(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-charcoal mb-0.5">In your bar</h3>
+            <p className="text-sm text-gray-500 mb-4 truncate">{scanChoice.name}</p>
+            <button
+              type="button"
+              onClick={() => { const id = scanChoice.bottleId; setScanChoice(null); openBottleById(id, null); }}
+              className="w-full rounded-lg border border-charcoal py-3 text-sm font-medium text-charcoal mb-4"
+            >
+              Open the standard bottle
+            </button>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-2">Versions you own</p>
+            <div className="space-y-1">
+              {scanChoice.versions.map((v) => (
+                <button
+                  key={v.variantId}
+                  type="button"
+                  onClick={() => { const id = scanChoice.bottleId, vid = v.variantId; setScanChoice(null); openBottleById(id, vid); }}
+                  className="w-full text-left rounded-lg border p-3 text-sm text-charcoal"
+                  style={{ borderColor: "#D1D5DB" }}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Provisional Add Sheet */}
       <ProvisionalSheet
