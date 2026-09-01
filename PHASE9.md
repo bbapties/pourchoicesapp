@@ -36,6 +36,12 @@ The S1–S5 sections below are the original plan; S4/S5 shifted per the above.
 
 ## Wave 2 — next 10 stories (approved 2026-08-30; keystone-first, QA on the Claude account)
 
+> **Status (session end 2026-09-01): #1–#6 SHIPPED to prod + QA'd.** #1 two-count (`5e4cfce`),
+> #2 tastings-finished (`97a1742`), #3 ratings fallback (`1371a40`), #4 submission hardening
+> (`e04aa1e`), #5 honest search (`aa5fcd5`), #6 feed cascade (`48f3b00`). **Remaining: #7–#10.**
+> Follow-ups noted along the way: card-per-variant My Bar (separate cards per owned variant),
+> the ranked "click for details" tasting-results view (D.1).
+
 Gated decisions approved by Brian: additive `owned_count`/`emptied_count` columns; a
 `SECURITY DEFINER` aggregate-guess RPC; tightened RLS on feedback/suggested_edits + upload
 sanitization. **Still explicitly gated (do NOT touch without a fresh go):** B-74 auth-id vs

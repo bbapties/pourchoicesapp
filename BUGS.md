@@ -131,8 +131,10 @@ Gated: auth / RLS / env. Ask Brian before changing.
   history." Copy is now conditional on `hasTasted`: a tasted bottle reads "takes it off your shelf
   but keeps your rating — moves to Tasted; a completed blind tasting is never deleted" (button
   "Remove from bar"); untasted keeps the mistake-correction copy. `BottleDetailView.tsx`.
-  **Deferred:** the full B.4 hard-delete-cascades-to-social-feed behavior (needs an activities
-  DELETE policy — gated/RLS) is not done this session.
+  **Cascade DONE (2026-09-01, PHASE9 #6, `48f3b00`):** the B.4 hard-delete-cascades-to-social-feed
+  behavior now ships — a scoped `activities` DELETE-own RLS policy (drank/added/finished only;
+  tastings permanent) + removeUserBottle erases a mistaken add's feed post + a per-pour trash button
+  in the history modal.
 - [x] **B-34** **FIXED via B-24 (2026-08-30): all_variant_details is security_invoker so the page count is RLS-scoped (non-creator sees 102=104-2 store picks). No code change.** -- (medium) Search All Variants banner count/Elo include others' store picks.
   Server page fetch is unscoped; client browse is scoped. Count vs list mismatch.
   `search/page.tsx` ~14–31

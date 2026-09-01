@@ -8,12 +8,14 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `8314a03` (about to push). **Working tree clean once the doc commit lands.**
-- **Current phase:** **Phase 8 wrap-up → Phase 9 build-out.** Model = [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md)
-  (every user↔bottle action, agreed 2026-08-29..30). PHASE9 plan + status = [PHASE9.md](PHASE9.md).
-  Read the model before touching collection/consumption/evaluation UI.
-- **Two autonomous Claude sessions** (Brian away, full approval to build + deploy). First shipped the
-  model + 5 Phase-8 stories (`b2875e1`). Second (this one) shipped 5 PHASE9 stories (`8314a03`).
+- **Tip:** `48f3b00` (+ this doc commit). **Working tree clean; everything on origin/MVP-v3.**
+- **Current phase:** **Phase 9 build-out (Wave 2).** Model = [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md);
+  plan + status = [PHASE9.md](PHASE9.md). Read the model before touching collection/consumption/
+  evaluation UI.
+- **PHASE9 Wave 2: 6 of 10 stories shipped this session** (two-count ownership, tasting visibility,
+  ratings fallback, submission hardening, honest search, feed cascade — all QA'd on the Claude
+  account + deployed). **Next up = #7 drink picker** (see the Wave-2 log entry + PHASE9.md #7–#10).
+  Continue one story at a time.
 
 **PHASE9 shipped this session (all on prod):** S1 per-variant **history modal**; S2 **wishlist**
 (new `wishlists` table applied to prod — additive, rollback `sql/wishlist-snapshot.sql`; detail
@@ -171,8 +173,17 @@ unidentified account. **Brian: eyeball these on a real account with mixed owners
   5. **B-38/B-37 honest search** (`aa5fcd5`) — browse filter runs in the query (list matches the
      banner count; **QA'd:** Whiskey → 43 with only whiskeys, Gin → 0/0); new global variants require
      a batch/year + dedupe. B-34 was already resolved by B-24 (security_invoker view scopes the count).
-- **Remaining (PHASE9.md Wave 2, #6–#10):** Remove→feed cascade (#6), drink picker (#7), barcode
-  chooser + wishlist-in-history (#8), telemetry integrity (#9), docs polish (#10).
+  6. **B.4 hard-delete → feed cascade** (`48f3b00`) — new scoped `activities` DELETE-own RLS policy
+     (applied to prod; rollback `sql/activities-delete-own-snapshot.sql`): a user may delete only
+     their own drank/added/finished rows, never `tasted`. removeUserBottle erases a mistaken add's
+     feed post; the history modal gives each pour a trash button (removes it from feed + history).
+     **QA'd via SET ROLE:** own pour deletable, own `tasted` blocked. Completes B-33's deferred cascade.
+- **STOPPED HERE (6/10) — session end 2026-08-30/09-01.** Working tree clean, all on origin/MVP-v3
+  at `48f3b00` (+ the doc commit after this). **Remaining (PHASE9.md Wave 2, #7–#10):** drink picker
+  overhaul (#7 — B-48/B-54), barcode two-zone chooser + wishlist-in-history (#8), telemetry integrity
+  (#9 — B-60/B-61), docs + small polish (#10 — B-70/71/72/73, B-44, B-42/B-40). All specced in
+  PHASE9.md. **Still gated (do NOT touch without a fresh go):** B-74 auth-id cleanup, Elo math
+  (B-49/B-50). The "click for details" ranked tasting-results view (D.1) also remains a follow-up.
 
 ### 2026-08-30 — Claude (END SESSION — PHASE9: 5 model build-out stories, autonomous)
 - Continued the autonomous mandate: planned [PHASE9.md](PHASE9.md) from the model, then built +

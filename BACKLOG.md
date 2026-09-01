@@ -46,10 +46,18 @@ Format: `- [ ] Short description — why it matters`
 - [ ] **Elo engine minor refinements** (noted 2026-08-26, Phase 3.0) — (a) the store-pick *global* win-rate dampener is computed on the recorded store-pick variant ids, not the rolled-up parent-default targets; second-order, revisit if store picks get tasted head-to-head often. (b) `removeUserBottle`'s demote-vs-delete uses an `elo != 1500` heuristic to detect tasting history; a genuinely net-zero tasting (lands exactly 1500) would be treated as untasted. Could instead check `tasting_details`/`tasting_results` participation.
 
 ## My Bar
+- [ ] **Card-per-variant My Bar** (follow-up to B-32, 2026-09-01) — the two-count model ships
+  dual-tab membership + aggregate ×N per SKU, but My Bar still SKU-collapses (one card per SKU per
+  tab). Next refinement: render each distinct owned/emptied *variant* as its own card (like the
+  Tasted/Wishlist tabs already do) so different versions of one SKU are separated.
 - [ ] Bulk add bottles from search results
 - [ ] Filter collection by category (whiskey, gin, etc.)
 
 ## Blind Tastings
+- [ ] **Ranked tasting-results view** (follow-up to D.1/B-51, 2026-09-01) — a completed tasting now
+  posts "did a blind tasting" to Social, but the "click for details" ranked results view (1st → last
+  for that session) isn't built yet. Needs a session-results surface (route or modal) reading
+  tasting_sessions/results.
 - [ ] Share tasting results (screenshot-friendly results card)
 - [ ] Tasting history — view past sessions
 - [ ] Flavor/nuance tagging during tastings → aggregate into per-section flavor bar charts (see memory: tasting-flavor-tags-and-charts)
