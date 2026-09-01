@@ -45,7 +45,18 @@ export async function middleware(request: NextRequest) {
   if (!user && request.nextUrl.pathname !== '/') {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/'
-    return NextResponse.redirect(redirectUrl)
+    const redirect = NextResponse.redirect(redirectUrl)
+    // Purge any stale Supabase auth cookie on the way out. getUser() returned no user, so
+    // the token is invalid/unrefreshable; if we leave the cookie, the login page's
+    // getSession() (which only trusts the cookie) redirects straight back to /mybar and we
+    // bounce forever. Clearing it makes both sides agree there is no session and breaks the
+    // loop even for a client still running an old bundle. Only dead sessions reach here.
+    for (const c of request.cookies.getAll()) {
+      if (c.name.startsWith('sb-') && c.name.includes('auth-token')) {
+        redirect.cookies.set(c.name, '', { maxAge: 0, path: '/' })
+      }
+    }
+    return redirect
   }
 
   return response
