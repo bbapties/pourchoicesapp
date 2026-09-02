@@ -5,7 +5,9 @@
 **WE ARE HERE:** **Phase 8 — Pre-beta cut.** Stories in [PHASE8.md](PHASE8.md); bugs in [BUGS.md](BUGS.md).
 **Test checklist before every push:**
   - [ ] Works locally (localhost:3000)
-  - [ ] Works on mobile (192.168.68.74:3000)
+  - [ ] Works on mobile (LAN URL — **confirm the current IP with `ipconfig` first; DHCP moves it**,
+        it was .74 and is now 192.168.68.65. Note the LAN URL is **HTTP**, so camera/PWA/push
+        do not work there — those need prod or an HTTPS tunnel.)
   - [ ] Pushed to GitHub
   - [ ] Verified on prod (www.pourchoicesapp.com)
 

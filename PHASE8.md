@@ -320,7 +320,7 @@ Tasting complete should log `activities` `'tasted'` when 3.5 schema is approved 
 ## Landmines for this phase
 
 - iOS cannot programmatic-install. Instructional UI is the feature, not a fallback.
-- Camera + push only work in a **secure context** (HTTPS or localhost). The LAN QA URL (`192.168.68.74`) is HTTP — PWA install / camera / push **will not work there**. Test PWA/push on prod or an HTTPS tunnel.
+- Camera + push only work in a **secure context** (HTTPS or localhost). The LAN QA URL (currently `192.168.68.65` — DHCP moves it, check `ipconfig`) is HTTP — PWA install / camera / push **will not work there**. Test PWA/push on prod or an HTTPS tunnel.
 - Don't put VAPID private key in the client. Guardrail: env/secrets need Brian.
 - Barcode is SKU-level today; don't silently attach a scan to a store-pick variant.
 - `created_by` still dual-id — any new owner filter matches **both** (B-46). **B-74:** `public.users.id` is not `auth.users.id`. Never write `auth.uid()` into a `user_id` that FKs to `public.users`. Resolve `auth.uid()` → `users.id` via `auth_id`. Schedule a real cleanup before 3.4 / 8.5 (gated).
