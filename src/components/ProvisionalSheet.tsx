@@ -413,7 +413,16 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       {/* Updated bg to opaque ivory per user preference, changed colors for light scheme */}
-      <SheetContent side="bottom" style={{ backgroundColor: '#FFFFFF' }} className="h-full bg-white">
+      {/* h-full pins the sheet to the viewport, so its content MUST be able to scroll —
+          without this the form silently grows past the bottom of the screen as soon as a
+          photo preview or a lookup banner appears, and the submit button becomes
+          unreachable. The bottom padding clears the phone's home indicator / browser
+          chrome so the last control isn't sitting underneath it. */}
+      <SheetContent
+        side="bottom"
+        style={{ backgroundColor: '#FFFFFF' }}
+        className="h-full bg-white overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+2rem)]"
+      >
         <SheetHeader>
           <SheetTitle className="text-charcoal">Add New Bottle</SheetTitle>
           <SheetDescription className="text-charcoal">
