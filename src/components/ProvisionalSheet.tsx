@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -10,6 +10,13 @@ import { supabase } from "@/lib/supabase";
 import { uploadBottleImage } from "@/lib/uploadBottleImage";
 import { insertDefaultVariant } from "@/lib/variants";
 import { logActivity } from "@/lib/activities";
+import { logEvent } from "@/lib/events";
+import {
+  lookupBarcodeOnline,
+  dataUrlToFile,
+  type BarcodeSuggestion,
+} from "@/lib/barcodeLookup";
+import { Camera, ImageIcon, Loader2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -35,7 +42,9 @@ const formSchema = z.object({
   distillery: z.string().optional(),
   category: z.string().min(1, "Please select a category"),
   barcode: z.string().optional(),
-  image: z.instanceof(File).optional(),
+  // `image` is deliberately NOT in the schema: the picker is two explicit buttons
+  // (camera / library) over hidden inputs, so the File lives in component state and
+  // is validated on submit. See `imageFile` below.
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -49,6 +58,44 @@ interface ProvisionalSheetProps {
 
 export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, initialBarcode }: ProvisionalSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Photo: a new bottle needs one so admin has something to vet the submission
+  // against. Two explicit buttons rather than a bare file input, because a plain
+  // `accept="image/*"` jumps straight to the gallery on most phones and
+  // `capture` would remove the gallery option entirely.
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const libraryInputRef = useRef<HTMLInputElement>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  // True while the previewed photo is the one the online lookup supplied rather
+  // than one the user took — it still satisfies the requirement, but we label it.
+  const [imageFromLookup, setImageFromLookup] = useState(false);
+
+  // Online barcode lookup: a scan we don't have shouldn't dead-end at an empty form.
+  type LookupState = "idle" | "searching" | "found" | "none" | "unavailable";
+  const [lookupState, setLookupState] = useState<LookupState>("idle");
+  const [suggestion, setSuggestion] = useState<BarcodeSuggestion | null>(null);
+  // Which prefilled fields the user changed before saving — recorded as telemetry
+  // so we can see how good the auto-fill actually is (TELEMETRY.md).
+  const autofilledRef = useRef<string[]>([]);
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setImageFromLookup(false);
+    setImageError(null);
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    if (libraryInputRef.current) libraryInputRef.current.value = "";
+  };
+
+  const handlePickedFile = (file: File | undefined) => {
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setImageFromLookup(false);
+    setImageError(null);
+  };
 
   // One-step store pick: adding a brand-new bottle can also create the user's
   // private store-pick variant alongside the public default in a single submit.
@@ -68,11 +115,80 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
     },
   });
 
-  // Pre-fill the barcode when the sheet opens from a scan with no match.
+  // Pre-fill the barcode when the sheet opens from a scan with no match, then try
+  // to identify the bottle online so the user reviews a filled-in form instead of
+  // typing one from scratch. Everything here is a SUGGESTION — nothing is saved
+  // until they hit Save, and every field stays editable.
   useEffect(() => {
-    if (open) form.setValue("barcode", initialBarcode ?? "");
+    if (!open) return;
+
+    form.setValue("barcode", initialBarcode ?? "");
+    setSuggestion(null);
+    autofilledRef.current = [];
+
+    const upc = initialBarcode?.trim();
+    if (!upc) {
+      setLookupState("idle");
+      return;
+    }
+
+    let cancelled = false;
+    setLookupState("searching");
+
+    (async () => {
+      const result = await lookupBarcodeOnline(upc);
+      if (cancelled) return;
+
+      if (!result.found) {
+        setLookupState(result.reason === "no_match" ? "none" : "unavailable");
+        logEvent({
+          eventType: "barcode_autofill",
+          surface: "provisional_sheet",
+          metadata: { barcode: upc, outcome: result.reason },
+        });
+        return;
+      }
+
+      const s = result.suggestion;
+      const filled: string[] = [];
+      form.setValue("name", s.name); filled.push("name");
+      if (s.distillery) { form.setValue("distillery", s.distillery); filled.push("distillery"); }
+      if (s.category) { form.setValue("category", s.category); filled.push("category"); }
+
+      if (s.imageDataUrl) {
+        const file = dataUrlToFile(s.imageDataUrl, `barcode-${upc}`);
+        if (file) {
+          setImageFile(file);
+          setImagePreview(s.imageDataUrl);
+          setImageFromLookup(true);
+          setImageError(null);
+          filled.push("image");
+        }
+      }
+
+      autofilledRef.current = filled;
+      setSuggestion(s);
+      setLookupState("found");
+      logEvent({
+        eventType: "barcode_autofill",
+        surface: "provisional_sheet",
+        metadata: { barcode: upc, outcome: "found", source: s.source, filled, raw_title: s.rawTitle },
+      });
+    })();
+
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialBarcode]);
+
+  /** Drop the auto-filled values and start from an empty form. */
+  const discardSuggestion = () => {
+    form.setValue("name", "");
+    form.setValue("distillery", "");
+    if (imageFromLookup) clearImage();
+    autofilledRef.current = [];
+    setSuggestion(null);
+    setLookupState("idle");
+  };
 
   const onSubmit = async (data: FormData) => {
     console.log("Starting bottle submission with data:", data);
@@ -88,6 +204,15 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
 
       if (addStorePick && !storeName.trim()) {
         toast.error("Enter the store name for your store pick, or turn it off.");
+        return;
+      }
+
+      // A new bottle needs a photo so an admin can vet what was submitted. The
+      // online-lookup image counts, so the requirement never dead-ends a user
+      // whose camera is unavailable on a bottle we could identify.
+      if (!imageFile) {
+        setImageError("Add a photo of the bottle so we can verify it.");
+        toast.error("A photo is required to add a new bottle.");
         return;
       }
 
@@ -124,9 +249,9 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
       // Upload the image (if one was chosen) and attach its URL to the bottle.
       // Non-blocking: a failed image never loses the bottle the user just added.
       let frontimage_url: string | null = null;
-      if (data.image) {
+      if (imageFile) {
         const { url, error: uploadError } = await uploadBottleImage(
-          data.image,
+          imageFile,
           insertedBottle.id
         );
         if (uploadError || !url) {
@@ -201,8 +326,36 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
         ...(frontimage_url ? { frontimage_url } : {}),
       };
 
+      // How much of the auto-fill survived to the save — the honest measure of
+      // whether the online lookup is pulling its weight.
+      if (autofilledRef.current.length) {
+        const edited = autofilledRef.current.filter((f) => {
+          if (f === "image") return !imageFromLookup;
+          if (f === "name") return data.name !== suggestion?.name;
+          if (f === "distillery") return (data.distillery || null) !== suggestion?.distillery;
+          if (f === "category") return data.category !== suggestion?.category;
+          return false;
+        });
+        logEvent({
+          eventType: "barcode_autofill",
+          surface: "provisional_sheet",
+          targetType: "bottle",
+          targetId: insertedBottle.id,
+          metadata: {
+            outcome: "saved",
+            source: suggestion?.source ?? null,
+            filled: autofilledRef.current,
+            edited,
+          },
+        });
+      }
+
       toast.success(addStorePick && storeName.trim() ? "Bottle + your store pick added!" : "Bottle added successfully!");
       form.reset();
+      clearImage();
+      setSuggestion(null);
+      setLookupState("idle");
+      autofilledRef.current = [];
       resetStorePick();
       onOpenChange(false);
       onBottleAdded?.(newBottle);
@@ -224,6 +377,53 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
             Can&apos;t find your bottle? Add it to our database. We&apos;ll review it before making it available.
           </SheetDescription>
         </SheetHeader>
+
+        {/* Online lookup status — a scan we don't have shouldn't dead-end at a blank form. */}
+        {lookupState === "searching" && (
+          <div className="mt-4 flex items-center gap-2 rounded-md border border-charcoal bg-ivory p-3 text-sm text-charcoal">
+            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+            <span>Not in our database yet — searching the internet for it&hellip;</span>
+          </div>
+        )}
+        {lookupState === "found" && suggestion && (
+          <div className="mt-4 rounded-md border border-charcoal bg-ivory p-3 text-sm text-charcoal">
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-medium">I think I found what you&apos;re adding.</p>
+              <button
+                type="button"
+                onClick={discardSuggestion}
+                className="shrink-0 underline text-xs"
+              >
+                Start blank
+              </button>
+            </div>
+            <p className="mt-1 text-xs opacity-80">
+              We filled this in from the barcode. Check it over — save if it&apos;s right,
+              or edit anything that&apos;s wrong.
+            </p>
+            {(suggestion.volume || suggestion.proof || suggestion.age) && (
+              <p className="mt-2 text-xs opacity-80">
+                Also found:{" "}
+                {[
+                  suggestion.volume,
+                  suggestion.proof ? `${suggestion.proof} proof` : null,
+                  suggestion.age,
+                ].filter(Boolean).join(" · ")}{" "}
+                — not saved yet, add it in the details after this bottle is approved.
+              </p>
+            )}
+          </div>
+        )}
+        {(lookupState === "none" || lookupState === "unavailable") && (
+          <div className="mt-4 flex items-start gap-2 rounded-md border border-charcoal bg-ivory p-3 text-sm text-charcoal">
+            <Search className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>
+              {lookupState === "none"
+                ? "We couldn't find that barcode online either — fill it in below and we'll review it."
+                : "Couldn't reach the lookup service — fill it in below and we'll review it."}
+            </span>
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
@@ -297,28 +497,101 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="image"
-              render={({ field: { value: _fileValue, onChange, ...field } }) => ( // eslint-disable-line @typescript-eslint/no-unused-vars
-                <FormItem>
-                  <FormLabel className="text-charcoal">Image (Optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      className="bg-ivory text-charcoal border-charcoal"
-                      type="file"
-                      accept="image/*"
-                      {...field}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        onChange(file);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            {/* Photo — required, so an admin has something to vet the submission against.
+                Two explicit buttons: a bare file input opens the gallery on most phones,
+                and `capture` alone would take the gallery away. */}
+            <div className="space-y-2">
+              <label className="text-charcoal text-sm font-medium">Photo *</label>
+              <p className="text-xs text-charcoal opacity-70">
+                A picture of the bottle helps us approve your add.
+              </p>
+
+              {imagePreview ? (
+                <div className="flex items-start gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imagePreview}
+                    alt="Bottle photo to submit"
+                    className="h-28 w-28 rounded-md border border-charcoal object-contain bg-white"
+                  />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {imageFromLookup && (
+                      <p className="text-xs text-charcoal opacity-70">
+                        Found online. Replace it with your own photo if you like.
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-charcoal text-charcoal"
+                        onClick={() => cameraInputRef.current?.click()}
+                      >
+                        <Camera className="mr-1.5 h-4 w-4" /> Retake
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-charcoal text-charcoal"
+                        onClick={() => libraryInputRef.current?.click()}
+                      >
+                        <ImageIcon className="mr-1.5 h-4 w-4" /> Library
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-charcoal"
+                        onClick={clearImage}
+                      >
+                        <X className="mr-1.5 h-4 w-4" /> Remove
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 border-charcoal text-charcoal"
+                    onClick={() => cameraInputRef.current?.click()}
+                  >
+                    <Camera className="mr-2 h-4 w-4" /> Take photo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 border-charcoal text-charcoal"
+                    onClick={() => libraryInputRef.current?.click()}
+                  >
+                    <ImageIcon className="mr-2 h-4 w-4" /> Choose from library
+                  </Button>
+                </div>
               )}
-            />
+
+              {imageError && <p className="text-xs text-red-600">{imageError}</p>}
+
+              {/* `capture="environment"` opens the rear camera directly; the second input
+                  is deliberately capture-less so the library stays reachable. */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => handlePickedFile(e.target.files?.[0])}
+              />
+              <input
+                ref={libraryInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handlePickedFile(e.target.files?.[0])}
+              />
+            </div>
 
             {/* One-step store pick — create the public bottle AND the user's private pick together */}
             <div className="rounded-md border border-charcoal p-3 space-y-3">
