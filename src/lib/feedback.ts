@@ -75,6 +75,45 @@ async function uploadScreenshot(
  * screenshot path), uploads the optional screenshot, then attaches it.
  * Fail-open on the screenshot: a report is never lost because its image failed.
  */
+/**
+ * "This is definitely the wrong bottle" on a barcode hit.
+ *
+ * Report ONLY — the catalog is not touched. One user's say-so shouldn't strip a
+ * barcode off a bottle other people may have scanned correctly, and there is no
+ * unique index on `bottles.barcode` to arbitrate, so the admin decides which
+ * bottle actually owns the code.
+ *
+ * Distinct from a store pick or a special release: those are real versions OF
+ * this bottle, and have their own flow. This says the barcode is mapped to the
+ * wrong product entirely.
+ *
+ * Rides the existing feedback queue (Admin > Feedback) rather than
+ * `suggested_edits`, because that queue's approve action APPLIES a field change,
+ * and here there is deliberately nothing to apply.
+ */
+export async function reportBarcodeMismatch(opts: {
+  userId: string; // public users id
+  barcode: string;
+  bottleId: string;
+  bottleName: string;
+  note?: string | null;
+}): Promise<{ error?: string }> {
+  const note = opts.note?.trim();
+  const message = [
+    `WRONG BOTTLE for barcode ${opts.barcode}`,
+    `Scanned barcode ${opts.barcode} opened "${opts.bottleName}" (bottle ${opts.bottleId}),`,
+    `and the user reports that is not the product in their hand.`,
+    note ? `
+User note: ${note}` : null,
+    `
+No catalog change was made — decide which bottle owns this barcode.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return submitFeedback({ userId: opts.userId, type: "bug", message });
+}
+
 export async function submitFeedback(opts: {
   userId: string; // public users id
   type: FeedbackType;

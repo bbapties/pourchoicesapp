@@ -13,7 +13,6 @@ import ProvisionalSheet from "@/components/ProvisionalSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
 import { type BottleDetails } from "@/lib/types";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty } from "@/lib/userBottles";
-import { logActivity } from "@/lib/activities";
 import { isVariantVisibleToViewer } from "@/lib/variants";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
@@ -108,6 +107,8 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   // B-31: open the detail pinned to the version the user tapped (My Bar cards are per-variant).
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
+  // The code that opened the shown bottle, when it was opened by a scan.
+  const [scanOpenedWith, setScanOpenedWith] = useState<string | null>(null);
   const [scannedBarcode, setScannedBarcode] = useState<string | undefined>(undefined);
   const [showAddSheet, setShowAddSheet] = useState(false);
 
@@ -212,13 +213,15 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
 
   // Open a bottle straight from its SKU id (barcode scanner) with its real
   // collection status, since a scanned bottle may not be in the current tab.
-  const openBottleById = async (bottleId: string) => {
+  const openBottleById = async (bottleId: string, fromScanCode: string | null = null) => {
     const { data } = await supabase
       .from("all_bottle_details")
       .select("bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_verified, default_variant_elo, bottle_elo_global, attr_frontimage_url, attr_backimage_url, attr_proof, attr_volume, attr_age, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by")
       .eq("bottle_id", bottleId)
       .maybeSingle();
     if (!data) { toast.error("Couldn't open that bottle"); return; }
+    // Passed explicitly so a normal tap after a scan can't inherit the old code.
+    setScanOpenedWith(fromScanCode);
 
     let inCollection = false, currentlyOwned = false;
     if (publicUserId) {
@@ -272,7 +275,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const match = await lookupBottleByBarcode(code);
     if (match) {
       toast.success(`Found: ${match.name}`);
-      await openBottleById(match.id);
+      await openBottleById(match.id, code);
     } else {
       toast.message("No match — add this bottle");
       setScannedBarcode(code);
@@ -619,10 +622,11 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       {selectedBottle && (
         <BottleDetailView
           bottle={selectedBottle}
-          onClose={() => setSelectedBottle(null)}
+          onClose={() => { setSelectedBottle(null); setScanOpenedWith(null); }}
           inCollection={selectedOwned.inCollection}
           currentlyOwned={selectedOwned.currentlyOwned}
           initialVariantId={selectedVariantId}
+          scannedBarcode={scanOpenedWith}
           publicUserId={publicUserId}
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}

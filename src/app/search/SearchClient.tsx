@@ -51,9 +51,12 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const [scannedBarcode, setScannedBarcode] = useState<string | undefined>(undefined);
   // S3: on a barcode hit, open pinned to the version the viewer already owns (else default-first).
   const [scanPinVariantId, setScanPinVariantId] = useState<string | null>(null);
+  // The code that opened the currently shown bottle, if it was opened by a scan.
+  // Enables the "not this bottle?" report, which only means anything for a scan.
+  const [scanOpenedWith, setScanOpenedWith] = useState<string | null>(null);
   // A.1 two-zone: a barcode hit where the viewer owns NON-default versions shows a chooser
   // (open the standard bottle, or jump straight to an owned version).
-  const [scanChoice, setScanChoice] = useState<{ bottleId: string; name: string; versions: { variantId: string; label: string }[] } | null>(null);
+  const [scanChoice, setScanChoice] = useState<{ bottleId: string; name: string; barcode: string; versions: { variantId: string; label: string }[] } | null>(null);
 
   // Infinite scroll refs — sync guards (state updates are too slow)
   const isLoadingMoreRef = useRef(false);
@@ -448,7 +451,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     if (main) main.scrollTop = 0;
   };
 
-  const handleBottleClick = (bottle: any, pinVariantId: string | null = null) => {
+  const handleBottleClick = (bottle: any, pinVariantId: string | null = null, fromScanCode: string | null = null) => {
     const skuId = bottle.bottleId ?? bottle.id;
     // B-12: only an ownership row (owned, or previously owned via times_had >= 1) drives
     // "my last activity" — a tasting-only row (times_had = 0, never owned) must not
@@ -458,6 +461,10 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       ?? skuRows?.find(r => (r.times_had ?? 0) >= 1);
     logClick("bottle_open", { userId: publicUserId, surface: "/search", targetId: skuId, metadata: { mode: viewMode } });
     setScanPinVariantId(pinVariantId); // S3: default-first unless a scan pinned the owned version
+    // Passed explicitly, never left as ambient state: a normal list tap after a scan
+    // must NOT inherit the previous code, or "not this bottle?" would report the
+    // wrong pairing.
+    setScanOpenedWith(fromScanCode);
     setSelectedBottle({
       ...bottle,
       id: skuId, // detail view fetches variants + collection status by SKU id
@@ -467,13 +474,13 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   };
 
   // Open a bottle straight from its SKU id (used by the barcode scanner).
-  const openBottleById = async (bottleId: string, pinVariantId: string | null = null) => {
+  const openBottleById = async (bottleId: string, pinVariantId: string | null = null, fromScanCode: string | null = null) => {
     const { data, error } = await (supabase.from("all_bottle_details") as any)
       .select(BOTTLE_SELECT)
       .eq("bottle_id", bottleId)
       .maybeSingle();
     if (error || !data) { toast.error("Couldn't open that bottle"); return; }
-    handleBottleClick(mapBottleResult(data), pinVariantId);
+    handleBottleClick(mapBottleResult(data), pinVariantId, fromScanCode);
   };
 
   // Barcode scan result: open the matching bottle (pinned to the version you own, if any),
@@ -511,11 +518,12 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         setScanChoice({
           bottleId: match.id,
           name: match.name,
+          barcode: code,
           versions: nonDefaultOwned.map(r => ({ variantId: r.variant_id as string, label: labelFor(r.variant_id as string) })),
         });
       } else {
         toast.success(ownedRows.length > 0 ? `In your bar: ${match.name}` : `Found: ${match.name}`);
-        await openBottleById(match.id, null);
+        await openBottleById(match.id, null, code);
       }
     } else {
       toast.message("No match — add this bottle");
@@ -963,7 +971,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
             <p className="text-sm text-gray-500 mb-4 truncate">{scanChoice.name}</p>
             <button
               type="button"
-              onClick={() => { const id = scanChoice.bottleId; setScanChoice(null); openBottleById(id, null); }}
+              onClick={() => { const id = scanChoice.bottleId; setScanChoice(null); openBottleById(id, null, scanChoice.barcode); }}
               className="w-full rounded-lg border border-charcoal py-3 text-sm font-medium text-charcoal mb-4"
             >
               Open the standard bottle
@@ -974,7 +982,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
                 <button
                   key={v.variantId}
                   type="button"
-                  onClick={() => { const id = scanChoice.bottleId, vid = v.variantId; setScanChoice(null); openBottleById(id, vid); }}
+                  onClick={() => { const id = scanChoice.bottleId, vid = v.variantId; setScanChoice(null); openBottleById(id, vid, scanChoice.barcode); }}
                   className="w-full text-left rounded-lg border p-3 text-sm text-charcoal"
                   style={{ borderColor: "#D1D5DB" }}
                 >
@@ -1012,11 +1020,12 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       {selectedBottle && (
         <BottleDetailView
           bottle={selectedBottle}
-          onClose={() => setSelectedBottle(null)}
+          onClose={() => { setSelectedBottle(null); setScanOpenedWith(null); }}
           inCollection={userBottlesMap[selectedBottle.id]?.some(r => r.currently_owned || (r.times_had ?? 0) >= 1) ?? false}
           currentlyOwned={userBottlesMap[selectedBottle.id]?.some(r => r.currently_owned) ?? false}
           ownershipRows={userBottlesMap[selectedBottle.id]}
           initialVariantId={scanPinVariantId}
+          scannedBarcode={scanOpenedWith}
           publicUserId={publicUserId ?? undefined}
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}

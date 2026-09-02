@@ -56,6 +56,15 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    id: "search.wrong_bottle",
+    title: "Scanned the wrong bottle?",
+    body: "If a barcode opens a completely different product, tap “Not this bottle?” on the detail and tell us. A store pick or special release of the same bottle is not a mismatch — add that as a version instead.",
+    route: "/search",
+    core: false,
+    announce: true,
+    tour: [],
+  },
+  {
     id: "bottle.have_a_drink",
     title: "Have a drink",
     body: "Log a pour on any bottle — even if it is not in My Bar.",

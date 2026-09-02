@@ -15,6 +15,7 @@ import HistoryModal from "@/components/HistoryModal";
 import RatePromptSheet from "@/components/RatePromptSheet";
 import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
 import { fetchWishlistVariantIds, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
+import { reportBarcodeMismatch } from "@/lib/feedback";
 import { supabase } from "@/lib/supabase";
 import { fieldsForVariant, fetchVariantsForSku } from "@/lib/variants";
 import { resolveDefaultVariantId } from "@/lib/userBottles";
@@ -61,6 +62,9 @@ interface BottleDetailViewProps {
   onDeleteFromBar?: (bottleId: string, variantId?: string | null) => Promise<void>;
   onEditSaved?: (updated: Partial<BottleDetails>) => void;
   onActivityLogged?: () => void;
+  /** Set when this bottle was opened by a barcode scan — enables the "wrong bottle"
+   *  report, which only makes sense in the context of a specific scanned code. */
+  scannedBarcode?: string | null;
 }
 
 function variantLabel(v: { releaseYear?: string; batch?: string; storePickName?: string }): string {
@@ -85,6 +89,7 @@ export default function BottleDetailView({
   onDeleteFromBar,
   onEditSaved,
   onActivityLogged,
+  scannedBarcode,
 }: BottleDetailViewProps) {
   const router = useRouter();
   const [imageSide, setImageSide] = useState<'front' | 'back'>('front');
@@ -98,6 +103,12 @@ export default function BottleDetailView({
   const [ownershipOverrides, setOwnershipOverrides] = useState<Record<string, { currently_owned: boolean; times_had: number; owned_count: number }>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // "Wrong bottle" report for a barcode hit. Report-only: the catalog is never
+  // changed on one user's say-so, so this has no optimistic state to manage.
+  const [showMismatch, setShowMismatch] = useState(false);
+  const [mismatchNote, setMismatchNote] = useState("");
+  const [mismatchSending, setMismatchSending] = useState(false);
+  const [mismatchSent, setMismatchSent] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -1186,6 +1197,78 @@ export default function BottleDetailView({
         </>
         )}
         </>
+        )}
+
+        {/* Scanned-in only: the barcode opened the WRONG PRODUCT. Distinct from a
+            store pick or a special release — those are real versions of this bottle
+            and have their own flow. Report-only; the catalog is never changed on one
+            user's say-so, and with no unique index on bottles.barcode the admin is
+            the one who decides which bottle owns the code. */}
+        {scannedBarcode && publicUserId && (
+          <div className="mt-6 border-t border-gray-200 pt-4">
+            {mismatchSent ? (
+              <p className="text-sm text-gray-500">
+                Thanks — we&apos;ll check which bottle this barcode belongs to.
+              </p>
+            ) : !showMismatch ? (
+              <button
+                type="button"
+                onClick={() => setShowMismatch(true)}
+                className="text-sm text-gray-500 underline"
+              >
+                Not this bottle?
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-900">
+                  This isn&apos;t the bottle you scanned?
+                </p>
+                <p className="text-xs text-gray-500">
+                  Only if it&apos;s a completely different product. A store pick or a
+                  special release of this bottle isn&apos;t a mismatch — add it as a
+                  version instead.
+                </p>
+                <textarea
+                  value={mismatchNote}
+                  onChange={(e) => setMismatchNote(e.target.value)}
+                  rows={2}
+                  placeholder="What is it actually? (optional)"
+                  className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={mismatchSending}
+                    onClick={async () => {
+                      setMismatchSending(true);
+                      const { error } = await reportBarcodeMismatch({
+                        userId: publicUserId,
+                        barcode: scannedBarcode,
+                        bottleId: localBottle.id,
+                        bottleName: localBottle.name,
+                        note: mismatchNote,
+                      });
+                      setMismatchSending(false);
+                      if (error) { toast.error("Couldn't send that report."); return; }
+                      setMismatchSent(true);
+                      setShowMismatch(false);
+                      toast.success("Reported — thanks.");
+                    }}
+                    className="text-sm px-3 py-1.5 border border-charcoal text-charcoal rounded disabled:opacity-40"
+                  >
+                    {mismatchSending ? "Sending…" : "Report wrong bottle"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowMismatch(false); setMismatchNote(""); }}
+                    className="text-sm px-3 py-1.5 text-gray-500"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

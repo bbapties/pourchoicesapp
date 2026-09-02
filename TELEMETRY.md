@@ -116,6 +116,13 @@ the admin edited fields directly from the verify queue; `metadata.fields` lists 
 NOT an `activities` row — that feed is user-facing bottle actions (and its CHECK has no "edited"
 action), whereas admin curation should be auditable without showing up in Social.
 
+**Shipped 2026-09-01 — barcode mismatch reports** ride the existing `feedback` table as
+`type='bug'` with a `WRONG BOTTLE for barcode <upc>` prefix (see `reportBarcodeMismatch`), so they
+land in Admin > Feedback alongside everything else. Deliberately NOT `suggested_edits`: that queue's
+approve action applies a field change, and a mismatch report changes nothing on purpose. A cluster of
+these on one barcode is the signal that a `bottles.barcode` value is mapped to the wrong product —
+worth a query if scans start feeling wrong.
+
 **Phase 8 (planned — record here when they land):** `pwa_prompt_shown` / `pwa_install_clicked` /
 `pwa_continue_browser`; `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown` /
 `whatsnew_show_me`; `search` with `metadata.mode = 'barcode'`; `push_permission` /
