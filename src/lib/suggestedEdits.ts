@@ -313,6 +313,53 @@ export async function approveSuggestion(
   return error ? { error: error.message } : {};
 }
 
+/**
+ * Admin edits a bottle directly from the verify queue.
+ *
+ * Deliberately routed through the SAME FIELD_LEVEL map and `coerce` as an
+ * approved suggestion, so an admin typing a proof and a user suggesting one land
+ * in the same column with the same type. Identity fields go to `bottles`;
+ * display fields go to the default variant when there is one, because that is
+ * what `all_bottle_details` resolves from — writing them to `bottles` instead
+ * would leave the edit invisible in search.
+ *
+ * Batched into at most two UPDATEs rather than one per field.
+ */
+export async function adminUpdateBottleFields(opts: {
+  bottleId: string;
+  defaultVariantId: string | null;
+  values: Partial<Record<EditableField, string | null>>;
+  adminAuthId: string | null;
+}): Promise<{ error?: string }> {
+  const { bottleId, defaultVariantId, values, adminAuthId } = opts;
+
+  const bottlePatch: Record<string, unknown> = {};
+  const variantPatch: Record<string, unknown> = {};
+
+  for (const [field, raw] of Object.entries(values) as [EditableField, string | null][]) {
+    const target = targetFor(field, bottleId, defaultVariantId);
+    const patch = target.table === "bottle_variants" ? variantPatch : bottlePatch;
+    patch[field] = coerce(field, raw);
+  }
+
+  if (Object.keys(bottlePatch).length) {
+    if (adminAuthId) bottlePatch.updated_by = adminAuthId;
+    const { error } = await supabase.from("bottles").update(bottlePatch).eq("id", bottleId);
+    if (error) return { error: error.message };
+  }
+
+  if (Object.keys(variantPatch).length && defaultVariantId) {
+    if (adminAuthId) variantPatch.updated_by = adminAuthId;
+    const { error } = await supabase
+      .from("bottle_variants")
+      .update(variantPatch)
+      .eq("id", defaultVariantId);
+    if (error) return { error: error.message };
+  }
+
+  return {};
+}
+
 /** Reject: golden record untouched; record the admin's reason. */
 export async function rejectSuggestion(
   suggestionId: string,

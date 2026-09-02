@@ -111,6 +111,11 @@ one row per provisional add, with `from_scan`, `has_barcode`, `has_image` and `s
 keyable, an add with only a name and a photo needs a label read. Watch the `from_scan` vs
 `has_barcode` split to see how often scanning actually feeds the catalog.
 
+**Shipped 2026-09-01 — `admin_bottle_edit`** (surface `admin_bottles`, target = the bottle):
+the admin edited fields directly from the verify queue; `metadata.fields` lists which. Deliberately
+NOT an `activities` row — that feed is user-facing bottle actions (and its CHECK has no "edited"
+action), whereas admin curation should be auditable without showing up in Social.
+
 **Phase 8 (planned — record here when they land):** `pwa_prompt_shown` / `pwa_install_clicked` /
 `pwa_continue_browser`; `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown` /
 `whatsnew_show_me`; `search` with `metadata.mode = 'barcode'`; `push_permission` /

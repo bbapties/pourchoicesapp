@@ -4,16 +4,51 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { logActivity } from "@/lib/activities";
+import { logEvent } from "@/lib/events";
 import {
   fetchPendingSuggestions,
   approveSuggestion,
   rejectSuggestion,
   fieldLabel,
   isStructuralField,
+  adminUpdateBottleFields,
   type AdminSuggestion,
+  type EditableField,
 } from "@/lib/suggestedEdits";
 
 const isImageField = (f: string) => f === "frontimage_url" || f === "backimage_url";
+
+/**
+ * The fields the admin can edit from the verify queue, in review order. `field` is
+ * the column name on whichever table `adminUpdateBottleFields` routes it to —
+ * identity fields to `bottles`, display fields to the default variant.
+ * Name is intentionally absent: it identifies the row being reviewed, and renaming
+ * mid-verify is a merge/dedupe decision, which has its own suggestion flow.
+ */
+type DetailField = Extract<
+  EditableField,
+  | "distillery" | "category" | "style" | "proof" | "age" | "volume"
+  | "barcode" | "nose" | "palate" | "finish" | "extras"
+>;
+
+const DETAIL_FIELDS: {
+  field: DetailField;
+  label: string;
+  multiline?: boolean;
+  numeric?: boolean;
+}[] = [
+  { field: "distillery", label: "Distillery" },
+  { field: "category", label: "Category" },
+  { field: "style", label: "Style" },
+  { field: "proof", label: "Proof", numeric: true },
+  { field: "age", label: "Age" },
+  { field: "volume", label: "Size" },
+  { field: "barcode", label: "Barcode" },
+  { field: "nose", label: "Nose", multiline: true },
+  { field: "palate", label: "Palate", multiline: true },
+  { field: "finish", label: "Finish", multiline: true },
+  { field: "extras", label: "Extras", multiline: true },
+];
 
 type QueueVariant = {
   id: string;
@@ -24,6 +59,7 @@ type QueueVariant = {
   age: string | null;
   submittedBy: string;
   created_at: string;
+  updated_at: string | null;
 };
 
 type QueueBottle = {
@@ -34,6 +70,9 @@ type QueueBottle = {
   parentVerified: boolean; // parent bottle may already be verified but have unverified variants
   submittedBy: string;
   created_at: string;
+  updated_at: string | null;
+  /** Newest touch across the bottle and any of its queued variants — the sort key. */
+  lastTouched: string;
   variants: QueueVariant[];
 };
 
@@ -42,9 +81,13 @@ type DeleteTarget =
   | { kind: "bottle"; id: string; label: string; ownerNames: string[]; variantCount: number }
   | { kind: "variant"; id: string; label: string; ownerNames: string[] };
 
-// Read-only field dump for the verify-review modal.
+// Editable field set for the verify-review modal. The admin fixes gaps here and
+// verifies in one pass, rather than bouncing to the app to suggest an edit to
+// themselves and then approving it.
 type BottleDetail = {
   bottleId: string;
+  /** The default variant, if the SKU has one — where display fields must be written. */
+  defaultVariantId: string | null;
   name: string;
   loading?: boolean;
   distillery?: string | null;
@@ -74,10 +117,16 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   const [sugBusy, setSugBusy] = useState<string | null>(null);
   const [detail, setDetail] = useState<BottleDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  // Working copy of the detail fields. Only keys the admin actually touched are
+  // sent, so an untouched null field is never rewritten as an empty string.
+  const [draft, setDraft] = useState<Partial<Record<DetailField, string>>>({});
+  const [savingDetail, setSavingDetail] = useState(false);
+  const dirty = Object.keys(draft).length > 0;
 
-  // Read-only detail for the admin to review every field (incl. barcode) before verifying.
+  // Editable detail so the admin can fill gaps and fix mistakes before verifying.
   const openDetail = async (bottleId: string, fallbackName: string) => {
-    setDetail({ bottleId, name: fallbackName, loading: true });
+    setDraft({});
+    setDetail({ bottleId, defaultVariantId: null, name: fallbackName, loading: true });
     setDetailLoading(true);
     const [{ data: b }, { data: v }] = await Promise.all([
       supabase
@@ -87,7 +136,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
         .maybeSingle(),
       supabase
         .from("bottle_variants")
-        .select("proof, age, nose, palate, finish, frontimage_url, verified")
+        .select("id, proof, age, nose, palate, finish, frontimage_url, verified")
         .eq("bottles_id", bottleId)
         .eq("is_default", true)
         .maybeSingle(),
@@ -97,6 +146,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
     // Display values resolve from the default variant, falling back to the bottle (mirrors search view).
     setDetail({
       bottleId,
+      defaultVariantId: v?.id ?? null,
       name: b.name,
       distillery: b.distillery,
       category: b.category,
@@ -112,6 +162,46 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
       frontimage_url: v?.frontimage_url ?? b.frontimage_url,
       verified: b.verified,
     });
+  };
+
+  /**
+   * Persist whatever the admin changed in the detail modal. Returns success so the
+   * caller can decide whether to go on to verify — we never verify a bottle whose
+   * edits failed to save, or the admin would stamp approval on data they think
+   * they fixed.
+   */
+  const saveDetail = async (): Promise<boolean> => {
+    if (!detail || !dirty) return true;
+    setSavingDetail(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await adminUpdateBottleFields({
+      bottleId: detail.bottleId,
+      defaultVariantId: detail.defaultVariantId,
+      values: draft,
+      adminAuthId: user?.id ?? null,
+    });
+    setSavingDetail(false);
+    if (error) { toast.error(`Save failed: ${error}`); return false; }
+
+    // NOT an `activities` row: that feed is user-facing bottle actions, and the
+    // CHECK constraint has no "edited" action anyway. Admin curation belongs in
+    // the generic events table, where it is auditable without appearing in Social.
+    logEvent({
+      eventType: "admin_bottle_edit",
+      surface: "admin_bottles",
+      targetType: "bottle",
+      targetId: detail.bottleId,
+      metadata: { fields: Object.keys(draft), from_queue: true },
+    });
+    toast.success("Changes saved");
+    setDraft({});
+    // Refetch rather than merging the draft in: draft values are raw strings and
+    // the detail holds typed columns (proof is a number), so merging would quietly
+    // put a string where a number belongs. A refetch also shows exactly what the
+    // database accepted, which is the thing the admin is about to verify.
+    await openDetail(detail.bottleId, detail.name);
+    load();
+    return true;
   };
 
   const loadSuggestions = async () => {
@@ -158,11 +248,11 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
     const [bottlesRes, variantsRes] = await Promise.all([
       supabase
         .from("bottles")
-        .select("id, name, distillery, category, verified, created_by, created_at")
+        .select("id, name, distillery, category, verified, created_by, created_at, updated_at")
         .eq("verified", false),
       supabase
         .from("bottle_variants")
-        .select("id, bottles_id, batch, release_year, store_pick_name, proof, age, created_by, created_at")
+        .select("id, bottles_id, batch, release_year, store_pick_name, proof, age, created_by, created_at, updated_at")
         .eq("verified", false)
         .eq("is_default", false), // the default variant IS the bottle — verified with it, never a separate queue row
     ]);
@@ -186,7 +276,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
     if (missingParentIds.length) {
       const parentsRes = await supabase
         .from("bottles")
-        .select("id, name, distillery, category, verified, created_by, created_at")
+        .select("id, name, distillery, category, verified, created_by, created_at, updated_at")
         .in("id", missingParentIds);
       parentBottles = parentsRes.data || [];
     }
@@ -222,22 +312,36 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
         age: v.age,
         submittedBy: nameFor(v.created_by),
         created_at: v.created_at,
+        updated_at: v.updated_at ?? null,
       });
       variantsByBottle.set(v.bottles_id, list);
     });
 
-    const merged: QueueBottle[] = [...unverifiedBottles, ...parentBottles].map((b) => ({
-      id: b.id,
-      name: b.name,
-      distillery: b.distillery,
-      category: b.category,
-      parentVerified: b.verified,
-      submittedBy: nameFor(b.created_by),
-      created_at: b.created_at,
-      variants: variantsByBottle.get(b.id) || [],
-    }));
+    const merged: QueueBottle[] = [...unverifiedBottles, ...parentBottles].map((b) => {
+      const variants = variantsByBottle.get(b.id) || [];
+      // "Last touched" spans the bottle AND its queued variants: editing either one
+      // should float the whole group up, since the admin reviews them together.
+      const touches = [
+        b.updated_at ?? b.created_at,
+        ...variants.map((v) => v.updated_at ?? v.created_at),
+      ].filter(Boolean) as string[];
+      return {
+        id: b.id,
+        name: b.name,
+        distillery: b.distillery,
+        category: b.category,
+        parentVerified: b.verified,
+        submittedBy: nameFor(b.created_by),
+        created_at: b.created_at,
+        updated_at: b.updated_at ?? null,
+        lastTouched: touches.sort().at(-1) ?? b.created_at,
+        variants,
+      };
+    });
 
-    merged.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    // Most recently touched first, so a bottle someone just edited is the next thing
+    // the admin sees rather than being buried under older untouched submissions.
+    merged.sort((a, b) => (a.lastTouched < b.lastTouched ? 1 : -1));
     setQueue(merged);
     setLoading(false);
   };
@@ -590,40 +694,96 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={detail.frontimage_url} alt={detail.name} className="mx-auto h-40 object-contain" />
                 )}
-                <dl className="text-sm">
-                  {([
-                    ["Distillery", detail.distillery],
-                    ["Category", detail.category],
-                    ["Style", detail.style],
-                    ["Proof", detail.proof != null ? String(detail.proof) : null],
-                    ["Age", detail.age],
-                    ["Size", detail.volume],
-                    ["Barcode", detail.barcode],
-                    ["Nose", detail.nose],
-                    ["Palate", detail.palate],
-                    ["Finish", detail.finish],
-                    ["Extras", detail.extras],
-                  ] as [string, string | null | undefined][]).map(([label, value]) => (
-                    <div key={label} className="flex gap-2 py-1 border-b border-gray-100">
-                      <dt className="w-24 shrink-0 text-gray-400">{label}</dt>
-                      <dd className={`flex-1 break-words ${value ? "text-charcoal" : "text-red-500 italic"}`}>
-                        {value || "— missing —"}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
+                {/* Every field is editable in place — a missing proof is fixed here
+                    rather than by suggesting an edit to yourself and approving it. */}
+                <div className="text-sm">
+                  {DETAIL_FIELDS.map(({ field, label, multiline, numeric }) => {
+                    const saved = detail[field] != null ? String(detail[field]) : "";
+                    const value = draft[field] ?? saved;
+                    const changed = draft[field] !== undefined && draft[field] !== saved;
+                    const onChange = (next: string) =>
+                      setDraft((d) => {
+                        // Typing a value back to what it already was un-dirties the
+                        // field, so Save never rewrites a column with its own value.
+                        if (next === saved) {
+                          const rest = { ...d };
+                          delete rest[field];
+                          return rest;
+                        }
+                        return { ...d, [field]: next };
+                      });
+                    return (
+                      <div key={field} className="flex gap-2 py-1.5 border-b border-gray-100 items-start">
+                        <label
+                          htmlFor={`adm-${field}`}
+                          className="w-24 shrink-0 text-gray-400 pt-1.5"
+                        >
+                          {label}
+                        </label>
+                        <div className="flex-1 min-w-0">
+                          {multiline ? (
+                            <textarea
+                              id={`adm-${field}`}
+                              value={value}
+                              rows={2}
+                              onChange={(e) => onChange(e.target.value)}
+                              placeholder="— missing —"
+                              className={`w-full rounded border px-2 py-1 text-sm bg-white placeholder:text-red-400 placeholder:italic ${
+                                changed ? "border-amber-500 bg-amber-50" : "border-gray-200"
+                              }`}
+                            />
+                          ) : (
+                            <input
+                              id={`adm-${field}`}
+                              value={value}
+                              inputMode={numeric ? "decimal" : undefined}
+                              onChange={(e) => onChange(e.target.value)}
+                              placeholder="— missing —"
+                              className={`w-full rounded border px-2 py-1 text-sm bg-white placeholder:text-red-400 placeholder:italic ${
+                                changed ? "border-amber-500 bg-amber-50" : "border-gray-200"
+                              }`}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
-                <div className="flex justify-end gap-2 pt-1">
-                  <button onClick={() => setDetail(null)} className="px-3 py-2 text-sm text-gray-600">Close</button>
+                {dirty && (
+                  <p className="text-xs text-amber-700">
+                    {Object.keys(draft).length} unsaved change
+                    {Object.keys(draft).length === 1 ? "" : "s"}.
+                  </p>
+                )}
+
+                <div className="flex flex-wrap justify-end gap-2 pt-1">
+                  <button
+                    onClick={() => { setDraft({}); setDetail(null); }}
+                    className="px-3 py-2 text-sm text-gray-600"
+                  >
+                    {dirty ? "Discard" : "Close"}
+                  </button>
+                  <button
+                    onClick={saveDetail}
+                    disabled={!dirty || savingDetail}
+                    className="px-3 py-2 text-sm border border-charcoal text-charcoal rounded disabled:opacity-40"
+                  >
+                    {savingDetail ? "Saving…" : "Save"}
+                  </button>
                   {!detail.verified && (
                     <button
                       onClick={async () => {
+                        // Save first: verifying a bottle whose edits failed to save
+                        // would stamp approval on data the admin thinks they fixed.
+                        if (!(await saveDetail())) return;
                         await verify({ table: "bottles", id: detail.bottleId, bottleId: detail.bottleId, label: detail.name });
                         setDetail(null);
                       }}
-                      className="px-3 py-2 text-sm bg-green-700 text-white rounded"
+                      disabled={savingDetail}
+                      className="px-3 py-2 text-sm bg-green-700 text-white rounded disabled:opacity-40"
                     >
-                      Verify
+                      {dirty ? "Save & Verify" : "Verify"}
                     </button>
                   )}
                 </div>
