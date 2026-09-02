@@ -38,6 +38,25 @@ Format: `- [ ] Short description — why it matters`
 - [ ] **Badges / achievements system** — reward users for activity and milestones (early adopter, streaks, "first pour", "first N pours", contributor badges from `suggested_edit` / `added_to_db`, tasting milestones, collection size, etc.). Award retroactively from stored history, so the data must be captured *before* this ships. Backed by `activities` + the generic events table (see TELEMETRY.md). Needs: a `badges` catalog (id, name, criteria, icon) + `user_badges` (earned_at), award logic (batch/trigger), and a Profile display surface. **Why the timing matters:** you can't reward early activity you never recorded — this is the payoff for the "instrument everything" policy.
 
 ## Data / Audit
+- [ ] **Catalog seeding from state ABC open data** (researched 2026-09-01, NOT built — needs Brian's
+  go). Findings, so nobody re-runs this: **there is no open barcode->product registry.** GS1 owns the
+  UPC registry and licenses it; every free API (UPCitemdb, Open Food Facts) is a scraped aggregator
+  with thin US spirits coverage. Both missed Early Times AND Hard Truth while finding Buffalo Trace.
+  **What does work:** state liquor boards publish catalogs as open data.
+  - **Iowa** (`https://idh-be.iowa.gov/api/v1/datasets/1029/rows.json`, zipped JSON-lines, ~5MB,
+    13,592 rows) is the prize: it publishes **real UPCs** plus name, vendor, category, volume, proof
+    and age. Curated (dropping gift packs, minis, RTDs, combo packs, `USE CODE` rows) it yields
+    **~6,628 unique bottles** and covered **51-56% of our own barcoded catalog**.
+  - **Oregon** (`data.oregon.gov/resource/vmf2-f83h.json`, 263k rows) has good product data but
+    **internal item codes, NOT UPCs** — useless for scanning, still useful for catalog names.
+  - Key split: **catalog breadth does not need UPCs** (any state works), **barcode lookup does**
+    (Iowa only, so far). Don't conflate them again.
+  - **Do not scrape retailers** (Total Wine, Drizly): against ToS, bot-protected, legally exposed
+    for a commercial product, and unnecessary given the above.
+  - Open questions before building: how many states; whether imported rows count as `verified`
+    (6.6k unverified rows would drown the admin queue); name cleanup (warehouse names like
+    `13th Century LMTD Rye Whiskey DNO` need work); dedupe against existing bottles; a default
+    `bottle_variants` row per import; mapping ~40 warehouse categories onto our six.
 - [x] **Generic `events` table + `logEvent` helper** (shipped 2026-08-23) — one wide append-only table for usage/interaction telemetry not covered by `activities`. One generic table, `event_type` filter column + `metadata jsonb`; nullable `user_id` (captures logged-out funnel) + client `session_id`; anon+auth insert, admin-only read, append-only. Fail-open `logEvent`/`logClick`. v1 instrumented: page_view, search (query/result_count/mode), click (bottle_open, have_a_drink), client errors. See **TELEMETRY.md**. Foundation for badges/achievements, personalization, usage analytics.
 - [x] **Search history** — captured as `event_type='search'` rows with `metadata={query,result_count,mode}` (part of the events table above). A "recent searches" UI can now read from it.
 - [ ] Audit trail table for user_bottles — store every insert/update as a separate row (user_id, bottle_id, action, changed_at) for future reporting and tasting history

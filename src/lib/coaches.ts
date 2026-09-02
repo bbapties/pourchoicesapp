@@ -56,21 +56,6 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
-    id: "search.barcode_autofill",
-    title: "We fill in new bottles for you",
-    body: "Scan a bottle we do not have and we look it up online, then hand you a filled-in form with a photo. Check it, fix anything wrong, and save.",
-    route: "/search",
-    core: false,
-    announce: true,
-    tour: [
-      {
-        route: "/search",
-        anchor: "search.scan",
-        caption: "Scan a bottle we do not stock yet. We search the internet for it and prefill the add form so you barely have to type.",
-      },
-    ],
-  },
-  {
     id: "bottle.have_a_drink",
     title: "Have a drink",
     body: "Log a pour on any bottle — even if it is not in My Bar.",

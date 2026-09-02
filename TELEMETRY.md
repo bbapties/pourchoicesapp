@@ -97,28 +97,19 @@ Indexes: `(user_id, created_at)`, `(event_type, created_at)`, `(session_id)`. RL
 Add more events freely as you build (see the standing rule). Not yet wired: filters/sorts,
 coach/tour interactions, add-to-bar click (its success is already in `activities`).
 
-**Shipped 2026-09-01 — `barcode_autofill`** (surface `provisional_sheet`): emitted when a scanned
-barcode we don't stock is looked up online (`/api/barcode-lookup`, UPCitemdb). One row per outcome:
-`metadata.outcome` = `found` (plus `source`, `filled[]`, `raw_title`) / `no_match` / `rate_limited` /
-`invalid_code` / `timeout` / `network_error` / `offline` / `bad_response`, plus `status` (upstream
-HTTP code), `duration_ms`, and `abandoned` (the user closed the sheet before the answer arrived —
-logged deliberately, since dropping those would bias the numbers toward "everything is fine"). A
-second row lands on save (`outcome: 'saved'`, `targetId` = the new bottle, `filled[]` + `edited[]`).
+**Retired 2026-09-01 — `barcode_autofill`.** The online barcode lookup shipped and was removed
+the same day. Kept here because the measurement is the point: against our own catalog it identified
+roughly 1 mainstream bottle in 3, missed Early Times and Hard Truth (both stocked everywhere), and
+once returned an LG refrigerator part for a bourbon UPC. Root cause is structural, not a bad vendor —
+**there is no open barcode->product registry**; GS1 owns it and licenses it, so every free API is a
+scraped aggregator with thin US spirits coverage. Historical rows stay in `events`; nothing emits it
+now. Do not rebuild this without new evidence that a source has real spirits coverage.
 
-**Every failure looks identical to the user** ("we couldn't find a good match" + a blank form). The
-reasons exist ONLY here, and they answer different questions — do not collapse them:
-
-| outcome | what it means | what it would cost to fix |
-|---|---|---|
-| `no_match` | upstream answered; it has no such product | a **better data source** (coverage gap) |
-| `implausible` | upstream answered with something that isn't a bottle | the source is returning junk — worse than a miss |
-| `rate_limited` | upstream 429 | a **paid tier** (capacity, not coverage) |
-| `invalid_code` | upstream rejected the code (bad check digit / not a product barcode) | **the scanner or the user** — nothing to buy |
-| `timeout` / `network_error` / `offline` | never got an answer | **connection**; says nothing about the service |
-| `bad_response` | our route answered with something unusable | **our bug** |
-
-`edited[]` on the saved row is the quality measure: how much of the auto-fill users had to correct.
-Read it together with the `no_match` rate before deciding to pay for a better service.
+**Shipped 2026-09-01 — `bottle_submitted`** (surface `provisional_sheet`, target = the new bottle):
+one row per provisional add, with `from_scan`, `has_barcode`, `has_image` and `special`
+(none|store_pick|variant). This is the enrichment queue's input signal — an add with a barcode is
+keyable, an add with only a name and a photo needs a label read. Watch the `from_scan` vs
+`has_barcode` split to see how often scanning actually feeds the catalog.
 
 **Phase 8 (planned — record here when they land):** `pwa_prompt_shown` / `pwa_install_clicked` /
 `pwa_continue_browser`; `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown` /
