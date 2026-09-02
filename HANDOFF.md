@@ -8,137 +8,104 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `4210e1c` (+ this doc commit). **Working tree clean; everything on origin/MVP-v3.**
-- **Current phase:** **Phase 9 build-out (Wave 2).** Model = [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md);
-  plan + status = [PHASE9.md](PHASE9.md). Read the model before touching collection/consumption/
-  evaluation UI.
-- **PHASE9 Wave 2: 10 of 10 stories shipped + DONE** (two-count ownership, tasting visibility,
-  ratings fallback, submission hardening, honest search, feed cascade, #7 drink picker,
-  #8 wishlist-in-history + barcode two-zone chooser, #9 telemetry integrity, **#10 docs + polish**).
-  Plus the B-40 ratings-storage story and the resolved prod events-flood incident. **Next up = ask
-  Brian** — Wave 2 is complete. Candidates: real-device barcode QA (#8), the gated cleanups
-  (rating_stars column drop + orphan rows; B-74 auth-id), or a new wave.
-- **Ratings storage reworked (B-40, `a0cb629`):** manual guesses now live in **`user_ratings`**, NOT
-  `user_bottles.rating_stars` (deprecated). Read guesses from `user_ratings` / `variant_guess_avg`;
-  never write `rating_stars` on `user_bottles` again. A rating creates no collection row / no earmark.
-- **✅ RESOLVED THIS SESSION — prod events flood incident.** A `/`<->`/mybar` redirect loop had been
-  writing ~300 page_views/min since 2026-08-27 (~1.1M null-user rows). Cause: login page decided its
-  redirect with `getSession()` (trusts the cookie) while middleware gated `/mybar` with `getUser()`
-  (validates) — a stale/unrefreshable token bounced forever. **Fixed:** `page.tsx` now uses `getUser()`
-  (`034b94f`); middleware clears stale `sb-*-auth-token` cookies on the auth redirect so already-looping
-  old-bundle clients stop too (`4210e1c`). Flood confirmed 0/min (clean cutoff 23:17 UTC). **Purged**
-  the 1,124,674 loop rows (5 loop session_ids) — events table back to ~1,686 real rows.
-- **⚠ Needs a real-device eyeball (#8 barcode):** the two-zone "in your bar" chooser only fires on a
-  camera scan where you own a NON-default version of a barcoded SKU — not exercisable in the preview
-  (no camera). All other scan paths reduce to today's behavior. Wishlist-in-history WAS QA'd on Claude.
-- **⚠ Landmine (auth):** `getSession()` (trusts cookie) vs `getUser()` (validates) must not disagree
-  across a redirect boundary. `useCurrentUser` still uses `getSession()` for client UX reads — fine (it
-  doesn't redirect), but don't build a NEW redirect off `getSession()`. Rarer un-fixed loop: a VALID
-  token whose `public.users` row is missing still bounces `/mybar`->`/` (B-08 prevents new ones).
+- **Tip:** `1b4de16` (+ this doc commit). Working tree clean; everything on origin/MVP-v3 and live.
+- **Current phase:** **Phase 9.** Wave 2 is done (10/10). This session was an unplanned detour:
+  Brian tested the barcode scanner on a real phone and the findings reshaped the add-bottle flow.
 
-**PHASE9 shipped this session (all on prod):** S1 per-variant **history modal**; S2 **wishlist**
-(new `wishlists` table applied to prod — additive, rollback `sql/wishlist-snapshot.sql`; detail
-toggle + My Bar Wishlist tab + social post + auto-clear on add); S3 **barcode "in your bar"** (a scan
-opens pinned to the version you own); **D.2 guess-gating** broadened (any prior contact); S4 real
-**"My Ranks" sort** (own ratings). tsc + build green; preview smoke test passed (wishlist tab/toggle
-render, detail per-variant, no console/server errors).
+### What changed this session (10 commits, all on prod)
+Brian scanned bottles on his phone; each failure produced a fix. In order:
+1. `669c9d3` `f42e1e2` `cfe0c04` — built an online barcode lookup (UPCitemdb) that prefilled the
+   add form, plus a camera-or-library photo picker and a required photo.
+2. `23aac25` `9c2c131` — scanner fixes (below). `d631629` — stale LAN QA IP.
+3. `20fd5d8` — the add form could not scroll; the submit button was unreachable once a photo
+   preview appeared.
+4. `c666630` — rejected lookup hits that aren't bottles.
+5. **`19f87d8` — REMOVED the online lookup entirely** (Brian's call, and the right one). See below.
+6. `1b4de16` — admin verify queue: last-touched sort + edit-before-verify.
 
-**Deferred, NOT force-shipped blind (see PHASE9.md for why):**
-- **Ratings aggregate** (community-guess global fallback + search avg-star) — needs a SECURITY
-  DEFINER aggregate RPC because `user_bottles` RLS hides other users' rating rows. **Gated.**
-- **Two-count ownership + card-per-variant My Bar (B-32)** — core-collection-screen rewrite; needs
-  authenticated QA. Additive schema is designed in PHASE9.md S5 but not applied.
-- **Book-page drag-follow swipe** — Phase-5 polish (full-card swipe already works).
+### The add-bottle flow is now deliberately minimal
+A scan we don't have goes straight to **"We don't have this one yet"** and asks for **a name and a
+photo. That is all.** `distillery` and `category` are written **null on purpose** — the enrichment /
+verify lane fills them. A half-guessed category is worse than an empty one, because nobody goes back
+to check a field that already looks filled in. The scanned barcode still rides along on the row.
+**Do not "helpfully" re-add those fields.**
 
-**State — what shipped this session (all pushed to prod MVP-v3):**
-- **`BOTTLE_ACTIONS.md`** — the locked interaction model (buckets A–F). This reshaped the bug queue:
-  B-31 is now "per-variant everything + had-it earmark"; B-32 is a defined feature (dual-tab is
-  intended); B-33 is honest-Remove-copy. Net-new concepts captured (two-count ownership, wishlist
-  tab, per-variant history modal, global-guess rating fallback, book-page swipe) — **not yet built**.
-- **5 stories shipped** (app-only, no schema/auth/RLS — safe to deploy solo):
-  1. **B-33** honest Remove copy (`cce6582`) — conditional on `hasTasted`; no more "deletes history" lie.
-  2. **B-43/B-66/B-39** truthful copy (`6b8f063`) — MoreSheet "Moves to Empty", ImportTab, "My Ranks" toast.
-  3. **B-35/B-36** restock correctness (`a197f51`) — `addOrRestockUserBottle` returns the resolved
-     variant (no phantom null row) + recovers from the concurrent-add 23505 race.
-  4. **B-31** per-variant ownership on the detail carousel (`9730b27`) — each slide shows its own
-     ownership (fallback = old SKU-level when no rows passed); Search wired fully; My Bar/Social pin
-     to the tapped version.
-  5. **B-31 earmark** (`b2875e1`) — search card 4-state (verified × had-it); "had it" = owned/past
-     **+ drank + blind-tasted** (fail-open extra fetches).
+The one exception: a **store pick / special version REQUIRES its identifying detail** (store name, or
+batch/release/finish). Enrichment can read a label but cannot know which store picked the barrel; a
+store pick with no store name is an unidentifiable duplicate of the standard bottle. Store pick
+writes `store_pick_name` (private to creator); special version writes `batch`.
 
-**⚠ VERIFICATION GAP (important):** I could not do authenticated UI QA — the password-entry safety
-rule stands and Brian was away. Verified via **tsc + eslint (0 errors) + production build green +
-a live unauth+existing-session smoke test** (app boots, Search earmarks render, detail card opens
-per-variant with correct not-owned actions, zero console/server errors). **NOT exercised:** the
-*differential* per-variant ownership (a variant you own vs one you don't, side by side) and the
-**green** earmark — the logged-in preview session owned/tasted nothing and I would not mutate an
-unidentified account. **Brian: eyeball these on a real account with mixed ownership.**
+### ⚠ DO NOT REBUILD THE BARCODE LOOKUP without new evidence
+Measured, not guessed — full write-up in **BACKLOG.md > Data / Audit**:
+- **There is no open barcode->product registry.** GS1 owns the UPC registry and licenses it, so every
+  free API (UPCitemdb, Open Food Facts) is a scraped aggregator with thin US spirits coverage.
+- Both free sources **missed Early Times AND Hard Truth** (mainstream, stocked everywhere) while
+  finding Buffalo Trace. UPCitemdb is also hard-capped at **100 lookups/day** (confirmed in its
+  `X-RateLimit-Limit` header) — 15 beta testers would exhaust it before lunch.
+- Worse than missing: it returned **"LG APPLIANCES EBR78898214 PCB ASSEMBLY DISPLAY" for a bourbon
+  UPC**. A confident wrong answer that would have put a fridge part in the shared catalog.
+- **State ABC open data is the real option** if catalog seeding is ever revisited. Iowa
+  (`https://idh-be.iowa.gov/api/v1/datasets/1029/rows.json`) publishes **real UPCs** + name, vendor,
+  category, volume, proof, age; 13,592 rows, ~6,628 after curation, **51-56% coverage of our own
+  barcoded catalog**. Oregon has good product data but **internal item codes, not UPCs**.
+- Key split, don't conflate again: **catalog breadth does not need UPCs** (any state works);
+  **barcode lookup does** (Iowa only, so far).
+- **Do not scrape retailers** (Total Wine, Drizly) — ToS, bot protection, legal exposure.
+- Catalog seeding from this data is **researched but NOT built and NOT approved.** Open questions are
+  listed in BACKLOG (verified status for imported rows, name cleanup, dedupe, category mapping).
 
-**Single next step (recommended):**
-- **B-32 / the two-count ownership model** — the biggest net-new piece of `BOTTLE_ACTIONS.md` (B.1/B.2):
-  per-variant **currently-owned + emptied** counts so a variant can sit in both My Bar tabs with real
-  numbers, card-per-variant My Bar, and the current-quantity display. This needs a **schema or
-  derived-from-activities decision** (gated — do with Brian). Then wire My Bar/Social detail ownership
-  to the full per-variant rows (currently pinning-only). After that: wishlist tab (B.5), per-variant
-  history modal (B.1), global-guess rating fallback (D.2).
+### Scanner: why it was slow, and the secure-context trap
+`9c2c131` cut time-to-scan three ways — narrowed formats to UPC/EAN/CODE_128 (it was trying QR,
+PDF417, Aztec, Data Matrix on every frame), dropped `delayBetweenScanAttempts` 500ms -> 100ms, and
+switched to `decodeFromConstraints` asking for `facingMode: environment` at 1920x1080 (it was letting
+the browser pick any camera at any resolution). `TRY_HARDER` is on — that's what resolves a barcode
+curved around a bottle.
 
-**⚠ Brian's config TODOs (not code):**
-- Supabase Auth → **URL Configuration**: add `https://www.pourchoicesapp.com/reset-password` (+ localhost) to **Redirect URLs** and enable the **Reset Password** email template (B-26), else the reset link won't return to the app.
-- Vercel: ensure a service-role env var is set — either `SUPABASE_SERVICE_ROLE` or `SUPABASE_SERVICE_ROLE_KEY` now works (B-21).
-- One deployed-site sanity check: **login** (B-18 rerouted the email-check to the `email_exists` RPC) and **Search/My Bar/Social** (B-24 flipped `all_bottle_details`/`all_variant_details` to `security_invoker`).
+**⚠ The camera CANNOT work on the LAN QA URL.** getUserMedia requires a secure context; the LAN URL is
+HTTP, so `navigator.mediaDevices` is undefined. The old code reported that as "make sure no other app
+is using it" and sent Brian hunting a nonexistent problem — `23aac25` now says the true thing.
+**Barcode scanning, PWA install and push can only be tested on prod or an HTTPS tunnel.**
+The file-input photo picker DOES work on HTTP (`capture` delegates to the OS camera app).
 
-**Landmines / gated:**
-- **B-74 (auth id vs public id)** still gated: `public.users.id ≠ auth.users.id` — match BOTH ids in any owner-scope filter. Do before 3.4 group tasting + 8.5 push.
-- **B-23 tier-2** (RPC-gate + rate-limit tasting writes) deferred post-beta. **Do NOT rewrite the Elo trigger.**
-- **DB migrations applied to prod this session** (rollbacks in `sql/`): `bottle-details-variant-display-*`, `b18-b19-auth-hardening-*`, `b23-b24-security-*`, `b27-username-ci-unique-*`. Data backups in schemas `backup_20260827`, `backup_bt_pilot`, `backup_notes_fix` (incl. `qa_roles`).
+**⚠ Mobile file inputs:** the camera/library inputs are visually hidden at 1px, **not `display:none`**.
+A file input that isn't rendered gets `capture` ignored on mobile — that was the real cause of
+"Take photo opens the gallery". Confirmed fixed on Brian's phone. Don't "tidy" them back to `hidden`.
 
-**Why Phase 8 exists (Brian, 2026-08-27):** before inviting 10–15 testers, (1) log the review findings as bugs and work them, (2) barcode scan on every bottle search + seed barcodes, (3) rewrite new-user tutorial + admin-controlled What's new, (4) PWA install prompt (Android + iOS, strongly suggest install), (5) admin push to all or one user (Profile notifications default on). Order is in PHASE8.md — first-session path is URL → install → signup → tour → search/drink, so trust bugs then PWA then tutorial then barcode then push.
-**TESTING NOTE:** Grok uses `grokbuild@pourchoicesapp.com` (username `GrokBuildAdmin`), Claude uses `claude@pourchoicesapp.com`. **Both were demoted `admin → user` (B-22, 2026-08-27) — `The_Lake_House` is now the sole admin.** So these QA accounts can do regular-user testing (add bottles, tastings, bar) but NOT admin actions (verify/approve/delete). If Grok needs to test an admin surface, Brian promotes the account temporarily (SQL, via service-role) or does it on Lakehouse himself; re-demote after. Ask Brian for passwords rather than committing them. Do NOT test on Brian's Lakehouse account for data. A real tasting moves **shared global Elo** — after QA, delete the test session and reset touched `bottle_variants.elo_global` (+ QA `user_bottles`) to 1500. (Roles snapshotted in `backup_notes_fix.qa_roles`.)
+### ⚠ NEEDS BRIAN'S EYES — the one unverified thing
+**`1b4de16` (admin verify queue) was never click-tested.** Admin requires `The_Lake_House` and the
+guardrails forbid testing on Brian's account. Verified only by tsc + eslint + green production build.
+Two changes to check on prod:
+1. **Queue now sorts by last touched** (across the bottle AND its queued variants), not `created_at`.
+2. **Detail modal fields are editable in place**, with Save / Save & Verify.
+   **Highest risk: whether admin RLS permits the `bottle_variants` UPDATE on the default variant.**
+   Display fields (proof, age, nose, palate, finish) are written to the **default variant**, because
+   that is what `all_bottle_details` resolves from — writing them to `bottles` would save fine and be
+   invisible in search. **If a proof edit silently doesn't stick, that RLS policy is the cause.**
+Test bottles already in the queue with null categories: Shortbarrel Four Grain, Hard Truth Sweet Mash
+Bourbon, Early Times Kentucky's Finest.
 
-**⚠️ Phase 3 — what is LIVE on the prod DB right now (from Story 3.0, applied 2026-08-26):**
-- **The Elo engine is a Supabase trigger** (`trig_update_elo_after_session` AFTER INSERT on `tasting_results`, fn `update_elo_for_session()`), NOT app code. It was EXTENDED to be **variant-level**: personal Elo → `user_bottles.elo` keyed per (user, variant); global Elo → `bottle_variants.elo_global`, with **store-pick global points rolling up to the parent SKU's default variant** (store pick's own global stays put; personal stays on the store pick). Flat **K=32**; upset credit via the expected-score term; win-rate dampener over the **last N head-to-heads of that specific pair** (personal 10 / global 20). The trigger uses a `new_results` transition table → the flow **must insert all pairwise rows for a session in ONE INSERT**. SQL: `sql/3.0-migration.sql` (re-runnable) + `sql/3.0-reset.sql` (one-time, already run) + `sql/3.0-snapshot.sql` (rollback).
-- **`user_bottles` was re-keyed to per-variant:** PK is now the surrogate `id` (partial unique indexes `user_bottles_no_variant` / `user_bottles_with_variant` enforce uniqueness). Legacy NULL-variant rows backfilled to their default variant. **Row semantics:** owned = `currently_owned=true`; finished = `currently_owned=false AND times_had>=1`; **tasted-only = `times_had=0`** (trigger-created, never owned — no silent add-to-bar).
-- **All Elo was rebaselined to 1500** and the 13 test tasting sessions purged, for a clean beta leaderboard. Star display already degrades to "no rating" when all Elo is equal (calcStars returns null when min==max), so a flat baseline is fine.
-- **RLS on the tasting tables was fixed** to resolve `auth.uid()` → `public.users.id` (the old policies compared auth id to a public id and would fail every app insert). Each participant owns their own session row (works for group joiners too).
-- **App code audit (Story 3.0, shipped to prod 2026-08-27):** `src/lib/userBottles.ts` (`addOrRestockUserBottle`/`removeUserBottle` now variant-scoped; `resolveDefaultVariantId`; **remove DEMOTES a tasted row to tasting-only instead of deleting**, preserving Elo), `src/app/mybar/page.tsx` (Empty tab query now `times_had>=1`), `MyBarClient.tsx` + `SearchClient.tsx` + `SocialClient.tsx` (variant-scoped writes; `inCollection` = an ownership row exists, not any row; Social fetch no longer `.maybeSingle()`). tsc clean; verified via rolled-back DB tests (engine deltas incl. store-pick rollup; My Bar tab filters exclude tasting-only rows).
-- **Feedback channel — what shipped (`00188a9` feat + `50f7b00` docs):** Profile "Send Feedback / Report a Bug" → `FeedbackSheet` (type feature|bug, message with Web-Speech dictation, optional screenshot). New `feedback` table + RLS (mirrors `suggested_edits`; **migration applied to prod DB** — `sql/feedback-migration.sql`, rollback `sql/feedback-snapshot.sql`). Admin triage queue in **Admin > Feedback** (`FeedbackTab.tsx`; status new/triaged/planned/done + internal note). Screenshots under `bottle-images/feedback/<id>/` with stored `screenshot_path` for easy purge. Lib `src/lib/feedback.ts`. Coach `profile.feedback` added to the **new-user core tour**. Verified end-to-end on localhost (submit → queue → triage → note persisted) + prod verify handed to Brian. Entry is Profile-only (no persistent affordance yet).
-- Design context (Brian, 7.8 discovery): from the bottle card there are exactly **two contribution actions — Suggest an edit (7.8) and Add a variant (7.9)**, both done. Personal notes/ratings are NOT a card action — they belong to the future drink/blind-tasting flow.
+### Single next step
+**Brian click-tests the admin verify queue on prod** (edit a field -> Save -> reopen and confirm it
+persisted; then Save & Verify). If the `bottle_variants` write is blocked by RLS, fix that first.
+After that, Wave 2 is genuinely closed and the open candidates are unchanged: the gated cleanups
+(`rating_stars` column drop + orphan rows; **B-74** auth-id, which blocks 3.4 group tasting and 8.5
+push), or a new wave.
 
-**Product surface (so you do not rebuild what exists):**
-- Nav: Search / Social / My Bar / Drink / Profile (+ Admin). Drink = `/taste` (solo self-serve + guest-helper shipped). Login → `/mybar`. Profile = username/email/replay tutorial/feedback/sign out. Join-a-blind is a stub (3.4).
-- **My Bar tabs:** In My Bar / Empty / **Tasted (B-06 live)** — Tasted = variants this user ranked that they do not own and never finished. Owned/empty still SKU-collapsed (B-31). Cards carry `variant_id` (B-05). Stars from `default_variant_elo` (B-04).
-- Bottle detail: carousel over **default + variants** (swipe / arrows / dots). One variant → no pager. Fields that swap: images, Elo, verified, age, proof, notes, tasting notes. SKU identity (name, distillery, category) stays. Front/Back + zoom live.
-- Have a drink: any bottle, not gated on My Bar, does **not** insert `user_bottles` or bump `times_had`. Pour sheet: neat / rocks / mixed / **blind**. Neat/rocks/mixed write `activities.drank` (optional `variant_id` of the visible carousel slide). **Blind opens `/taste?bottle=&variant=`** with that bottle pre-seeded — it does **not** log a pour.
-- **Drink tab (`/taste`)** is a hub: **Have a drink** (pick one bottle → same pour sheet) **or** **Start a blind tasting**. Join-a-blind is still a stub.
-- Actions (7.6): one state-dependent primary + a `MoreSheet`. **none** → Add to My Bar (primary) + Have a drink. **owned / empty** More includes **Have a drink** (pour sheet) **and** **Blind tasting** (Drink, pre-seeded). Owned also: Add another / Mark as Empty / Remove. Empty: Remove. Suggest-edit pencil stays separate (top bar). Mark as Empty = soft delete (`currently_owned=false`, kept in history). Add Back = restock (`onAddToBar`), which bumps `times_had`.
-- Suggest an edit (7.8): the top-bar pencil enters **inline edit-mode** over the visible version's fields; image area = upload target. Per-field gate: mine+unverified applies directly; else pending → admin. Append-only `suggested_edits`. Under-review banner. Admin reviews **inside the Bottles queue** (`BottlesTab`) with per-field Approve/Reject + optional reason; approve keeps verified.
-- Add a variant (7.9): the card's second contribution action. **Global variant** (batch/release-year, everyone sees, `verified=false` → admin queue) vs **store pick** (private to creator). Save choice on both: **database-only** (creates the version, logs `added_to_db`, no `user_bottles`) vs **add-to-bar**. Entry points: a virtual **"+ Add a version" carousel slide** (every bottle swipeable now), an explicit "+ Add a version" control by the pager, and a More-sheet "Add a variant" row. Flow reuses `VariantSelectSheet` with `mode="contribute"`. `AddVariantSheet.tsx` is **deleted**.
-- **Store-pick scoping (7.9):** store picks are private to their creator — everywhere variants show (detail carousel `fetchVariantsForSku`, All-Variants leaderboard + count in `SearchClient`, the "N versions" badge) they filter `store_pick_name IS NULL OR created_by IN (my authId, my publicId)`. Matching **both** ids works around the `created_by` inconsistency.
-- Social: global reverse-chrono feed from `activities`.
-- Coaches: new users get a live-UI core tour; existing users get one What's new digest per session (Show me = that feature's tour). Catalog `src/lib/coaches.ts`. Storage `users.seen_coach_ids`. Existing accounts were seeded `core.done`. **Phase 8.3:** rewrite core (include Drink) and stop auto-piling every `announce: true` — admin publish instead.
+### Landmines carried forward
+- **B-74 (auth id vs public id)** still gated: `public.users.id != auth.users.id` — match BOTH ids in
+  any owner-scope filter. Do before 3.4 group tasting + 8.5 push.
+- **Auth:** `getSession()` (trusts cookie) vs `getUser()` (validates) must not disagree across a
+  redirect boundary — that caused the 1.1M-row prod events flood. Don't build a NEW redirect off
+  `getSession()`.
+- **Ratings (B-40):** manual guesses live in **`user_ratings`**, never `user_bottles.rating_stars`.
+- **B-23 tier-2** deferred post-beta. **Do NOT rewrite the Elo trigger.**
+- **Storage cost:** every provisional add writes an image to the `bottle-images` bucket and nothing
+  purges orphans. Backlog item extended with the metered-cost / scheduled-purge angle.
 
-**SQL already live (do not re-run as if missing):** **`all_bottle_details` view fixed 2026-08-27 (Claude)** — its per-variant display fields (`attr_proof/age/nose/palate/finish/frontimage_url/backimage_url`) now resolve from the **default variant** (COALESCE fallback to the bottle column), so approved variant-level edits (incl. images) show in bottle search, matching the detail card. Was: all `attr_*` read from `bottles`, so variant edits never reached search. Migration `sql/bottle-details-variant-display-migration.sql`; rollback `sql/bottle-details-variant-display-snapshot.sql`. Identity fields (name/distillery/category/style/volume/barcode/extras) still from `bottles`. `activities` table + RLS; `users.seen_coach_ids` (existing users seeded); **`suggested_edits` table + RLS (7.8, `sql/7.8-migration.sql`)** — rollback `DROP TABLE IF EXISTS public.suggested_edits CASCADE` (`sql/7.8-snapshot.sql`); **7.9 view columns (`sql/7.9-migration.sql`)** — `all_variant_details.variant_created_by` + `all_bottle_details.attr_variant_created_by` (additive; rollback = `sql/7.9-snapshot.sql` restores the prior view defs). Helper: `node scripts/_psql.mjs "…"`. Never pass `DATABASE_URL` as a psql URI. Direct `db.*` is IPv6-only. SQL files ASCII-only. See AGENTS.md.
-
-**Open decisions (Phase 8 — ask when that wave starts, not before):**
-- PWA: which app-icon asset; prompt before vs after Get Started; in-app browsers.
-- Tutorial: exact new-user steps/copy; whether Lakehouse/QA get a one-shot "Drink is live" What's new.
-- Barcode: fill-rate before showing the camera; seed sources/licensing; SKU-level vs later per-variant.
-- Push: notification click deep-link; in-app bell for browser users or What's new only; suggested-edit notice v1 vs v2.
-
-**Landmines:**
-- `user_bottles` is **one row per (user, variant)** since 3.0 (surrogate `id` PK). Restock increments `times_had` on that variant. Do not insert a second row for the same (user, variant). My Bar UI still collapses to SKU (B-05/B-31) — persist `variant_id` on the card payload.
-- A drink must **not** create a `user_bottles` row. `times_had` is collection restocks, not pours.
-- Empty bottles show **Add to My Bar**, not the In My Bar / Finished It split.
-- Search now scores from `default_variant_elo` (fallback `bottle_elo_global`); star scaling range differs per mode. `all_bottle_details` is additive-extended; `all_variant_details` is new. Rollback: `sql/7.2-snapshot.sql` (+ `DROP VIEW all_variant_details`).
-- `activities` rollback: `DROP TABLE IF EXISTS public.activities CASCADE;` (see `sql/activities-snapshot.sql`). Admin `delete_user_cascade` is unchanged; `activities.user_id` ON DELETE CASCADE covers user wipe.
-- Activity policy: log every bottle action until Brian excludes it (`src/lib/activities.ts`). Fail-open. Exclusion: admin hard-delete of a bottle.
-- Coach policy: new user-facing surface → one `src/lib/coaches.ts` row. Pile-up = one digest per session, never 20 autoplayed tours. New vs existing = `core.done` in `seen_coach_ids`, not account age. **Phase 8.3 will change the digest source** to admin-published rows; until then the old rule still applies.
-- Detail carousel: `localBottle.variants` is the owner-scoped ordered list (default first; global variants + the viewer's own store picks). Display via `fieldsForVariant`. **7.9:** the carousel has a virtual **add-slide** at index `vlist.length` — `totalSlides = vlist.length + (addSlideEnabled ? 1 : 0)`. **B-03:** `addSlideEnabled` requires `vlist.length > 0` so a default-only SKU does not open as the dashed add panel. The add-slide body replaces the normal card body (image/attrs/actions).
-- **`public.users.id` ≠ `auth.users.id` (B-74, Claude 2026-08-27).** Public users have their own UUID; `auth_id` links to Auth. Do **not** assume they are equal. FKs to people (`user_bottles.user_id`, tasting `user_id`, activities, events, feedback) are public ids. Resolve with `users.auth_id = auth.uid()`. Never `user_id = auth.uid()`. Logged as a gated cleanup **before 3.4 and 8.5** — not Wave 1, not a drive-by.
-- **`created_by` inconsistency (B-46, symptom of B-74):** store picks (and other variants) are stamped with the **auth id on some rows, the public id on others**. 7.9 handles this by matching **both** ids (`created_by IN (authId, publicId)`) in every owner-scope filter. Until B-74, always match both. 7.8's gate compares `target.created_by === authId` only — a public-id stamp reads as "not mine" → extra admin approval (B-45).
-- **7.8 gate treats `verified IS NULL` as unverified** (`!data?.verified`). A variant with `verified=null` that displays as ✓ via the bottle-level fallback (`fieldsForVariant`) will direct-apply for its creator. Intended, but note null≠false here.
-- **MyBar `handleToggleOwnership` is one-way** (hard-codes `currently_owned=false`, always logs `finished`) — it is a "mark finished", not a real toggle. Use it only for **Mark as Empty**. For **Add Back** (empty→owned) use the restock path (`onAddToBar` → `addOrRestockUserBottle`), which sets owned=true and bumps `times_had` in both Search and MyBar. SearchClient's toggle *is* a real toggle; the divergence is why 7.6 routes Add Back through restock, not toggle.
-- Supabase's typed client overflows ("excessively deep") on a **union table name + `.or()`** — the dynamic-table queries in `SearchClient.tsx` are cast to `any` on purpose. Don't "fix" the casts.
+### Brian's config TODOs (not code, unchanged)
+- Supabase Auth -> URL Configuration: add `/reset-password` to Redirect URLs + enable the Reset
+  Password email template (B-26).
+- Vercel: a service-role env var must be set (`SUPABASE_SERVICE_ROLE` or `..._KEY`, B-21).
 
 ---
 
@@ -159,6 +126,48 @@ unidentified account. **Brian: eyeball these on a real account with mixed owners
 ---
 
 ## Log (newest first)
+
+### 2026-09-01 (cont. 4) - Claude (real-device barcode testing; add-flow rewritten; admin verify edits)
+Unplanned session. Brian tested the barcode scanner on his phone and every failure produced a fix.
+Ten commits, all pushed to prod (`cccae51..1b4de16`).
+
+- **Built then deliberately removed an online barcode lookup.** `669c9d3` added a UPCitemdb-backed
+  `/api/barcode-lookup` that prefilled the add form (name/distillery/category + a self-hosted product
+  image, image fetched server-side so no SSRF proxy). `cfe0c04` collapsed every failure to one
+  user-facing message while logging six distinct reasons. `c666630` rejected non-bottle hits after it
+  returned an **LG refrigerator part for a bourbon UPC**. `19f87d8` then **deleted the whole feature**
+  on Brian's call: it identified ~1 mainstream bottle in 3, is capped at 100 lookups/day, and there is
+  **no open barcode->product registry** to switch to (GS1 licenses it). Research preserved in
+  **BACKLOG > Data / Audit** incl. the Iowa open-data source and coverage numbers. **Do not rebuild
+  without new evidence.**
+- **Add-bottle flow is now name + photo only** (`19f87d8`). `distillery`/`category` written null on
+  purpose for the enrichment lane. Store pick / special version REQUIRE their identifying detail
+  (Brian's addition, mid-session) - store pick -> `store_pick_name`, special version -> `batch`.
+- **Photo picker** (`f42e1e2`, fixed in `9c2c131`): two buttons, camera and library. The camera button
+  opened the gallery because the inputs were `display:none`, which makes mobile ignore `capture`;
+  they are visually hidden at 1px now. **Confirmed working on Brian's phone.** Photo is required.
+- **Scanner speed** (`9c2c131`): formats narrowed to UPC/EAN/CODE_128, scan interval 500ms -> 100ms,
+  explicit rear camera at 1920x1080 via `decodeFromConstraints`, TRY_HARDER on.
+- **Scanner error honesty** (`23aac25`): every failure said "make sure no other app is using it",
+  including the secure-context case that fires on the HTTP LAN URL. Now checks `isSecureContext` up
+  front; `NotReadableError` alone keeps the "another app" wording. Failures emit an `error` event.
+- **Add form could not scroll** (`20fd5d8`): the sheet is `h-full` with no scroll container, so once a
+  photo preview appeared the submit button was unreachable. Brian hit this on his phone.
+- **Stale LAN QA IP** (`d631629`): the ROADMAP checklist hardcoded `192.168.68.74`; DHCP had moved the
+  box to `.65`. Replaced with an instruction to confirm it, plus the secure-context warning at the
+  point of use.
+- **Admin verify queue** (`1b4de16`): sorts by **last touched** (bottle + its queued variants) instead
+  of `created_at`; detail modal fields are **editable in place** with Save / Save & Verify. Writes route
+  through the same FIELD_LEVEL map + `coerce` as an approved suggestion (`adminUpdateBottleFields`);
+  display fields go to the **default variant** since that is what `all_bottle_details` reads. Verify
+  saves first and aborts on failure. Logged as `admin_bottle_edit` events, not `activities`.
+  **NOT click-tested - admin needs `The_Lake_House` and the guardrails forbid testing on Brian's
+  account. See "NEEDS BRIAN'S EYES" above.**
+- **Telemetry:** `barcode_autofill` retired (kept documented, with the measurement, so it isn't
+  rebuilt); `bottle_submitted` and `admin_bottle_edit` added. See TELEMETRY.md.
+- **Housekeeping:** a `git add -A` briefly staged a 5MB Iowa dataset written to the repo root plus the
+  `.claude/worktrees` embedded repo - caught and removed before commit. Repo is clean.
+
 
 ### 2026-09-01 (cont. 3) — Claude (#10 docs + small polish; Wave 2 complete)
 - **B-73** — regenerated `DB_Schema.txt.txt` from the live prod DB (scratchpad generator over

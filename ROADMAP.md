@@ -92,6 +92,11 @@ Goal: Apply full design system from the MVP doc.
 ## Phase 6 — Admin Panel  ·  mostly shipped (6.4 remaining)
 Goal: Internal tooling — manage users, verify/clean bottles, bulk-import data.
 **Status (reconciled 2026-08-21 via git + files):** 6.0 Foundation ✅ · 6.1 Users tab ✅ · 6.2 Image upload ✅ (core) · 6.3 Bottles queue ✅ · 6.4 CSV import ⬜ — **the remaining gap**.
+**6.3 extended 2026-09-01 (Claude, `1b4de16`, prod):** the verify queue now sorts by **last touched**
+(bottle + its queued variants) instead of `created_at`, and the detail modal is **editable in place**
+(Save / Save & Verify) so an admin fills gaps before verifying rather than suggesting an edit to
+themselves. ⚠️ **Not click-tested** — admin needs `The_Lake_House` and the guardrails forbid testing on
+Brian's account. Watch for admin RLS blocking the `bottle_variants` UPDATE on the default variant.
 Evidence: admin shell + role gate `ab9cfbb`, Users tab + cascade delete `c302164`, image upload `6e44dff`, bottles queue `3ab1ce0`. Files present: `src/app/admin/{AdminClient,UsersTab,BottlesTab,ImportTab}.tsx`, `src/lib/uploadBottleImage.ts`, `src/app/api/admin/delete-user/route.ts`. `ImportTab.tsx` is a shell — 6.4 not built.
 > ⚠️ The granular sub-checkboxes below were **not individually re-audited** — treat code + commits as source of truth. Known spec mismatches: no `DB_SCHEMA.sql` at root (only `DB_Schema.txt.txt`); no `src/lib/useCurrentUser.ts` (role logic lives elsewhere).
 Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually flipped in Supabase).
@@ -263,6 +268,19 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 - [x] Exact lookup → open bottle; miss → provisional add with barcode filled (`lib/barcode.ts`, Claude 2026-08-27)
 - [ ] Seed existing SKUs (script/preview; no invented codes) — only Buffalo Trace has a verified barcode so far; Blanton's/Eagle Rare pending Brian's approval
 - [x] Coach `search.barcode`; event `click/barcode_scan { matched }` (Claude 2026-08-27)
+- [x] **Real-device scan QA + fixes** (Claude 2026-09-01, prod) — scan speed (formats narrowed to
+  UPC/EAN/CODE_128, 500ms->100ms interval, rear camera at 1920x1080, TRY_HARDER); honest camera errors
+  incl. the secure-context case; **camera-or-library photo picker** (`capture` was ignored because the
+  inputs were `display:none`); required photo; scrollable add sheet.
+- [x] **Miss path reworked to name + photo only** (Claude 2026-09-01, prod) — `distillery`/`category`
+  written null for the enrichment lane; store pick / special version require their identifying detail.
+- [x] **Online barcode lookup: built, measured, REMOVED** (Claude 2026-09-01) — ~1 mainstream bottle
+  in 3, 100 lookups/day cap, and one confidently wrong hit (a fridge part for a bourbon UPC). Root
+  cause is structural: **no open barcode->product registry exists** (GS1 licenses it). Evidence + the
+  state-open-data alternative in **BACKLOG > Data / Audit**. **Do not rebuild without new evidence.**
+- [ ] Seed catalog from state ABC open data — **researched, not approved, not built.** Iowa publishes
+  real UPCs (~6,628 curated bottles, 51-56% coverage of our catalog); Oregon has no UPCs. Open
+  questions (verified status, name cleanup, dedupe, category mapping) in BACKLOG.
 
 ### 8.5 Admin push notifications
 - [ ] Profile Notifications toggle, **default on**
