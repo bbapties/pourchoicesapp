@@ -97,6 +97,13 @@ Indexes: `(user_id, created_at)`, `(event_type, created_at)`, `(session_id)`. RL
 Add more events freely as you build (see the standing rule). Not yet wired: filters/sorts,
 coach/tour interactions, add-to-bar click (its success is already in `activities`).
 
+**Shipped 2026-09-01 — `barcode_autofill`** (surface `provisional_sheet`): emitted when a scanned
+barcode we don't stock is looked up online (`/api/barcode-lookup`, UPCitemdb). One row per outcome:
+`metadata.outcome` = `found` (plus `source`, `filled[]`, `raw_title`) / `no_match` / `rate_limited` /
+`unavailable`, and a second row on save (`outcome: 'saved'`, `targetId` = the new bottle, `filled[]`
++ `edited[]`). `edited[]` is the point: it measures how much of the auto-fill users had to correct,
+which is how we decide whether the free UPCitemdb tier is good enough or we should pay for coverage.
+
 **Phase 8 (planned — record here when they land):** `pwa_prompt_shown` / `pwa_install_clicked` /
 `pwa_continue_browser`; `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown` /
 `whatsnew_show_me`; `search` with `metadata.mode = 'barcode'`; `push_permission` /
