@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import { X } from "lucide-react";
 import { logEvent } from "@/lib/events";
 
@@ -10,6 +11,44 @@ interface BarcodeScannerSheetProps {
   onClose: () => void;
   onDetected: (code: string) => void;
 }
+
+/**
+ * Only the formats a bottle actually carries. The default reader tries every
+ * symbology it knows — QR, PDF417, Aztec, Data Matrix and the rest — and each
+ * one costs a pass over every frame. Retail spirits are UPC/EAN; CODE_128 is
+ * kept for the occasional shelf or distillery label. Narrowing this is the
+ * single biggest win on time-to-scan.
+ */
+const HINTS = new Map<DecodeHintType, unknown>([
+  [
+    DecodeHintType.POSSIBLE_FORMATS,
+    [
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.CODE_128,
+    ],
+  ],
+  // Affordable now that the format list is short, and it's what lets a barcode
+  // curved around a bottle or held at an angle resolve at all.
+  [DecodeHintType.TRY_HARDER, true],
+]);
+
+/**
+ * Ask for the REAR camera explicitly and at a high resolution. Passing no
+ * constraints lets the browser hand back whatever it likes — often the front
+ * camera, often 640x480, which is not enough pixels to resolve the bars on a
+ * 750ml label at arm's length.
+ */
+const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
+  video: {
+    facingMode: { ideal: "environment" },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+  },
+  audio: false,
+};
 
 /**
  * Full-screen camera barcode scanner (ZXing). Prefers the rear camera, decodes
@@ -45,12 +84,17 @@ export default function BarcodeScannerSheet({ open, onClose, onDetected }: Barco
       return;
     }
 
-    const reader = new BrowserMultiFormatReader();
+    // delayBetweenScanAttempts defaults to 500ms — half a second of doing nothing
+    // between looks, which is most of why scanning felt slow. The narrowed format
+    // list buys back the CPU to attempt far more often.
+    const reader = new BrowserMultiFormatReader(HINTS as Map<DecodeHintType, never>, {
+      delayBetweenScanAttempts: 100,
+    });
     let controls: { stop: () => void } | null = null;
     let done = false;
 
     reader
-      .decodeFromVideoDevice(undefined, videoRef.current!, (result, _err, ctrls) => {
+      .decodeFromConstraints(CAMERA_CONSTRAINTS, videoRef.current!, (result, _err, ctrls) => {
         if (result && !done) {
           done = true;
           ctrls.stop();

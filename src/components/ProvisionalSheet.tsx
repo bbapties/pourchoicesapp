@@ -542,7 +542,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
             {/* Photo — required, so an admin has something to vet the submission against.
                 Two explicit buttons: a bare file input opens the gallery on most phones,
                 and `capture` alone would take the gallery away. */}
-            <div className="space-y-2">
+            <div className="relative space-y-2">
               <label className="text-charcoal text-sm font-medium">Photo *</label>
               <p className="text-xs text-charcoal opacity-70">
                 A picture of the bottle helps us approve your add.
@@ -617,20 +617,30 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
               {imageError && <p className="text-xs text-red-600">{imageError}</p>}
 
               {/* `capture="environment"` opens the rear camera directly; the second input
-                  is deliberately capture-less so the library stays reachable. */}
+                  is deliberately capture-less so the library stays reachable.
+
+                  These are visually hidden rather than `display: none`. A file input
+                  that isn't rendered gets unreliable treatment on mobile — `capture`
+                  can be ignored outright, which lands the user in the photo library
+                  when they asked for the camera. Keeping them in the layout at 1px
+                  costs nothing and keeps the attribute honoured. */}
               <input
                 ref={cameraInputRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
-                className="hidden"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="absolute h-px w-px overflow-hidden opacity-0 -z-10"
                 onChange={(e) => handlePickedFile(e.target.files?.[0])}
               />
               <input
                 ref={libraryInputRef}
                 type="file"
                 accept="image/*"
-                className="hidden"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="absolute h-px w-px overflow-hidden opacity-0 -z-10"
                 onChange={(e) => handlePickedFile(e.target.files?.[0])}
               />
             </div>
