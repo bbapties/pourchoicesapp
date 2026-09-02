@@ -111,6 +111,7 @@ reasons exist ONLY here, and they answer different questions — do not collapse
 | outcome | what it means | what it would cost to fix |
 |---|---|---|
 | `no_match` | upstream answered; it has no such product | a **better data source** (coverage gap) |
+| `implausible` | upstream answered with something that isn't a bottle | the source is returning junk — worse than a miss |
 | `rate_limited` | upstream 429 | a **paid tier** (capacity, not coverage) |
 | `invalid_code` | upstream rejected the code (bad check digit / not a product barcode) | **the scanner or the user** — nothing to buy |
 | `timeout` / `network_error` / `offline` | never got an answer | **connection**; says nothing about the service |

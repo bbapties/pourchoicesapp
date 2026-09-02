@@ -48,6 +48,7 @@ export type BarcodeSuggestion = {
  */
 export type LookupFailure =
   | "no_match"        // upstream answered, it has no such product
+  | "implausible"     // upstream answered with something that isn't a bottle at all
   | "invalid_code"    // upstream rejected the code itself (bad check digit, not a product barcode)
   | "rate_limited"    // upstream 429 — quota or burst limit hit
   | "timeout"         // upstream (or our own route) took too long
@@ -63,6 +64,36 @@ export type BarcodeLookupResult =
       /** Upstream HTTP status when there was one — diagnostics only. */
       status?: number;
     };
+
+/**
+ * Does this upstream result plausibly describe a bottle of spirits?
+ *
+ * A generic product database indexes everything, and a barcode it doesn't have
+ * can still collide with something it does. Testing against our own catalog,
+ * UPCitemdb answered a bourbon UPC with "LG APPLIANCES EBR78898214 PCB ASSEMBLY
+ * DISPLAY" — a confident, completely wrong hit. Auto-filling that would have put
+ * a fridge part in the bottle catalog under a real user's name.
+ *
+ * So a hit has to earn its way in: it must look like a drink, or at least like
+ * something sold by the bottle. Anything else is treated as no match, which
+ * costs us only a form the user fills in by hand.
+ */
+const SPIRIT_WORDS =
+  /(bourbon|whisk(?:e)?y|rye|scotch|single malt|gin|rum|vodka|tequila|mezcal|liqueur|brandy|cognac|armagnac|absinthe|schnapps|aperitif|amaro|vermouth|sherry|port|wine|spirits?|distill\w*|proof|barrel|cask)/i;
+const BEVERAGE_CATEGORY = /(beverage|alcohol|liquor|spirits?|wine|food)/i;
+
+export function looksLikeABottle(
+  title: string,
+  upstreamCategory?: string | null,
+  hasVolume?: boolean,
+  hasProof?: boolean
+): boolean {
+  if (SPIRIT_WORDS.test(title)) return true;
+  if (upstreamCategory && BEVERAGE_CATEGORY.test(upstreamCategory)) return true;
+  // No drink words anywhere, but it is sold in a bottle size AND has a strength —
+  // good enough to show the user, who gets to correct it before saving.
+  return Boolean(hasVolume && hasProof);
+}
 
 const CATEGORY_RULES: ReadonlyArray<[RegExp, string]> = [
   [/\b(bourbon|rye|scotch|whisky|whiskey|single malt)\b/i, "Whiskey"],

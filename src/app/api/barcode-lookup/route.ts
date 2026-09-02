@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseProductTitle, type BarcodeLookupResult } from "@/lib/barcodeLookup";
+import { parseProductTitle, looksLikeABottle, type BarcodeLookupResult } from "@/lib/barcodeLookup";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +117,15 @@ export async function GET(req: Request) {
   }
 
   const parsed = parseProductTitle(item.title, item.brand, item.category);
+
+  // A hit is not automatically a bottle — see looksLikeABottle. Reported as a
+  // distinct outcome rather than folded into no_match, because a rising
+  // implausible rate means the source is answering with junk, which is a
+  // different (and worse) problem than simply not having the product.
+  if (!looksLikeABottle(item.title, item.category, Boolean(parsed.volume), parsed.proof != null)) {
+    return NextResponse.json<BarcodeLookupResult>({ found: false, reason: "implausible" });
+  }
+
   const imageDataUrl = await fetchProductImage(
     item.images?.find((u) => /^https:\/\//i.test(u)) ?? null
   );
