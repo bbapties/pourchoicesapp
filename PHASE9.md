@@ -40,7 +40,8 @@ The S1–S5 sections below are the original plan; S4/S5 shifted per the above.
 > #2 tastings-finished (`97a1742`), #3 ratings fallback (`1371a40`), #4 submission hardening
 > (`e04aa1e`), #5 honest search (`aa5fcd5`), #6 feed cascade (`48f3b00`),
 > #7 drink picker (`e6bf768`), #8 wishlist-in-history (`9f5c2d5`) + barcode two-zone (`173debc`),
-> #9 telemetry integrity (`3ef5583`). **Remaining: #10 docs + small polish.**
+> #9 telemetry integrity (`3ef5583`), #10 docs + polish (B-70/71/72/73, B-42; B-44 deferred to
+> Phase 5). Plus the B-40 ratings-storage rework (`a0cb629`). **WAVE 2 COMPLETE (10/10).**
 > **Also this session:** found + fixed a prod `/`<->`/mybar` redirect loop that had flooded the
 > events table (~1.1M page_views since 2026-08-27) — `page.tsx` getUser (`034b94f`) + middleware
 > stale-cookie clear (`4210e1c`); loop rows purged. See HANDOFF 2026-09-01 (cont.).

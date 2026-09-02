@@ -12,8 +12,8 @@
 ---
 
 ## Dev / QA accounts
-- **Claude QA account** — `claude@pourchoicesapp.com` / role `admin`. Dedicated account so Claude's QA and bottle/variant adds are attributable (`created_by`) and Claude can exercise admin screens. **Temporary — delete once the app is more built.** Weak password by design; never grant it anything the account shouldn't touch beyond admin, and treat it as compromisable on public prod.
-- **Grok QA account** — `grokbuild@pourchoicesapp.com` / username `GrokBuildAdmin` / role `admin`. Same deal for Grok (this session). Created 2026-08-27 so catalog/admin actions Grok performs in prod are attributable. **Temporary — delete after beta.** Weak password by design; treat as compromisable on public prod. Password is **not** stored in git — Brian has it; Grok should ask rather than commit it.
+- **Claude QA account** — `claude@pourchoicesapp.com`. Dedicated **regular-user** account (demoted from admin, B-22) so Claude's QA and bottle/variant adds are attributable (`created_by`). **Temporary — delete once the app is more built.** Password lives with Brian only — **ask, don't commit it**; the account is not an admin and cannot verify/delete/cascade.
+- **Grok QA account** — `grokbuild@pourchoicesapp.com` / username `GrokBuildAdmin`. Same deal for Grok — a **regular-user** account (demoted from admin, B-22), created 2026-08-27 for attributable prod QA. **Temporary — delete after beta.** Password lives with Brian only — ask, don't commit it. `The_Lake_House` is the sole admin.
 
 ---
 
@@ -273,10 +273,11 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 - [~] In progress. **Shipped 2026-08-30 (Claude, autonomous):** B-31 (per-variant detail ownership +
   had-it earmark), B-33 (honest Remove copy), B-35/B-36 (restock correctness), B-39/B-43/B-66 (truthful
   copy). **B-32 model-resolved** (dual-tab is intended) but its code needs the two-count ownership work.
-- [~] **PHASE9 Wave 2 (2026-08-30/09-01): 9/10 shipped** — #1 two-count, #2 tastings-finished,
-  #3 ratings fallback, #4 submission hardening, #5 honest search, #6 feed cascade, **#7 drink picker
-  (B-48/B-54)**, **#8 wishlist-in-history + barcode two-zone chooser (A.1)**, **#9 telemetry integrity
-  (B-60/B-61)**. Remaining: #10 docs + polish. See [PHASE9.md](PHASE9.md).
+- [x] **PHASE9 Wave 2 (2026-08-30/09-01): 10/10 COMPLETE** — #1 two-count, #2 tastings-finished,
+  #3 ratings fallback, #4 submission hardening, #5 honest search, #6 feed cascade, #7 drink picker
+  (B-48/B-54), #8 wishlist-in-history + barcode two-zone chooser (A.1), #9 telemetry integrity
+  (B-60/B-61), **#10 docs + polish (B-70/71/72/73, B-42; B-44 deferred to Phase 5)**. Plus the B-40
+  ratings-storage rework. See [PHASE9.md](PHASE9.md).
 - [x] **Prod incident (2026-09-01): `/`<->`/mybar` redirect-loop events flood** (~1.1M page_views
   since 2026-08-27, getSession-vs-getUser mismatch). Fixed: `page.tsx` getUser (`034b94f`) + middleware
   stale-cookie clear (`4210e1c`); loop rows purged. See HANDOFF.

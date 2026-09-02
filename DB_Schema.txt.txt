@@ -1,5 +1,17 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
+-- Regenerated from the live prod DB on 2026-09-02 (B-73) via scripts against information_schema/pg_catalog.
+-- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
+
+CREATE TABLE public.activities (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  bottle_id uuid NOT NULL,
+  variant_id uuid,
+  action text NOT NULL,
+  pour_type text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
 
 CREATE TABLE public.bottle_variants (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -17,10 +29,13 @@ CREATE TABLE public.bottle_variants (
   updated_by uuid,
   updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
   notes text,
-  CONSTRAINT bottle_variants_pkey PRIMARY KEY (id),
-  CONSTRAINT bottle_attr_bottles_id_fkey FOREIGN KEY (bottles_id) REFERENCES public.bottles(id),
-  CONSTRAINT bottle_attr_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
+  elo_global numeric DEFAULT 1500,
+  nose text,
+  palate text,
+  finish text,
+  is_default boolean NOT NULL DEFAULT false
 );
+
 CREATE TABLE public.bottles (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   name text NOT NULL,
@@ -42,63 +57,234 @@ CREATE TABLE public.bottles (
   age text,
   volume text,
   frontimage_url text,
-  backimage_url text,
-  CONSTRAINT bottles_pkey PRIMARY KEY (id),
-  CONSTRAINT bottles_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
-  CONSTRAINT bottles_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
+  backimage_url text
 );
+
+CREATE TABLE public.events (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  session_id text,
+  event_type text NOT NULL,
+  surface text,
+  target_type text,
+  target_id text,
+  metadata jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.feedback (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  type text NOT NULL,
+  message text NOT NULL,
+  screenshot_url text,
+  screenshot_path text,
+  status text NOT NULL DEFAULT 'new'::text,
+  submitted_by uuid NOT NULL,
+  reviewed_by uuid,
+  admin_note text,
+  user_agent text,
+  viewport text,
+  route text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone
+);
+
+CREATE TABLE public.suggested_edits (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  bottle_id uuid NOT NULL,
+  variant_id uuid,
+  target_table text NOT NULL,
+  field text NOT NULL,
+  old_value text,
+  new_value text,
+  status text NOT NULL DEFAULT 'pending'::text,
+  submitted_by uuid NOT NULL,
+  reviewed_by uuid,
+  review_note text,
+  submission_group uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  reviewed_at timestamp with time zone
+);
+
 CREATE TABLE public.tasting_details (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   tasting_session_id uuid NOT NULL,
   bottle_id uuid NOT NULL,
   notes jsonb,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT tasting_details_pkey PRIMARY KEY (id),
-  CONSTRAINT tasting_details_tasting_session_id_fkey FOREIGN KEY (tasting_session_id) REFERENCES public.tasting_sessions(id),
-  CONSTRAINT tasting_details_bottle_id_fkey FOREIGN KEY (bottle_id) REFERENCES public.bottles(id)
+  variant_id uuid
 );
+
 CREATE TABLE public.tasting_results (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   tasting_session_id uuid NOT NULL,
   winner_bottle_id uuid NOT NULL,
   loser_bottle_id uuid NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT tasting_results_pkey PRIMARY KEY (id),
-  CONSTRAINT tasting_results_tasting_session_id_fkey FOREIGN KEY (tasting_session_id) REFERENCES public.tasting_sessions(id),
-  CONSTRAINT tasting_results_winner_bottle_id_fkey FOREIGN KEY (winner_bottle_id) REFERENCES public.bottles(id),
-  CONSTRAINT tasting_results_loser_bottle_id_fkey FOREIGN KEY (loser_bottle_id) REFERENCES public.bottles(id)
+  winner_variant_id uuid,
+  loser_variant_id uuid
 );
+
 CREATE TABLE public.tasting_sessions (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL,
   name text,
-  bottle_ids ARRAY NOT NULL DEFAULT '{}'::uuid[],
+  bottle_ids uuid[] NOT NULL DEFAULT '{}'::uuid[],
   is_blind boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT tasting_sessions_pkey PRIMARY KEY (id),
-  CONSTRAINT tasting_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  variant_ids uuid[] NOT NULL DEFAULT '{}'::uuid[],
+  mode text
 );
+
 CREATE TABLE public.user_bottles (
   user_id uuid NOT NULL,
   bottle_id uuid NOT NULL,
-  rating_stars numeric DEFAULT NULL::numeric CHECK (rating_stars >= 0::numeric AND rating_stars <= 5::numeric),
+  rating_stars numeric DEFAULT NULL::numeric,
   elo numeric DEFAULT 1500,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   currently_owned boolean DEFAULT true,
   variant_id uuid,
-  CONSTRAINT user_bottles_pkey PRIMARY KEY (user_id, bottle_id),
-  CONSTRAINT user_bottles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT user_bottles_bottle_id_fkey FOREIGN KEY (bottle_id) REFERENCES public.bottles(id),
-  CONSTRAINT user_bottles_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.bottle_variants(id)
+  times_had integer NOT NULL DEFAULT 1,
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  owned_count integer NOT NULL DEFAULT 0,
+  emptied_count integer NOT NULL DEFAULT 0
 );
+
+CREATE TABLE public.user_ratings (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  bottle_id uuid NOT NULL,
+  variant_id uuid NOT NULL,
+  stars numeric NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
 CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  username text NOT NULL UNIQUE,
-  email text NOT NULL UNIQUE,
-  collection ARRAY DEFAULT '{}'::uuid[],
+  username text NOT NULL,
+  email text NOT NULL,
+  collection uuid[] DEFAULT '{}'::uuid[],
   created_at timestamp with time zone DEFAULT now(),
   auth_id uuid,
-  CONSTRAINT users_pkey PRIMARY KEY (id),
-  CONSTRAINT users_auth_id_fkey FOREIGN KEY (auth_id) REFERENCES auth.users(id)
+  role text NOT NULL DEFAULT 'user'::text,
+  seen_coach_ids text[] NOT NULL DEFAULT '{}'::text[]
 );
+
+CREATE TABLE public.wishlists (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  bottle_id uuid NOT NULL,
+  variant_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- ============================================================
+-- FOREIGN KEYS (column -> referenced)
+-- ============================================================
+  activities.bottle_id -> bottles.id
+  activities.user_id -> users.id
+  activities.variant_id -> bottle_variants.id
+  bottle_variants.bottles_id -> bottles.id
+  events.user_id -> users.id
+  feedback.reviewed_by -> users.id
+  feedback.submitted_by -> users.id
+  suggested_edits.bottle_id -> bottles.id
+  suggested_edits.reviewed_by -> users.id
+  suggested_edits.submitted_by -> users.id
+  suggested_edits.variant_id -> bottle_variants.id
+  tasting_details.bottle_id -> bottles.id
+  tasting_details.tasting_session_id -> tasting_sessions.id
+  tasting_details.variant_id -> bottle_variants.id
+  tasting_results.loser_bottle_id -> bottles.id
+  tasting_results.loser_variant_id -> bottle_variants.id
+  tasting_results.tasting_session_id -> tasting_sessions.id
+  tasting_results.winner_bottle_id -> bottles.id
+  tasting_results.winner_variant_id -> bottle_variants.id
+  tasting_sessions.user_id -> users.id
+  user_bottles.bottle_id -> bottles.id
+  user_bottles.user_id -> users.id
+  user_bottles.variant_id -> bottle_variants.id
+  user_ratings.bottle_id -> bottles.id
+  user_ratings.user_id -> users.id
+  user_ratings.variant_id -> bottle_variants.id
+  wishlists.bottle_id -> bottles.id
+  wishlists.user_id -> users.id
+  wishlists.variant_id -> bottle_variants.id
+
+-- ============================================================
+-- VIEWS (public)
+-- ============================================================
+  all_bottle_details
+  all_variant_details
+
+-- ============================================================
+-- FUNCTIONS (public)
+-- ============================================================
+  commit_bottle_import(payload jsonb)  [SECURITY DEFINER]
+  default_to_admin()  [SECURITY DEFINER]
+  delete_user_cascade(target_user_id uuid)  [SECURITY DEFINER]
+  email_exists(p_email text)  [SECURITY DEFINER]
+  guard_event_insert()
+  is_admin()  [SECURITY DEFINER]
+  protect_submission_update()  [SECURITY DEFINER]
+  protect_user_role()  [SECURITY DEFINER]
+  update_elo_after_result()
+  update_elo_for_session(p_session_id uuid)
+  update_elo_for_session()
+  update_timestamp()  [SECURITY DEFINER]
+  variant_guess_avg(variant_ids uuid[])  [SECURITY DEFINER]
+
+-- ============================================================
+-- RLS POLICIES (public)
+-- ============================================================
+  activities: activities_delete_own [DELETE]
+  activities: activities_insert_own [INSERT]
+  activities: activities_select_authenticated [SELECT]
+  bottle_variants: Auth insert variants [INSERT]
+  bottle_variants: Auth update variants [UPDATE]
+  bottle_variants: Public read [SELECT]
+  bottle_variants: admins can delete variants [DELETE]
+  bottle_variants: admins can update variants [UPDATE]
+  bottle_variants: admins delete variants [DELETE]
+  bottle_variants: admins update variants [UPDATE]
+  bottles: Auth insert bottles [INSERT]
+  bottles: Auth update bottles [UPDATE]
+  bottles: Public read bottles [SELECT]
+  bottles: admins can delete bottles [DELETE]
+  bottles: admins can update bottles [UPDATE]
+  bottles: admins delete bottles [DELETE]
+  bottles: admins update bottles [UPDATE]
+  events: events_insert_anon [INSERT]
+  events: events_insert_auth [INSERT]
+  events: events_select_admin [SELECT]
+  feedback: feedback_insert_own [INSERT]
+  feedback: feedback_select [SELECT]
+  feedback: feedback_update [UPDATE]
+  suggested_edits: suggested_edits_insert_own [INSERT]
+  suggested_edits: suggested_edits_select [SELECT]
+  suggested_edits: suggested_edits_update [UPDATE]
+  tasting_details: Users can manage their own tasting details [ALL]
+  tasting_details: admins read all tasting_details [SELECT]
+  tasting_results: Users insert own tasting results [INSERT]
+  tasting_results: Users read own tasting results [SELECT]
+  tasting_results: admins read all tasting_results [SELECT]
+  tasting_sessions: Users can manage their own tasting sessions [ALL]
+  tasting_sessions: admins read all tasting_sessions [SELECT]
+  user_bottles: Users can manage their own bottle data [ALL]
+  user_bottles: admins read all user_bottles [SELECT]
+  user_ratings: user_ratings_delete_own [DELETE]
+  user_ratings: user_ratings_insert_own [INSERT]
+  user_ratings: user_ratings_select [SELECT]
+  user_ratings: user_ratings_update_own [UPDATE]
+  users: Allow anon insert via auth [INSERT]
+  users: Public read users [SELECT]
+  users: Users can insert their own profile [INSERT]
+  users: Users can update their own profile [UPDATE]
+  users: Users can view their own profile [SELECT]
+  users: Users own their data [ALL]
+  users: Users update own via auth [UPDATE]
+  wishlists: wishlists_delete_own [DELETE]
+  wishlists: wishlists_insert_own [INSERT]
+  wishlists: wishlists_select [SELECT]

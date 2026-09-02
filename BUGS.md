@@ -157,12 +157,11 @@ Gated: auth / RLS / env. Ask Brian before changing.
 - [x] **B-40** **FIXED (2026-09-01): manual ratings moved to a dedicated `user_ratings` table (an evaluation, not a collection fact) — `setRatingStars` no longer fabricates a placeholder `user_bottles` row. `variant_guess_avg` + `personalStarMap` + B-47 clear all repointed. Old `user_bottles.rating_stars` deprecated (gated drop later). `a0cb629`.** -- (low) `setRatingStars` inserted a tasting-only `user_bottles` row (pour itself does not).
 - [x] **B-41** **FIXED (2026-08-30, PHASE9 #3): formatLastActivity returns undefined for a tasting-only row instead of Finished. userBottles.ts.** -- (low) `formatLastActivity` has no tasting-only branch (not-owned always reads as Finished).
   `userBottles.ts` ~19–28
-- [ ] **B-42** (low) Search toggle can set `currently_owned=true` without incrementing `times_had` (dead path if Add Back stays on restock).
-  `SearchClient.tsx` ~522–525
+- [x] **B-42** **RESOLVED (verified 2026-09-01): no such path remains. Add Back routes through `addOrRestockUserBottle` (bumps `times_had`+`owned_count`) and the toggle routes through `markVariantEmpty` ("finish one"). SearchClient no longer sets `currently_owned=true` without `times_had` (Wave 1/2 refactor B-15/B-35/B-32).** -- (low) old dead toggle path.
 - [x] **B-43** (low) More sheet "Hidden from My Bar" for Mark as Empty — it actually moves to Empty Bottles. **FIXED (Claude, 2026-08-30).**
   Hint now "Moves to Empty Bottles, kept in your history." `MoreSheet.tsx`.
-- [ ] **B-44** (low) Five–six bottom nav items on a 375px thumb zone.
-  `AppShell.tsx` ~24–33
+- [ ] **B-44** (low, **DEFERRED to Phase 5**) Five–six bottom nav items on a 375px thumb zone.
+  Visual/thumb-zone layout — belongs to the Phase 5 mobile thumb-zone audit (5.5), not the greyscale-first cut. `AppShell.tsx` ~24–33
 - [ ] **B-45** (low) Suggest-edit "mine" gate is auth-id only (`created_by === authId`).
   Public-id rows go to pending. `suggestedEdits.ts` ~100–101
 - [ ] **B-46** (medium) `created_by` mixed auth id vs public id across bottles/variants.
@@ -232,10 +231,10 @@ Gated: auth / RLS / env. Ask Brian before changing.
   `coaches.ts` ~245–259
 - [ ] **B-68** (low) Feedback/events have no size/rate limits (long messages, huge screenshots).
 - [ ] **B-69** (low) No CSP / security headers in `next.config.ts`.
-- [ ] **B-70** (low) ROADMAP/AGENTS still advertise the QA email and "weak password."
-- [ ] **B-71** (docs) HANDOFF / AGENTS product surface is stale (`/taste` → `/social`, Profile = stub, Taste gone). Fix with the Phase 8 docs pass.
-- [ ] **B-72** (docs) `user_bottles` landmine still says "one row per (user, bottle)". It is per-variant since 3.0.
-- [ ] **B-73** (docs) `DB_Schema.txt.txt` lags the live DB.
+- [x] **B-70** **FIXED (2026-09-01): dropped the "weak password by design"/"compromisable" language from ROADMAP + reframed both QA accounts as the regular users they now are (demoted B-22); AGENTS matched.**
+- [x] **B-71** **RESOLVED (verified 2026-09-01): the stale product-surface claims (`/taste`->`/social`, Profile stub, Taste tab) are gone; HANDOFF's product surface reflects the live nav (Search/Social/My Bar/Drink/Profile, Profile real, /taste = Drink hub).**
+- [x] **B-72** **RESOLVED (verified 2026-09-01): no doc still says "one row per (user, bottle)"; HANDOFF's landmine reads per-(user, variant) since 3.0.**
+- [x] **B-73** **FIXED (2026-09-01): `DB_Schema.txt.txt` regenerated from the live prod DB — all 13 tables (incl. activities/events/feedback/suggested_edits/user_ratings/wishlists), owned_count/emptied_count, seen_coach_ids, the two *_details views, functions (variant_guess_avg/guard_event_insert), FKs, and RLS policies.**
 
 ---
 

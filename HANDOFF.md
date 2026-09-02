@@ -12,11 +12,12 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 - **Current phase:** **Phase 9 build-out (Wave 2).** Model = [BOTTLE_ACTIONS.md](BOTTLE_ACTIONS.md);
   plan + status = [PHASE9.md](PHASE9.md). Read the model before touching collection/consumption/
   evaluation UI.
-- **PHASE9 Wave 2: 9 of 10 stories shipped** (two-count ownership, tasting visibility,
+- **PHASE9 Wave 2: 10 of 10 stories shipped + DONE** (two-count ownership, tasting visibility,
   ratings fallback, submission hardening, honest search, feed cascade, #7 drink picker,
-  #8 wishlist-in-history + barcode two-zone chooser, **#9 telemetry integrity**). **Next up =
-  #10 docs + small polish** (B-70/71/72/73 docs, B-44 nav crowding, B-42/B-40 edge cases). Continue
-  one story at a time.
+  #8 wishlist-in-history + barcode two-zone chooser, #9 telemetry integrity, **#10 docs + polish**).
+  Plus the B-40 ratings-storage story and the resolved prod events-flood incident. **Next up = ask
+  Brian** — Wave 2 is complete. Candidates: real-device barcode QA (#8), the gated cleanups
+  (rating_stars column drop + orphan rows; B-74 auth-id), or a new wave.
 - **Ratings storage reworked (B-40, `a0cb629`):** manual guesses now live in **`user_ratings`**, NOT
   `user_bottles.rating_stars` (deprecated). Read guesses from `user_ratings` / `variant_guess_avg`;
   never write `rating_stars` on `user_bottles` again. A rating creates no collection row / no earmark.
@@ -158,6 +159,22 @@ unidentified account. **Brian: eyeball these on a real account with mixed owners
 ---
 
 ## Log (newest first)
+
+### 2026-09-01 (cont. 3) — Claude (#10 docs + small polish; Wave 2 complete)
+- **B-73** — regenerated `DB_Schema.txt.txt` from the live prod DB (scratchpad generator over
+  information_schema/pg_catalog): 13 tables incl. every new one, `owned_count`/`emptied_count`,
+  `seen_coach_ids`, the two `*_details` views, functions (`variant_guess_avg` SECURITY DEFINER,
+  `guard_event_insert`), FKs, and RLS policies. ASCII-only.
+- **B-70** — dropped the "weak password by design"/"compromisable" advertising from ROADMAP and
+  reframed both QA accounts as the **regular users** they've been since B-22 (Lakehouse is sole admin);
+  AGENTS matched. Password stays with Brian (ask, don't commit).
+- **B-42** — verified already resolved: no SearchClient path sets `currently_owned=true` without
+  `times_had` (Add Back = restock, toggle = markVariantEmpty). Ticked.
+- **B-71 / B-72** — verified the stale doc claims are gone (product surface + per-variant
+  `user_bottles`); ticked.
+- **B-44** — deferred to **Phase 5** (mobile thumb-zone audit 5.5) — it's visual layout, not the
+  greyscale-first cut.
+- Docs-only + one generated reference file; no app/runtime change, so no build needed.
 
 ### 2026-09-01 (cont. 2) — Claude (B-40 ratings storage rework)
 - Brian promoted B-40 from a #10 cleanup item to a design decision: a manual star guess is an
