@@ -33,9 +33,36 @@ export type BarcodeSuggestion = {
   rawTitle: string;
 };
 
+/**
+ * Why a lookup produced nothing.
+ *
+ * ALL of these look identical to the user — one "couldn't find a good match,
+ * fill it in yourself" and a blank form. The distinction exists purely for the
+ * telemetry, so we can tell a coverage problem (`no_match` — the service is
+ * genuinely missing bottles, buy a better one) from a capacity problem
+ * (`rate_limited` — the free tier is too small, pay for it) from a plumbing
+ * problem (`offline` / `timeout` / `network_error` — nothing to buy, it's the
+ * connection) from a scan problem (`invalid_code` — the camera misread, or that
+ * sticker wasn't a product barcode; the fix is the scanner, not the service).
+ * Never surface these words in the UI.
+ */
+export type LookupFailure =
+  | "no_match"        // upstream answered, it has no such product
+  | "invalid_code"    // upstream rejected the code itself (bad check digit, not a product barcode)
+  | "rate_limited"    // upstream 429 — quota or burst limit hit
+  | "timeout"         // upstream (or our own route) took too long
+  | "network_error"   // the request never completed
+  | "offline"         // the device has no connection; we never left the client
+  | "bad_response";   // our route answered, but not with something usable
+
 export type BarcodeLookupResult =
   | { found: true; suggestion: BarcodeSuggestion }
-  | { found: false; reason: "no_match" | "rate_limited" | "unavailable" };
+  | {
+      found: false;
+      reason: LookupFailure;
+      /** Upstream HTTP status when there was one — diagnostics only. */
+      status?: number;
+    };
 
 const CATEGORY_RULES: ReadonlyArray<[RegExp, string]> = [
   [/\b(bourbon|rye|scotch|whisky|whiskey|single malt)\b/i, "Whiskey"],
@@ -122,17 +149,58 @@ export function parseProductTitle(
 }
 
 /**
- * Ask the server route what this barcode is. Fail-open: any error reads as
- * "unavailable" so the caller falls back to manual entry rather than telling the
- * user their bottle doesn't exist.
+ * How long the client waits before giving up on our own route. The route's own
+ * upstream budget is smaller, so hitting this means the route itself is wedged
+ * (cold start, hung connection) rather than the upstream API being slow. Kept
+ * short deliberately: a scanner user staring at a spinner is worse off than one
+ * looking at a blank form they can start typing into.
  */
-export async function lookupBarcodeOnline(upc: string): Promise<BarcodeLookupResult> {
+const CLIENT_DEADLINE_MS = 12_000;
+
+export type LookupOutcome = BarcodeLookupResult & {
+  /** Wall-clock time the attempt took, for spotting a service that is degrading. */
+  durationMs: number;
+};
+
+/**
+ * Ask the server route what this barcode is.
+ *
+ * Fail-open and total: every path returns a result, none throw. The caller shows
+ * the same thing for every failure — the reason is for the log, not the user.
+ */
+export async function lookupBarcodeOnline(upc: string): Promise<LookupOutcome> {
+  const started = Date.now();
+  const done = (r: BarcodeLookupResult): LookupOutcome => ({ ...r, durationMs: Date.now() - started });
+
+  // A known-offline device gets an instant blank form. `navigator.onLine` only
+  // reliably tells us about the FALSE case (a true value can still be a captive
+  // portal or dead uplink), which is exactly the direction we use it in — and it
+  // saves a guaranteed-doomed request against a small quota.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return done({ found: false, reason: "offline" });
+  }
+
+  let res: Response;
   try {
-    const res = await fetch(`/api/barcode-lookup?upc=${encodeURIComponent(upc)}`);
-    if (!res.ok) return { found: false, reason: "unavailable" };
-    return (await res.json()) as BarcodeLookupResult;
+    res = await fetch(`/api/barcode-lookup?upc=${encodeURIComponent(upc)}`, {
+      signal: AbortSignal.timeout(CLIENT_DEADLINE_MS),
+    });
+  } catch (err) {
+    const timedOut = err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError");
+    return done({ found: false, reason: timedOut ? "timeout" : "network_error" });
+  }
+
+  if (!res.ok) return done({ found: false, reason: "bad_response", status: res.status });
+
+  try {
+    const body = (await res.json()) as BarcodeLookupResult;
+    // Trust but verify — a proxy or error page that parses as JSON shouldn't be
+    // mistaken for a hit and prefilled into the catalog.
+    if (body?.found === true && body.suggestion?.name) return done(body);
+    if (body?.found === false && body.reason) return done(body);
+    return done({ found: false, reason: "bad_response", status: res.status });
   } catch {
-    return { found: false, reason: "unavailable" };
+    return done({ found: false, reason: "bad_response", status: res.status });
   }
 }
 

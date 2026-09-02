@@ -74,22 +74,45 @@ export async function GET(req: Request) {
       signal: AbortSignal.timeout(TIMEOUT_MS),
       cache: "no-store",
     });
-  } catch {
-    // Network error or timeout — treat as unavailable, never as "no such bottle",
-    // so the UI offers manual entry instead of implying we checked and found nothing.
-    return NextResponse.json<BarcodeLookupResult>({ found: false, reason: "unavailable" });
+  } catch (err) {
+    // Never report a transport failure as "no such bottle" — that would tell the
+    // user we checked and their bottle doesn't exist, when we never got an answer.
+    const timedOut = err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError");
+    return NextResponse.json<BarcodeLookupResult>({
+      found: false,
+      reason: timedOut ? "timeout" : "network_error",
+    });
   }
 
   if (res.status === 429) {
-    return NextResponse.json<BarcodeLookupResult>({ found: false, reason: "rate_limited" });
+    // The trial tier burst-limits hard. Distinguished from every other failure so
+    // the logs can answer "do we need to pay for this service yet".
+    return NextResponse.json<BarcodeLookupResult>({ found: false, reason: "rate_limited", status: 429 });
+  }
+  if (res.status === 400) {
+    // Upstream rejects the code itself (bad check digit, or not a product barcode
+    // at all). That's a SCAN problem, not a catalog gap — worth separating, since
+    // a pile of these means the scanner is misreading, not that we need to pay
+    // for better data.
+    return NextResponse.json<BarcodeLookupResult>({ found: false, reason: "invalid_code", status: 400 });
   }
   if (!res.ok) {
-    return NextResponse.json<BarcodeLookupResult>({ found: false, reason: "unavailable" });
+    return NextResponse.json<BarcodeLookupResult>({
+      found: false,
+      reason: "bad_response",
+      status: res.status,
+    });
   }
 
   const body = (await res.json().catch(() => null)) as { items?: UpcItem[] } | null;
-  const item = body?.items?.[0];
+  if (!body) {
+    return NextResponse.json<BarcodeLookupResult>({ found: false, reason: "bad_response", status: res.status });
+  }
+
+  const item = body.items?.[0];
   if (!item?.title) {
+    // A real, well-formed "we don't have this product" — the only failure that
+    // says anything about catalog coverage.
     return NextResponse.json<BarcodeLookupResult>({ found: false, reason: "no_match" });
   }
 

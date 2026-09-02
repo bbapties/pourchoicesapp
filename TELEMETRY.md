@@ -100,9 +100,24 @@ coach/tour interactions, add-to-bar click (its success is already in `activities
 **Shipped 2026-09-01 — `barcode_autofill`** (surface `provisional_sheet`): emitted when a scanned
 barcode we don't stock is looked up online (`/api/barcode-lookup`, UPCitemdb). One row per outcome:
 `metadata.outcome` = `found` (plus `source`, `filled[]`, `raw_title`) / `no_match` / `rate_limited` /
-`unavailable`, and a second row on save (`outcome: 'saved'`, `targetId` = the new bottle, `filled[]`
-+ `edited[]`). `edited[]` is the point: it measures how much of the auto-fill users had to correct,
-which is how we decide whether the free UPCitemdb tier is good enough or we should pay for coverage.
+`invalid_code` / `timeout` / `network_error` / `offline` / `bad_response`, plus `status` (upstream
+HTTP code), `duration_ms`, and `abandoned` (the user closed the sheet before the answer arrived —
+logged deliberately, since dropping those would bias the numbers toward "everything is fine"). A
+second row lands on save (`outcome: 'saved'`, `targetId` = the new bottle, `filled[]` + `edited[]`).
+
+**Every failure looks identical to the user** ("we couldn't find a good match" + a blank form). The
+reasons exist ONLY here, and they answer different questions — do not collapse them:
+
+| outcome | what it means | what it would cost to fix |
+|---|---|---|
+| `no_match` | upstream answered; it has no such product | a **better data source** (coverage gap) |
+| `rate_limited` | upstream 429 | a **paid tier** (capacity, not coverage) |
+| `invalid_code` | upstream rejected the code (bad check digit / not a product barcode) | **the scanner or the user** — nothing to buy |
+| `timeout` / `network_error` / `offline` | never got an answer | **connection**; says nothing about the service |
+| `bad_response` | our route answered with something unusable | **our bug** |
+
+`edited[]` on the saved row is the quality measure: how much of the auto-fill users had to correct.
+Read it together with the `no_match` rate before deciding to pay for a better service.
 
 **Phase 8 (planned — record here when they land):** `pwa_prompt_shown` / `pwa_install_clicked` /
 `pwa_continue_browser`; `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown` /

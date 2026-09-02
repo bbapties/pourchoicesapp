@@ -73,7 +73,12 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
   const [imageFromLookup, setImageFromLookup] = useState(false);
 
   // Online barcode lookup: a scan we don't have shouldn't dead-end at an empty form.
-  type LookupState = "idle" | "searching" | "found" | "none" | "unavailable";
+  // NOTE the deliberate absence of per-failure states. No match, rate limit, timeout
+  // and no-connection all land on "none" — one message, one blank form. The user
+  // doesn't care why a robot couldn't identify their bottle, and telling them
+  // ("couldn't reach the lookup service") just invites them to retry into a limit
+  // that hasn't reset. The reason goes to telemetry instead.
+  type LookupState = "idle" | "searching" | "found" | "none";
   const [lookupState, setLookupState] = useState<LookupState>("idle");
   const [suggestion, setSuggestion] = useState<BarcodeSuggestion | null>(null);
   // Which prefilled fields the user changed before saving — recorded as telemetry
@@ -137,20 +142,50 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
 
     (async () => {
       const result = await lookupBarcodeOnline(upc);
-      if (cancelled) return;
+      // Log BEFORE the cancelled check: a user who gave up and closed the sheet
+      // mid-search is the most important data point we have about a slow service,
+      // and skipping it would quietly bias the numbers toward "everything is fine".
+      // Only the state updates below are skipped once the sheet is gone.
 
       if (!result.found) {
-        setLookupState(result.reason === "no_match" ? "none" : "unavailable");
+        // Same blank form for every failure mode; only the log distinguishes them.
         logEvent({
           eventType: "barcode_autofill",
           surface: "provisional_sheet",
-          metadata: { barcode: upc, outcome: result.reason },
+          metadata: {
+            barcode: upc,
+            outcome: result.reason,
+            status: result.status ?? null,
+            duration_ms: result.durationMs,
+            abandoned: cancelled,
+          },
         });
+        if (cancelled) return;
+        setLookupState("none");
         return;
       }
 
       const s = result.suggestion;
       const filled: string[] = [];
+
+      // A hit that arrived after the user walked away still counts for the log
+      // (it says the service works, just slowly), but must not prefill a sheet
+      // that is closing — the next open re-runs this from scratch.
+      if (cancelled) {
+        logEvent({
+          eventType: "barcode_autofill",
+          surface: "provisional_sheet",
+          metadata: {
+            barcode: upc,
+            outcome: "found",
+            source: s.source,
+            duration_ms: result.durationMs,
+            abandoned: true,
+          },
+        });
+        return;
+      }
+
       form.setValue("name", s.name); filled.push("name");
       if (s.distillery) { form.setValue("distillery", s.distillery); filled.push("distillery"); }
       if (s.category) { form.setValue("category", s.category); filled.push("category"); }
@@ -172,7 +207,15 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
       logEvent({
         eventType: "barcode_autofill",
         surface: "provisional_sheet",
-        metadata: { barcode: upc, outcome: "found", source: s.source, filled, raw_title: s.rawTitle },
+        metadata: {
+          barcode: upc,
+          outcome: "found",
+          source: s.source,
+          filled,
+          raw_title: s.rawTitle,
+          duration_ms: result.durationMs,
+          abandoned: false,
+        },
       });
     })();
 
@@ -414,13 +457,12 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
             )}
           </div>
         )}
-        {(lookupState === "none" || lookupState === "unavailable") && (
+        {lookupState === "none" && (
           <div className="mt-4 flex items-start gap-2 rounded-md border border-charcoal bg-ivory p-3 text-sm text-charcoal">
             <Search className="h-4 w-4 shrink-0 mt-0.5" />
             <span>
-              {lookupState === "none"
-                ? "We couldn't find that barcode online either — fill it in below and we'll review it."
-                : "Couldn't reach the lookup service — fill it in below and we'll review it."}
+              We couldn&apos;t find a good match for that barcode — fill it in below and
+              we&apos;ll review it. Your scan is already saved with it.
             </span>
           </div>
         )}
