@@ -8,7 +8,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `1b4de16` (+ this doc commit). Working tree clean; everything on origin/MVP-v3 and live.
+- **Tip:** `862ba73` (+ this doc commit). Working tree clean; everything on origin/MVP-v3 and live.
 - **Current phase:** **Phase 9.** Wave 2 is done (10/10). This session was an unplanned detour:
   Brian tested the barcode scanner on a real phone and the findings reshaped the add-bottle flow.
 
@@ -22,6 +22,20 @@ Brian scanned bottles on his phone; each failure produced a fix. In order:
 4. `c666630` — rejected lookup hits that aren't bottles.
 5. **`19f87d8` — REMOVED the online lookup entirely** (Brian's call, and the right one). See below.
 6. `1b4de16` — admin verify queue: last-touched sort + edit-before-verify.
+
+### Barcode mismatch reports (`862ba73`)
+A bottle opened **by a scan** shows **"Not this bottle?"**. It is **report-only** — files a row in the
+existing `feedback` queue (Admin > Feedback, `type='bug'`, message prefixed `WRONG BOTTLE for barcode
+<upc>`) and **changes nothing in the catalog**. Brian's explicit call: one user's say-so shouldn't
+strip a barcode off a bottle others may have scanned correctly, and **`bottles.barcode` has no unique
+index**, so the admin arbitrates which bottle owns a code. Deliberately NOT `suggested_edits` — that
+queue's approve action applies a field change, and here there is nothing to apply.
+The copy states that a store pick / special release is **not** a mismatch, so this stays a signal
+about wrong mappings rather than a complaint box.
+**Implementation note:** the scanned code is threaded explicitly through
+`openBottleById`/`handleBottleClick` (Search + My Bar, including the two-zone chooser) rather than
+held as ambient state — a normal list tap after a scan must not inherit the previous code. Verified
+both directions.
 
 ### The add-bottle flow is now deliberately minimal
 A scan we don't have goes straight to **"We don't have this one yet"** and asks for **a name and a
@@ -163,6 +177,8 @@ Ten commits, all pushed to prod (`cccae51..1b4de16`).
   saves first and aborts on failure. Logged as `admin_bottle_edit` events, not `activities`.
   **NOT click-tested - admin needs `The_Lake_House` and the guardrails forbid testing on Brian's
   account. See "NEEDS BRIAN'S EYES" above.**
+- **Barcode mismatch report** (`862ba73`, added after the first END SESSION): "Not this bottle?" on a
+  scan-opened bottle, filing a report-only row in the `feedback` queue. See the block above.
 - **Telemetry:** `barcode_autofill` retired (kept documented, with the measurement, so it isn't
   rebuilt); `bottle_submitted` and `admin_bottle_edit` added. See TELEMETRY.md.
 - **Housekeeping:** a `git add -A` briefly staged a 5MB Iowa dataset written to the repo root plus the
