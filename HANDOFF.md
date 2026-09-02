@@ -17,6 +17,9 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
   #8 wishlist-in-history + barcode two-zone chooser, **#9 telemetry integrity**). **Next up =
   #10 docs + small polish** (B-70/71/72/73 docs, B-44 nav crowding, B-42/B-40 edge cases). Continue
   one story at a time.
+- **Ratings storage reworked (B-40, `a0cb629`):** manual guesses now live in **`user_ratings`**, NOT
+  `user_bottles.rating_stars` (deprecated). Read guesses from `user_ratings` / `variant_guess_avg`;
+  never write `rating_stars` on `user_bottles` again. A rating creates no collection row / no earmark.
 - **✅ RESOLVED THIS SESSION — prod events flood incident.** A `/`<->`/mybar` redirect loop had been
   writing ~300 page_views/min since 2026-08-27 (~1.1M null-user rows). Cause: login page decided its
   redirect with `getSession()` (trusts the cookie) while middleware gated `/mybar` with `getUser()`
@@ -155,6 +158,28 @@ unidentified account. **Brian: eyeball these on a real account with mixed owners
 ---
 
 ## Log (newest first)
+
+### 2026-09-01 (cont. 2) — Claude (B-40 ratings storage rework)
+- Brian promoted B-40 from a #10 cleanup item to a design decision: a manual star guess is an
+  **evaluation**, not a collection fact, so it must not live on `user_bottles` (which forced a
+  fake `times_had=0` placeholder row for a bottle you neither own nor tasted). **Decisions:**
+  (1) one home for all guesses = a new `user_ratings` table; (2) a standalone rating creates NO
+  relationship (no earmark, no My Bar presence).
+- **Shipped to prod (`a0cb629`):** additive `public.user_ratings` (one row per user+variant;
+  insert/select/update/delete own; applied + backfilled from `user_bottles.rating_stars`; rollback
+  `sql/user-ratings-snapshot.sql`). `variant_guess_avg` RPC repointed to average `user_ratings`.
+  App rewired — `setRatingStars` upserts `user_ratings` (no `user_bottles` write);
+  `fetchUserRatingState` reads star from `user_ratings` + elo from `user_bottles`; `tastings.ts`
+  B-47 clears the superseded guess from `user_ratings`; `SearchClient` `personalStarMap` reads
+  `user_ratings`. **QA'd on Claude:** rate a not-owned bottle -> `user_ratings` row (4.0), **zero**
+  `user_bottles` rows; My rating reads back 4.0; `variant_guess_avg` returns 4.0/n=1. Test rows purged.
+- **Deferred (gated cleanup):** `user_bottles.rating_stars` column is now deprecated (unread/unwritten)
+  and any orphan rating-only `user_bottles` rows (`times_had=0`, no tasting) are left in place. A
+  separate gated pass can NULL/drop the column and delete the orphans.
+- **Single next step:** finish the **#10 docs + small polish** cluster: B-70 (scrub QA email/"weak
+  password" from ROADMAP/AGENTS), B-73 (refresh `DB_Schema.txt.txt` from live DB), verify+tick
+  B-71/B-72 (already effectively done), B-42 (dead toggle path tidy), **defer B-44** (nav crowding)
+  to Phase 5. **Still gated:** B-74 auth-id, Elo math.
 
 ### 2026-09-01 (cont.) — Claude (#9 telemetry integrity + prod redirect-loop incident)
 - **#9 telemetry integrity (`3ef5583`, B-60/B-61) — shipped + QA'd.** B-61: `EventTracker` waits for

@@ -154,8 +154,7 @@ Gated: auth / RLS / env. Ask Brian before changing.
   builds a per-SKU personal-star map, and sorts results by the viewer's own rating (highest first;
   unrated last). Own-data only (RLS-safe). Sort chip/label treat 'yours' as active; empty-ratings
   case explains itself. `SearchClient.tsx`.
-- [ ] **B-40** (low) `setRatingStars` inserts a tasting-only `user_bottles` row (pour itself does not). Contradicts a strict reading of "drinks never create user_bottles."
-  `ratings.ts` ~89–98
+- [x] **B-40** **FIXED (2026-09-01): manual ratings moved to a dedicated `user_ratings` table (an evaluation, not a collection fact) — `setRatingStars` no longer fabricates a placeholder `user_bottles` row. `variant_guess_avg` + `personalStarMap` + B-47 clear all repointed. Old `user_bottles.rating_stars` deprecated (gated drop later). `a0cb629`.** -- (low) `setRatingStars` inserted a tasting-only `user_bottles` row (pour itself does not).
 - [x] **B-41** **FIXED (2026-08-30, PHASE9 #3): formatLastActivity returns undefined for a tasting-only row instead of Finished. userBottles.ts.** -- (low) `formatLastActivity` has no tasting-only branch (not-owned always reads as Finished).
   `userBottles.ts` ~19–28
 - [ ] **B-42** (low) Search toggle can set `currently_owned=true` without incrementing `times_had` (dead path if Add Back stays on restock).
