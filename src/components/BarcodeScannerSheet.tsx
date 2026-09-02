@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { X } from "lucide-react";
+import { logEvent } from "@/lib/events";
 
 interface BarcodeScannerSheetProps {
   open: boolean;
@@ -24,6 +25,26 @@ export default function BarcodeScannerSheet({ open, onClose, onDetected }: Barco
   useEffect(() => {
     if (!open) return;
     setError(null);
+
+    // Browsers expose getUserMedia ONLY in a secure context, so on an insecure
+    // origin `navigator.mediaDevices` is simply undefined and ZXing throws a
+    // TypeError — which used to land in the generic "another app is using it"
+    // branch and send you hunting a problem that doesn't exist. Check for it up
+    // front and say the true thing instead. (Our LAN QA URL is HTTP, so this is
+    // the expected result there, not a bug.)
+    const secure = typeof window !== "undefined" && window.isSecureContext;
+    if (!secure || !navigator.mediaDevices?.getUserMedia) {
+      setError(
+        "The camera only works over a secure (https) connection. This is the local test URL — scan from the live site instead."
+      );
+      logEvent({
+        eventType: "error",
+        surface: "barcode_scanner",
+        metadata: { reason: "insecure_context", origin: window.location.origin },
+      });
+      return;
+    }
+
     const reader = new BrowserMultiFormatReader();
     let controls: { stop: () => void } | null = null;
     let done = false;
@@ -42,13 +63,23 @@ export default function BarcodeScannerSheet({ open, onClose, onDetected }: Barco
       })
       .catch((e: unknown) => {
         const name = (e as { name?: string } | null)?.name;
-        setError(
+        // NotReadableError is the ONLY one that actually means "something else has
+        // the camera" — hardware in use, or the OS refused to hand it over. The
+        // old code showed that message for every failure.
+        const message =
           name === "NotAllowedError"
             ? "Camera permission was denied. Enable it in your browser settings and try again."
             : name === "NotFoundError"
             ? "No camera found on this device."
-            : "Couldn't start the camera. Make sure no other app is using it."
-        );
+            : name === "NotReadableError"
+            ? "Couldn't start the camera. Close any other app that might be using it, then try again."
+            : "Couldn't start the camera. Try closing and reopening this screen.";
+        setError(message);
+        logEvent({
+          eventType: "error",
+          surface: "barcode_scanner",
+          metadata: { reason: name ?? "unknown", origin: window.location.origin },
+        });
       });
 
     return () => {
