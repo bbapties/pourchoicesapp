@@ -97,14 +97,14 @@ export async function saveTasting(opts: {
   // Return sessionId even on failure so the caller can retry against the SAME session.
   if (rErr) return { sessionId, error: rErr.message };
 
-  // B-47: a real blind tasting supersedes any manual star guess — clear rating_stars for the
+  // B-47: a real blind tasting supersedes any manual star guess -- delete the guess for the
   // tasted variants (the display already switches to the Elo star; this stops a stale guess).
+  // Guesses live in user_ratings now (B-40).
   await supabase
-    .from("user_bottles")
-    .update({ rating_stars: null })
+    .from("user_ratings")
+    .delete()
     .eq("user_id", opts.userId)
-    .in("variant_id", picks.map((p) => p.variantId))
-    .not("rating_stars", "is", null);
+    .in("variant_id", picks.map((p) => p.variantId));
 
   // B-51: post ONE `tasted` activity per session (anchored on the winner bottle) so the tasting
   //   shows on the Social feed + per-variant history. Only on first creation (a reused sessionId

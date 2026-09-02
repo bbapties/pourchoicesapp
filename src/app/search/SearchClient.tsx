@@ -220,7 +220,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
       const { data, error } = await supabase
         .from('user_bottles')
-        .select('bottle_id, currently_owned, variant_id, times_had, owned_count, created_at, updated_at, rating_stars')
+        .select('bottle_id, currently_owned, variant_id, times_had, owned_count, created_at, updated_at')
         .eq('user_id', publicUser.id);
 
       if (error) {
@@ -229,7 +229,6 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       }
 
       const map: Record<string, UserBottleRow[]> = {};
-      const starMap: Record<string, number> = {};
       (data || []).forEach(row => {
         if (!map[row.bottle_id]) map[row.bottle_id] = [];
         map[row.bottle_id].push({
@@ -240,10 +239,20 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
           created_at: row.created_at,
           updated_at: row.updated_at,
         });
-        const s = row.rating_stars == null ? null : Number(row.rating_stars);
-        if (s != null && !Number.isNaN(s)) starMap[row.bottle_id] = Math.max(starMap[row.bottle_id] ?? 0, s);
       });
       setUserBottlesMap(map);
+
+      // B-40: personal star ("My Ranks" sort + avg-star display) now comes from user_ratings,
+      // keyed to the SKU by max across the viewer's rated variants of that bottle.
+      const { data: ratingRows } = await supabase
+        .from('user_ratings')
+        .select('bottle_id, stars')
+        .eq('user_id', publicUser.id);
+      const starMap: Record<string, number> = {};
+      (ratingRows || []).forEach((r: { bottle_id: string; stars: number | string | null }) => {
+        const s = r.stars == null ? null : Number(r.stars);
+        if (s != null && !Number.isNaN(s)) starMap[r.bottle_id] = Math.max(starMap[r.bottle_id] ?? 0, s);
+      });
       setPersonalStarMap(starMap);
 
       // B-31 earmark: "had it" spans more than ownership — a drink or a blind tasting counts too
