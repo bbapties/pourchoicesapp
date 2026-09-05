@@ -75,16 +75,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        {IOS_SPLASH.map(([w, h, dpr]) => (
-          <link
-            key={`${w}x${h}@${dpr}`}
-            rel="apple-touch-startup-image"
-            href={`/splash/splash-${w}x${h}@${dpr}x.png`}
-            media={`(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: portrait)`}
-          />
-        ))}
-      </head>
+      {/* No explicit <head>: React 19 hoists <link> into the document head on its own, and App
+          Router owns that element. Wrapping these in a literal <head> alongside Next's own head
+          management is not the documented pattern and is a known source of hydration mismatch --
+          suspected in the 2026-09-05 iPhone white screen, which appeared five minutes after the
+          commit that added it. */}
+      {IOS_SPLASH.map(([w, h, dpr]) => (
+        <link
+          key={`${w}x${h}@${dpr}`}
+          rel="apple-touch-startup-image"
+          href={`/splash/splash-${w}x${h}@${dpr}x.png`}
+          media={`(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: portrait)`}
+        />
+      ))}
       <body className={`${inter.className} h-dvh flex flex-col bg-ivory`}>
         {/* Implemented fixed header/footer with scrollable middle per user spec */}
         <ServiceWorkerRegistrar />
