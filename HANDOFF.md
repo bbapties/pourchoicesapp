@@ -112,6 +112,35 @@ control, so it shows whatever the catalog holds and would hand a beta tester the
 broken. **Flip the flag back to `true` as part of D1**, which is the only change needed; the
 catalog, TourPlayer and WhatsNewSheet are untouched.
 
+### FIXED: Android PWA bricked on relaunch (2026-09-05) -- `b984a93`
+Force-close the installed Android app, reopen, and it sat on the background image forever: no
+auto-login, no Get Started. iPhone was fine because that was a Safari tab, never force-closed.
+
+**Cause, confirmed by reproduction, not inferred.** `@supabase/auth-js` serialises token refresh
+with the **Web Locks API**. Killing the app leaves that lock held by a context that will never
+release it, so the next launch calls `getUser()` and waits forever. Held the lock from a second tab
+and measured the original client: **`getUser()` never returned after 20 seconds.** The auth endpoint
+itself answers in ~50ms, so this was never a network problem.
+
+**Two fixes, both needed:**
+1. **Bounded auth lock** (`src/lib/supabase.ts`). auth-js's own `navigatorLock` already honours the
+   `acquireTimeout` it is handed (`0` = ifAvailable, `>0` = abort, **`<0` = wait forever** -- the only
+   deadlocking case). We delegate to it and change exactly one thing: infinite becomes 2.5s, then run
+   unlocked. **A first attempt imposed a blanket timeout on every call and broke the deliberate
+   non-blocking path -- don't do that.**
+2. **Hard ceiling on the splash** (`src/app/page.tsx`). The old comment claimed it would "never hang
+   on splash", but `.catch()` only fires on *rejection* and a hang never rejects. An 8s timer now
+   always resolves it, falling through to the **login screen** -- never guessing `/mybar`, because
+   guessing is how the 2026-08-27 `/` <-> `/mybar` loop happened.
+
+Measured with the lock held (in-page markers): original + no timeout = never resolves; original +
+timeout = 8557ms; bounded lock + timeout = **2650ms**. Healthy path unchanged (getSession 5ms,
+getUser 226ms).
+
+**Measurement lesson worth keeping:** early numbers suggested an ~8.5s startup even when healthy.
+That was an artefact of polling from *outside* the page -- `performance.now()` was counting
+tool-attach latency. Always mark timings inside the document.
+
 ### Single next step
 **Wave D1 -- admin-published What's new** (and it now also owns re-enabling the coaches). Today the digest auto-piles every `announce: true` coach,
 which would dump 7.x history on a new tester. Needs an `announcements` table + an admin
