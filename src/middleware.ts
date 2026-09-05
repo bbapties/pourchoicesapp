@@ -41,8 +41,13 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect all routes except the root login page
-  if (!user && request.nextUrl.pathname !== '/') {
+  // Routes reachable without a session. `/` is the login/splash screen. `/reset-password`
+  // consumes a Supabase recovery link: the user arrives from their email NOT yet
+  // authenticated, so gating it here would bounce them out of the reset flow entirely.
+  const PUBLIC_PATHS = new Set(['/', '/reset-password'])
+
+  // Protect every other route.
+  if (!user && !PUBLIC_PATHS.has(request.nextUrl.pathname)) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/'
     const redirect = NextResponse.redirect(redirectUrl)
