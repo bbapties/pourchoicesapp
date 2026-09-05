@@ -229,7 +229,10 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
     setSugBusy(null);
     if (res.error) { toast.error(`Approve failed: ${res.error}`); return; }
     toast.success(isStructuralField(row.field) ? `Removed ${row.bottleName}` : `Applied ${fieldLabel(row.field)}`);
-    if (isStructuralField(row.field)) load();
+    // Always reload the queue, not just for structural changes: applying an edit
+    // bumps that bottle's last-touched, and the whole point of the sort is that its
+    // verify card jumps to the top right after you approve the edit.
+    load();
     loadSuggestions();
   };
 
@@ -317,12 +320,30 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
       variantsByBottle.set(v.bottles_id, list);
     });
 
+    // "Last touched" must span EVERY variant, not just the queued ones. Approving a
+    // display-field edit (proof, age, tasting notes) writes to the DEFAULT variant,
+    // which never bumps bottles.updated_at — so without this a bottle the admin just
+    // edited sinks back down the list, which is the opposite of what they need.
+    const queueBottleIds = [...unverifiedBottles, ...parentBottles].map((b) => b.id);
+    const newestVariantTouch = new Map<string, string>();
+    if (queueBottleIds.length) {
+      const { data: touchRows } = await supabase
+        .from("bottle_variants")
+        .select("bottles_id, updated_at, created_at")
+        .in("bottles_id", queueBottleIds);
+      (touchRows || []).forEach((r) => {
+        const t = r.updated_at ?? r.created_at;
+        if (!t) return;
+        const cur = newestVariantTouch.get(r.bottles_id);
+        if (!cur || cur < t) newestVariantTouch.set(r.bottles_id, t);
+      });
+    }
+
     const merged: QueueBottle[] = [...unverifiedBottles, ...parentBottles].map((b) => {
       const variants = variantsByBottle.get(b.id) || [];
-      // "Last touched" spans the bottle AND its queued variants: editing either one
-      // should float the whole group up, since the admin reviews them together.
       const touches = [
         b.updated_at ?? b.created_at,
+        newestVariantTouch.get(b.id),
         ...variants.map((v) => v.updated_at ?? v.created_at),
       ].filter(Boolean) as string[];
       return {
@@ -607,6 +628,12 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
                   Submitted by {b.submittedBy} · {new Date(b.created_at).toLocaleDateString()}
+                  {/* The list is ordered by this, not by the submitted date. Without it
+                      showing, a correctly sorted queue looks scrambled — an old bottle
+                      edited today belongs at the top, and the card has to say why. */}
+                  {b.lastTouched.slice(0, 10) !== b.created_at.slice(0, 10) && (
+                    <span className="text-charcoal"> · edited {new Date(b.lastTouched).toLocaleDateString()}</span>
+                  )}
                 </div>
               </button>
               {!b.parentVerified && (
