@@ -231,7 +231,31 @@ to a What's new commit.
 **Lesson: `git add -A` is unsafe whenever another agent may be working the same tree.** Stage explicit
 paths. AGENTS says the agents never run in parallel; when they do, staging must be surgical.
 
-### FIXED: Mark as Empty / Remove said "Failed" (2026-09-05) -- `8fb26c5`
+### REVERTED: the custom auth lock (2026-09-05) -- `0a98e30`  ⚠ READ BEFORE TOUCHING AUTH
+`src/lib/supabase.ts` is **stock again**. A custom `auth.lock` wrapper was added that morning to
+bound the Web Locks wait (a force-closed Android PWA leaves the lock held, so `getUser()` waits
+forever). It caused **three production regressions in one day** and was removed:
+
+1. `_autoRefreshTokenTick` calls the lock with `acquireTimeout === 0` and **expects the throw**
+   ("someone else is refreshing, skip this tick"). Swallowing it ran the refresh **unlocked**,
+   racing the session, so RLS-scoped writes silently returned zero rows.
+2. The email-existence check inherited the stall and routed an **existing user into signup**.
+3. For a **positive** timeout, auth-js does NOT convert the abort into
+   `NavigatorLockAcquireTimeoutError` -- `navigator.locks.request` rejects with a raw **AbortError**
+   that passes straight through. The wrapper's `instanceof` check never matched, so it rethrew into
+   the app: *"AbortError: signal is aborted without reason"* on Mark as Empty and Remove.
+
+**The original hang is still covered** by the hard ceiling on the splash in `src/app/page.tsx`,
+measured escaping a permanently held lock at ~8557ms **with the stock client** versus never. Only
+the auto-login-after-force-close nicety is lost; a force-closed Android relaunch lands on Get
+Started instead of straight into the app.
+
+> **DO NOT reintroduce a custom auth lock without being able to hold a signed-in session.** Every one
+> of those failures is in an authenticated flow, and this session could not sign in after the QA
+> cookies were cleared during the original investigation -- so three regressions shipped unexercised.
+> The file itself carries this warning too.
+
+### Earlier that day: Mark as Empty / Remove said "Failed" -- `8fb26c5`
 **Self-inflicted, by the bounded auth lock added the same day.** auth-js calls the lock with
 `acquireTimeout === 0` from exactly one place -- `_autoRefreshTokenTick` -- where a busy lock means
 "someone else is already refreshing, skip this tick". It expects the throw. The wrapper swallowed it
