@@ -101,8 +101,19 @@ reports a real message + stack + UA to `events` (`kind: react_route_error` / `re
 and the tester sees a Try again screen instead of a blank page. **Query that first:**
 `SELECT metadata FROM events WHERE event_type='error' ORDER BY created_at DESC LIMIT 5;`
 
+### Coaches are OFF (Brian, 2026-09-05) -- `e545294`
+`AUTO_COACHES_ENABLED = false` in `src/lib/coaches.ts` disables **both** automatic behaviours: the
+new-user core tour and the What's new digest. The digest was the reason -- it has no editorial
+control, so it shows whatever the catalog holds and would hand a beta tester the accumulated
+7.x/8.x history as news. (Brian's own account had already collected `profile.install` and
+`profile.notifications` that way.)
+**Profile > "Replay tutorial" still works** on purpose, via a sessionStorage handshake
+(`FORCE_REPLAY_KEY`) that CoachHost consumes once -- a visible-but-inert button would just look
+broken. **Flip the flag back to `true` as part of D1**, which is the only change needed; the
+catalog, TourPlayer and WhatsNewSheet are untouched.
+
 ### Single next step
-**Wave D1 -- admin-published What's new.** Today the digest auto-piles every `announce: true` coach,
+**Wave D1 -- admin-published What's new** (and it now also owns re-enabling the coaches). Today the digest auto-piles every `announce: true` coach,
 which would dump 7.x history on a new tester. Needs an `announcements` table + an admin
 publish/unpublish screen, with the digest reading published-unseen rows only and existing coaches
 seeded unpublished. Schema = snapshot + Brian's go. Then D2 (core tour rewrite -- it predates Drink
