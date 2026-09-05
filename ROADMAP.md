@@ -275,8 +275,12 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 
 ### 8.3 Tutorial + admin What's new  -- SHIPPED as Phase 10 D1 + D2 (`ba102c9`, 2026-09-05)
 - [x] Discovery with Brian: new-user core steps (must include Drink)
-- [x] Rewrite `COACH_CATALOG` core flags/copy to match -- explicit `CORE_ORDER`: Search -> barcode ->
-  bottle card -> blind tasting -> My Bar -> Social -> feedback
+- [x] Rewrite `COACH_CATALOG` core flags/copy to match -- explicit `CORE_ORDER`.
+  **Narrowed 2026-09-05 (`ff77e8b`)** at Brian's request ("not so overwhelming"): 7 items / 12 steps
+  -> **5 items / 9 steps** -- Search -> Have a drink -> Blind tastings -> My Bar -> feedback.
+  Barcode and Social demoted to `core: false` (still in the catalog, introduce later via a published
+  announcement's "Show me"): scanning is a faster way to do Search, and the Social feed is empty
+  until you have done something.
 - [x] Admin publish/unpublish for What's new (stop auto-piling every `announce: true`) -- an
   admin-written `announcements` table; `AUTO_COACHES_ENABLED` is back to `true`
 - [x] Replay tutorial still replays **core** only

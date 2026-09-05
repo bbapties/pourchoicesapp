@@ -8,19 +8,29 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `98bf9e4`. Working tree clean (untracked: `.claude/worktrees/`, the weekly HTML).
+- **Tip:** `ff77e8b`. Working tree clean (untracked: `.claude/worktrees/`, the weekly HTML).
   All on origin/MVP-v3.
-- **Current phase:** **Phase 10** ([PHASE10.md](PHASE10.md)). **Waves A, B, C and D are complete**
-  (D1 + D2 `ba102c9`, D3 `e8bfa90`). Wave A gained **A5, data-only accounts** (below).
-  **Wave E is next**, and E1 is in Brian's hands right now.
+- **Current phase:** **Phase 10** ([PHASE10.md](PHASE10.md)). **Waves A-D complete.** This session
+  was unplanned: three prod bugs Brian hit, then two small features. **Wave E is still next.**
 
 ### The single next step
-**E1 -- the first blind tasting ever run on prod.** Brian created the first seeded ranking account
-(`Right_Blind`, `account_type = 'data'`, currently empty) and is running a blind tasting through the
-real app himself. When it lands, confirm: a `tasting_sessions` row, the full pairwise
-`tasting_results` set, `bottle_variants.elo_global` moved off 1500, `user_bottles` written as
-`currently_owned = false, times_had = 0`, and **nothing on the Social feed**.
-Then **E2** (ranked tasting-results view) -- the payoff screen the core loop still lacks.
+**E1 -- the first blind tasting run on prod.** `Right_Blind` now HAS a completed tasting (6 bottles,
+Elo spread 1461-1538, `times_had = 0`, `currently_owned = false`) -- so E1's data half is done and
+was used as this session's test fixture. What is still unconfirmed is the checklist: a
+`tasting_sessions` row, the full pairwise `tasting_results` set, `bottle_variants.elo_global` moved
+off 1500, and **nothing on the Social feed**. Verify those, then **E2** (ranked tasting-results
+view) -- the payoff screen the core loop still lacks.
+
+### THE ONE THING TO READ BEFORE TOUCHING AUTH
+`src/lib/supabase.ts` has a **custom `auth.lock` again** (`362458f`, corrected by `e555784`). An
+earlier attempt at this was reverted the same day after three prod regressions, and that revert
+re-introduced the bug it was hiding. **Do not revert it again without reading its header comment** --
+it documents each prior regression and the test that now covers it. The rule that made the
+difference: **you cannot validate auth changes signed out.** Mint a real session for the QA account
+via the Supabase admin API (`POST /auth/v1/admin/generate_link` type `magiclink` with the
+service-role key, then `POST /auth/v1/verify` with **`token_hash`** -- `token` 400s -- and the anon
+key). No password, no auth config touched. That single capability is what turned four sessions of
+guessing into one session of measuring.
 
 ### OWED BY BRIAN -- one SQL file, and it matters more than it looks
 `sql/account-type-trigger-migration.sql` is **NOT applied.** The agent sandbox refused the
@@ -34,6 +44,74 @@ node scripts/_psql.mjs "$(cat sql/account-type-trigger-migration.sql)"
 ```
 Also still open: **B-21** (confirm the service-role env var in Vercel; only affects admin user
 deletion) and the **real-device iPhone install test**.
+
+### One open decision for Brian
+**Search's My Ranks now NARROWS the list, not just reorders it** (`9e60914`). Sorting client-side
+only ever touched the loaded page -- of 4 ranked bottles only 2 were on page one of ~90 -- so
+"my ranked bottles, best first" is the only reading that survives pagination. Brian was told and has
+not objected; if he wants the full list left in place, revert `applyMyRanksToQuery` only.
+**My Bar's My Ranks is a pure sort** and is unaffected: that list is already just the viewer's own
+bottles and is not paginated.
+
+### 2026-09-05 (late) -- three prod bugs were ONE bug, then two features
+
+**The three symptoms Brian reported** -- Remove spinning on "Removing" forever, Mark as Empty
+showing no error but never committing, and "it doesn't remember me" on every force-close -- were a
+**single fault**: `@supabase/auth-js` serialises every session-touching call through a Web Lock, and
+a force-closed PWA leaves that lock held by a context that no longer exists. Everything after it
+queues forever, and the splash's 8s ceiling turns that hang into the login screen.
+
+**What made this session different from the three before it:** a real signed-in session, minted for
+the QA account with no password (see "THE ONE THING TO READ BEFORE TOUCHING AUTH"). Prior sessions
+shipped auth changes on inspection alone, which is exactly how three regressions reached prod.
+
+**Ruled out by running it, not reading it** -- each of these was a confident theory that turned out
+wrong, and each cost one cheap test:
+- DB/RLS are fine. Insert/update/delete all commit under the user's own JWT.
+- B-74 did not break the `user_bottles` policy -- it resolves through `users.auth_id` correctly.
+- Refresh-token rotation is safe under concurrency: 3 parallel refreshes returned the *same* token,
+  and reusing the original still worked.
+- The service worker never touches these requests (GET-only, skips navigations).
+
+The decisive clue was in prod data, not the code: both of Brian's owned rows still had
+`emptied_count = 0`, so Mark as Empty had **never committed** -- a hang, not a failure.
+
+**Shipped**
+- `362458f` **bounded auth lock**, with all three previously-reverted regressions covered by tests
+  that import the shipped source. A dead holder is latched after the first timeout: without it one
+  add/empty/remove cycle against a wedged lock took **21.4s; now 535ms**.
+- `e555784` **follow-up to my own bug in the above.** It threw a plain `Error`, but auth-js only
+  swallows lock contention matching `e.isAcquireTimeout || e instanceof LockAcquireTimeoutError`, so
+  it was rethrowing as an uncaught rejection and killing that refresh tick. Found by reading the
+  console on a signed-in page. **Lesson: the lock suite passing did not catch it -- the browser did.**
+- `21e2072` **middleware no longer destroys a valid session.** It discarded the error from
+  `getUser()`, so a network blip and "no session" were indistinguishable -- and the cookie purge
+  acted on it. Worst exactly on reopen, when the first request races a cold radio. Purge now
+  requires an explicit 4xx.
+- `9e60914` **Search: "Had it before" filter (Yes/No)** + **My Ranks fixed for blind tasters.**
+  Right_Blind was told to "rate some bottles" while holding 6 blind-tasted rankings: a tasting moves
+  Elo and never writes a star, but the gate and sort read only `user_ratings`. Both now go in the
+  QUERY, not a client-side pass -- that is B-38's failure shape and My Ranks had it too.
+- `49d6e6d` **My Bar's My Ranks was a stub** -- it toasted unconditionally and never sorted. My Bar
+  carried only global Elo, so the page now also reads the viewer's own `user_bottles.elo`, across
+  ALL their rows (a blind tasting's row is `times_had = 0` and not owned -- exactly what the Tasted
+  tab shows), keyed by variant first.
+- `ff77e8b` **first-session tour cut to 4 functions + feedback**, 7 items/12 steps -> 5 items/9 steps.
+
+**LANDMINE -- cost most of an hour.** A stale service worker (`pc-v2-static`) served an old bundle in
+dev, and I concluded three times that a working change "didn't work". Prod is likely safe (Next
+content-hashes chunk filenames; navigations bypass the SW) but **dev chunk names are stable, so the
+SW poisons them**. If a change appears to have no effect, clear the SW before believing the code:
+```
+navigator.serviceWorker.getRegistrations().then(r=>r.forEach(x=>x.unregister()));
+caches.keys().then(k=>k.forEach(c=>caches.delete(c)));
+```
+
+**Verification standard used throughout** (worth keeping): signed in, against real data, with counts
+that must add up -- Search 89 total = 1 (Had it: Yes) + 88 (No); My Ranks returned exactly the 4
+ranked bottles in descending personal Elo; My Bar's order *changed* from global to personal and the
+gate still refuses an unranked account; the tour reports `1 / 9` and ends cleanly. Test rows were
+seeded deliberately out of order so a pass could not be insertion order.
 
 ### Known gaps left by this round (not bugs -- unfinished lines)
 - **D2 shipped without its telemetry.** Only `whatsnew_publish` exists. `tour_started`,
@@ -231,7 +309,14 @@ to a What's new commit.
 **Lesson: `git add -A` is unsafe whenever another agent may be working the same tree.** Stage explicit
 paths. AGENTS says the agents never run in parallel; when they do, staging must be surgical.
 
-### REVERTED: the custom auth lock (2026-09-05) -- `0a98e30`  ⚠ READ BEFORE TOUCHING AUTH
+### SUPERSEDED -- REVERTED: the custom auth lock (2026-09-05) -- `0a98e30`
+
+> ⚠ **This entry is HISTORY, not current state.** The revert below re-introduced the very hang it was
+> hiding (Remove spinning forever, Mark as Empty never committing, sessions "forgotten" on reopen).
+> A corrected bounded lock is back in `src/lib/supabase.ts` as of `362458f` + `e555784`, with every
+> regression named below covered by a test. **Read the file's header comment before acting on
+> anything in this section.** Kept because the three failure modes it documents are real and are
+> exactly what the new tests assert.
 `src/lib/supabase.ts` is **stock again**. A custom `auth.lock` wrapper was added that morning to
 bound the Web Locks wait (a force-closed Android PWA leaves the lock held, so `getUser()` waits
 forever). It caused **three production regressions in one day** and was removed:
