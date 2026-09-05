@@ -33,6 +33,45 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
    browser tab had been showing. Replaced (must be RGBA; Next's ico loader rejects RGB and fails the
    build).
 
+### Wave C follow-ups shipped after real-device testing
+Brian tested on Android and it did not work. Two rounds of fixes:
+
+**Android (`c4f6fa2`).** Three causes, all real:
+1. **We listened for `beforeinstallprompt` too late.** Chrome fires it once, early, and only when it
+   decides the app is installable. `InstallSheet` attached its listener on mount, so opening from
+   Profile routinely landed after the event had fired and been lost -- leaving manual instructions
+   as the only path. The listener now lives in `src/lib/installPromptStore.ts`, attached at module
+   import from a root-layout component; the sheet reads it via `useSyncExternalStore`.
+2. **We could not tell it was already installed.** `display-mode: standalone` only reports whether
+   the CURRENT page runs inside the app; in a Chrome tab it is false either way. The manifest now
+   declares itself under `related_applications`, which is what lets `getInstalledRelatedApps()`
+   report our own install. New "You already have it" state; the first-visit prompt no longer nags
+   installed users.
+3. **Chrome refuses to offer an install for an app it already installed**, so no button can appear
+   in that state -- and showing install instructions there was advice that cannot work.
+**Confirmed working by Brian after uninstall + reinstall.**
+
+**Apple (`44dd01c`).** One-tap install is impossible on iOS -- Safari has no install API and never
+fires `beforeinstallprompt`. Everything around it now matches, and three things were wrong:
+1. **`black-translucent` was the wrong status bar style** (my C1 choice): it forces WHITE status bar
+   text and runs content under the notch, so on ivory headers the clock would be invisible and the
+   Dynamic Island would sit on the search bar. Now `default`. **Revisit in Phase 5 if the palette
+   goes dark.**
+2. **No top safe-area insets.** `viewport-fit=cover` was set, but all four `fixed top-0` headers,
+   both stacked sub-bars and the Social toast were positioned off the raw top edge. Each is now
+   offset by `env(safe-area-inset-top)` and AppShell's main margin grows to match. Non-notched
+   rendering is byte-identical (env resolves to 0).
+3. **No launch images.** Android composes a splash from the manifest; iOS shows a WHITE flash
+   without `apple-touch-startup-image`. Added for nine current iPhone sizes (`public/splash/`,
+   regenerate with the scratchpad `make_splash.py`). Only the matching file is downloaded.
+Also: on iPhone every browser is WebKit but only Safari installs reliably, so Chrome/Firefox/Edge
+users are now told to open in Safari rather than given Safari's UI.
+
+### Still owed on Wave C
+**Real-device iPhone test.** Everything above was verified by declaration and by UA-matrix, not on
+an actual iPhone. Worth confirming: home-screen icon, standalone launch with no Safari chrome, no
+white flash, and that the notch does not overlap the header.
+
 ### Single next step
 **Wave D1 -- admin-published What's new.** Today the digest auto-piles every `announce: true` coach,
 which would dump 7.x history on a new tester. Needs an `announcements` table + an admin
