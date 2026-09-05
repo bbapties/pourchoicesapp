@@ -54,16 +54,28 @@ for his testers. Then C2 (service worker, app-shell only -- required for push) a
 prompt; Android `beforeinstallprompt`, iOS instructional).
 
 ### Open for Brian (not code)
-- **A3 / B-26 -- forgot-password is broken until he does this.** Supabase Auth -> URL Configuration
-  -> Redirect URLs, add `/reset-password`, and enable the Reset Password template. **Confirmed this
-  is NOT doable with our credentials:** the `auth` schema has no config table, and the Management
-  API returns 401 to the service-role key -- it needs an account-wide personal access token, which
-  we deliberately did not take. Mitigation: a password can be reset via the service role if a tester
-  is stuck.
+- **A3 / B-26 -- ONE entry still missing from the redirect allowlist.** Brian added
+  `http://localhost:3000/reset-password` and `https://pourchoicesapp.com/reset-password`, and the
+  Reset Password template is Supabase's default (enabled). **But the canonical host is `www`:**
+  `pourchoicesapp.com` 308-redirects to `www.pourchoicesapp.com`, so `window.location.origin` is
+  always the www form and the app sends `https://www.pourchoicesapp.com/reset-password`, which is
+  NOT in the list. Supabase matches these literally, so the link falls back to Site URL -- the user
+  lands on `/` carrying a recovery fragment, supabase-js signs them in and bounces them to `/mybar`
+  **without ever setting a password.** Fix: add `https://www.pourchoicesapp.com/reset-password` and
+  confirm Site URL is the www form.
+  Note the `/auth/v1/recover` endpoint returns 200 for a disallowed `redirect_to` as well as an
+  allowed one (verified against a bogus control), so it cannot be probed from outside -- this was
+  established from the 308 plus Supabase's literal matching, not from an API response.
+  **Config is NOT reachable with our credentials:** the `auth` schema has no config table and the
+  Management API 401s the service-role key; it needs an account-wide personal access token, which we
+  deliberately did not take. Mitigation: a password can be reset via the service role if a tester is
+  stuck.
 - **B-21** -- confirm the service-role env var in Vercel. Only affects admin user deletion.
-- **`Grain_of_Truth`** (`grainoftruth@pourchoicesapp.com`, created Aug 29) had a login but no
-  profile link; the migration repaired it. It authored 1 bottle + 1 variant. Brian should confirm
-  whether that is a real tester or a test account.
+- **`Grain_of_Truth` is Brian's Grok data bot** (confirmed 2026-09-05), not a person: it polls for
+  new user bottles and runs the `verify-bottle` skill, plus one random bottle a day. It is the
+  catalog's most active contributor -- **110 `suggested_edits`** plus 1 bottle + 1 variant. Its
+  `auth_id` was NULL until the B-74 migration repaired it, so anything keyed on `auth_id` silently
+  skipped it before then. Documented in ROADMAP dev/QA accounts and in the skill's id table.
 
 ### Landmines carried forward
 - **Do NOT reintroduce "match both ids".** B-74 is closed and the FK rejects an auth id, so a dual

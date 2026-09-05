@@ -21,6 +21,12 @@
 ## Dev / QA accounts
 - **Claude QA account** — `claude@pourchoicesapp.com`. Dedicated **regular-user** account (demoted from admin, B-22) so Claude's QA and bottle/variant adds are attributable (`created_by`). **Temporary — delete once the app is more built.** Password lives with Brian only — **ask, don't commit it**; the account is not an admin and cannot verify/delete/cascade.
 - **Grok QA account** — `grokbuild@pourchoicesapp.com` / username `GrokBuildAdmin`. Same deal for Grok — a **regular-user** account (demoted from admin, B-22), created 2026-08-27 for attributable prod QA. **Temporary — delete after beta.** Password lives with Brian only — ask, don't commit it. `The_Lake_House` is the sole admin.
+- **Grok data bot** — `grainoftruth@pourchoicesapp.com` / username `Grain_of_Truth` (public id
+  `41b59766-...`). **Not a person and not a QA account** — an automated Grok agent that polls for new
+  user bottles and runs the `verify-bottle` skill against them, plus one random bottle a day. It is
+  the catalog's most active contributor: **110 `suggested_edits`** plus a bottle and a variant it
+  authored. Its `public.users.auth_id` was NULL until 2026-09-05 (repaired during the B-74 migration),
+  so anything keyed on `auth_id` silently skipped it before then.
 
 ---
 

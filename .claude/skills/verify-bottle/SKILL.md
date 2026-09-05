@@ -8,14 +8,35 @@ description: Verify a Pour Choices bottle end-to-end — research & enrich real 
 Turns one **unverified** bottle into clean, trustworthy data — but instead of writing the live tables directly, it files every change as a **pending `suggested_edits` row for Brian to review and approve in the app**. This is the data-only lane (runs parallel to Grok's code lane by Brian's explicit OK — the lanes don't overlap). Read `AGENTS.md` guardrails first.
 
 ## Golden rules
-- **Review-gated, not direct.** All changes are inserted as `status='pending'` `suggested_edits` rows, `submitted_by = 7063602c-1604-4d04-aa59-2b74fdd5af6d` (Claude Code Agent, public.users), grouped by one `submission_group` UUID per bottle. Brian approves in the admin queue; the app applies them. Do NOT write `bottles`/`bottle_variants` directly (the Buffalo Trace pilot on 2026-08-27 was the one-time exception).
+- **Review-gated, not direct.** All changes are inserted as `status='pending'` `suggested_edits` rows, grouped by one `submission_group` UUID per bottle. Brian approves in the admin queue; the app applies them. Do NOT write `bottles`/`bottle_variants` directly (the Buffalo Trace pilot on 2026-08-27 was the one-time exception).
+- **Stamp `submitted_by` with YOUR OWN account's `public.users.id`**, so the queue shows who actually submitted. See the id table below. Do not hardcode another agent's id.
 - **Never trust existing field data** — the Nov-2025 seed import is full of corruption (see Known landmines). Re-derive from research.
 - **The `verified` flip is Brian's, not ours.** Approving suggestions does not set `verified`. Brian flips `verified=true` as his explicit sign-off after reviewing a bottle.
 - Bottle data lives on TWO tables: `bottles` (identity) and `bottle_variants` (per-release: proof, age, notes, images; `bottles_id` FK). Route each field to the right one.
 - SQL: read-only via repo `scripts/_psql.mjs`; inserts via the bundled `scripts/run_sql_file.mjs` (snapshots + transactional; run from repo root so `.env.local` resolves).
 
-## Ownership / id quirk (important)
-`public.users.id` ≠ `auth.users.id` (linked by email). `bottles.created_by/updated_by` + `bottle_variants.updated_by` FK → **auth.users** (Brian = `d65ef6f6`). `events.user_id` + `suggested_edits.submitted_by/reviewed_by` FK → **public.users** (Claude = `7063602c`, Brian/The_Lake_House = `7878be89`, PourChoicesOG = `dbaf1f8d`).
+## Ownership / ids (important)
+
+`public.users.id` is NOT `auth.users.id` -- they are unrelated UUIDs for the same person, linked by
+`users.auth_id`.
+
+**As of 2026-09-05 (B-74), EVERY person-column in the schema references `public.users.id`**, enforced
+by foreign keys. That includes `bottles.created_by/updated_by` and
+`bottle_variants.created_by/updated_by`, which used to reference `auth.users` -- **this doc said so
+until B-74 shipped, and it is now wrong.** Writing an auth id into any of them is rejected by the
+foreign key, so a suggestion or insert carrying one will fail outright.
+
+**Always use the `public.users.id` column below. Never `auth.users.id`.**
+
+| account | `public.users.id` (USE THIS) | role |
+|---|---|---|
+| `Grain_of_Truth` (`grainoftruth@`) | `41b59766-2ab4-45ed-95a7-01467cde8146` | **the Grok data bot** -- runs this skill on a schedule |
+| `Claude Code Agent` (`claude@`) | `7063602c-1604-4d04-aa59-2b74fdd5af6d` | Claude QA |
+| `GrokBuildAdmin` (`grokbuild@`) | `121de2bf-fbef-4665-9d62-699ed557dc0c` | Grok QA |
+| `The_Lake_House` (Brian) | `7878be89-18a5-4043-a2da-be308b93ab05` | sole admin |
+| `PourChoicesOG` | `dbaf1f8d-232b-4491-a17e-e7bb1fbdbf19` | user |
+
+Auth ids are deliberately not listed: there is no longer any column that wants one.
 
 ## Field → target table routing (matches src/lib/suggestedEdits.ts)
 - **identity → `bottles`**: name, distillery, category, style, volume, **barcode**, **extras**
