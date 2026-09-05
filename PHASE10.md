@@ -42,13 +42,23 @@ Two numbers drive this phase: **0 tastings** (the flagship loop is unexercised) 
 
 ## Wave A — Stop the bleeding (small, independent)
 
-- [ ] **A1 Redirect loop — investigate, cap, purge.** Declared fixed 23:17 UTC 2026-09-01; **restarted
+- [x] **A1 Redirect loop — investigate, cap, purge.** Declared fixed 23:17 UTC 2026-09-01; **restarted
   at 23:35 the same night.** Five anon sessions bouncing `/` <-> `/mybar`, ~60k rows in 4.5h, one
   session alone 26,794 rows. Decayed to a trickle **still firing 3 hits/day at 11:00 UTC**.
   `middleware.ts:45-59` + `src/app/page.tsx:48-59` both use `getUser()` and look correct, so the
   hypothesis is non-human clients ignoring the `Set-Cookie` purge — **confirm before coding.**
   Then add a **server-side per-session rate cap** (extend `guard_event_insert`; today's cap is
   client-side only, which is why one client wrote 26k rows), then purge by session_id.
+  **DONE 2026-09-05.** Root cause was **not** the client: `middleware.ts` sat at the repo root, and
+  Next.js only reads `src/middleware.ts` when a `src/` directory exists -- **the middleware had never
+  run in production.** So `/search`, `/social` and `/profile` served 200 to signed-out visitors (no
+  data leaked -- RLS held), and both `f6842a3` (getUser hardening) and `4210e1c` (the stale-cookie
+  purge built to end this very loop) were no-ops. Moved to `src/middleware.ts` + a `/`,
+  `/reset-password` public allowlist (enabling it had bounced password-reset arrivals) -- `a6de5b0`,
+  verified live on prod. Added the server-side cap (200 rows/session/hour in `guard_event_insert`;
+  260-row burst -> exactly 200) and purged 64,560 rows (**65,215 -> 655**).
+  The five loopers were **browser tabs, not a bot**: `session_id` lives in `sessionStorage`, so ids
+  persisting from Sep 1 to Sep 4 means those tabs stayed open; they wake together once a day.
 - [ ] **A2 Compress images on upload.** Resize + WebP in `src/lib/uploadBottleImage.ts` (already
   MIME-allow-listed + 8 MB capped from B-59). ~15x more headroom on the same free tier. Must land
   **before** more beta photos and well before any catalog seed.

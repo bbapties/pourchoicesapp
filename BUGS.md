@@ -217,13 +217,18 @@ Gated: auth / RLS / env. Ask Brian before changing.
 - [x] **B-59** **FIXED (2026-08-30, PHASE9 #4): uploads allow-list MIME, derive ext from it, cap 8MB. uploadBottleImage.ts, feedback.ts.** -- (high) Public `bottle-images` + unsanitized upload.
   Extension from `file.name`; `contentType` client-supplied; no size cap. Feedback screenshots are world-readable public URLs.
   `uploadBottleImage.ts` · `feedback.ts` ~41–58
-- [~] **B-60** (medium) Events table: unbounded anon inserts (`user_id IS NULL`), no rate limit, free-form jsonb.
-  **PARTLY FIXED (2026-09-01, PHASE9 #9, `3ef5583`)** — client rate-cap + field/metadata truncation in
+- [x] **B-60** (medium) Events table: unbounded anon inserts (`user_id IS NULL`), no rate limit, free-form jsonb.
+  **Tier 1 (2026-09-01, PHASE9 #9, `3ef5583`)** — client rate-cap + field/metadata truncation in
   `events.ts`, plus a `BEFORE INSERT` trigger `guard_event_insert` bounding field lengths and jsonb
   size so a raw anon insert can't bypass it (rollback `sql/events-hardening-snapshot.sql`).
-  **STILL OPEN — the row-count cap.** The rate limit is client-side only, so a client that ignores it
-  can still write unbounded rows: the 2026-09-01/02 redirect loop put **26,794 rows through a single
-  session_id**. A **server-side per-session rate cap** is Phase 10 **A1**. See PHASE10.md.
+  **Tier 2 — server-side row cap (2026-09-05, Phase 10 A1).** Tier 1's rate limit was client-side
+  only, so a client that ignored it still wrote unbounded rows: the 2026-09-01/02 redirect loop put
+  **26,794 rows through a single session_id**. `guard_event_insert` now also caps each `session_id`
+  at **200 rows per rolling hour**, returning NULL (silently dropping the row) rather than raising —
+  `logEvent` is fire-and-forget, so raising would spam the console and could feed a retry loop.
+  NULL-session inserts are uncapped. Added `events_session_time_idx` to keep the COUNT cheap.
+  **Verified on prod:** a 260-row burst landed exactly 200. Migration
+  `sql/events-session-rate-cap-migration.sql`, rollback `sql/events-session-rate-cap-snapshot.sql`.
   `sql/events-migration.sql` · `src/lib/events.ts`
 - [x] **B-61** (medium) `EventTracker` page_views often stamp `user_id = null` for logged-in users. **FIXED (2026-09-01, PHASE9 #9, `3ef5583`).**
   `EventTracker` now waits for `useCurrentUser` to resolve (`loading=false`) before logging a

@@ -74,8 +74,28 @@ Shape:
 | `metadata jsonb null` | the long tail (query, result_count, mode, message, pour_type, …) |
 | `created_at timestamptz` | default now() |
 
-Indexes: `(user_id, created_at)`, `(event_type, created_at)`, `(session_id)`. RLS: anon + auth may
-**insert** (anon only anonymous rows); **select is admin-only**; no UPDATE/DELETE policies (append-only).
+Indexes: `(user_id, created_at)`, `(event_type, created_at)`, `(session_id)`, `(session_id, created_at)`.
+RLS: anon + auth may **insert** (anon only anonymous rows); **select is admin-only**; no UPDATE/DELETE
+policies (append-only).
+
+### Write guards — `guard_event_insert` (BEFORE INSERT trigger)
+
+Telemetry must never be able to break the app, so every guard here **shapes or drops** a row; none
+ever raises.
+
+| guard | behavior |
+|-------|----------|
+| field bounds | `event_type` 64 · `surface` 256 · `target_type` 64 · `target_id` 256 · `session_id` 64 |
+| metadata size | over 4 KB is replaced with `{"_truncated": true}` |
+| **per-session rate cap** | a `session_id` over **200 rows per rolling hour** is silently dropped (`RETURN NULL`). NULL-session inserts are uncapped. |
+
+The rate cap exists because the client-side limit is not enough on its own. During the
+2026-09-01/02 `/` <-> `/mybar` redirect loop, **one session_id wrote 26,794 rows** and five tabs
+wrote 64,560 between them -- 99% of the table -- because the runaway clients simply ignored the
+client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
+
+`sql/events-hardening-migration.sql` (fields/metadata) ·
+`sql/events-session-rate-cap-migration.sql` (rate cap; rollback `...-snapshot.sql`).
 
 **Client helper** `logEvent` / `logClick` (`src/lib/events.ts`) — **fire-and-forget + fail-open**
 (never awaits, never throws; console-only on error). No batching (per-event) — fine at beta volume.
