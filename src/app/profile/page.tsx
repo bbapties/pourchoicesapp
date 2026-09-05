@@ -8,7 +8,9 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Toaster } from "@/components/ui/sonner";
 import FeedbackSheet from "@/components/FeedbackSheet";
 import { updateUsername, resetCoaches, fetchEmail, USERNAME_MAX } from "@/lib/profile";
-import { logClick } from "@/lib/events";
+import { clearDismissedInstall, isStandalone } from "@/lib/pwa";
+import InstallSheet from "@/components/InstallSheet";
+import { logClick, logEvent } from "@/lib/events";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -22,6 +24,22 @@ export default function ProfilePage() {
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  // Hidden once they are actually running the installed app -- offering "install" inside the
+  // installed thing is the kind of detail that makes an app feel unfinished.
+  const [installed, setInstalled] = useState(false);
+  useEffect(() => { setInstalled(isStandalone()); }, []);
+
+  /**
+   * Re-offer the install prompt. C3 remembers "continue in browser" so it does not nag; this is the
+   * documented way back in. The sheet opens HERE rather than routing to the login screen, because a
+   * signed-in user sent to "/" is redirected to /mybar and would never see it.
+   */
+  const [installOpen, setInstallOpen] = useState(false);
+  const handleInstallAgain = () => {
+    clearDismissedInstall();
+    logEvent({ eventType: "pwa_install_reopened", surface: "/profile" });
+    setInstallOpen(true);
+  };
 
   // Seed display name once the user resolves.
   useEffect(() => {
@@ -145,6 +163,18 @@ export default function ProfilePage() {
           {resetting ? "Restarting…" : "Replay tutorial"}
         </button>
 
+        {!installed && (
+          <button
+            type="button"
+            data-coach="profile.install"
+            onClick={handleInstallAgain}
+            className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900"
+            style={{ minHeight: "44px" }}
+          >
+            Install the app
+          </button>
+        )}
+
         <button
           type="button"
           data-coach="profile.feedback"
@@ -164,6 +194,8 @@ export default function ProfilePage() {
           Sign Out
         </button>
       </div>
+
+      <InstallSheet open={installOpen} onOpenChange={setInstallOpen} surface="/profile" />
 
       <FeedbackSheet
         open={feedbackOpen}

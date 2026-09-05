@@ -254,6 +254,24 @@ export const COACH_CATALOG: CoachItem[] = [
       },
     ],
   },
+  {
+    id: "profile.install",
+    title: "Install Pour Choices",
+    body: "Put it on your home screen so it opens full screen, like an app.",
+    route: "/profile",
+    // Not `core`: the install ask already happens on first visit (Phase 10 C3), and the main loop
+    // did not change. This row exists so the Profile entry point is discoverable to people who
+    // tapped "Continue in browser" and later changed their mind.
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/profile",
+        anchor: "profile.install",
+        caption: "Chose to stay in the browser? Install it here any time - it opens full screen and sits on your home screen like any other app.",
+      },
+    ],
+  },
 ];
 
 export function coreItems(): CoachItem[] {

@@ -78,6 +78,25 @@ Indexes: `(user_id, created_at)`, `(event_type, created_at)`, `(session_id)`, `(
 RLS: anon + auth may **insert** (anon only anonymous rows); **select is admin-only**; no UPDATE/DELETE
 policies (append-only).
 
+### PWA install funnel (Phase 10 C3)
+
+One row per step, so we can see where an install actually falls over rather than guessing. Platform
+is on every row because the three paths are genuinely different products: Android can be installed
+in one tap, iOS can only be *taught*, and an in-app browser usually cannot install at all.
+
+| event | when |
+|-------|------|
+| `pwa_prompt_shown` | the sheet appears (metadata: `platform`) |
+| `pwa_install_clicked` | Android only -- they tapped Install, before the browser's own dialog |
+| `pwa_install_choice` | the browser dialog's result (metadata: `outcome` accepted/dismissed) |
+| `pwa_continue_browser` | dismissed, remembered in localStorage so it never nags |
+| `pwa_installed` | the `appinstalled` event, which also fires for installs done via the browser's own menu |
+| `pwa_install_reopened` | Profile's "Install the app" row |
+
+The gap worth watching is `pwa_prompt_shown` on iOS with no matching `pwa_installed`: that is a
+tester who was shown the steps and did not follow them, which is an instruction problem, not a
+platform one.
+
 ### Write guards — `guard_event_insert` (BEFORE INSERT trigger)
 
 Telemetry must never be able to break the app, so every guard here **shapes or drops** a row; none

@@ -2,6 +2,7 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import AppShell from "@/components/AppShell";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
+import InstallPrompt from "@/components/InstallPrompt";
 import type { Metadata, Viewport } from "next";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body className={`${inter.className} h-dvh flex flex-col bg-ivory`}>
         {/* Implemented fixed header/footer with scrollable middle per user spec */}
         <ServiceWorkerRegistrar />
+        <InstallPrompt />
         <AppShell>{children}</AppShell>
       </body>
     </html>
