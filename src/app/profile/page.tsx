@@ -24,8 +24,9 @@ export default function ProfilePage() {
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
-  // Hidden once they are actually running the installed app -- offering "install" inside the
-  // installed thing is the kind of detail that makes an app feel unfinished.
+  // Hidden only when running INSIDE the installed app -- offering "install" in there is the kind of
+  // detail that makes an app feel unfinished. In a browser tab the row stays, even if the app is
+  // installed on the device, because that is where the sheet explains how to refresh a stale icon.
   const [installed, setInstalled] = useState(false);
   useEffect(() => { setInstalled(isStandalone()); }, []);
 

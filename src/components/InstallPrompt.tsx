@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import InstallSheet from "@/components/InstallSheet";
 import { logEvent } from "@/lib/events";
-import { detectPlatform, hasDismissedInstall, isStandalone } from "@/lib/pwa";
+import { detectPlatform, hasDismissedInstall, isInstalledOnDevice, isStandalone } from "@/lib/pwa";
+import { getDeferredPrompt, subscribeToInstallState } from "@/lib/installPromptStore";
 
 /**
  * Decides WHEN to ask, on first visit (Phase 10 C3). The sheet itself is `InstallSheet`.
@@ -14,9 +15,8 @@ import { detectPlatform, hasDismissedInstall, isStandalone } from "@/lib/pwa";
  * logging in again. Installing first means the account they create belongs to the thing on their
  * home screen.
  *
- * Mounted from the root layout rather than the login page so the `beforeinstallprompt` listener is
- * attached before Chrome fires it; that event is easy to miss if you wait for a later screen to
- * render. It only ever surfaces on the login route.
+ * Mounted from the root layout so `installPromptStore` is imported (and therefore listening for
+ * `beforeinstallprompt`) as early as possible. It only ever surfaces on the login route.
  */
 export default function InstallPrompt() {
   const pathname = usePathname();
@@ -25,28 +25,42 @@ export default function InstallPrompt() {
 
   useEffect(() => {
     if (!onLoginRoute) return;
-    // Already installed, or they already said "continue in browser": never nag.
+    // Running inside the installed app, or already told us no: never ask.
     if (isStandalone() || hasDismissedInstall()) return;
 
     const platform = detectPlatform();
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let unsubscribe: (() => void) | undefined;
 
     const show = () => {
+      if (cancelled) return;
       setOpen(true);
       logEvent({ eventType: "pwa_prompt_shown", surface: "/", metadata: { platform } });
     };
 
-    // Android/Chrome: only ask once the browser confirms the app is actually installable.
-    const onBeforeInstall = () => show();
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    // Already on the device, just being browsed in Chrome? `display-mode` cannot see that, so ask
+    // the platform. Without this an installed user is prompted to install on every first visit.
+    isInstalledOnDevice().then((installed) => {
+      if (cancelled || installed) return;
 
-    // iOS can never fire that event, so fall back to a short delay -- long enough that the 1.5s
-    // splash has settled and we are not talking over the first impression.
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    if (platform === "ios" || platform === "in-app-browser") {
-      timer = setTimeout(show, 2500);
-    }
+      // Android: only ask once Chrome confirms it is installable. The event may ALREADY have fired
+      // and be sitting in the store, so check before subscribing.
+      if (getDeferredPrompt()) {
+        show();
+        return;
+      }
+      unsubscribe = subscribeToInstallState(() => {
+        if (getDeferredPrompt()) show();
+      });
 
-    // Installed by any route (including Chrome's own menu): stop asking.
+      // iOS can never fire that event, so fall back to a short delay -- long enough that the 1.5s
+      // splash has settled and we are not talking over the first impression.
+      if (platform === "ios" || platform === "in-app-browser") {
+        timer = setTimeout(show, 2500);
+      }
+    });
+
     const onInstalled = () => {
       setOpen(false);
       logEvent({ eventType: "pwa_installed", surface: "/", metadata: { platform } });
@@ -54,8 +68,9 @@ export default function InstallPrompt() {
     window.addEventListener("appinstalled", onInstalled);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      cancelled = true;
       window.removeEventListener("appinstalled", onInstalled);
+      if (unsubscribe) unsubscribe();
       if (timer) clearTimeout(timer);
     };
   }, [onLoginRoute]);

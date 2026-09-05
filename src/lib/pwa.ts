@@ -11,15 +11,12 @@
  *  deliberately: it is a per-device convenience, and being wrong just re-asks once. */
 const DISMISS_KEY = "pc.pwa.dismissed";
 
-/** The Chrome-only event. Not in the TS DOM lib, so declared here. */
-export type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
-
 export type Platform = "android" | "ios" | "desktop" | "in-app-browser";
 
-/** Already running as an installed app? Then never ask. */
+/**
+ * Already running INSIDE the installed app? Note this is false in a normal browser tab even when
+ * the app IS installed on the device -- use `isInstalledOnDevice` for that question.
+ */
 export function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
   // iOS uses a non-standard navigator flag; everyone else reports the display mode.
@@ -74,5 +71,31 @@ export function clearDismissedInstall(): void {
     localStorage.removeItem(DISMISS_KEY);
   } catch {
     // Non-fatal.
+  }
+}
+
+/**
+ * Is the app installed on this device, as seen from a normal browser tab?
+ *
+ * `display-mode: standalone` cannot answer this -- it only reports whether the CURRENT page is
+ * running inside the installed app. Someone who installed Pour Choices and then opened it in Chrome
+ * looks exactly like someone who never installed it, which is why they were being offered install
+ * instructions they did not need.
+ *
+ * `getInstalledRelatedApps()` closes that gap, but only because the manifest declares itself under
+ * `related_applications`. Chrome/Android only; everything else returns false, which is the safe
+ * direction (we offer install rather than wrongly refusing to).
+ */
+export async function isInstalledOnDevice(): Promise<boolean> {
+  if (typeof navigator === "undefined") return false;
+  const nav = navigator as Navigator & {
+    getInstalledRelatedApps?: () => Promise<Array<{ platform?: string }>>;
+  };
+  if (typeof nav.getInstalledRelatedApps !== "function") return false;
+  try {
+    const apps = await nav.getInstalledRelatedApps();
+    return apps.some((a) => a.platform === "webapp");
+  } catch {
+    return false;
   }
 }

@@ -28,5 +28,12 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://www.pourchoicesapp.com/manifest.webmanifest"
+    }
+  ],
+  "prefer_related_applications": false
 }
