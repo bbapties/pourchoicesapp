@@ -65,6 +65,26 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
   "is there a session" (today: `AppShell`). Migration `sql/b74-created-by-public-id-part{1,2}-migration.sql`,
   rollback `sql/b74-created-by-public-id-snapshot.sql`.
 
+## Vercel — there are TWO projects, and only one is real
+
+`vercel` CLI is installed and authenticated as `bbapties` on this machine, so an agent can read and
+set env vars directly. **But check what you are linked to first.**
+
+| project | serves | status |
+|---------|--------|--------|
+| **`pourchoicesapp`** | **www.pourchoicesapp.com** | the live one |
+| `pourchoices-frontend` | an unused `*.vercel.app` | stale, last touched 2026-05 |
+
+`.vercel/project.json` was linked to the **stale** one until 2026-09-05, which is why B-21 ("confirm
+the service-role env var") sat open for a week: `vercel env ls` kept returning an empty list from a
+project nothing deploys from. It is now linked to `pourchoicesapp`. If env vars ever look missing,
+check `cat .vercel/project.json` before believing it.
+
+`NEXT_PUBLIC_*` vars are inlined at **build** time, so adding one needs a redeploy
+(`vercel redeploy https://www.pourchoicesapp.com`), not just a save.
+
+---
+
 ## Guardrails — ask Brian first
 - **No hard-deletes** of user data.
 - **No changes to auth, security, middleware, or env/secret config** without explicit approval.

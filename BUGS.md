@@ -79,8 +79,14 @@ Gated: auth / RLS / env. Ask Brian before changing.
   `BEFORE INSERT/UPDATE` trigger `protect_user_role()` resets `role` for non-admin authenticated callers (INSERT → 'user'; UPDATE → keeps old); service-role SQL (no `auth.uid()`) and admins unaffected. Verified: non-admin self-escalate blocked, admin allowed, service-role allowed. Same migration.
 - [x] **B-20** (high) `delete_user_cascade` admin re-check. **CONFIRMED SAFE — no change.**
   The SECURITY DEFINER function already re-checks `role='admin'` (via `auth_id=auth.uid()`) and blocks self-delete. `src/app/api/admin/delete-user/route.ts`.
-- [x] **B-21** (high) Service-role env name mismatch. **FIXED (Claude, 2026-08-27).**
-  Route now reads `SUPABASE_SERVICE_ROLE_KEY ?? SUPABASE_SERVICE_ROLE`. **Still set the correct env in Vercel** (either name now works). `delete-user/route.ts`.
+- [x] **B-21** (high) Service-role env name mismatch. **FULLY RESOLVED 2026-09-05.**
+  Code fix (Claude, 2026-08-27): the route reads `SUPABASE_SERVICE_ROLE_KEY ?? SUPABASE_SERVICE_ROLE`.
+  The "still confirm it in Vercel" half stayed open for over a week for a silly reason: **the repo's
+  `.vercel/project.json` was linked to the wrong Vercel project.** There are two -- `pourchoicesapp`
+  serves www.pourchoicesapp.com, and `pourchoices-frontend` is a stale one last touched 112 days ago.
+  Anyone checking env vars was looking at the empty stale project. Relinked, and confirmed
+  `SUPABASE_SERVICE_ROLE_KEY` has in fact been set on Production + Preview for 105 days.
+  `delete-user/route.ts`.
 - [x] **B-22** (high) QA admin accounts had weak passwords + admin on public prod. **RESOLVED by demotion (Claude, 2026-08-27).**
   `claude@` and `grokbuild@` demoted `admin → user` (Brian confirmed all admin work is on `The_Lake_House`). A weak password on a regular test account can no longer verify/delete bottles or cascade-delete users. Roles snapshotted in `backup_notes_fix.qa_roles` (reversible). **The_Lake_House is now the sole admin** — keep its password strong. Agents make DB changes via service-role SQL, not the app.
 - [x] **B-23** (high) Elo could be farmed via `tasting_results` writes — **tier-1 FIXED (Claude, 2026-08-27).**
