@@ -84,7 +84,7 @@ Brian: *"I'd rather just do things the best way for long term."* **Measured, it 
 | | |
 |---|---|
 | People-FK columns already on `public.users.id` | **10 of 10** |
-| FKs pointing at `auth.users` | **0** (dropped by the B-29 fix) |
+| FKs pointing at `auth.users` | **3** -- `bottles.created_by`, `bottles.updated_by`, `bottle_variants.updated_by`. (An earlier note here said 0; that came from `information_schema`, which does not surface cross-schema references. `pg_constraint` is authoritative. `bottle_variants.created_by` has no FK at all.) |
 | `bottles.created_by` | **81/82 auth ids**, 0 public ids |
 | `bottle_variants.created_by` | **109/110 auth ids** |
 | Rows to remap | **192** |
