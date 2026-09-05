@@ -11,8 +11,11 @@ docs, then switches. This file is the standing context both agents load every se
 ## Read-first order (every session, before writing any code)
 1. **AGENTS.md** (this file) — rules, stack, guardrails.
 2. **[HANDOFF.md](HANDOFF.md)** — where the last agent stopped, the next step, open decisions.
-3. **[ROADMAP.md](ROADMAP.md)** — the phase checklist; source of truth for what's done vs pending. **Current work = Phase 8.**
-4. **[PHASE8.md](PHASE8.md)** — pre-beta narrative, feature stories (PWA, tutorial, barcode, push), ordered waves.
+3. **[ROADMAP.md](ROADMAP.md)** — the phase checklist; source of truth for what's done vs pending. **Current work = Phase 10.**
+4. **[PHASE10.md](PHASE10.md)** — **the current ranked plan** (waves A–F, road to a 3-person beta).
+   Re-ranked with Brian 2026-09-04; **supersedes the Phase 8 ordering.**
+   [PHASE8.md](PHASE8.md) still holds the valid *specs* for PWA / tutorial + What's new / push /
+   barcode — read it for the story detail, but take the **order** from PHASE10.
 5. **[BUGS.md](BUGS.md)** — canonical bug queue from the 2026-08-27 review. Tick boxes when shipped.
 6. **[BACKLOG.md](BACKLOG.md)** — deferred items. Do **not** pull these into the current phase unless PHASE8/ROADMAP already did.
 7. **[TELEMETRY.md](TELEMETRY.md)** — instrumentation policy: capture events/activity/usage generously so future features (badges, analytics) already have data. Log as you build.
@@ -85,7 +88,9 @@ node scripts/_psql.mjs "SELECT 1 AS ok;"
 | `AGENTS.md` | Standing rules, stack, guardrails, relay protocol (this file) |
 | `HANDOFF.md` | **Live baton** — current focus, where we stopped, next step, decisions, landmines |
 | `ROADMAP.md` | Phase checklist — what's done vs pending (canonical for scope/status) |
-| `PHASE8.md` | Pre-beta cut — waves, feature stories (PWA, tutorial, barcode, push), PR split |
+| `PHASE10.md` | **Current ranked plan** — waves A–F, road to a 3-person beta (supersedes Phase 8 order) |
+| `PHASE9.md` | Bottle-model build-out — Wave 2 complete (10/10) |
+| `PHASE8.md` | Feature **specs** for PWA, tutorial + What's new, barcode, push (order superseded by PHASE10) |
 | `BUGS.md` | Bug queue (B-01…) from the 2026-08-27 review; tick when shipped |
 | `BACKLOG.md` | Deferred / do-not-pull-in list |
 | `TELEMETRY.md` | Instrumentation policy — event/activity/usage tracking; what's logged, the proposed generic events table |

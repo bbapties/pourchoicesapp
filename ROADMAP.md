@@ -2,7 +2,12 @@
 
 **Philosophy:** Functionality first. Black/grey/white wireframe visuals until Phase 5 (the design phase).
 **Commit rule:** One feature or fix per commit. Test before every commit.
-**WE ARE HERE:** **Phase 8 — Pre-beta cut.** Stories in [PHASE8.md](PHASE8.md); bugs in [BUGS.md](BUGS.md).
+**WE ARE HERE:** **Phase 10 — Road to a 3-person beta.** Ranked waves in **[PHASE10.md](PHASE10.md)**; bugs in [BUGS.md](BUGS.md).
+> Phase 10 (planned with Brian 2026-09-04) **re-ranks and supersedes the Phase 8 ordering** — the beta
+> is now 3 people he knows, so the bar is "they install it and keep opening it," not "a trustworthy
+> first session." [PHASE8.md](PHASE8.md) stories (PWA, tutorial/What's new, push, barcode) are still
+> the valid specs; PHASE10 changes the order and adds the cost + retention work. [PHASE9.md](PHASE9.md)
+> Wave 2 is complete (10/10).
 **Test checklist before every push:**
   - [ ] Works locally (localhost:3000)
   - [ ] Works on mobile (LAN URL — **confirm the current IP with `ipconfig` first; DHCP moves it**,

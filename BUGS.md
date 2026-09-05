@@ -118,13 +118,14 @@ Gated: auth / RLS / env. Ask Brian before changing.
   4-state (verified × had-it), where "had it" spans owned/past **+ drank + blind-tasted**.
   `BottleDetailView.tsx` · `BottleCard.tsx` · `SearchClient.tsx` · `MyBarClient.tsx` · `SocialClient.tsx`.
   Model: `BOTTLE_ACTIONS.md` A.2/A.3/B.1. tsc + build green; authenticated differential QA still pending.
-- [ ] **B-32** (high) Same SKU can appear in both My Bar tabs; times_had/dates last-write-wins on `bottle_id`.
+- [x] **B-32** (high) Same SKU can appear in both My Bar tabs; times_had/dates last-write-wins on `bottle_id`.
   `mybar/page.tsx` ~36–88
-  **MODEL RESOLVED, code pending (2026-08-30):** per `BOTTLE_ACTIONS.md` B.2, a variant in both
-  sub-tabs is now *intended* (independent owned + emptied counts). The fix is to drive both tabs
-  off per-variant owned/emptied counts (card-per-variant), which needs the two-count data work
-  (add `emptied_count` or derive from activities) — deferred to a session with Brian for the
-  schema/derivation call. Not shipped this session.
+  **MODEL RESOLVED (2026-08-30)** then **SHIPPED (2026-09-01, PHASE9 #1, `5e4cfce`).** Per
+  `BOTTLE_ACTIONS.md` B.2 a variant in both sub-tabs is *intended*. Additive `owned_count` /
+  `emptied_count` on `user_bottles` (backfilled; `currently_owned` kept synced; rollback
+  `sql/two-count-snapshot.sql`); My Bar tabs + counts read the new columns; card shows ×N.
+  **Follow-up, not this bug:** My Bar still SKU-collapses — one card per distinct owned/emptied
+  *variant* is tracked in BACKLOG > My Bar ("Card-per-variant My Bar").
 - [x] **B-33** (high) Remove of a tasted bottle hides it everywhere. **COPY FIXED (Claude, 2026-08-30).**
   The demote-vs-delete behavior in `removeUserBottle` was already correct (a tasted row is demoted,
   keeping Elo → shows in Tasted); the bug was the confirm copy *claiming* "removes all tastings and
@@ -185,9 +186,11 @@ Gated: auth / RLS / env. Ask Brian before changing.
 - [x] **B-47** **FIXED (2026-08-30, PHASE9 #2): saveTasting clears rating_stars for tasted variants on first tasting. tastings.ts.** -- (medium) Manual star guess is not wiped on first tasting.
   Trigger `ON CONFLICT` only updates `elo`. UI hides the guess only if `hasBlindTasted()` is true; that helper ignores query errors (`count ?? 0` → false) so the card can stay editable after a real tasting.
   `sql/3.0-migration.sql` ~162–170 · `ratings.ts` · `BottleDetailView.tsx` ~136–138
-- [ ] **B-48** (medium) Drink picker catalog is 300 SKUs, name/distillery substring, default variant only.
-  Bottles after the 300th name are invisible; store picks cannot be lined up (known 3.2 gap). Fetch failure shows empty with no error.
-  `DrinkClient.tsx` ~47–75
+- [x] **B-48** (medium) Drink picker catalog is 300 SKUs, name/distillery substring, default variant only. **FIXED (2026-09-01, PHASE9 #7, `e6bf768`).**
+  Replaced the mount-time 300-SKU cap + client filter with a debounced, scoped **server** search over
+  `all_variant_details`. Any bottle is findable; store picks/batches appear as their own labeled,
+  pickable rows (keyed per variant, so two versions of one SKU co-exist in a lineup); fetch errors
+  now surface instead of showing an empty list. `DrinkClient.tsx`
 - [ ] **B-49** (medium) Global Elo lost-update under concurrent tastings.
   Read Elo into a variable, then write `elo + swing` with no `SELECT FOR UPDATE` / `elo_global = elo_global + swing`.
   `sql/3.0-migration.sql` ~189–211
@@ -200,7 +203,7 @@ Gated: auth / RLS / env. Ask Brian before changing.
 - [ ] **B-52** (medium) `removeUserBottle` treats `elo === 1500` as never tasted (hard-delete). A net-zero tasting is lost.
   Already in BACKLOG; keep here so it has an ID. `userBottles.ts` ~124
 - [ ] **B-53** (low) `saveTasting` stores `bottle_ids`/`variant_ids` in ranked order, not pour order; glass letters not persisted. Hurts a later session-detail view.
-- [ ] **B-54** (low) Drink picker does not log search/click events.
+- [x] **B-54** (low) Drink picker does not log search/click events. **FIXED (2026-09-01, PHASE9 #7, `e6bf768`)** — the picker now logs its search and a `drink_bottle_open` click event.
 - [ ] **B-55** (confirm / low) 3.0 migration replaces the Elo function only — does not `CREATE TRIGGER`. Relies on pre-existing `trig_update_elo_after_session`. If missing, inserts succeed with no Elo.
 - [ ] **B-56** (low) NULL-variant backfill skipped when a default-variant row already exists; leftover NULL row can sit beside the scored variant row.
 - [ ] **B-57** (medium) Global win-rate keys off actual variant ids, not rollup targets (store pick vs X ≠ default vs X history). Already in BACKLOG Elo refinements.
@@ -214,11 +217,18 @@ Gated: auth / RLS / env. Ask Brian before changing.
 - [x] **B-59** **FIXED (2026-08-30, PHASE9 #4): uploads allow-list MIME, derive ext from it, cap 8MB. uploadBottleImage.ts, feedback.ts.** -- (high) Public `bottle-images` + unsanitized upload.
   Extension from `file.name`; `contentType` client-supplied; no size cap. Feedback screenshots are world-readable public URLs.
   `uploadBottleImage.ts` · `feedback.ts` ~41–58
-- [ ] **B-60** (medium) Events table: unbounded anon inserts (`user_id IS NULL`), no rate limit, free-form jsonb.
+- [~] **B-60** (medium) Events table: unbounded anon inserts (`user_id IS NULL`), no rate limit, free-form jsonb.
+  **PARTLY FIXED (2026-09-01, PHASE9 #9, `3ef5583`)** — client rate-cap + field/metadata truncation in
+  `events.ts`, plus a `BEFORE INSERT` trigger `guard_event_insert` bounding field lengths and jsonb
+  size so a raw anon insert can't bypass it (rollback `sql/events-hardening-snapshot.sql`).
+  **STILL OPEN — the row-count cap.** The rate limit is client-side only, so a client that ignores it
+  can still write unbounded rows: the 2026-09-01/02 redirect loop put **26,794 rows through a single
+  session_id**. A **server-side per-session rate cap** is Phase 10 **A1**. See PHASE10.md.
   `sql/events-migration.sql` · `src/lib/events.ts`
-- [ ] **B-61** (medium) `EventTracker` page_views often stamp `user_id = null` for logged-in users.
-  Fires once per pathname before `useCurrentUser` resolves; never re-logs.
-  `EventTracker.tsx` ~19–26
+- [x] **B-61** (medium) `EventTracker` page_views often stamp `user_id = null` for logged-in users. **FIXED (2026-09-01, PHASE9 #9, `3ef5583`).**
+  `EventTracker` now waits for `useCurrentUser` to resolve (`loading=false`) before logging a
+  page_view, then logs each pathname once, stamped with the real user (verified: client-side navs to
+  /search, /mybar, /profile carried the real id). `EventTracker.tsx`
 - [ ] **B-62** (medium) Admin UsersTab over-counts; BottlesTab delete-impact includes tasters.
   Already in BACKLOG. `UsersTab.tsx` ~28–47 · `BottlesTab.tsx` ~227–241
 - [ ] **B-63** (medium) Search `.or()` filter injection / extra rows — see B-13.

@@ -1,0 +1,141 @@
+# Phase 10 — Road to a 3-person beta
+
+Supersedes the Phase 8 ordering. **[PHASE8.md](PHASE8.md) stories are still valid specs** (PWA,
+tutorial/What's new, push, barcode) — this file changes *what order and why*, and adds the cost and
+retention work Phase 8 never had.
+
+Planning session with Brian, 2026-09-04. Full rationale + measurements in the plan file
+`C:\Users\whisk\.claude\plans\start-a-new-session-precious-hamster.md`.
+
+---
+
+## The change in framing
+
+The beta is now **3 people Brian knows**, not 10-15 strangers. The bar moved from *"testers get a
+trustworthy first session"* (Phase 8) to **"they install it and keep opening it."** That is a
+retention problem, not an onboarding problem.
+
+Brian's stated priority, verbatim: *"install with more of an app feel with icon on mobile and push
+notifications and a really good What's new ... that will almost be my way to market it and keep my
+beta testers engaged."*
+
+Those are Phase 8 waves 2, 3 and 5 — **the three waves never started.** Two bug waves shipped instead.
+
+---
+
+## Measured baseline (prod, 2026-09-04)
+
+| | |
+|---|---|
+| Bottles / variants | 82 / 110 |
+| **Verified** bottles | **8** (10%) |
+| Bottles with a barcode | 58 (71%) |
+| Users | 7 (1 with no `auth_id`: `Grain_of_Truth`) |
+| **Tasting sessions** | **0 — the core loop has never been run by a human on prod** |
+| Events rows | 65,212, of which **~64,500 are redirect-loop junk** (~700 real) |
+| Storage | 11 objects / **17 MB — ~1.5 MB per image** |
+
+Two numbers drive this phase: **0 tastings** (the flagship loop is unexercised) and **1.5 MB/image**
+(the free tier holds ~660 images at that size; ~10,000 at ~100 KB WebP).
+
+---
+
+## Wave A — Stop the bleeding (small, independent)
+
+- [ ] **A1 Redirect loop — investigate, cap, purge.** Declared fixed 23:17 UTC 2026-09-01; **restarted
+  at 23:35 the same night.** Five anon sessions bouncing `/` <-> `/mybar`, ~60k rows in 4.5h, one
+  session alone 26,794 rows. Decayed to a trickle **still firing 3 hits/day at 11:00 UTC**.
+  `middleware.ts:45-59` + `src/app/page.tsx:48-59` both use `getUser()` and look correct, so the
+  hypothesis is non-human clients ignoring the `Set-Cookie` purge — **confirm before coding.**
+  Then add a **server-side per-session rate cap** (extend `guard_event_insert`; today's cap is
+  client-side only, which is why one client wrote 26k rows), then purge by session_id.
+- [ ] **A2 Compress images on upload.** Resize + WebP in `src/lib/uploadBottleImage.ts` (already
+  MIME-allow-listed + 8 MB capped from B-59). ~15x more headroom on the same free tier. Must land
+  **before** more beta photos and well before any catalog seed.
+- [ ] **A3 Brian's config tasks (not code).** **B-26** — add `/reset-password` to Supabase Auth ->
+  URL Configuration -> Redirect URLs + enable the Reset Password template. **Forgot-password ships in
+  the UI and does not work today.** **B-21** — confirm the service-role env var in Vercel.
+- [ ] **A4 Tick BUGS.md drift** — B-32, B-48, B-54, B-60, B-61 shipped in PHASE9 but read as open.
+
+## Wave B — B-74 done properly (gated: snapshot + Brian's go)
+
+Brian: *"I'd rather just do things the best way for long term."* **Measured, it is not major:**
+
+| | |
+|---|---|
+| People-FK columns already on `public.users.id` | **10 of 10** |
+| FKs pointing at `auth.users` | **0** (dropped by the B-29 fix) |
+| `bottles.created_by` | **81/82 auth ids**, 0 public ids |
+| `bottle_variants.created_by` | **109/110 auth ids** |
+| Rows to remap | **192** |
+| Stragglers | 1 orphan bottle, 1 orphan variant, 1 loginless user |
+
+**B-46's "created_by is mixed" is effectively false** — it is consistently auth ids, just a
+*different convention* from the other ten columns, which forces every ownership check to match both
+ids and makes each one a chance to get it wrong.
+
+- [ ] Snapshot -> remap 192 `created_by` auth id -> public id (NULL the 2 orphans) -> add the FK to
+  `public.users(id)` so it cannot drift -> simplify dual-id matching in `suggestedEdits.ts` (B-45),
+  `lib/variants.ts` `isVariantVisibleToViewer`, `VariantSelectSheet.tsx` (B-11), store-pick filters.
+  Decide what to do with `Grain_of_Truth`. Closes **B-74, B-45, B-46**.
+
+Doing this **before** push means `push_subscriptions.user_id` is right by construction, and 3.4 is
+unblocked whenever it comes up.
+
+## Wave C — The app feel (Brian's #1)
+
+`public/` has **no manifest, no service worker, no PNG icons** — only SVGs + `cellar-bg.png`.
+Icon art: **derive from `cellar-bg.png` / existing art** (Brian's call, 2026-09-04).
+
+- [ ] **C1** Manifest + icon set (192/512/maskable/apple-touch 180/favicon) + apple meta +
+  `theme-color` in `layout.tsx`. **This alone puts an icon on the home screen.**
+- [ ] **C2** Service worker, app-shell only. Boring on purpose. Required for push.
+- [ ] **C3** First-visit install prompt. Android `beforeinstallprompt`; iOS instructional Share ->
+  Add to Home Screen (**the instructional UI is the feature** — no programmatic install exists).
+  Skip if standalone; remember "continue in browser"; Profile row to see instructions again.
+  Events: `pwa_prompt_shown` / `pwa_install_clicked` / `pwa_continue_browser`.
+
+## Wave D — The engagement channel (his marketing lever)
+
+Content channel **before** delivery — push with nothing to say is worthless.
+
+- [ ] **D1** Admin-published What's new. `announcements` table + admin publish/unpublish; digest reads
+  **published unseen rows only**; existing coaches seeded unpublished so a tester isn't handed 7.x
+  history. Schema = snapshot + go.
+- [ ] **D2** Core tour rewrite — it predates Drink and barcode. Search -> barcode -> bottle card ->
+  Drink -> My Bar -> Social -> Profile. Replay still replays core only. Short discovery on copy.
+  Events: `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown`.
+- [ ] **D3** Push: Profile toggle (default on) -> VAPID keys in Vercel env (**Brian — secrets are a
+  guardrail**) -> SW `push` + `notificationclick` -> subscribe/unsubscribe -> Admin send to Everyone
+  or one user -> optional "also send as push" on publish. Built on Wave B's clean ids.
+  Events: `push_permission` / `push_subscribe` / `push_send`.
+
+## Wave E — Reasons to come back
+
+- [ ] **E1** Get **one real blind tasting onto prod.** Zero have ever happened. Do it before three
+  friends do it first. Moves shared global Elo — QA account, clean up after.
+- [ ] **E2** Ranked tasting-results view (D.1 follow-up). A tasting posts to Social then simply ends;
+  the "click for details" 1st->last view was never built. The core loop's payoff and its most
+  shareable moment. Reads `tasting_sessions`/`tasting_results`; no schema.
+- [ ] **E3** Badges v1 — awards **retroactively from already-captured history** (`activities` +
+  `events`); that data debt is already paid. Strong stickiness per unit effort for 3 engaged testers.
+
+## Wave F — Cost runway (prerequisite for the catalog seed)
+
+- [ ] **F1** Storage orphan purge + Admin usage readout. Nothing purges provisional adds, suggested-edit
+  uploads or rejected submissions. Scheduled purge with a grace period + a visible trend.
+- [ ] **F2** Catalog seed **design session with Brian, not solo.** Iowa open data = ~6,628 bottles with
+  real UPCs (51-56% coverage of ours). **Settle first:** images (Brian's named pinch point — do
+  imported rows ship imageless?), whether imports count as verified (6.6k unverified would drown the
+  admin queue), name cleanup, dedupe, category mapping. **Import nothing until A2 and F1 are in.**
+
+---
+
+## Explicitly deferred
+
+- **3.4 group tastings** — unblocked by Wave B but needs schema + realtime + multi-device. Not a
+  3-person-beta requirement.
+- **Elo math B-49 / B-50** — Brian's engine, ask-first; with 0 real tastings there is no pressure.
+  Revisit once E1/E2 produce real sessions.
+- **Phase 5 polish** (incl. B-44). **6.4 CSV import** — superseded by the F2 seed path.
+- **B-30**, **B-23 tier-2**, remaining medium/low (B-62/63/64/65/67/68/69) — none block the beta.
