@@ -80,6 +80,8 @@ function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: b
     tasted,
     // B-32: quantity for the tab — current owned on In My Bar, lifetime finished on Empty.
     quantity: currentlyOwned ? (d.owned_count ?? 1) : (!tasted ? (d.emptied_count ?? 1) : undefined),
+    // The viewer's OWN Elo, for the My Ranks sort. Null when they have never ranked this one.
+    personalElo: d.personal_elo ?? null,
   };
 }
 
@@ -147,10 +149,25 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     wishlist: applySearchAndFilter(rawWishlist, 'wishlist').length,
   }), [rawOwned, rawEmpty, rawTasted, rawWishlist, applySearchAndFilter]);
 
+  // My Ranks was previously stubbed: it toasted "Taste some bottles" unconditionally and never
+  // sorted, so it stayed locked even for someone who had ranked plenty. Checked across every tab,
+  // because the ranked bottles usually live on Tasted while the viewer is looking at In My Bar.
+  const hasPersonalRanks = useMemo(
+    () => [rawOwned, rawEmpty, rawTasted, rawWishlist]
+      .some(rows => rows.some((r: any) => r?.personal_elo != null)),
+    [rawOwned, rawEmpty, rawTasted, rawWishlist]
+  );
+
   const filteredCards = useMemo(() => {
     const cards = applySearchAndFilter(activeRaw, activeTab);
     if (sortBy === 'az') return [...cards].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (sortBy === 'za') return [...cards].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+    if (sortBy === 'yours') {
+      // My Ranks: the viewer's own Elo, best first, with anything they have not ranked at the end.
+      // Unlike Search this is a pure sort -- My Bar is already just their bottles and is not
+      // paginated, so there is nothing to narrow and no count to fall out of step with.
+      return [...cards].sort((a, b) => (b.personalElo ?? -Infinity) - (a.personalElo ?? -Infinity));
+    }
     return cards; // global/null = server Elo order
   }, [activeRaw, activeTab, applySearchAndFilter, sortBy]);
 
@@ -398,7 +415,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
 
   // Sort handlers
   const handleSortSelect = (option: SortOption) => {
-    if (option === 'yours') {
+    if (option === 'yours' && !hasPersonalRanks) {
       toast("Taste some bottles to unlock your personal rankings");
       setShowSortMenu(false);
       return;
@@ -408,7 +425,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   };
 
   const filterValueOptions = filter.field === 'category' ? CATEGORY_VALUES : VERIFIED_VALUES;
-  const sortActive = sortBy !== null && sortBy !== 'yours';
+  const sortActive = sortBy !== null;
 
   return (
     <>
@@ -510,7 +527,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
             className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-charcoal transition-colors"
             style={sortActive ? { backgroundColor: '#2F2F2F', color: '#FFFFFF', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
           >
-            {sortBy && sortBy !== 'yours' ? SORT_LABELS[sortBy] : 'Sort by'}
+            {sortBy ? SORT_LABELS[sortBy] : 'Sort by'}
             <ChevronDown size={13} />
           </button>
 

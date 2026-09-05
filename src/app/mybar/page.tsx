@@ -55,6 +55,24 @@ export default async function MyBarPage() {
     .eq('user_id', publicUser.id)
     .gt('emptied_count', 0);
 
+  // Personal Elo for the "My Ranks" sort. Read across ALL of this user's rows, not just the
+  // owned/empty ones above: a blind tasting leaves a tasting-only row (times_had 0, not owned),
+  // which is exactly the row carrying the ranking the Tasted tab is showing.
+  // A row still sitting on the 1500 default has never been ranked, so it is skipped rather than
+  // sorted as if it were a real opinion.
+  const { data: personalEloRows } = await supabase
+    .from('user_bottles')
+    .select('bottle_id, variant_id, elo')
+    .eq('user_id', publicUser.id);
+  const personalEloByVariant = new Map<string, number>();
+  const personalEloByBottle = new Map<string, number>();
+  for (const r of (personalEloRows || []) as { bottle_id: string; variant_id: string | null; elo: number | null }[]) {
+    const e = r.elo == null ? null : Number(r.elo);
+    if (e == null || Number.isNaN(e) || e === 1500) continue;
+    if (r.variant_id) personalEloByVariant.set(r.variant_id, e);
+    personalEloByBottle.set(r.bottle_id, Math.max(personalEloByBottle.get(r.bottle_id) ?? -Infinity, e));
+  }
+
   const ownedIds = (ownedBottles || []).map(r => r.bottle_id);
   const emptyIds = (emptyBottles || []).map(r => r.bottle_id);
   const ownedCountBySku = sumBySku((ownedBottles || []) as UbRow[], 'owned_count');
@@ -90,6 +108,9 @@ export default async function MyBarPage() {
         updated_at: ub?.updated_at || ub?.created_at,
         times_had: ub?.times_had ?? 1,
         owned_count: ownedCountBySku.get(d.bottle_id) ?? 1, // B-32: current quantity on the shelf
+        personal_elo:
+          (ub?.variant_id ? personalEloByVariant.get(ub.variant_id) : undefined) ??
+          personalEloByBottle.get(d.bottle_id) ?? null,
       };
     });
   }
@@ -112,6 +133,9 @@ export default async function MyBarPage() {
         updated_at: ub?.updated_at || ub?.created_at,
         times_had: ub?.times_had ?? 1,
         emptied_count: emptiedCountBySku.get(d.bottle_id) ?? 1, // B-32: lifetime finished for this SKU
+        personal_elo:
+          (ub?.variant_id ? personalEloByVariant.get(ub.variant_id) : undefined) ??
+          personalEloByBottle.get(d.bottle_id) ?? null,
       };
     });
   }
@@ -187,6 +211,11 @@ export default async function MyBarPage() {
         attr_release_year: d.attr_release_year,
         attr_store_pick_name: d.attr_store_pick_name,
         variant_is_default: d.variant_is_default,
+        // Tasted cards are per-VARIANT, so prefer the variant's own ranking before falling back
+        // to the SKU -- this is the tab where a blind tasting's result actually lives.
+        personal_elo:
+          personalEloByVariant.get(d.variant_id) ??
+          personalEloByBottle.get(d.bottle_id) ?? null,
         addedAt: lastTastedAt[d.variant_id] ?? null,
         times_had: 0,
         tasted: true,
