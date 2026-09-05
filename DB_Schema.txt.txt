@@ -169,7 +169,8 @@ CREATE TABLE public.users (
   created_at timestamp with time zone DEFAULT now(),
   auth_id uuid,
   role text NOT NULL DEFAULT 'user'::text,
-  seen_coach_ids text[] NOT NULL DEFAULT '{}'::text[]
+  seen_coach_ids text[] NOT NULL DEFAULT '{}'::text[],
+  account_type text NOT NULL DEFAULT 'human'::text  -- CHECK IN ('human','data','test')
 );
 
 CREATE TABLE public.wishlists (

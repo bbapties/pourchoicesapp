@@ -1,8 +1,9 @@
--- Rollback for sql/account-type-migration.sql.
--- Drops users.account_type and restores protect_user_role() to the B-19 body
--- (role only). Captured from the live prod DB before the migration.
-
-BEGIN;
+-- Rollback for sql/account-type-migration.sql and
+-- sql/account-type-trigger-migration.sql.
+--
+-- Restores protect_user_role() to its B-19 body (role only) -- captured from the
+-- live prod DB before the migration -- and drops users.account_type.
+-- Safe to run even if the trigger migration was never applied.
 
 CREATE OR REPLACE FUNCTION public.protect_user_role()
 RETURNS trigger
@@ -24,5 +25,3 @@ $$;
 
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_account_type_check;
 ALTER TABLE public.users DROP COLUMN IF EXISTS account_type;
-
-COMMIT;
