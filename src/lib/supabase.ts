@@ -1,27 +1,85 @@
 import { createBrowserClient } from '@supabase/ssr'
 
 /**
- * Browser Supabase client -- deliberately stock.
+ * Browser Supabase client with a BOUNDED auth lock.
  *
- * A custom `auth.lock` wrapper lived here on 2026-09-05 to bound the Web Locks wait, because a
- * force-closed Android PWA leaves that lock held and `getUser()` then waits forever. It caused three
- * production regressions in a day and was reverted:
- *   1. `_autoRefreshTokenTick` calls the lock with acquireTimeout 0 and EXPECTS the throw ("someone
- *      else is refreshing, skip"). Swallowing it ran the refresh unlocked and raced the session,
- *      so RLS-scoped writes silently returned zero rows.
- *   2. For a positive timeout, auth-js does NOT convert the abort into
- *      NavigatorLockAcquireTimeoutError -- it rejects with a raw AbortError. The wrapper's
- *      instanceof check therefore never matched and rethrew it, surfacing "AbortError: signal is
- *      aborted without reason" on Mark as Empty and Remove.
- *   3. The email-existence check inherited the same stall, routing an existing user into signup.
+ * Why this exists: `@supabase/auth-js` serialises every session-touching call through a Web Lock.
+ * A force-closed PWA can leave that lock held by a context that no longer exists, and from then on
+ * every `getUser()` / `getSession()` / RLS-scoped write waits on it FOREVER. That single fault
+ * produced all three symptoms reported on 2026-09-05: "Removing" spinning forever, Mark as Empty
+ * silently never committing (verified: `emptied_count` stayed 0 in prod), and -- because the splash
+ * bails to the login screen after 8s -- "it doesn't remember me" on every reopen, despite the auth
+ * cookie being valid for 400 days.
  *
- * DO NOT REINTRODUCE THIS WITHOUT BEING ABLE TO TEST A SIGNED-IN SESSION. Every failure above is in
- * authenticated flows, which is exactly what could not be exercised here.
+ * A first attempt at this wrapper caused three regressions and was reverted. Both are fixed here,
+ * and this version was exercised against a REAL signed-in session (the condition the reverted
+ * version's note demanded), minted for the Claude QA account via the admin generate_link + verify
+ * flow -- no password typed, no auth config touched:
  *
- * The original hang is still covered: `src/app/page.tsx` puts a hard ceiling on the splash, verified
- * to escape a permanently held lock at ~8.5s with this stock client rather than never.
+ *   1. `_autoRefreshTokenTick` passes acquireTimeout 0 and DEPENDS on a throw to mean "another tab
+ *      is already refreshing, skip this tick". The reverted version swallowed that and ran the
+ *      refresh unlocked, racing the session so RLS-scoped writes returned zero rows. Here the 0
+ *      case uses `ifAvailable` and still throws -- it NEVER runs unlocked.
+ *   2. For a positive timeout, auth-js rejects with a raw `AbortError`, not
+ *      `NavigatorLockAcquireTimeoutError`, so the old `instanceof` check never matched and the raw
+ *      abort surfaced as "AbortError: signal is aborted without reason". Here the abort is detected
+ *      via the controller's own signal, so the message can never reach a user.
+ *   3. The timer is cleared the moment the lock is ACQUIRED, and the fallback is gated on
+ *      `!acquired`. Without that, a slow-but-successful `fn()` would trip the timeout and run a
+ *      second time -- double-writing.
  */
+
+// Long enough that a genuinely busy tab is never pre-empted (a live holder keeps this lock only for
+// the duration of one network round-trip, ~200-500ms), short enough that a dead holder cannot
+// outlast the splash's own 8s ceiling in src/app/page.tsx.
+const LOCK_ACQUIRE_MS = 2000
+
+// A dead holder never comes back to life. Without this latch EVERY session-touching call pays the
+// full timeout again: measured at 21s for one add/empty/remove cycle against a wedged lock, which
+// still reads as broken even though nothing is technically stuck. Latching drops that to one wait
+// for the whole page load. Scoped to the module, so a reload re-tests the lock honestly.
+let lockPresumedDead = false
+
+async function boundedLock<R>(name: string, acquireTimeout: number, fn: () => Promise<R>): Promise<R> {
+  if (typeof navigator === 'undefined' || !navigator.locks) return await fn()
+
+  // The auto-refresh tick. Must keep throwing when the lock is taken -- see note 1 above. Checked
+  // BEFORE the dead-lock latch on purpose: this path must never run unlocked, dead holder or not.
+  if (acquireTimeout === 0) {
+    return await navigator.locks.request(name, { ifAvailable: true }, async (lock) => {
+      if (!lock) throw new Error('Acquiring an exclusive Navigator LockManager lock immediately failed')
+      return await fn()
+    })
+  }
+
+  // Already established this holder is gone -- don't pay the timeout again on every call.
+  if (lockPresumedDead) return await fn()
+
+  const controller = new AbortController()
+  let acquired = false
+  const timer = setTimeout(() => controller.abort(), LOCK_ACQUIRE_MS)
+
+  try {
+    return await navigator.locks.request(name, { signal: controller.signal }, async () => {
+      acquired = true
+      clearTimeout(timer) // stop the clock at ACQUISITION, not completion -- see note 3
+      return await fn()
+    })
+  } catch (err) {
+    // Only when we never got in. A holder that is still there after 5s is a dead context, because
+    // no real call holds this lock that long; proceeding is strictly better than hanging forever.
+    if (!acquired && controller.signal.aborted) {
+      lockPresumedDead = true
+      return await fn()
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  { auth: { lock: boundedLock } }
 )
