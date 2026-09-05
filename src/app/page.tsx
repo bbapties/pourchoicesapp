@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster } from "@/components/ui/sonner";
 import { validateUsername } from "@/lib/profile";
+import { logEvent } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -101,11 +102,52 @@ export default function Home() {
     setIsLoading(true);
     setError(null);
 
-    // B-18: anon can no longer read public.users; check existence via a SECURITY
-    // DEFINER RPC that returns only a boolean.
-    const { data: exists } = await supabase.rpc("email_exists", { p_email: email });
+    // B-18: anon can no longer read public.users; check existence via a SECURITY DEFINER RPC that
+    // returns only a boolean.
+    //
+    // Called with a plain fetch rather than supabase.rpc() ON PURPOSE. The caller here is LOGGED
+    // OUT -- there is no session to read -- yet supabase-js still routes every request through its
+    // auth machinery, which serialises on the Web Locks API. A lock jammed by a force-closed PWA
+    // therefore blocked the very first step of logging in, which is how Brian ended up being asked
+    // to pick a username for an account he already had (2026-09-05). An anonymous existence check
+    // has no business depending on session state, so it no longer does.
+    let exists: boolean | null = null;
+    let checkErr: { message: string } | null = null;
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/email_exists`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+          },
+          body: JSON.stringify({ p_email: email }),
+        }
+      );
+      if (!res.ok) checkErr = { message: `HTTP ${res.status}` };
+      else exists = await res.json();
+    } catch (e) {
+      checkErr = { message: e instanceof Error ? e.message : String(e) };
+    }
 
     setIsLoading(false);
+
+    // NEVER let a failed check fall through to the signup path. The error used to be discarded, so
+    // ANY failure -- a dropped request, a stalled auth lock -- silently told an existing user they
+    // were new and asked them to pick a username. That is the worst possible guess: they cannot
+    // sign up (their email is taken) and they cannot reach the password step to log in. Brian hit
+    // exactly this on Android on 2026-09-05. When we don't know, say so and let them retry.
+    if (checkErr) {
+      logEvent({
+        eventType: "error",
+        surface: "/",
+        metadata: { kind: "email_exists_failed", message: String(checkErr.message ?? "").slice(0, 300) },
+      });
+      setError("We couldn't check that email. Please try again.");
+      return;
+    }
 
     if (exists) {
       setPath("login");
