@@ -68,6 +68,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/((?!api|_next/static|_next/image|favicon.ico|_error|error|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg).*)',
+  // Static assets must stay reachable while SIGNED OUT. The PWA manifest is the one that bites:
+  // a logged-out first visit is exactly when the install prompt runs, and if the manifest 307s to
+  // the login page the browser sees no installable app at all. Same for the service worker.
+  // Image extensions were already excluded, which is why the icons worked and the manifest did not.
+  matcher:
+    '/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|_error|error|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest).*)',
   runtime: 'nodejs'
 }
