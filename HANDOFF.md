@@ -8,7 +8,7 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `862ba73` (+ this doc commit). Working tree clean; everything on origin/MVP-v3 and live.
+- **Tip:** `ada5203` (+ this doc commit). Working tree clean; everything on origin/MVP-v3 and live.
 - **Current phase:** **Phase 9.** Wave 2 is done (10/10). This session was an unplanned detour:
   Brian tested the barcode scanner on a real phone and the findings reshaped the add-bottle flow.
 
@@ -85,23 +85,30 @@ The file-input photo picker DOES work on HTTP (`capture` delegates to the OS cam
 A file input that isn't rendered gets `capture` ignored on mobile — that was the real cause of
 "Take photo opens the gallery". Confirmed fixed on Brian's phone. Don't "tidy" them back to `hidden`.
 
-### ⚠ NEEDS BRIAN'S EYES — the one unverified thing
-**`1b4de16` (admin verify queue) was never click-tested.** Admin requires `The_Lake_House` and the
-guardrails forbid testing on Brian's account. Verified only by tsc + eslint + green production build.
-Two changes to check on prod:
-1. **Queue now sorts by last touched** (across the bottle AND its queued variants), not `created_at`.
-2. **Detail modal fields are editable in place**, with Save / Save & Verify.
-   **Highest risk: whether admin RLS permits the `bottle_variants` UPDATE on the default variant.**
-   Display fields (proof, age, nose, palate, finish) are written to the **default variant**, because
-   that is what `all_bottle_details` resolves from — writing them to `bottles` would save fine and be
-   invisible in search. **If a proof edit silently doesn't stick, that RLS policy is the cause.**
-Test bottles already in the queue with null categories: Shortbarrel Four Grain, Hard Truth Sweet Mash
-Bourbon, Early Times Kentucky's Finest.
+### Admin verify queue — TESTED and fixed (`ada5203`)
+The `1b4de16` queue changes were click-tested by **temporarily promoting `Claude Code Agent` to admin
+(Brian approved), then re-demoting it** — `The_Lake_House` is again the sole admin. Confirmed working:
+edits to an identity field (`bottles.style`) and a variant field (default-variant `proof`) both persist
+and reload; **Save & Verify** saves first, verifies the bottle and co-verifies its default variant.
+**Admin RLS DOES permit the `bottle_variants` UPDATE** — the risk previously flagged here is clear.
+
+The last-touched sort was correct but useless until `ada5203` fixed three things:
+1. Display-field edits land on the **default variant**, which never bumps `bottles.updated_at`, and
+   the sort key only spanned the bottle + its **queued** variants (the default isn't queued). So the
+   bottle just edited sank. The key now spans **every** variant.
+2. `doApprove` only reloaded the queue for structural changes — applying a normal field edit
+   re-sorted nothing. It now always reloads; that reorder is the point of the feature.
+3. The card showed only the submitted date, so a correct sort looked scrambled. It now shows
+   "· edited <date>" when that differs.
+
+**Login note for the next agent:** the preview browser is signed in as `claude@pourchoicesapp.com`.
+An agent cannot type a password, so admin testing = Brian approves a temporary SQL promotion of that
+account, agent tests, agent re-demotes. Not exercised live: the approve-a-suggestion reload path
+(no pending `suggested_edits` existed) — it is a one-line `load()`.
 
 ### Single next step
-**Brian click-tests the admin verify queue on prod** (edit a field -> Save -> reopen and confirm it
-persisted; then Save & Verify). If the `bottle_variants` write is blocked by RLS, fix that first.
-After that, Wave 2 is genuinely closed and the open candidates are unchanged: the gated cleanups
+**Ask Brian.** Everything raised this session is shipped and verified; nothing is left half-done.
+Open candidates are unchanged: the gated cleanups
 (`rating_stars` column drop + orphan rows; **B-74** auth-id, which blocks 3.4 group tasting and 8.5
 push), or a new wave.
 
@@ -177,6 +184,11 @@ Ten commits, all pushed to prod (`cccae51..1b4de16`).
   saves first and aborts on failure. Logged as `admin_bottle_edit` events, not `activities`.
   **NOT click-tested - admin needs `The_Lake_House` and the guardrails forbid testing on Brian's
   account. See "NEEDS BRIAN'S EYES" above.**
+- **Admin verify queue tested + fixed** (`ada5203`) — click-tested by temporarily promoting the Claude
+  QA account to admin (Brian's approval) and re-demoting after. Fixed the last-touched sort to span
+  every variant (display edits hit the default variant, which doesn't bump `bottles.updated_at`),
+  made approving a suggestion reload the queue, and surfaced the edited date on the card. Test data
+  restored; roles restored (`The_Lake_House` sole admin).
 - **Barcode mismatch report** (`862ba73`, added after the first END SESSION): "Not this bottle?" on a
   scan-opened bottle, filing a report-only row in the `feedback` queue. See the block above.
 - **Telemetry:** `barcode_autofill` retired (kept documented, with the measurement, so it isn't

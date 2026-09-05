@@ -95,8 +95,9 @@ Goal: Internal tooling — manage users, verify/clean bottles, bulk-import data.
 **6.3 extended 2026-09-01 (Claude, `1b4de16`, prod):** the verify queue now sorts by **last touched**
 (bottle + its queued variants) instead of `created_at`, and the detail modal is **editable in place**
 (Save / Save & Verify) so an admin fills gaps before verifying rather than suggesting an edit to
-themselves. ⚠️ **Not click-tested** — admin needs `The_Lake_House` and the guardrails forbid testing on
-Brian's account. Watch for admin RLS blocking the `bottle_variants` UPDATE on the default variant.
+themselves. ✅ **Click-tested 2026-09-04** (`ada5203`) via a temporary, Brian-approved promotion of the Claude QA
+account, re-demoted after. Admin RLS DOES allow the `bottle_variants` UPDATE. The sort also needed
+fixing to span every variant, to reload after approving a suggestion, and to show the edited date.
 Evidence: admin shell + role gate `ab9cfbb`, Users tab + cascade delete `c302164`, image upload `6e44dff`, bottles queue `3ab1ce0`. Files present: `src/app/admin/{AdminClient,UsersTab,BottlesTab,ImportTab}.tsx`, `src/lib/uploadBottleImage.ts`, `src/app/api/admin/delete-user/route.ts`. `ImportTab.tsx` is a shell — 6.4 not built.
 > ⚠️ The granular sub-checkboxes below were **not individually re-audited** — treat code + commits as source of truth. Known spec mismatches: no `DB_SCHEMA.sql` at root (only `DB_Schema.txt.txt`); no `src/lib/useCurrentUser.ts` (role logic lives elsewhere).
 Triggered: admin-only 5th nav tab. Granted via `users.role = 'admin'` (manually flipped in Supabase).
