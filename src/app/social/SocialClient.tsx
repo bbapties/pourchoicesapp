@@ -29,7 +29,7 @@ const PAGE_SIZE = 40;
 const DETAIL_SELECT =
   "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by";
 
-function mapDetail(result: any, row?: UserBottleRow | null, viewerIds: (string | null | undefined)[] = []): BottleDetails {
+function mapDetail(result: any, row?: UserBottleRow | null, viewerPublicId?: string | null): BottleDetails {
   const variantIds: string[] = result.attr_variant_ids || [];
   const batches: string[] = result.attr_batch || [];
   const releaseYears: string[] = result.attr_release_year || [];
@@ -60,7 +60,7 @@ function mapDetail(result: any, row?: UserBottleRow | null, viewerIds: (string |
       }))
       // B-10: hide other users' private store picks in the seed (globals + own picks only).
       .filter((v, i) => (v.releaseYear || v.batch || v.storePickName)
-        && isVariantVisibleToViewer(v.storePickName, createdBys[i], viewerIds)),
+        && isVariantVisibleToViewer(v.storePickName, createdBys[i], viewerPublicId)),
     nose: result.attr_nose,
     palate: result.attr_palate,
     finish: result.attr_finish,
@@ -69,7 +69,7 @@ function mapDetail(result: any, row?: UserBottleRow | null, viewerIds: (string |
 }
 
 export default function SocialClient() {
-  const { publicUserId, authId } = useCurrentUser();
+  const { publicUserId } = useCurrentUser();
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -118,10 +118,8 @@ export default function SocialClient() {
     // B-17: if the user context hasn't resolved yet (a quick tap right after load),
     // resolve the ids on demand so we don't show "Add to My Bar" on an owned bottle.
     let uid = publicUserId;
-    let aid = authId;
     if (!uid) {
       const { data: { user } } = await supabase.auth.getUser();
-      aid = user?.id ?? aid;
       if (user) {
         const { data: u } = await supabase.from("users").select("id").eq("auth_id", user.id).maybeSingle();
         uid = u?.id ?? null;
@@ -157,7 +155,7 @@ export default function SocialClient() {
       inCollection: !!row && (row.currently_owned || (row.times_had ?? 0) >= 1),
       currentlyOwned: !!row?.currently_owned,
     });
-    setSelectedBottle(mapDetail(data, row, [aid, uid]));
+    setSelectedBottle(mapDetail(data, row, uid));
   };
 
   const handleAddToBar = async (bottleId: string, variantId?: string | null) => {

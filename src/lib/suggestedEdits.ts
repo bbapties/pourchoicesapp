@@ -78,18 +78,18 @@ export type EditChange = { field: EditableField; oldValue: string; newValue: str
 
 /**
  * Submit a batch of field changes. Per field, evaluate the gate against the
- * target record: mine (created_by == authId) AND unverified -> apply directly
+ * target record: mine (created_by == the viewer's public.users.id) AND unverified -> apply
+ * directly
  * (+ audit 'applied' row + cancel any pending on that field); otherwise insert
  * a 'pending' suggestion. All rows share one submission_group.
  */
 export async function submitEdits(opts: {
   bottleId: string;
   variantId: string | null;
-  authId: string;
-  userId: string; // public users id
+  userId: string; // public.users.id — also the identity `created_by` is compared against (B-74)
   changes: EditChange[];
 }): Promise<{ applied: EditableField[]; pending: EditableField[]; error?: string }> {
-  const { bottleId, variantId, authId, userId, changes } = opts;
+  const { bottleId, variantId, userId, changes } = opts;
   if (!changes.length) return { applied: [], pending: [] };
 
   const submissionGroup =
@@ -111,7 +111,10 @@ export async function submitEdits(opts: {
       .maybeSingle();
     if (error) return { applied: [], pending: [], error: error.message };
     gate.set(key, {
-      mine: !!data && data.created_by === authId,
+      // B-45 was: compared against the AUTH id while created_by held one too, so a row stamped
+      // with the public id fell through to "not mine" and the user's own unverified edit went to
+      // the admin queue instead of applying. B-74 makes created_by a public.users.id outright.
+      mine: !!data && data.created_by === userId,
       unverified: !data?.verified,
     });
   }

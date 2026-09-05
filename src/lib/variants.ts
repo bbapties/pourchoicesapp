@@ -56,20 +56,22 @@ function orderVariants(rows: VariantRow[]): VariantRow[] {
 
 /**
  * Ordered variants for a SKU — default first. Falls back to pre-7.1 columns if the new ones aren't
- * live yet. 7.9: store picks (`store_pick_name` set) are private to their creator — pass the viewer's
- * id(s) to include their own; without any, only global (non-store-pick) variants are returned.
- * Pass BOTH the auth id and public id: `created_by` is stored inconsistently (auth id on some rows,
- * public id on others), so matching either id makes owner-sees-own robust.
+ * live yet. 7.9: store picks (`store_pick_name` set) are private to their creator — pass the
+ * viewer's **public.users.id** to include their own; without it, only global (non-store-pick)
+ * variants are returned.
+ *
+ * B-74: `created_by` is a public.users.id and a foreign key now enforces it, so this takes ONE id.
+ * It used to accept the auth id and the public id and match either, because the column held a
+ * mixture. Do not reintroduce that — an auth id can no longer be stored here.
  */
 export async function fetchVariantsForSku(
   bottleId: string,
-  ownerIds?: (string | null | undefined)[]
+  ownerId?: string | null
 ): Promise<BottleVariant[]> {
-  const ids = (ownerIds ?? []).filter(Boolean) as string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scope = (q: any) =>
-    ids.length
-      ? q.or(`store_pick_name.is.null,created_by.in.(${ids.join(",")})`)
+    ownerId
+      ? q.or(`store_pick_name.is.null,created_by.eq.${ownerId}`)
       : q.is("store_pick_name", null);
 
   const full = await scope(
@@ -90,18 +92,19 @@ export async function fetchVariantsForSku(
 
 /**
  * Client-side store-pick privacy check, mirroring `fetchVariantsForSku`'s DB filter
- * (`store_pick_name IS NULL OR created_by IN (ids)`). Use it to filter the variant
+ * (`store_pick_name IS NULL OR created_by = viewerId`). Use it to filter the variant
  * arrays that seed the carousel from a list row, so another user's private store
- * pick never flashes before the authoritative refetch (B-10). `created_by` may be
- * an auth id OR a public id, so pass both viewer ids.
+ * pick never flashes before the authoritative refetch (B-10).
+ *
+ * B-74: takes the viewer's public.users.id. It used to take both ids and match either.
  */
 export function isVariantVisibleToViewer(
   storePickName: string | null | undefined,
   createdBy: string | null | undefined,
-  viewerIds: (string | null | undefined)[]
+  viewerId: string | null | undefined
 ): boolean {
   if (!storePickName) return true;
-  return viewerIds.some((id) => !!id && id === createdBy);
+  return !!viewerId && viewerId === createdBy;
 }
 
 /** Fields that swap when the detail carousel moves. SKU identity (name/distillery/category) stays put. */

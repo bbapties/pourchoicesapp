@@ -19,7 +19,6 @@ import { reportBarcodeMismatch } from "@/lib/feedback";
 import { supabase } from "@/lib/supabase";
 import { fieldsForVariant, fetchVariantsForSku } from "@/lib/variants";
 import { resolveDefaultVariantId } from "@/lib/userBottles";
-import { useCurrentUser } from "@/lib/useCurrentUser";
 import { uploadBottleImage } from "@/lib/uploadBottleImage";
 import {
   submitEdits,
@@ -138,7 +137,6 @@ export default function BottleDetailView({
   const [gRange, setGRange] = useState<{ min: number; max: number } | null>(null);
   const swipeX = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { authId } = useCurrentUser();
 
   // 7.9: carousel = variants + a virtual "+ Add a version" slide at the end (logged in, not editing).
   // Never treat an empty list as the add-slide — Search/My Bar/Social omit the default
@@ -335,7 +333,7 @@ export default function BottleDetailView({
         if (!cancelled) setWishlistedIds(ids);
       });
     }
-    fetchVariantsForSku(bottle.id, [authId, publicUserId]).then((variants) => {
+    fetchVariantsForSku(bottle.id, publicUserId).then((variants) => {
       if (cancelled || !variants.length) return;
       setLocalBottle((prev) => ({ ...prev, variants }));
       // B-31: open pinned to the version the caller tapped (My Bar / Social), else default-first.
@@ -343,7 +341,7 @@ export default function BottleDetailView({
       setVariantIndex(pinIdx > 0 ? pinIdx : 0);
     });
     return () => { cancelled = true; };
-  }, [bottle.id, initialVariantId, publicUserId, authId]);
+  }, [bottle.id, initialVariantId, publicUserId]);
 
   // 3.1: rating state for the CURRENT variant (guess / tasted? / personal Elo) — refetch on swipe.
   useEffect(() => {
@@ -404,7 +402,7 @@ export default function BottleDetailView({
 
   // Refetch the owner-scoped variant list after a contribution so the new version appears.
   const refetchVariants = () => {
-    fetchVariantsForSku(bottle.id, [authId, publicUserId]).then((variants) => {
+    fetchVariantsForSku(bottle.id, publicUserId).then((variants) => {
       if (variants.length) setLocalBottle((prev) => ({ ...prev, variants }));
     });
   };
@@ -547,7 +545,7 @@ export default function BottleDetailView({
   };
 
   const handleSubmitEdit = async () => {
-    if (isSubmittingEdit || !publicUserId || !authId) return;
+    if (isSubmittingEdit || !publicUserId) return;
     const changes: EditChange[] = [];
     for (const f of EDITABLE_FIELDS) {
       if (!(f in origDraft)) continue;
@@ -562,7 +560,6 @@ export default function BottleDetailView({
       const res = await submitEdits({
         bottleId: bottle.id,
         variantId: currentVariant?.variantId ?? null,
-        authId,
         userId: publicUserId,
         changes,
       });

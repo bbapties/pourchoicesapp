@@ -14,7 +14,6 @@ import { lookupBottleByBarcode } from "@/lib/barcode";
 import { type BottleDetails } from "@/lib/types";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty } from "@/lib/userBottles";
 import { isVariantVisibleToViewer } from "@/lib/variants";
-import { useCurrentUser } from "@/lib/useCurrentUser";
 
 interface MyBarClientProps {
   ownedCollection: any[];
@@ -84,7 +83,6 @@ function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: b
 }
 
 export default function MyBarClient({ ownedCollection: initialOwned, emptyCollection: initialEmpty, tastedCollection: initialTasted, wishlistCollection: initialWishlist, allBottlesElo, publicUserId }: MyBarClientProps) {
-  const { authId } = useCurrentUser(); // for B-10 store-pick visibility (match auth or public id)
   const { minElo, maxElo } = useMemo(() => {
     if (!allBottlesElo.length) return { minElo: 1500, maxElo: 1500 };
     return { maxElo: Math.max(...allBottlesElo), minElo: Math.min(...allBottlesElo) };
@@ -201,7 +199,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
         }))
         // B-10: hide other users' private store picks in the seed (globals + own picks only).
         .filter((v, i) => (v.releaseYear || v.batch || v.storePickName || ((activeTab === 'tasted' || activeTab === 'wishlist') && v.variantId))
-          && isVariantVisibleToViewer(v.storePickName, createdBys[i], [authId, publicUserId])),
+          && isVariantVisibleToViewer(v.storePickName, createdBys[i], publicUserId)),
       nose: raw.attr_nose,
       palate: raw.attr_palate,
       finish: raw.attr_finish,
@@ -261,7 +259,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       variants: variantIds
         .map((vid, i) => ({ variantId: vid, releaseYear: releaseYears[i], batch: batches[i], storePickName: storePickNames[i] }))
         .filter((v, i) => (v.releaseYear || v.batch || v.storePickName)
-          && isVariantVisibleToViewer(v.storePickName, createdBys[i], [authId, publicUserId])),
+          && isVariantVisibleToViewer(v.storePickName, createdBys[i], publicUserId)),
       nose: data.attr_nose,
       palate: data.attr_palate,
       finish: data.attr_finish,

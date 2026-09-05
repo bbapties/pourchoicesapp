@@ -57,7 +57,6 @@ export default function DrinkClient({
   const [results, setResults] = useState<CatalogBottle[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(false);
-  const [authId, setAuthId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [picks, setPicks] = useState<CatalogBottle[]>([]);
   // Helper mode: randomized glass -> bottle assignment, in letter order (A, B, C...).
@@ -79,13 +78,10 @@ export default function DrinkClient({
 
   // Resolve the viewer's auth id so store-pick scoping can match either id (B-46/B-74).
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setAuthId(data.user?.id ?? null));
   }, []);
 
-  // 7.9 store-pick scoping: global variants + only the viewer's own store picks. Match auth
-  // id OR public id — created_by is stored inconsistently across rows.
-  const myIds = useMemo(() => [authId, publicUserId].filter(Boolean) as string[], [authId, publicUserId]);
-  const myIdsKey = myIds.join(",");
+  // 7.9 store-pick scoping: global variants + only the viewer's own store picks.
+  // B-74: `created_by` is a public.users.id, enforced by a foreign key.
 
   // Variant tag for a non-default row so batches / store picks are distinguishable in the list.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,8 +112,8 @@ export default function DrinkClient({
         const fields = ["bottle_name", "bottle_distillery", "bottle_category", "bottle_style", "bottle_barcode", "attr_batch", "attr_store_pick_name"];
         q = q.or(fields.map((f) => `${f}.ilike.${v}`).join(","));
       }
-      q = myIds.length
-        ? q.or(`attr_store_pick_name.is.null,variant_created_by.in.(${myIds.join(",")})`)
+      q = publicUserId
+        ? q.or(`attr_store_pick_name.is.null,variant_created_by.eq.${publicUserId}`)
         : q.is("attr_store_pick_name", null);
       const { data, error } = await q.order("bottle_name", { ascending: true }).limit(t ? 80 : 60);
       if (error) { setSearchError(true); setResults([]); return; }
@@ -144,7 +140,7 @@ export default function DrinkClient({
       setSearching(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myIdsKey, publicUserId]);
+  }, [publicUserId]);
 
   // Debounced: re-run when the term changes or once the auth id resolves (rescopes store picks).
   useEffect(() => {

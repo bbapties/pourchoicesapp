@@ -69,15 +69,13 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   // S4 My Ranks: skuId -> the viewer's own star rating (max across their rows for that SKU).
   const [personalStarMap, setPersonalStarMap] = useState<Record<string, number>>({});
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
-  const [authId, setAuthId] = useState<string | null>(null);
 
   // 7.9: store picks are private to their creator. Scope an all_variant_details query to
-  // global variants + the viewer's own store picks. Match auth id OR public id — created_by is
-  // stored inconsistently across rows. (Column names are the *_details view's.)
-  const myIds = useMemo(() => [authId, publicUserId].filter(Boolean) as string[], [authId, publicUserId]);
+  // global variants + the viewer's own store picks. B-74: `created_by` is a public.users.id,
+  // enforced by a foreign key, so this matches one id. (Column names are the *_details view's.)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scopeVariantQuery = (q: any) =>
-    myIds.length ? q.or(`attr_store_pick_name.is.null,variant_created_by.in.(${myIds.join(",")})`) : q.is("attr_store_pick_name", null);
+    publicUserId ? q.or(`attr_store_pick_name.is.null,variant_created_by.eq.${publicUserId}`) : q.is("attr_store_pick_name", null);
 
   type SortOption = 'global' | 'az' | 'za' | 'yours' | null;
   type FilterField = 'category' | 'verified';
@@ -131,10 +129,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     const createdBys: string[] = result.attr_variant_created_by || [];
     const elo = result.default_variant_elo ?? result.bottle_elo_global;
 
-    // 7.9: "N versions" badge counts global variants + only the viewer's own store picks
-    // (created_by may be an auth id or a public id — match either).
+    // 7.9: "N versions" badge counts global variants + only the viewer's own store picks.
     const visibleVariantCount = variantIds.length
-      ? variantIds.filter((_v, i) => !storePickNames[i] || createdBys[i] === authId || createdBys[i] === publicUserId).length
+      ? variantIds.filter((_v, i) => !storePickNames[i] || createdBys[i] === publicUserId).length
       : (result.variant_count ?? 0);
 
     return {
@@ -165,7 +162,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         }))
         // B-10: hide other users' private store picks in the seed (globals + own picks only).
         .filter((v, i) => (v.releaseYear || v.batch || v.storePickName)
-          && isVariantVisibleToViewer(v.storePickName, createdBys[i], [authId, publicUserId])),
+          && isVariantVisibleToViewer(v.storePickName, createdBys[i], publicUserId)),
       nose: result.attr_nose,
       palate: result.attr_palate,
       finish: result.attr_finish,
@@ -207,7 +204,6 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     async function fetchUserBottles() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
-      setAuthId(session.user.id);
 
       const { data: publicUser, error: userError } = await supabase
         .from('users')
@@ -340,7 +336,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       else { setIsLoadingMore(false); isLoadingMoreRef.current = false; }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, minElo, maxElo, authId, publicUserId, filter.field, filter.value]);
+  }, [viewMode, minElo, maxElo, publicUserId, filter.field, filter.value]);
 
   // Initial browse load (re-runs when the mode changes or the filter changes — B-38)
   useEffect(() => {
@@ -601,7 +597,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, minElo, maxElo, authId, publicUserId]);
+  }, [viewMode, minElo, maxElo, publicUserId]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -739,7 +735,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     }
 
     fetchCount();
-  }, [filter, query, filterActive, viewMode, authId, publicUserId]);
+  }, [filter, query, filterActive, viewMode, publicUserId]);
 
   // Count shown in banner
   // - No query, no filter: total DB count for the mode (from server prop)

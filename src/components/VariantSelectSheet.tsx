@@ -44,10 +44,9 @@ export default function VariantSelectSheet({
   mode = "add-to-bar",
   onContributed,
 }: VariantSelectSheetProps) {
-  const { authId, publicUserId } = useCurrentUser();
-  // Store-pick created_by may be an auth id OR a public id (B-11) — match either so
-  // the previous-store list and the reuse-existing check don't miss the user's own picks.
-  const myIds = [authId, publicUserId].filter(Boolean) as string[];
+  const { publicUserId } = useCurrentUser();
+  // B-74: store-pick `created_by` is a public.users.id, enforced by a foreign key. This used to
+  // match the auth id OR the public id (B-11) because the column held both.
   const isContribute = mode === "contribute";
   const [isFetching, setIsFetching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -80,7 +79,7 @@ export default function VariantSelectSheet({
     setStoreName("");
     setIsNewStore(false);
 
-    if (!authId) return;
+    if (!publicUserId) return;
     setIsFetching(true);
     Promise.all([
       supabase
@@ -92,7 +91,7 @@ export default function VariantSelectSheet({
       supabase
         .from("bottle_variants")
         .select("store_pick_name")
-        .in("created_by", myIds)
+        .eq("created_by", publicUserId)
         .not("store_pick_name", "is", null),
     ]).then(([batchRes, storeRes]) => {
       setBatchVariants(batchRes.data ?? []);
@@ -107,11 +106,11 @@ export default function VariantSelectSheet({
       setIsFetching(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, bottle.id, authId, publicUserId]);
+  }, [open, bottle.id, publicUserId]);
 
   const handleAdd = async () => {
     if (isAdding) return;
-    if (!authId) {
+    if (!publicUserId) {
       toast.error("You must be signed in");
       return;
     }
@@ -192,7 +191,7 @@ export default function VariantSelectSheet({
           .from("bottle_variants")
           .select("id")
           .eq("bottles_id", bottle.id)
-          .in("created_by", myIds)
+          .eq("created_by", publicUserId)
           .eq("store_pick_name", storeName.trim())
           .limit(1)
           .maybeSingle();
