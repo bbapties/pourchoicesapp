@@ -140,10 +140,15 @@ export default function VariantSelectSheet({
         return;
       }
 
-      // All other paths need a user-specific variant row
+      // All other paths need a user-specific variant row.
+      // B-74: created_by references public.users.id, not auth.users.id.
+      if (!publicUserId) {
+        toast.error("We couldn't find your profile. Try signing out and back in.");
+        return;
+      }
       const variantData: Record<string, unknown> = {
         bottles_id: bottle.id,
-        created_by: authId,
+        created_by: publicUserId,
         store_pick_name: isStorePick ? storeName.trim() : null,
       };
 

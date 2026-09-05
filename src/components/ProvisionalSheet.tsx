@@ -134,6 +134,19 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
         return;
       }
 
+      // B-74: `created_by` references public.users.id, NOT auth.users.id. Resolve it once, up
+      // front, and fail loudly rather than stamping an auth id that the foreign key will reject.
+      const { data: publicUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (!publicUser?.id) {
+        toast.error("We couldn't find your profile. Try signing out and back in.");
+        return;
+      }
+      const authorId = publicUser.id;
+
       // A new bottle needs a photo: it is what an admin vets the submission
       // against, and what enrichment reads the label from.
       if (!imageFile) {
@@ -152,7 +165,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
         barcode: data.barcode?.trim() || null,
         verified: false,
         elo_global: 1500,
-        created_by: user.id,
+        created_by: authorId,
       };
 
       const { data: insertedBottle, error: bottleError } = await supabase
@@ -189,24 +202,17 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
       // already succeeded.
       await insertDefaultVariant({
         bottleId: insertedBottle.id,
-        createdBy: user.id,
+        createdBy: authorId,
         eloGlobal: 1500,
         verified: false,
         frontimageUrl: frontimage_url,
       });
 
-      const { data: publicUser } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_id", user.id)
-        .maybeSingle();
-      if (publicUser?.id) {
-        await logActivity({
-          userId: publicUser.id,
-          bottleId: insertedBottle.id,
-          action: "added_to_db",
-        });
-      }
+      await logActivity({
+        userId: authorId,
+        bottleId: insertedBottle.id,
+        action: "added_to_db",
+      });
 
       // Special version: create it alongside the public default. Best-effort — a
       // failure here never loses the new bottle.
@@ -214,7 +220,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
       if (data.special !== "none" && detail) {
         const variantData: Record<string, unknown> = {
           bottles_id: insertedBottle.id,
-          created_by: user.id, // auth id, matching the store-pick contribute flow
+          created_by: authorId, // public.users.id (B-74)
           is_default: false,
           verified: false,
           frontimage_url,

@@ -329,9 +329,10 @@ export async function adminUpdateBottleFields(opts: {
   bottleId: string;
   defaultVariantId: string | null;
   values: Partial<Record<EditableField, string | null>>;
-  adminAuthId: string | null;
+  /** public.users.id of the acting admin (B-74: updated_by is a public id, not auth.uid()). */
+  adminUserId: string | null;
 }): Promise<{ error?: string }> {
-  const { bottleId, defaultVariantId, values, adminAuthId } = opts;
+  const { bottleId, defaultVariantId, values, adminUserId } = opts;
 
   const bottlePatch: Record<string, unknown> = {};
   const variantPatch: Record<string, unknown> = {};
@@ -343,13 +344,13 @@ export async function adminUpdateBottleFields(opts: {
   }
 
   if (Object.keys(bottlePatch).length) {
-    if (adminAuthId) bottlePatch.updated_by = adminAuthId;
+    if (adminUserId) bottlePatch.updated_by = adminUserId;
     const { error } = await supabase.from("bottles").update(bottlePatch).eq("id", bottleId);
     if (error) return { error: error.message };
   }
 
   if (Object.keys(variantPatch).length && defaultVariantId) {
-    if (adminAuthId) variantPatch.updated_by = adminAuthId;
+    if (adminUserId) variantPatch.updated_by = adminUserId;
     const { error } = await supabase
       .from("bottle_variants")
       .update(variantPatch)

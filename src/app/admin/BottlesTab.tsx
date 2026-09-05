@@ -173,12 +173,13 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   const saveDetail = async (): Promise<boolean> => {
     if (!detail || !dirty) return true;
     setSavingDetail(true);
-    const { data: { user } } = await supabase.auth.getUser();
     const { error } = await adminUpdateBottleFields({
       bottleId: detail.bottleId,
       defaultVariantId: detail.defaultVariantId,
       values: draft,
-      adminAuthId: user?.id ?? null,
+      // B-74: updated_by is a public.users.id. This tab already has it as a prop, so the
+      // extra auth.getUser() round-trip that used to supply the auth id is gone.
+      adminUserId: publicUserId,
     });
     setSavingDetail(false);
     if (error) { toast.error(`Save failed: ${error}`); return false; }
@@ -284,8 +285,9 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
       parentBottles = parentsRes.data || [];
     }
 
-    // Map created_by (auth.users id) -> username via public.users.auth_id.
-    const authIds = [
+    // B-74: created_by is a public.users.id, so this is a direct lookup on the primary key --
+    // it no longer has to hop through users.auth_id.
+    const authorIds = [
       ...new Set(
         [
           ...unverifiedBottles.map((b) => b.created_by),
@@ -295,13 +297,13 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
       ),
     ];
     const nameMap = new Map<string, string>();
-    if (authIds.length) {
-      const usersRes = await supabase.from("users").select("auth_id, username").in("auth_id", authIds);
+    if (authorIds.length) {
+      const usersRes = await supabase.from("users").select("id, username").in("id", authorIds);
       (usersRes.data || []).forEach((u) => {
-        if (u.auth_id) nameMap.set(u.auth_id, u.username);
+        if (u.id) nameMap.set(u.id, u.username);
       });
     }
-    const nameFor = (authId: string | null) => (authId && nameMap.get(authId)) || "Unknown";
+    const nameFor = (userId: string | null) => (userId && nameMap.get(userId)) || "Unknown";
 
     const variantsByBottle = new Map<string, QueueVariant[]>();
     unverifiedVariants.forEach((v) => {

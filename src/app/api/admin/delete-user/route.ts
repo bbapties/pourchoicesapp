@@ -52,6 +52,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Target user not found" }, { status: 404 });
   }
 
+  // Service-role client: needed for the auth.users delete below, and for detaching authorship
+  // (bottles/bottle_variants are admin-writable but this must not depend on the caller's RLS).
+  const admin = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  // B-29 / B-74: release the catalog rows this user authored before the cascade removes their
+  // public.users row. `created_by`/`updated_by` hold a public.users.id (B-74), so this keys on
+  // targetPublicUserId -- it used to key on auth_id, which no longer matches anything.
+  //
+  // The foreign keys added by sql/b74-...-part2-migration.sql are ON DELETE SET NULL, so the
+  // database already does this atomically as part of the cascade. This stays as belt and braces:
+  // it is explicit at the call site, and it also covers a user with no auth_id at all, who never
+  // entered the auth-id-conditional block this used to live in.
+  await admin.from("bottles").update({ created_by: null }).eq("created_by", targetPublicUserId);
+  await admin.from("bottles").update({ updated_by: null }).eq("updated_by", targetPublicUserId);
+  await admin.from("bottle_variants").update({ created_by: null }).eq("created_by", targetPublicUserId);
+  await admin.from("bottle_variants").update({ updated_by: null }).eq("updated_by", targetPublicUserId);
+
   // Cascade-delete from public schema via the SECURITY DEFINER RPC
   const { error: rpcErr } = await supabase.rpc("delete_user_cascade", {
     target_user_id: targetPublicUserId,
@@ -66,18 +85,6 @@ export async function POST(req: Request) {
 
   // Now nuke the auth.users row using the service-role client
   if (target.auth_id) {
-    const admin = createClient(url, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    // B-29: the catalog keeps the user's authorship (bottles/variants
-    // created_by/updated_by FK -> auth.users). Detach it first so deleting the
-    // auth row doesn't 500 with an FK violation and leave an Auth orphan.
-    await admin.from("bottles").update({ created_by: null }).eq("created_by", target.auth_id);
-    await admin.from("bottles").update({ updated_by: null }).eq("updated_by", target.auth_id);
-    await admin.from("bottle_variants").update({ created_by: null }).eq("created_by", target.auth_id);
-    await admin.from("bottle_variants").update({ updated_by: null }).eq("updated_by", target.auth_id);
-
     const { error: authErr } = await admin.auth.admin.deleteUser(target.auth_id);
     if (authErr) {
       return NextResponse.json(
