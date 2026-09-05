@@ -13,11 +13,11 @@
  * touched. That means no offline mode, which is the correct trade for a data-driven, auth-gated app
  * whose screens are meaningless without fresh data.
  *
- * It exists mainly so Web Push has somewhere to live (Phase 10 D3). Push and notificationclick
- * handlers get added there, not here, so this version stays easy to reason about.
+ * It also hosts the Web Push handlers (Phase 10 D3) at the bottom of this file, which is the other
+ * reason a service worker has to exist at all.
  */
 
-const VERSION = 'pc-v1';
+const VERSION = 'pc-v2';
 const STATIC_CACHE = `${VERSION}-static`;
 
 // Small, stable, and needed before the first paint of an installed app.
@@ -88,4 +88,60 @@ self.addEventListener('fetch', (event) => {
 // Lets the page trigger an immediate update instead of waiting for the next navigation.
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+
+/* ------------------------------------------------------------------------------------------------
+ * Web Push (Phase 10 D3)
+ *
+ * On iOS this code only ever runs for a PWA installed to the home screen on iOS 16.4+. Safari tabs
+ * cannot receive push at all, which is why install is a hard prerequisite there rather than a nicety.
+ * ---------------------------------------------------------------------------------------------- */
+
+self.addEventListener('push', (event) => {
+  // Never let a malformed payload kill the notification: a push event that throws shows the
+  // browser's own generic "This site has been updated in the background", which looks broken.
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    try {
+      data = { body: event.data ? event.data.text() : '' };
+    } catch {
+      data = {};
+    }
+  }
+
+  const title = data.title || 'Pour Choices';
+  const options = {
+    body: data.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    // Deep link travels with the notification so a tap can open the thing it is about.
+    data: { url: data.url || '/mybar' },
+    // A tag collapses repeats instead of stacking duplicates in the shade.
+    tag: data.tag || 'pour-choices',
+    renotify: true,
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/mybar';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // Prefer focusing a window we already have -- opening a second copy of an installed app is
+      // jarring, and on Android it can spawn a duplicate task.
+      for (const client of clients) {
+        if ('focus' in client) {
+          client.navigate(target).catch(() => {});
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
 });

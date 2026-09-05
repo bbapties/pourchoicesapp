@@ -10,6 +10,8 @@ import FeedbackSheet from "@/components/FeedbackSheet";
 import { updateUsername, resetCoaches, fetchEmail, USERNAME_MAX } from "@/lib/profile";
 import { clearDismissedInstall, isStandalone } from "@/lib/pwa";
 import InstallSheet from "@/components/InstallSheet";
+import NotificationSheet from "@/components/NotificationSheet";
+import { checkPushSupport, disablePush, permissionState } from "@/lib/pushNotifications";
 import { logClick, logEvent } from "@/lib/events";
 
 export default function ProfilePage() {
@@ -36,6 +38,47 @@ export default function ProfilePage() {
    * signed-in user sent to "/" is redirected to /mybar and would never see it.
    */
   const [installOpen, setInstallOpen] = useState(false);
+
+  // Notifications. Three independent facts decide what this row says: the OS permission (one-shot,
+  // see pushNotifications.ts), whether push is usable in this context at all (iPhone Safari tabs
+  // cannot), and the user's stored preference.
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [notifyOn, setNotifyOn] = useState(false);
+  const [notifyBusy, setNotifyBusy] = useState(false);
+  const [pushBlocked, setPushBlocked] = useState(false);
+
+  useEffect(() => {
+    setPushBlocked(permissionState() === "denied");
+    if (!publicUserId) return;
+    let cancelled = false;
+    supabase
+      .from("users")
+      .select("notify_push")
+      .eq("id", publicUserId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        // "On" means BOTH: they want it and the browser actually granted it. Showing a toggle as on
+        // while the OS blocks delivery would be a lie.
+        setNotifyOn(!!data?.notify_push && permissionState() === "granted");
+      });
+    return () => { cancelled = true; };
+  }, [publicUserId]);
+
+  const handleToggleNotifications = async () => {
+    if (!publicUserId) return;
+    if (notifyOn) {
+      setNotifyBusy(true);
+      const res = await disablePush(publicUserId);
+      setNotifyBusy(false);
+      if (res.ok) { setNotifyOn(false); toast.success("Notifications turned off."); }
+      else toast.error("Couldn't turn notifications off.");
+      return;
+    }
+    // Turning ON always goes through the sheet: it owns the permission request, the blocked-state
+    // explanation, and the iPhone "install first" case.
+    setNotifyOpen(true);
+  };
   const handleInstallAgain = () => {
     clearDismissedInstall();
     logEvent({ eventType: "pwa_install_reopened", surface: "/profile" });
@@ -164,6 +207,28 @@ export default function ProfilePage() {
           {resetting ? "Restarting…" : "Replay tutorial"}
         </button>
 
+        <button
+          type="button"
+          data-coach="profile.notifications"
+          disabled={notifyBusy}
+          onClick={handleToggleNotifications}
+          className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900 disabled:opacity-50 flex items-center justify-between px-4"
+          style={{ minHeight: "44px" }}
+        >
+          <span>Notifications</span>
+          <span className="text-xs text-gray-600">
+            {notifyBusy
+              ? "…"
+              : notifyOn
+                ? "On"
+                : pushBlocked
+                  ? "Blocked in browser"
+                  : checkPushSupport().supported
+                    ? "Off"
+                    : "Needs the app installed"}
+          </span>
+        </button>
+
         {!installed && (
           <button
             type="button"
@@ -195,6 +260,8 @@ export default function ProfilePage() {
           Sign Out
         </button>
       </div>
+
+      <NotificationSheet open={notifyOpen} onOpenChange={(o) => { setNotifyOpen(o); if (!o) setNotifyOn(permissionState() === "granted"); }} publicUserId={publicUserId} surface="/profile" showNeverAsk={false} />
 
       <InstallSheet open={installOpen} onOpenChange={setInstallOpen} surface="/profile" />
 
