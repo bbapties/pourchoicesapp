@@ -8,70 +8,81 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `3affaea`. Working tree clean; everything on origin/MVP-v3 and live and verified.
-- **Current phase:** **Phase 10** -- see **[PHASE10.md](PHASE10.md)**, the re-ranked plan that
-  **supersedes the Phase 8 ordering**. PHASE8.md still holds the valid feature *specs*.
+- **Tip:** `aba78f0` (+ this doc commit). Working tree clean; all on origin/MVP-v3, live and verified.
+- **Current phase:** **Phase 10** -- **[PHASE10.md](PHASE10.md)**, which supersedes the Phase 8
+  ordering. Beta is now **3 people Brian knows**, so the bar is "they install it and keep opening
+  it." **Wave A and Wave B are done. Wave C (PWA) is next and is Brian's stated #1.**
 
-### The re-rank (planning session with Brian, 2026-09-04)
-The beta is now **3 people Brian knows**, not 10-15 strangers, so the bar moved from "a trustworthy
-first session" to **"they install it and keep opening it."** His stated priority, verbatim: *install
-with more of an app feel, icon on mobile, push notifications, and a really good What's new -- that
-will almost be my way to market it and keep my beta testers engaged.* Those are Phase 8 waves 2/3/5,
-**the three never started.** Waves A-F and the measurements behind them are in PHASE10.md.
+### Shipped this session
+1. **A1 -- the middleware had never run** (`a6de5b0`). `middleware.ts` sat at the repo root; with a
+   `src/` directory Next.js only reads `src/middleware.ts` and silently ignores the other. So
+   `/search`, `/social`, `/profile` served **200 to signed-out visitors** (no data leaked -- RLS
+   held), and both prior auth fixes were no-ops, which is why the redirect loop restarted 18 minutes
+   after being declared fixed. Moved into `src/`, plus a `PUBLIC_PATHS` allowlist -- enabling it had
+   bounced `/reset-password`, where users arrive from a recovery email unauthenticated.
+2. **A1 -- events cap + purge** (`3affaea`). `guard_event_insert` now caps each `session_id` at 200
+   rows/rolling hour (silent drop, not raise). Purged **65,215 -> 655** rows. The five loopers were
+   browser tabs, not Brian's Grok bot: `session_id` is sessionStorage-scoped, so ids persisting Sep 1
+   -> Sep 4 mean those tabs stayed open; a DB-querying bot never runs `EventTracker` at all.
+3. **A2 -- image compression** (`046f94d`, `88165e0`). Measured first: six phone JPEGs (1.1-4.6 MB)
+   were **86% of the bucket**; the bot's images were 178-505 KB. `src/lib/compressImage.ts` does
+   1200px long edge + WebP q82, EXIF-aware, alpha-safe, fails open to the original. **5.91 MB ->
+   149.8 KB verified through the real app path.** `verify-bottle`'s `clean_image.py` aligned to the
+   same spec (505 KB -> 66 KB, 495 KB -> 54 KB, transparency intact).
+4. **Wave B -- B-74 resolved** (`fab85e2`, `9c76dd3`). See below.
 
-### SHIPPED THIS SESSION -- Wave A1 (`a6de5b0`, `3affaea`)
+### B-74: what was actually true, and how it shipped
+Measured, not assumed: **ten of twelve person-columns already used `public.users.id`.** Only
+bottles/variants `created_by`/`updated_by` used the auth id, and **uniformly** (81/82, 109/110) --
+so **B-46's "it's mixed" was false.** Three FKs to `auth.users` were enforcing it, while
+`bottle_variants.created_by` had no FK at all. The three "orphans" were one id: the `auth.users`
+row for `grainoftruth@`, whose `public.users` row had the same email and a NULL `auth_id` -- a
+broken link, repaired, so nothing was nulled.
 
-**The middleware had never run in production.** `middleware.ts` sat at the repo root; Next.js only
-reads `src/middleware.ts` when a `src/` directory exists, and silently ignores a root-level one.
-
-- **What that meant:** `/search`, `/social` and `/profile` served **200 to signed-out visitors** on
-  prod. Only `/mybar`, `/taste`, `/admin` were protected, and only because those pages guard
-  themselves. **No data leaked** -- anon HTML had no bottle names, usernames or emails; RLS (B-18,
-  B-24) held. Access-control + first-impression gap, not a breach.
-- **It also explains the redirect loop.** `f6842a3` (getUser hardening) and `4210e1c` (the
-  stale-cookie purge built to end that loop) were **both no-ops**, which is why the loop restarted 18
-  minutes after being declared fixed on 09-01.
-- **Fix:** `git mv middleware.ts src/middleware.ts` + a **public allowlist**. Turning the middleware
-  on had bounced `/reset-password`, where a user arrives from a recovery email **not yet
-  authenticated** -- `/` and `/reset-password` are now explicitly public. Verified on prod both
-  directions: signed out everything else 307s to `/` and a stale `sb-*-auth-token` is purged; signed
-  in all routes 200 and a valid cookie is untouched. Latency 0.16-0.23s.
-- **Server-side event cap:** `guard_event_insert` now caps each `session_id` at **200 rows/rolling
-  hour**, `RETURN NULL` (silent drop) not RAISE -- `logEvent` is fire-and-forget, so raising would
-  spam the console and could feed a retry loop. Verified on prod: a 260-row burst landed exactly 200.
-  `sql/events-session-rate-cap-{migration,snapshot}.sql`. Closes **B-60 tier 2**.
-- **Purged** the loop rows: **65,215 -> 655**. The events table reflects real usage for the first time.
-- **The five loopers were browser tabs, not Brian's Grok bot.** `session_id` lives in
-  **sessionStorage**, so ids persisting Sep 1 -> Sep 4 mean those exact tabs stayed open; four wake
-  together once a day at the same wall-clock time. A bot querying the DB never runs `EventTracker`
-  and cannot produce `page_view` rows at all.
+**Three steps, because code and SQL do not deploy atomically** and `created_by` is written on every
+bottle add. Migrating first would make deployed code violate the new FK; deploying first would
+violate the old one. So part 1 dropped the FKs and remapped **384** values, leaving the columns
+**unconstrained**; the app deployed writing public ids; part 2 re-swept, aborted-if-unresolvable,
+added `ON DELETE SET NULL` FKs and simplified the B-24 policy. Then `9c76dd3` deleted the dual-id
+matching everywhere. **An auth id is now unstorable -- verified by attempting one.**
 
 ### Single next step
-**Wave A2 -- compress images on upload** (`src/lib/uploadBottleImage.ts`). Measured: 11 objects /
-17 MB = **~1.5 MB per image**. The free tier holds ~660 images at that size, ~10,000 at ~100 KB WebP.
-Brian named images as the pinch point for the future catalog seed, so this is a **prerequisite** of
-that work, not a follow-up. Then A3 (Brian's two config tasks) and Wave B (B-74).
+**Wave C1 -- PWA manifest + icon set.** `public/` has no manifest, no service worker and no PNG
+icons (only SVGs + `cellar-bg.png`). Brian's call: **derive the icon art from `cellar-bg.png` /
+existing art**. C1 alone puts an icon on the home screen, which is the single most visible change
+for his testers. Then C2 (service worker, app-shell only -- required for push) and C3 (install
+prompt; Android `beforeinstallprompt`, iOS instructional).
 
-### Still open from Wave A
-- **A3 is Brian's, not code:** **B-26** add `/reset-password` to Supabase Auth -> URL Configuration ->
-  Redirect URLs + enable the Reset Password template -- **forgot-password ships in the UI and does not
-  work without it.** **B-21** confirm the service-role env var in Vercel.
-- **A4 done** (BUGS.md drift ticked: B-32, B-48, B-54, B-61; B-60 closed).
+### Open for Brian (not code)
+- **A3 / B-26 -- forgot-password is broken until he does this.** Supabase Auth -> URL Configuration
+  -> Redirect URLs, add `/reset-password`, and enable the Reset Password template. **Confirmed this
+  is NOT doable with our credentials:** the `auth` schema has no config table, and the Management
+  API returns 401 to the service-role key -- it needs an account-wide personal access token, which
+  we deliberately did not take. Mitigation: a password can be reset via the service role if a tester
+  is stuck.
+- **B-21** -- confirm the service-role env var in Vercel. Only affects admin user deletion.
+- **`Grain_of_Truth`** (`grainoftruth@pourchoicesapp.com`, created Aug 29) had a login but no
+  profile link; the migration repaired it. It authored 1 bottle + 1 variant. Brian should confirm
+  whether that is a real tester or a test account.
 
 ### Landmines carried forward
-- **B-74 is much smaller than documented** -- measured 2026-09-04: **10 of 10** people-FK columns
-  already point at `public.users`; **0** FKs point at `auth.users`; `created_by` is **81/82** and
-  **109/110** consistently **auth ids**, so **B-46's "mixed" claim is effectively false**. ~192 rows to
-  remap. Brian chose to fix it properly, **before push**. Scoped as Wave B in PHASE10.md.
-- **Middleware now actually runs** -- it calls `getUser()` on every matched request, a cost prod never
-  paid before. Watch latency and Supabase Auth rate limits. Any new public route must be added to
-  `PUBLIC_PATHS` in `src/middleware.ts` or it will 307 to `/`.
-- **Ratings (B-40):** manual guesses live in **`user_ratings`**, never `user_bottles.rating_stars`.
-- **B-23 tier-2** deferred post-beta. **Do NOT rewrite the Elo trigger.**
+- **Do NOT reintroduce "match both ids".** B-74 is closed and the FK rejects an auth id, so a dual
+  match is dead code that reads as if the ambiguity still exists. `authId` belongs only where it
+  means "is there a session" (today: `AppShell`). See AGENTS.md.
+- **Middleware now actually runs**, calling `getUser()` on every matched request -- a cost prod never
+  paid before (measured 0.16-0.23s, fine). **Any new public route must be added to `PUBLIC_PATHS`
+  in `src/middleware.ts`** or it will 307 to `/`.
+- **Storage:** compression only affects NEW uploads. The 11 existing objects (17 MB) still need a
+  backfill re-encode -- fold it into **F1** (orphan purge + usage readout), which walks the same
+  bucket. Do that before any catalog seed.
 - **0 tasting sessions have ever run on prod** -- the flagship loop is unexercised by a human
   (PHASE10 E1).
-- **Storage:** nothing purges orphaned images (PHASE10 F1).
-- **Do NOT rebuild the online barcode lookup** without new evidence -- see BACKLOG > Data / Audit.
+- **Ratings (B-40):** manual guesses live in **`user_ratings`**, never `user_bottles.rating_stars`.
+- **B-23 tier-2** deferred post-beta. **Do NOT rewrite the Elo trigger** (B-49/B-50 ask first).
+- **Do NOT rebuild the online barcode lookup** without new evidence -- BACKLOG > Data / Audit.
+- **Lint baseline is 2 pre-existing errors** (`SocialClient` unused `logActivity`, `useCurrentUser`
+  unused `_ids`). Judge a change by whether it moves off 2, not by whether the count is 0. Also:
+  `npx eslint .` picks up `.claude/worktrees` and reports ~3,900 -- lint `src` instead.
 
 ## Known state drift (docs vs reality)
 - ✅ **RECONCILED 2026-08-21** — **README.md** now carries a stale-banner pointing here; **ROADMAP** "WE ARE HERE"
@@ -90,6 +101,24 @@ that work, not a follow-up. Then A3 (Brian's two config tasks) and Wave B (B-74)
 ---
 
 ## Log (newest first)
+
+### 2026-09-05 - Claude (Phase 10 re-rank; middleware never ran; images; B-74 closed)
+- **Planning session** -> **[PHASE10.md](PHASE10.md)** (waves A-F), ROADMAP/AGENTS repointed at it.
+  Beta re-scoped to 3 known people, so the bar became retention, not onboarding (`47e8e7f`).
+- **A1** (`a6de5b0`, `3affaea`): found that `middleware.ts` had **never run** (root-level file with a
+  `src/` dir). Fixed by moving it, caught that enabling it broke `/reset-password`, added a
+  `PUBLIC_PATHS` allowlist. Added a server-side per-session events cap and purged 64,560 loop rows.
+  **Diagnosis worth reusing:** curl the prod redirect and look for the `Set-Cookie` the fix was
+  supposed to emit -- its absence is what exposed that the redirect came from `mybar/page.tsx`.
+- **A2** (`046f94d`, `88165e0`): image compression in the app and in the `verify-bottle` skill.
+  Measured before building -- the app was the problem, the bot was already 10x better.
+- **Wave B / B-74** (`fab85e2`, `9c76dd3`, `aba78f0`): three-step expand/migrate/contract. Measuring
+  first corrected two documented assumptions (B-46's "mixed" was false; the "orphans" were one
+  broken `auth_id` link). Changing helper *signatures* rather than bodies made the compiler
+  enumerate every caller, and removing the dual match stranded auth-id plumbing in five files.
+- **Corrected my own earlier claim** that no FK pointed at `auth.users` -- three did.
+  `information_schema` does not surface cross-schema references; `pg_constraint` does. PHASE10 fixed.
+- **Next:** Wave C1, PWA manifest + icons.
 
 ### 2026-09-05 - Claude (Phase 10 re-rank; middleware had never run; events loop closed)
 - **Planning session.** Brian dialed the beta back to **3 people he knows** and asked for a full
