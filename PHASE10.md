@@ -72,10 +72,16 @@ Two numbers drive this phase: **0 tastings** (the flagship loop is unexercised) 
   Bot side aligned in the same pass: `clean_image.py` now downscales + emits WebP and warns over
   250 KB; SKILL.md requires `.webp`. On our real bot images: 505 KB -> 66 KB, 495 KB -> 54 KB,
   transparency intact.
-- [ ] **A3 Brian's config tasks (not code).** **B-26** — add `/reset-password` to Supabase Auth ->
-  URL Configuration -> Redirect URLs + enable the Reset Password template. **Forgot-password ships in
-  the UI and does not work today.** **B-21** — confirm the service-role env var in Vercel.
-- [ ] **A4 Tick BUGS.md drift** — B-32, B-48, B-54, B-60, B-61 shipped in PHASE9 but read as open.
+- [x] **A3 Brian's config tasks — DONE 2026-09-05.** **B-26**: Brian added the redirect URLs. The
+  non-www entry alone was not enough — the apex 308-redirects to `www`, so `window.location.origin`
+  is always the www form; adding `https://www.pourchoicesapp.com/reset-password` closed it.
+  **B-21**: resolved, and the reason it lingered was not config at all — `.vercel/project.json` was
+  linked to a **stale Vercel project**, so `env ls` kept returning an empty list.
+  `SUPABASE_SERVICE_ROLE_KEY` had in fact been set for 105 days. See AGENTS "Vercel — there are TWO
+  projects".
+- [x] **A4 Tick BUGS.md drift** — B-32, B-48, B-54, B-61 ticked; B-60 closed by the A1 rate cap.
+
+**WAVE A COMPLETE.**
 
 ## Wave B — B-74 done properly  ✅ COMPLETE 2026-09-05
 
@@ -172,8 +178,10 @@ Content channel **before** delivery — push with nothing to say is worthless.
   denied or opted out. **Verified:** 401 unauthenticated, 403 for a signed-in non-admin, VAPID keys
   produce a valid aes128gcm payload + JWT, and a policy-blocked browser shows "Blocked in browser"
   with unblock steps rather than a lying toggle.
-  **Owed by Brian:** `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in Vercel
-  (values in the gitignored `.env.local`). Until then the route returns a clear 503.
+  **VAPID env set 2026-09-05** (by Claude, via the authenticated Vercel CLI, after relinking to the
+  correct project) and production redeployed so the build inlined the public key.
+  **VERIFIED ON REAL DEVICES:** Brian's Android subscribed 16:29 and his iPhone 17:23; three
+  notifications sent for **5 deliveries, 0 failures**. Push works on both platforms.
 
 ## Wave E — Reasons to come back
 
