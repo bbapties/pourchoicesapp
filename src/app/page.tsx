@@ -46,18 +46,31 @@ export default function Home() {
   // unrefreshable token made this redirect to /mybar while the middleware bounced it back
   // to / — an infinite /<->/mybar loop (the page_view flood since 2026-08-27).
   useEffect(() => {
-    const authCheck = supabase.auth.getUser();
+    let settled = false;
+    const finish = (user: unknown) => {
+      if (settled) return;
+      settled = true;
+      if (user) router.replace("/mybar");
+      else setAuthChecked(true);
+    };
+
     const minDelay = new Promise<void>((resolve) => setTimeout(resolve, 1500));
 
-    Promise.all([authCheck, minDelay])
-      .then(([{ data: { user } }]) => {
-        if (user) {
-          router.replace("/mybar");
-        } else {
-          setAuthChecked(true);
-        }
-      })
-      .catch(() => setAuthChecked(true)); // offline / auth error -> show login, never hang on splash
+    // HARD CEILING. `.catch()` below only fires on REJECTION -- it cannot save us from a call that
+    // simply never settles, which is what happened on Android: a force-closed PWA left the
+    // supabase-js auth lock held, `getUser()` waited on it forever, and the splash sat on the
+    // background image with no Get Started and no way out. The lock itself is now bounded in
+    // lib/supabase.ts; this is the belt-and-braces so the splash can NEVER trap a user again,
+    // whatever the cause (dead network, stalled DNS, a future library change).
+    // Falling through to the login screen is always safe. Redirecting to /mybar on a guess is not --
+    // that is how the 2026-08-27 `/` <-> `/mybar` loop happened.
+    const bail = setTimeout(() => finish(null), 8000);
+
+    Promise.all([supabase.auth.getUser(), minDelay])
+      .then(([{ data: { user } }]) => finish(user))
+      .catch(() => finish(null)); // offline / auth error -> show login
+
+    return () => clearTimeout(bail);
   }, [router]);
 
   // Progress bar calculation
