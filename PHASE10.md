@@ -59,9 +59,19 @@ Two numbers drive this phase: **0 tastings** (the flagship loop is unexercised) 
   260-row burst -> exactly 200) and purged 64,560 rows (**65,215 -> 655**).
   The five loopers were **browser tabs, not a bot**: `session_id` lives in `sessionStorage`, so ids
   persisting from Sep 1 to Sep 4 means those tabs stayed open; they wake together once a day.
-- [ ] **A2 Compress images on upload.** Resize + WebP in `src/lib/uploadBottleImage.ts` (already
+- [x] **A2 Compress images on upload.** Resize + WebP in `src/lib/uploadBottleImage.ts` (already
   MIME-allow-listed + 8 MB capped from B-59). ~15x more headroom on the same free tier. Must land
   **before** more beta photos and well before any catalog seed.
+  **DONE 2026-09-05** (`046f94d`). Measured first: six phone JPEGs (1.1-4.6 MB) were **86% of the
+  bucket**; the bot's five images were 178-505 KB -- **the app was the problem, not the bot.**
+  New `src/lib/compressImage.ts`: 1200px long edge + WebP q82, EXIF-aware, alpha-safe, skips
+  already-small files, never returns a bigger blob, and fails open to the original. Input guard
+  raised to 25 MB with the 8 MB cap now applying to what is *stored*. Applied to feedback
+  screenshots too. **Verified end-to-end through the real app path: a 3024x4032 5.91 MB JPEG
+  stored as 149.8 KB WebP (40x).**
+  Bot side aligned in the same pass: `clean_image.py` now downscales + emits WebP and warns over
+  250 KB; SKILL.md requires `.webp`. On our real bot images: 505 KB -> 66 KB, 495 KB -> 54 KB,
+  transparency intact.
 - [ ] **A3 Brian's config tasks (not code).** **B-26** — add `/reset-password` to Supabase Auth ->
   URL Configuration -> Redirect URLs + enable the Reset Password template. **Forgot-password ships in
   the UI and does not work today.** **B-21** — confirm the service-role env var in Vercel.

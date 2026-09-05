@@ -37,9 +37,21 @@ Find duplicate/near-duplicate rows (same name, or same distillery + overlapping 
 - Batch/allocated releases legitimately share one UPC across batches (e.g. Elijah Craig Barrel Proof: `096749002368` on 4 batches) — not an error; scan maps to the product line, user picks the variant. Note it; don't invent a unique code.
 
 ### 4. Image (self-host — no hotlinks)
+
+> **Storage budget -- always output `.webp`.** Supabase Storage is metered and this project is
+> on the **free tier**, so every oversized upload is real money. `clean_image.py` now downscales
+> to **1200px on the long edge** and encodes **WebP q82**, matching `src/lib/compressImage.ts`
+> so bot-uploaded and user-uploaded images are identical in size and quality. WebP keeps the
+> transparency these cutouts need and runs **7-10x smaller than the same PNG** (measured on our
+> own images: 505 KB -> 66 KB, 495 KB -> 54 KB).
+>
+> **Expect 40-150 KB per bottle image.** The script prints the output size and warns above
+> 250 KB -- if you see that warning, do not upload it; re-check the source instead. Never upload
+> a raw brand asset or an un-cleaned photo directly. Do not pass `.png` unless you have a
+> specific reason.
 1. Source the best **official brand asset**: don't just reuse the DB's URL (often a dead 404). Actively **search the brand's own site** — many are Shopify (`cdn/shop/files/...`), where the browser tools can read the real `<img>`/`srcset` and you can pull a high-res size (e.g. `_2048x`). Official marketing images are fine even with text around the bottle — rembg isolates the bottle. Fall back to the existing draft only if no official asset exists.
-2. Clean: `python .claude/skills/verify-bottle/scripts/clean_image.py <in> <out.png> [--crop L,T,R,B]` — uses **rembg** (ML) to isolate the bottle from ANY background, then tight-trims + centers on transparency. Already-transparent PNGs skip rembg. `--crop` first (source px) to drop flanking marketing text before removal. rembg is installed; if missing: `python -m pip install rembg onnxruntime` (first run downloads a ~1GB model).
-3. Upload: `node .claude/skills/verify-bottle/scripts/upload_image.mjs <out.png> bottle-images variants/<variant_id>/front.png` (from repo root). Bucket `bottle-images` exists (public). Prints the public URL. (Uploading is harmless even if the suggestion is later rejected — worst case an orphan file.)
+2. Clean + optimize: `python .claude/skills/verify-bottle/scripts/clean_image.py <in> <out.webp> [--crop L,T,R,B]` — uses **rembg** (ML) to isolate the bottle from ANY background, then tight-trims + centers on transparency. Already-transparent PNGs skip rembg. `--crop` first (source px) to drop flanking marketing text before removal. rembg is installed; if missing: `python -m pip install rembg onnxruntime` (first run downloads a ~1GB model).
+3. Upload: `node .claude/skills/verify-bottle/scripts/upload_image.mjs <out.webp> bottle-images variants/<variant_id>/front.webp` (from repo root). Bucket `bottle-images` exists (public). Prints the public URL. (Uploading is harmless even if the suggestion is later rejected — worst case an orphan file.)
 4. Emit a `frontimage_url` suggestion pointing at that URL.
 
 ### 5. Hand off for review
