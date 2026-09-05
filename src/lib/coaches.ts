@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { MIN_PICKS, MAX_PICKS } from "@/lib/tastings";
 
 /**
  * Master switch for the AUTOMATIC coach behaviours: the first-session core tour and the What's new
@@ -115,7 +116,7 @@ export const COACH_CATALOG: CoachItem[] = [
   {
     id: "taste.blind",
     title: "Blind tastings",
-    body: "Rank 2-5 bottles blind from the Drink tab. Your ranking updates your personal and the global scores.",
+    body: `Rank ${MIN_PICKS}-${MAX_PICKS} bottles blind from the Drink tab. Your ranking updates your personal and the global scores.`,
     route: "/taste",
     core: true,
     announce: true,
@@ -128,7 +129,7 @@ export const COACH_CATALOG: CoachItem[] = [
       {
         route: "/taste",
         anchor: "taste.start",
-        caption: "Start a blind tasting — pick 2-5 bottles, rank them blind, and watch the scores update.",
+        caption: `Start a blind tasting — pick ${MIN_PICKS}-${MAX_PICKS} bottles, rank them blind, and watch the scores update.`,
       },
     ],
   },
@@ -143,7 +144,7 @@ export const COACH_CATALOG: CoachItem[] = [
       {
         route: "/taste",
         anchor: "taste.pour",
-        caption: "Have a drink logs a pour. Blind tasting ranks 2-5 bottles.",
+        caption: `Have a drink logs a pour. Blind tasting ranks ${MIN_PICKS}-${MAX_PICKS} bottles.`,
       },
     ],
   },

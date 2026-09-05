@@ -2,6 +2,19 @@ import { supabase } from "@/lib/supabase";
 import { logActivity } from "@/lib/activities";
 
 /** One bottle in a tasting lineup (a specific variant of a SKU). */
+/**
+ * How many bottles one blind tasting can cover.
+ *
+ * Raised 5 -> 6 on Brian's call (2026-09-05). Nothing in the engine cared: `saveTasting` builds
+ * every pair dynamically (6 bottles = 15 pairs instead of 10) and the glass letters are derived
+ * from the index, so A-F needed no change. The cap was only ever a UI number.
+ *
+ * These live here, not in DrinkClient, because the same number appears in the picker, the coach
+ * copy and the bottle-card More sheet -- it was hardcoded in six places and had already drifted.
+ */
+export const MIN_PICKS = 2;
+export const MAX_PICKS = 6;
+
 export type TastingPick = {
   bottleId: string;
   variantId: string;

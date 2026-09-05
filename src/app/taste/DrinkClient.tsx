@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronUp, ChevronDown, Check, Wine, Eye } from "lucide-re
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
-import { saveTasting, type TastingPick } from "@/lib/tastings";
+import { saveTasting, type TastingPick, MIN_PICKS, MAX_PICKS } from "@/lib/tastings";
 import { logActivity, type PourType } from "@/lib/activities";
 import { logClick, logEvent } from "@/lib/events";
 import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
@@ -26,8 +26,6 @@ type CatalogBottle = {
 };
 type RankItem = CatalogBottle & { glassLetter: string };
 
-const MIN_PICKS = 2;
-const MAX_PICKS = 5;
 const letter = (i: number) => String.fromCharCode(65 + i); // 0 -> A
 
 function shuffle<T>(arr: T[]): T[] {
@@ -394,7 +392,7 @@ export default function DrinkClient({
           <div className="flex flex-col items-center text-center pt-10 gap-4">
             <Wine size={48} className="text-charcoal" />
             <h2 className="text-lg font-semibold text-charcoal">Drink</h2>
-            <p className="text-sm text-gray-500 max-w-xs">Log a pour, or rank 2–5 bottles blind. Blind rankings update your personal and the global scores.</p>
+            <p className="text-sm text-gray-500 max-w-xs">Log a pour, or rank {MIN_PICKS}–{MAX_PICKS} bottles blind. Blind rankings update your personal and the global scores.</p>
             <div className="w-full mt-2 space-y-2">
               <button type="button" data-coach="taste.pour" onClick={() => { setQuery(""); setStep("pourPick"); }} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>Have a drink</button>
               <button type="button" data-coach="taste.start" onClick={() => setStep("mode")} className={secondaryBtn}>Start a blind tasting</button>
@@ -432,7 +430,7 @@ export default function DrinkClient({
           <div className="pt-4 space-y-3">
             <h2 className="text-base font-semibold text-charcoal mb-1">How are you tasting?</h2>
             {picks.length === 1 && (
-              <p className="text-sm text-gray-500">Starting with {picks[0].name}. Pick 1–4 more after this.</p>
+              <p className="text-sm text-gray-500">Starting with {picks[0].name}. Pick 1–{MAX_PICKS - 1} more after this.</p>
             )}
             <button type="button" onClick={() => startMode("self")} className="w-full text-left rounded-lg border border-charcoal p-4">
               <div className="font-semibold text-charcoal">I&apos;ll set it up myself</div>

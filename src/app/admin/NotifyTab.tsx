@@ -277,7 +277,7 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
           onChange={(e) => setAnnBody(e.target.value)}
           maxLength={400}
           rows={2}
-          placeholder="Pick 2-5 bottles, rank them blind, and see how they really stack up."
+          placeholder="Pick 2-6 bottles, rank them blind, and see how they really stack up."
           className="w-full border border-gray-400 rounded px-2 py-2 text-sm"
         />
 

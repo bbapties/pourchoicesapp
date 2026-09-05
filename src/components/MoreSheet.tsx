@@ -1,5 +1,6 @@
 "use client";
 
+import { MAX_PICKS } from "@/lib/tastings";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 
 interface MoreSheetProps {
@@ -44,7 +45,7 @@ export default function MoreSheet({
   if (onAddVariant) rows.push({ label: "Add a variant", hint: "A batch, release, or your store pick", onClick: onAddVariant });
   if (onAddAnother) rows.push({ label: "Add another", hint: "You bought another bottle of this", onClick: onAddAnother });
   if (onHaveADrink) rows.push({ label: "Have a drink", hint: "Neat, rocks, mixed, or start a blind tasting", onClick: onHaveADrink });
-  if (onBlindTasting) rows.push({ label: "Blind tasting", hint: "Rank this against 2–5 bottles", onClick: onBlindTasting });
+  if (onBlindTasting) rows.push({ label: "Blind tasting", hint: `Rank this against up to ${MAX_PICKS - 1} others`, onClick: onBlindTasting });
   if (onMarkEmpty) rows.push({ label: "Mark as Empty", hint: "Moves to Empty Bottles, kept in your history", onClick: onMarkEmpty });
   if (onRemove) rows.push({ label: "Remove from collection", hint: "Only if added by mistake — a tasting keeps its rating", onClick: onRemove, danger: true });
 
