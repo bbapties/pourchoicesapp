@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { compressImage } from "@/lib/compressImage";
 
 // Feedback / bug-report channel (beta-prep).
 // Users submit from Profile; admins triage in Admin > Feedback.
@@ -40,7 +41,10 @@ function captureContext(): { user_agent: string | null; viewport: string | null;
  */
 // B-59: allow-list the image type, derive the extension from the validated MIME (never the
 // client filename), and cap the size.
-const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024; // 8 MB -- ceiling on what we store
+// Phase 10 A2: the input guard only bounds decode memory; compression brings the stored
+// object well under SCREENSHOT_MAX_BYTES.
+const SCREENSHOT_MAX_INPUT_BYTES = 25 * 1024 * 1024; // 25 MB
 const SCREENSHOT_MIME_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -54,15 +58,33 @@ async function uploadScreenshot(
   const mime = (file.type || "").toLowerCase();
   const ext = SCREENSHOT_MIME_EXT[mime];
   if (!ext) return { url: null, path: null, error: "Unsupported image type" };
-  if (file.size > SCREENSHOT_MAX_BYTES) return { url: null, path: null, error: "Image too large (max 8 MB)" };
-  const path = `feedback/${feedbackId}/${crypto.randomUUID()}.${ext}`;
+  if (file.size > SCREENSHOT_MAX_INPUT_BYTES) return { url: null, path: null, error: "Image too large (max 25 MB)" };
+
+  // Phase 10 A2: shrink before upload — screenshots share the metered `bottle-images` bucket.
+  // Best-effort: null means upload the original rather than lose the report.
+  let body: Blob = file;
+  let uploadMime = mime;
+  let uploadExt = ext;
+  try {
+    const compressed = await compressImage(file);
+    if (compressed) {
+      body = compressed.blob;
+      uploadMime = compressed.mime;
+      uploadExt = compressed.ext;
+    }
+  } catch {
+    // Keep the original.
+  }
+
+  if (body.size > SCREENSHOT_MAX_BYTES) return { url: null, path: null, error: "Image too large (max 8 MB)" };
+  const path = `feedback/${feedbackId}/${crypto.randomUUID()}.${uploadExt}`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, {
+    .upload(path, body, {
       cacheControl: "3600",
       upsert: false,
-      contentType: mime,
+      contentType: uploadMime,
     });
   if (uploadError) return { url: null, path: null, error: uploadError.message };
 
