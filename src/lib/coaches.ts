@@ -74,7 +74,8 @@ export const COACH_CATALOG: CoachItem[] = [
     title: "Scan a barcode",
     body: "Tap the scan icon in the search bar to find a bottle by its barcode — or add it if it is new.",
     route: "/search",
-    core: true,
+    // Not first-session: scanning is a faster way to do Search, not a fifth thing to learn.
+    core: false,
     announce: true,
     tour: [
       {
@@ -153,7 +154,9 @@ export const COACH_CATALOG: CoachItem[] = [
     title: "Social",
     body: "Pours and collection changes from everyone show up here.",
     route: "/social",
-    core: true,
+    // Not first-session: the feed is empty until you have actually done something, so showing it
+    // before that teaches nothing.
+    core: false,
     announce: true,
     tour: [
       {
@@ -322,18 +325,25 @@ export const COACH_CATALOG: CoachItem[] = [
 
 /**
  * The order the first-session tour plays. Explicit, because relying on catalog position made it an
- * accident: My Bar was landing after Social purely because of where it sat in the array. The story
- * is: find a bottle -> scan one -> what you can do with it -> the blind tasting the app is built
- * around -> your own shelf -> what everyone else is doing -> how to tell us it broke.
+ * accident: My Bar was landing after Social purely because of where it sat in the array.
+ *
+ * Deliberately the FOUR core functions plus feedback (2026-09-05) -- it was seven items / 12 steps,
+ * which is a lot to sit through before you have touched anything. The story is now: find a bottle ->
+ * what you can do with it -> the blind tasting the app is built around -> your own shelf -> how to
+ * tell us it broke.
+ *
+ * Barcode and Social were demoted to `core: false`, NOT deleted: scanning is a faster way to do
+ * Search rather than a fifth thing to learn, and the Social feed is empty until you have done
+ * something. Both still exist in the catalog and can be introduced later through a published
+ * announcement's "Show me". Keep this list to the handful that earn a brand-new user's attention.
+ *
  * Any `core: true` item missing here still plays, at the end.
  */
 const CORE_ORDER = [
   "search.browse",
-  "search.barcode",
   "bottle.have_a_drink",
   "taste.blind",
   "mybar.collection",
-  "social.feed",
   "profile.feedback",
 ];
 
