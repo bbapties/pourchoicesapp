@@ -141,6 +141,27 @@ getUser 226ms).
 That was an artefact of polling from *outside* the page -- `performance.now()` was counting
 tool-attach latency. Always mark timings inside the document.
 
+### FIXED: email step asked an existing user for a username (2026-09-05) -- `f020ba1`
+Brian typed his own address and was asked to pick a username. **Two bugs, one long-standing.**
+
+1. **The check's error was discarded.** `handleEmailSubmit` destructured only `data` from the
+   `email_exists` RPC, so ANY failure produced `undefined` -> falsy -> the **signup** path. That is
+   the worst possible guess: they cannot sign up (email taken) and cannot reach the password step,
+   so they are stuck with no way forward. Now surfaced and logged instead of guessed.
+2. **The check depended on the auth lock.** It went through `supabase.rpc()`, and supabase-js routes
+   every request through auth machinery that serialises on Web Locks -- even though the caller is
+   **logged out and has no session to read**. So the lock jammed by a force-closed PWA (the same
+   root cause as `b984a93`) blocked the very first step of logging in. It now uses a plain `fetch`
+   to the same RPC with the anon key. **An anonymous check must not depend on session state.**
+
+Verified by reproduction on localhost AND prod: with the lock held permanently by another context
+and session cookies cleared, the email now reaches "Welcome back!" and the password step. The RPC
+was confirmed healthy at the DB and REST layers throughout, which is what pointed at the client.
+
+**Pattern worth carrying:** anything in the logged-out funnel should avoid supabase-js's session
+path. Reaching for `supabase.rpc()` there couples the first step of signing in to the state of a
+session that does not exist yet.
+
 ### Single next step
 **Wave D1 -- admin-published What's new** (and it now also owns re-enabling the coaches). Today the digest auto-piles every `announce: true` coach,
 which would dump 7.x history on a new tester. Needs an `announcements` table + an admin
