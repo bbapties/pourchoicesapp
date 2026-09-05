@@ -34,15 +34,24 @@ export default function EventTracker() {
   // Global client-error capture — attach once.
   useEffect(() => {
     const onError = (e: ErrorEvent) => {
+      // `e.message` alone is close to useless: browsers reduce anything they consider cross-origin
+      // to the literal string "Script error." with no file, line or column. That is exactly what we
+      // got from the 2026-09-05 iPhone white screen, and it told us nothing. `e.error` usually still
+      // carries the real Error object, so take the stack from there when it exists.
+      const err = e.error as Error | undefined;
       logEvent({
         eventType: "error",
         userId: userIdRef.current,
         surface: window.location.pathname,
         metadata: {
-          message: String(e.message || "").slice(0, 500),
+          message: String(err?.message || e.message || "").slice(0, 500),
+          stack: err?.stack ? String(err.stack).slice(0, 2000) : null,
+          name: err?.name ?? null,
           source: e.filename || null,
           line: e.lineno ?? null,
           col: e.colno ?? null,
+          // Which device hit it matters when a bug is platform-specific, as this one is.
+          ua: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 300) : null,
         },
       });
     };
@@ -54,7 +63,9 @@ export default function EventTracker() {
         surface: window.location.pathname,
         metadata: {
           message: String(reason?.message ?? reason ?? "unhandledrejection").slice(0, 500),
+          stack: reason?.stack ? String(reason.stack).slice(0, 2000) : null,
           kind: "unhandledrejection",
+          ua: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 300) : null,
         },
       });
     };
