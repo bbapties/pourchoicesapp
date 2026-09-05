@@ -255,6 +255,23 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    id: "profile.notifications",
+    title: "Notifications",
+    body: "Get told when there is something new worth opening the app for.",
+    route: "/profile",
+    // Not `core`: the app already nudges about notifications at three moments (Phase 10 D3), and
+    // the main loop did not change. This row is for the Profile control itself.
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/profile",
+        anchor: "profile.notifications",
+        caption: "Turn notifications on or off here. On iPhone they only work once Pour Choices is installed to your home screen - Apple does not allow them in a Safari tab.",
+      },
+    ],
+  },
+  {
     id: "profile.install",
     title: "Install Pour Choices",
     body: "Put it on your home screen so it opens full screen, like an app.",

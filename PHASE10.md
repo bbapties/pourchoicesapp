@@ -153,10 +153,22 @@ Content channel **before** delivery — push with nothing to say is worthless.
 - [ ] **D2** Core tour rewrite — it predates Drink and barcode. Search -> barcode -> bottle card ->
   Drink -> My Bar -> Social -> Profile. Replay still replays core only. Short discovery on copy.
   Events: `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown`.
-- [ ] **D3** Push: Profile toggle (default on) -> VAPID keys in Vercel env (**Brian — secrets are a
-  guardrail**) -> SW `push` + `notificationclick` -> subscribe/unsubscribe -> Admin send to Everyone
-  or one user -> optional "also send as push" on publish. Built on Wave B's clean ids.
-  Events: `push_permission` / `push_subscribe` / `push_send`.
+- [x] **D3 Push — DONE 2026-09-05** (`e8bfa90`), pulled ahead of D1/D2 at Brian's call: push is the
+  framework he needs before adding features. Schema applied (`sql/push-notifications-*.sql`):
+  `push_subscriptions` **per device** keyed on the unique endpoint, plus `users.notify_push`
+  (preference) and `users.notify_prompt_optout` ("never ask me again") kept separate because someone
+  can be un-nagged yet still notifiable. SW `push` + `notificationclick` with a same-origin deep
+  link. Admin ▸ Notify sends to everyone or one user, server-side only.
+  **Two hard constraints drove the design:** the OS permission dialog is **one-shot per origin
+  forever**, so Brian's "prompt them multiple times" is implemented as repeated showings of OUR
+  sheet, spending the single real dialog only on "Turn them on"; and **iOS only supports push for an
+  installed PWA on 16.4+**, never a Safari tab, so that case is detected and told to install first.
+  Nudges fire at app launch / after first action / on Profile, once per session, never when granted,
+  denied or opted out. **Verified:** 401 unauthenticated, 403 for a signed-in non-admin, VAPID keys
+  produce a valid aes128gcm payload + JWT, and a policy-blocked browser shows "Blocked in browser"
+  with unblock steps rather than a lying toggle.
+  **Owed by Brian:** `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in Vercel
+  (values in the gitignored `.env.local`). Until then the route returns a clear 503.
 
 ## Wave E — Reasons to come back
 

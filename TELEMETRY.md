@@ -97,6 +97,27 @@ The gap worth watching is `pwa_prompt_shown` on iOS with no matching `pwa_instal
 tester who was shown the steps and did not follow them, which is an instruction problem, not a
 platform one.
 
+### Push notifications (Phase 10 D3)
+
+The funnel that matters is permission, because it is **one-shot per origin, forever**: a denial can
+never be re-asked, so `push_permission` with `result: denied` is a permanently lost user, not a
+retry. `push_prompt_shown` counts our OWN sheet (safe to repeat); `push_permission` counts the
+single OS dialog (spent once).
+
+| event | when |
+|-------|------|
+| `push_prompt_shown` | our nudge sheet appeared (metadata: `trigger` = app_launch / after_first_action / profile) |
+| `push_prompt_dismissed` | "Not now" (metadata: current `permission`) |
+| `push_never_ask` | "Don't ask me again" -> `users.notify_prompt_optout` |
+| `push_permission` | the OS dialog resolved (metadata: `result` granted/denied/default) |
+| `push_subscribe` | a device subscription was stored (metadata: `standalone`) |
+| `push_unsubscribe` | turned off from Profile |
+| `push_send` | an admin sent one (metadata: `audience`, `sent`, `failed`) |
+
+Watch for `push_prompt_shown` on iOS with no `push_permission` following: on iPhone the APIs only
+exist inside an installed PWA, so that gap is an install problem, not a notification problem.
+
+
 ### Write guards — `guard_event_insert` (BEFORE INSERT trigger)
 
 Telemetry must never be able to break the app, so every guard here **shapes or drops** a row; none
