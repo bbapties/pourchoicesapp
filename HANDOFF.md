@@ -162,8 +162,38 @@ was confirmed healthy at the DB and REST layers throughout, which is what pointe
 path. Reaching for `supabase.rpc()` there couples the first step of signing in to the state of a
 session that does not exist yet.
 
+### D1 + D2 SHIPPED (`ba102c9`) -- coaches are back ON
+- **D1**: the What's new digest now reads an admin-published `announcements` table instead of every
+  `announce: true` catalog item. The catalog keeps the **tours** (anchors/captions are UI); the
+  table owns **what is said, to whom, and when**. `coach_id` optionally links a row to a tour so
+  "Show me" plays it. Seen-tracking reuses `users.seen_coach_ids`. Admin UI lives in **Notify**,
+  beside push, so publish-and-push is one screen. Announcements are always created as drafts.
+- **D2**: the first-session tour predated Drink and barcode -- a new user was never shown the blind
+  tasting the product is built around. Now Search -> barcode -> bottle card -> blind tasting -> My
+  Bar -> Social -> feedback, via an explicit `CORE_ORDER` (catalog position had already put My Bar
+  after Social by accident).
+- **`AUTO_COACHES_ENABLED = true` again.** Safe now: nothing reaches a tester until Brian publishes.
+- **Verified the security boundary** (stronger than a click-through here): a normal authenticated
+  user sees only published rows and **cannot publish** (`UPDATE 0`); the admin sees drafts and can.
+  **NOT verified: the admin compose UI end-to-end** -- it needs an admin session, and the QA account
+  is deliberately a regular user.
+
+### ⚠ Cross-thread incident (2026-09-05) -- read if attribution looks odd
+Brian was running a **second thread in parallel** on the tasting feature. A `git add -A src/ sql/`
+in this session swept three of ITS files into commit `ba102c9`:
+`sql/account-type-migration.sql`, `sql/account-type-snapshot.sql`, `src/lib/activities.ts`
+(the Social feed filtered to `account_type = 'human'`).
+**No damage:** the `account_type` column was already applied to prod by that thread, so the code and
+schema agree, the feed query returns 28 rows, and prod is healthy. But that work is now attributed
+to a What's new commit.
+**Lesson: `git add -A` is unsafe whenever another agent may be working the same tree.** Stage explicit
+paths. AGENTS says the agents never run in parallel; when they do, staging must be surgical.
+
 ### Single next step
-**Wave D1 -- admin-published What's new** (and it now also owns re-enabling the coaches). Today the digest auto-piles every `announce: true` coach,
+**My Bar: card-per-variant** (Brian flagged it as the rough edge before the beta). Today My Bar
+SKU-collapses, so owning two versions of one bottle shows one card -- the known follow-up from the
+two-count work (B-32). After that: E2 the ranked tasting-results view, then F1 the image backfill
+(11 objects / 17 MB still unconverted). Today the digest auto-piles every `announce: true` coach,
 which would dump 7.x history on a new tester. Needs an `announcements` table + an admin
 publish/unpublish screen, with the digest reading published-unseen rows only and existing coaches
 seeded unpublished. Schema = snapshot + Brian's go. Then D2 (core tour rewrite -- it predates Drink
