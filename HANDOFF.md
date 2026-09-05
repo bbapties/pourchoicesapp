@@ -8,127 +8,70 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `ada5203` (+ this doc commit). Working tree clean; everything on origin/MVP-v3 and live.
-- **Current phase:** **Phase 9.** Wave 2 is done (10/10). This session was an unplanned detour:
-  Brian tested the barcode scanner on a real phone and the findings reshaped the add-bottle flow.
+- **Tip:** `3affaea`. Working tree clean; everything on origin/MVP-v3 and live and verified.
+- **Current phase:** **Phase 10** -- see **[PHASE10.md](PHASE10.md)**, the re-ranked plan that
+  **supersedes the Phase 8 ordering**. PHASE8.md still holds the valid feature *specs*.
 
-### What changed this session (10 commits, all on prod)
-Brian scanned bottles on his phone; each failure produced a fix. In order:
-1. `669c9d3` `f42e1e2` `cfe0c04` — built an online barcode lookup (UPCitemdb) that prefilled the
-   add form, plus a camera-or-library photo picker and a required photo.
-2. `23aac25` `9c2c131` — scanner fixes (below). `d631629` — stale LAN QA IP.
-3. `20fd5d8` — the add form could not scroll; the submit button was unreachable once a photo
-   preview appeared.
-4. `c666630` — rejected lookup hits that aren't bottles.
-5. **`19f87d8` — REMOVED the online lookup entirely** (Brian's call, and the right one). See below.
-6. `1b4de16` — admin verify queue: last-touched sort + edit-before-verify.
+### The re-rank (planning session with Brian, 2026-09-04)
+The beta is now **3 people Brian knows**, not 10-15 strangers, so the bar moved from "a trustworthy
+first session" to **"they install it and keep opening it."** His stated priority, verbatim: *install
+with more of an app feel, icon on mobile, push notifications, and a really good What's new -- that
+will almost be my way to market it and keep my beta testers engaged.* Those are Phase 8 waves 2/3/5,
+**the three never started.** Waves A-F and the measurements behind them are in PHASE10.md.
 
-### Barcode mismatch reports (`862ba73`)
-A bottle opened **by a scan** shows **"Not this bottle?"**. It is **report-only** — files a row in the
-existing `feedback` queue (Admin > Feedback, `type='bug'`, message prefixed `WRONG BOTTLE for barcode
-<upc>`) and **changes nothing in the catalog**. Brian's explicit call: one user's say-so shouldn't
-strip a barcode off a bottle others may have scanned correctly, and **`bottles.barcode` has no unique
-index**, so the admin arbitrates which bottle owns a code. Deliberately NOT `suggested_edits` — that
-queue's approve action applies a field change, and here there is nothing to apply.
-The copy states that a store pick / special release is **not** a mismatch, so this stays a signal
-about wrong mappings rather than a complaint box.
-**Implementation note:** the scanned code is threaded explicitly through
-`openBottleById`/`handleBottleClick` (Search + My Bar, including the two-zone chooser) rather than
-held as ambient state — a normal list tap after a scan must not inherit the previous code. Verified
-both directions.
+### SHIPPED THIS SESSION -- Wave A1 (`a6de5b0`, `3affaea`)
 
-### The add-bottle flow is now deliberately minimal
-A scan we don't have goes straight to **"We don't have this one yet"** and asks for **a name and a
-photo. That is all.** `distillery` and `category` are written **null on purpose** — the enrichment /
-verify lane fills them. A half-guessed category is worse than an empty one, because nobody goes back
-to check a field that already looks filled in. The scanned barcode still rides along on the row.
-**Do not "helpfully" re-add those fields.**
+**The middleware had never run in production.** `middleware.ts` sat at the repo root; Next.js only
+reads `src/middleware.ts` when a `src/` directory exists, and silently ignores a root-level one.
 
-The one exception: a **store pick / special version REQUIRES its identifying detail** (store name, or
-batch/release/finish). Enrichment can read a label but cannot know which store picked the barrel; a
-store pick with no store name is an unidentifiable duplicate of the standard bottle. Store pick
-writes `store_pick_name` (private to creator); special version writes `batch`.
-
-### ⚠ DO NOT REBUILD THE BARCODE LOOKUP without new evidence
-Measured, not guessed — full write-up in **BACKLOG.md > Data / Audit**:
-- **There is no open barcode->product registry.** GS1 owns the UPC registry and licenses it, so every
-  free API (UPCitemdb, Open Food Facts) is a scraped aggregator with thin US spirits coverage.
-- Both free sources **missed Early Times AND Hard Truth** (mainstream, stocked everywhere) while
-  finding Buffalo Trace. UPCitemdb is also hard-capped at **100 lookups/day** (confirmed in its
-  `X-RateLimit-Limit` header) — 15 beta testers would exhaust it before lunch.
-- Worse than missing: it returned **"LG APPLIANCES EBR78898214 PCB ASSEMBLY DISPLAY" for a bourbon
-  UPC**. A confident wrong answer that would have put a fridge part in the shared catalog.
-- **State ABC open data is the real option** if catalog seeding is ever revisited. Iowa
-  (`https://idh-be.iowa.gov/api/v1/datasets/1029/rows.json`) publishes **real UPCs** + name, vendor,
-  category, volume, proof, age; 13,592 rows, ~6,628 after curation, **51-56% coverage of our own
-  barcoded catalog**. Oregon has good product data but **internal item codes, not UPCs**.
-- Key split, don't conflate again: **catalog breadth does not need UPCs** (any state works);
-  **barcode lookup does** (Iowa only, so far).
-- **Do not scrape retailers** (Total Wine, Drizly) — ToS, bot protection, legal exposure.
-- Catalog seeding from this data is **researched but NOT built and NOT approved.** Open questions are
-  listed in BACKLOG (verified status for imported rows, name cleanup, dedupe, category mapping).
-
-### Scanner: why it was slow, and the secure-context trap
-`9c2c131` cut time-to-scan three ways — narrowed formats to UPC/EAN/CODE_128 (it was trying QR,
-PDF417, Aztec, Data Matrix on every frame), dropped `delayBetweenScanAttempts` 500ms -> 100ms, and
-switched to `decodeFromConstraints` asking for `facingMode: environment` at 1920x1080 (it was letting
-the browser pick any camera at any resolution). `TRY_HARDER` is on — that's what resolves a barcode
-curved around a bottle.
-
-**⚠ The camera CANNOT work on the LAN QA URL.** getUserMedia requires a secure context; the LAN URL is
-HTTP, so `navigator.mediaDevices` is undefined. The old code reported that as "make sure no other app
-is using it" and sent Brian hunting a nonexistent problem — `23aac25` now says the true thing.
-**Barcode scanning, PWA install and push can only be tested on prod or an HTTPS tunnel.**
-The file-input photo picker DOES work on HTTP (`capture` delegates to the OS camera app).
-
-**⚠ Mobile file inputs:** the camera/library inputs are visually hidden at 1px, **not `display:none`**.
-A file input that isn't rendered gets `capture` ignored on mobile — that was the real cause of
-"Take photo opens the gallery". Confirmed fixed on Brian's phone. Don't "tidy" them back to `hidden`.
-
-### Admin verify queue — TESTED and fixed (`ada5203`)
-The `1b4de16` queue changes were click-tested by **temporarily promoting `Claude Code Agent` to admin
-(Brian approved), then re-demoting it** — `The_Lake_House` is again the sole admin. Confirmed working:
-edits to an identity field (`bottles.style`) and a variant field (default-variant `proof`) both persist
-and reload; **Save & Verify** saves first, verifies the bottle and co-verifies its default variant.
-**Admin RLS DOES permit the `bottle_variants` UPDATE** — the risk previously flagged here is clear.
-
-The last-touched sort was correct but useless until `ada5203` fixed three things:
-1. Display-field edits land on the **default variant**, which never bumps `bottles.updated_at`, and
-   the sort key only spanned the bottle + its **queued** variants (the default isn't queued). So the
-   bottle just edited sank. The key now spans **every** variant.
-2. `doApprove` only reloaded the queue for structural changes — applying a normal field edit
-   re-sorted nothing. It now always reloads; that reorder is the point of the feature.
-3. The card showed only the submitted date, so a correct sort looked scrambled. It now shows
-   "· edited <date>" when that differs.
-
-**Login note for the next agent:** the preview browser is signed in as `claude@pourchoicesapp.com`.
-An agent cannot type a password, so admin testing = Brian approves a temporary SQL promotion of that
-account, agent tests, agent re-demotes. Not exercised live: the approve-a-suggestion reload path
-(no pending `suggested_edits` existed) — it is a one-line `load()`.
+- **What that meant:** `/search`, `/social` and `/profile` served **200 to signed-out visitors** on
+  prod. Only `/mybar`, `/taste`, `/admin` were protected, and only because those pages guard
+  themselves. **No data leaked** -- anon HTML had no bottle names, usernames or emails; RLS (B-18,
+  B-24) held. Access-control + first-impression gap, not a breach.
+- **It also explains the redirect loop.** `f6842a3` (getUser hardening) and `4210e1c` (the
+  stale-cookie purge built to end that loop) were **both no-ops**, which is why the loop restarted 18
+  minutes after being declared fixed on 09-01.
+- **Fix:** `git mv middleware.ts src/middleware.ts` + a **public allowlist**. Turning the middleware
+  on had bounced `/reset-password`, where a user arrives from a recovery email **not yet
+  authenticated** -- `/` and `/reset-password` are now explicitly public. Verified on prod both
+  directions: signed out everything else 307s to `/` and a stale `sb-*-auth-token` is purged; signed
+  in all routes 200 and a valid cookie is untouched. Latency 0.16-0.23s.
+- **Server-side event cap:** `guard_event_insert` now caps each `session_id` at **200 rows/rolling
+  hour**, `RETURN NULL` (silent drop) not RAISE -- `logEvent` is fire-and-forget, so raising would
+  spam the console and could feed a retry loop. Verified on prod: a 260-row burst landed exactly 200.
+  `sql/events-session-rate-cap-{migration,snapshot}.sql`. Closes **B-60 tier 2**.
+- **Purged** the loop rows: **65,215 -> 655**. The events table reflects real usage for the first time.
+- **The five loopers were browser tabs, not Brian's Grok bot.** `session_id` lives in
+  **sessionStorage**, so ids persisting Sep 1 -> Sep 4 mean those exact tabs stayed open; four wake
+  together once a day at the same wall-clock time. A bot querying the DB never runs `EventTracker`
+  and cannot produce `page_view` rows at all.
 
 ### Single next step
-**Ask Brian.** Everything raised this session is shipped and verified; nothing is left half-done.
-Open candidates are unchanged: the gated cleanups
-(`rating_stars` column drop + orphan rows; **B-74** auth-id, which blocks 3.4 group tasting and 8.5
-push), or a new wave.
+**Wave A2 -- compress images on upload** (`src/lib/uploadBottleImage.ts`). Measured: 11 objects /
+17 MB = **~1.5 MB per image**. The free tier holds ~660 images at that size, ~10,000 at ~100 KB WebP.
+Brian named images as the pinch point for the future catalog seed, so this is a **prerequisite** of
+that work, not a follow-up. Then A3 (Brian's two config tasks) and Wave B (B-74).
+
+### Still open from Wave A
+- **A3 is Brian's, not code:** **B-26** add `/reset-password` to Supabase Auth -> URL Configuration ->
+  Redirect URLs + enable the Reset Password template -- **forgot-password ships in the UI and does not
+  work without it.** **B-21** confirm the service-role env var in Vercel.
+- **A4 done** (BUGS.md drift ticked: B-32, B-48, B-54, B-61; B-60 closed).
 
 ### Landmines carried forward
-- **B-74 (auth id vs public id)** still gated: `public.users.id != auth.users.id` — match BOTH ids in
-  any owner-scope filter. Do before 3.4 group tasting + 8.5 push.
-- **Auth:** `getSession()` (trusts cookie) vs `getUser()` (validates) must not disagree across a
-  redirect boundary — that caused the 1.1M-row prod events flood. Don't build a NEW redirect off
-  `getSession()`.
+- **B-74 is much smaller than documented** -- measured 2026-09-04: **10 of 10** people-FK columns
+  already point at `public.users`; **0** FKs point at `auth.users`; `created_by` is **81/82** and
+  **109/110** consistently **auth ids**, so **B-46's "mixed" claim is effectively false**. ~192 rows to
+  remap. Brian chose to fix it properly, **before push**. Scoped as Wave B in PHASE10.md.
+- **Middleware now actually runs** -- it calls `getUser()` on every matched request, a cost prod never
+  paid before. Watch latency and Supabase Auth rate limits. Any new public route must be added to
+  `PUBLIC_PATHS` in `src/middleware.ts` or it will 307 to `/`.
 - **Ratings (B-40):** manual guesses live in **`user_ratings`**, never `user_bottles.rating_stars`.
 - **B-23 tier-2** deferred post-beta. **Do NOT rewrite the Elo trigger.**
-- **Storage cost:** every provisional add writes an image to the `bottle-images` bucket and nothing
-  purges orphans. Backlog item extended with the metered-cost / scheduled-purge angle.
-
-### Brian's config TODOs (not code, unchanged)
-- Supabase Auth -> URL Configuration: add `/reset-password` to Redirect URLs + enable the Reset
-  Password email template (B-26).
-- Vercel: a service-role env var must be set (`SUPABASE_SERVICE_ROLE` or `..._KEY`, B-21).
-
----
+- **0 tasting sessions have ever run on prod** -- the flagship loop is unexercised by a human
+  (PHASE10 E1).
+- **Storage:** nothing purges orphaned images (PHASE10 F1).
+- **Do NOT rebuild the online barcode lookup** without new evidence -- see BACKLOG > Data / Audit.
 
 ## Known state drift (docs vs reality)
 - ✅ **RECONCILED 2026-08-21** — **README.md** now carries a stale-banner pointing here; **ROADMAP** "WE ARE HERE"
@@ -147,6 +90,29 @@ push), or a new wave.
 ---
 
 ## Log (newest first)
+
+### 2026-09-05 - Claude (Phase 10 re-rank; middleware had never run; events loop closed)
+- **Planning session.** Brian dialed the beta back to **3 people he knows** and asked for a full
+  re-stack-rank. Wrote **[PHASE10.md](PHASE10.md)** (waves A-F) and repointed ROADMAP "WE ARE HERE" +
+  AGENTS read-first/doc-map at it. Phase 8 stories remain the specs; **its ordering is superseded**.
+  Ticked PHASE9 drift in BUGS.md (`47e8e7f`).
+- **Investigating A1 found the real bug: `middleware.ts` was at the repo root, so with a `src/`
+  directory Next.js never loaded it. The middleware had never run in production.** Signed-out
+  visitors got 200 on `/search`, `/social`, `/profile`; no data leaked (RLS held). Both prior auth
+  fixes (`f6842a3`, `4210e1c`) were no-ops, which is why the redirect loop restarted 18 minutes after
+  being declared fixed. Moved to `src/middleware.ts`; found and fixed that enabling it **bounced
+  `/reset-password`** (recovery arrivals are unauthenticated) via a `PUBLIC_PATHS` allowlist.
+  Verified on prod signed-out and signed-in. (`a6de5b0`)
+- **Diagnosis method worth reusing:** curl the prod redirect and look for the `Set-Cookie` the fix was
+  supposed to emit. Its absence, reproduced locally, is what exposed that the redirect was coming from
+  `mybar/page.tsx` rather than the middleware.
+- **Server-side event cap + purge** (`3affaea`) -- 200 rows/session/hour in `guard_event_insert`,
+  silent drop not raise; 260-row burst landed exactly 200; purged **65,215 -> 655** rows.
+- **Answered Brian's question:** his hourly/daily Grok bot is **not** the cause. `session_id` is
+  sessionStorage-scoped, so the five ids persisting Sep 1 -> Sep 4 are tabs left open; a DB-querying
+  bot never executes `EventTracker` and cannot write `page_view` rows.
+- **Next:** Wave A2, compress images on upload (~1.5 MB/image today; a prerequisite for the catalog
+  seed, not a follow-up). Then A3 (Brian's Supabase/Vercel config) and Wave B (B-74).
 
 ### 2026-09-01 (cont. 4) - Claude (real-device barcode testing; add-flow rewritten; admin verify edits)
 Unplanned session. Brian tested the barcode scanner on his phone and every failure produced a fix.
