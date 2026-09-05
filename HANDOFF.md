@@ -231,6 +231,30 @@ to a What's new commit.
 **Lesson: `git add -A` is unsafe whenever another agent may be working the same tree.** Stage explicit
 paths. AGENTS says the agents never run in parallel; when they do, staging must be surgical.
 
+### FIXED: Mark as Empty / Remove said "Failed" (2026-09-05) -- `8fb26c5`
+**Self-inflicted, by the bounded auth lock added the same day.** auth-js calls the lock with
+`acquireTimeout === 0` from exactly one place -- `_autoRefreshTokenTick` -- where a busy lock means
+"someone else is already refreshing, skip this tick". It expects the throw. The wrapper swallowed it
+and ran the callback **unlocked**, so the background refresh raced whatever held the lock and could
+leave the client with no usable session. Public reads still worked; anything RLS-scoped to the
+viewer silently returned zero rows.
+
+The fallback now applies **only to a timeout the wrapper itself introduced** (the infinite wait it
+replaces). Every other `acquireTimeout` keeps auth-js's semantics, including the deliberate throw.
+
+**The DB was innocent throughout** and proving that is what narrowed it: the UPDATE succeeds under
+RLS as Brian (`UPDATE 1`), there are no triggers on `user_bottles`, and all his rows point at their
+default variant, so variant matching was never involved. The "public reads fine, own-data writes
+fail" split is what pointed at the session.
+
+**Also fixed the reason it was hard:** those toasts discarded the real error. "Failed to update"
+named nothing -- the same mistake as the email-check bug hours earlier. Mark-as-empty and remove now
+show the underlying message and log it to `events` with a `kind`, on all three surfaces.
+
+> **Standing lesson, now twice in one day:** a caught error that becomes a generic toast is a bug
+> waiting to cost an hour. Surface the message, log it with a `kind`, and never let a failed check
+> silently pick a branch.
+
 ### Single next step
 **My Bar: card-per-variant** (Brian flagged it as the rough edge before the beta). Today My Bar
 SKU-collapses, so owning two versions of one bottle shows one card -- the known follow-up from the
