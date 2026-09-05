@@ -280,9 +280,50 @@ CHECK-constrained) + a one-query filter in `fetchActivityFeed`. Applied to prod.
   Claude QA account no longer appears on the feed, so feed QA needs it flipped back to `'human'`
   for the duration.
 
+### Then escalated: non-human accounts are hidden at the RLS boundary
+Brian's follow-up, after the first seeded account (`Right_Blind`) was created: *"this data only flag
+should also make it where you can't even see this user as someone to do a blind with ... a real user
+would never see either Right_Blind or his email."*
+
+`sql/account-type-rls-migration.sql` (**applied to prod**) changes `Public read users` from
+`USING (true)` to `USING (account_type = 'human' OR public.is_admin())`.
+
+**Why RLS rather than another client filter.** The feed filter cannot stop someone querying `users`
+directly with the anon key while signed in, and it does nothing for surfaces that do not exist yet.
+Group tastings (3.4) will need a "pick someone to taste with" list; in the policy, that list and
+every future one is safe **by construction** rather than by the next agent remembering the rule.
+
+**Verified by simulating three real sessions** (`SET ROLE authenticated` + `request.jwt.claims`, the
+B-58/B-59 method):
+- normal user -> only the 3 `human` rows; seeded + QA accounts gone, **emails included**
+- admin -> all 8 rows
+- `Right_Blind` -> its own row plus the humans, so it still logs in and `useCurrentUser` resolves
+- feed query -> **35 rows with AND without the app-level filter**; the two layers agree exactly
+
+**Two footguns checked, not assumed.** `is_admin()` is SECURITY DEFINER, so a policy on `users` that
+calls it does not re-enter RLS and recurse. `email_exists()` is SECURITY DEFINER too, so the
+logged-out login funnel still works for a seeded account. And the `is_admin()` clause is **mandatory,
+not decorative**: the admin tabs (UsersTab / NotifyTab / BottlesTab) run client-side under the user's
+own JWT and are subject to RLS -- only `/api/admin/*` uses the service role.
+
+**The feed filter in `activities.ts` is now partly redundant** -- `users!inner` alone would drop
+those rows. Kept deliberately: it documents the intent at the call site and survives a policy
+rollback.
+
+**Brian's decision on the email:** `Right_Blind`'s address is `Trent_SLB@pourchoicesapp.com`, which
+encodes the source the codename exists to hide. He chose to leave it. After the RLS change no real
+user can read it, so the exposure is closed in practice -- but the value is still stored, so it
+returns if the policy is ever reverted, and it is visible to anyone with backend access. **Use a
+neutral address for the second account.**
+
 ### OWED BY BRIAN -- `account_type` is user-writable until this runs
 `sql/account-type-trigger-migration.sql` is **NOT applied.** The agent sandbox refused the
-`SECURITY DEFINER` function replacement (three attempts, consistently). `public.users` carries
+`SECURITY DEFINER` function replacement (four attempts, consistently -- note it allowed the
+`ALTER POLICY` above, so this is specific to replacing a SECURITY DEFINER function).
+**The RLS change raises the stakes here:** self-flagging now buys invisibility from other
+users, not just absence from the feed. Demonstrated in a rolled-back transaction -- a normal
+user's `UPDATE public.users SET account_type='data'` on their own row returns `UPDATE 1` and
+takes effect. `public.users` carries
 "Users can update their own profile" / "Users update own via auth" UPDATE policies, so **any
 signed-in user can currently set their own `account_type`** -- a tester could hide themselves from
 the feed, and a seeded account could un-hide itself. The file only ADDS `account_type` handling to

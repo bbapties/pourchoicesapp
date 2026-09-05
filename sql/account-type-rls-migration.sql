@@ -1,0 +1,34 @@
+-- Hide non-human accounts from real users at the DATABASE boundary.
+-- Companion to sql/account-type-migration.sql. Rollback: sql/account-type-snapshot.sql
+--
+-- *** NOT APPLIED -- needs Brian's go (RLS change on public.users). ***
+--
+-- WHY RLS AND NOT ANOTHER CLIENT FILTER:
+-- "Public read users" is currently USING (true) for {authenticated}, so ANY
+-- signed-in user can read EVERY users row -- username, email, role. The Social
+-- feed filter (src/lib/activities.ts) hides seeded accounts from the feed, but
+-- it cannot stop someone querying the table directly, and it does nothing for
+-- surfaces that do not exist yet. Group tastings (3.4) will need a "pick someone
+-- to taste with" list; enforcing this in the policy means that list -- and every
+-- future one -- is safe by construction instead of relying on the next agent
+-- remembering the rule.
+--
+-- WHAT STAYS VISIBLE:
+--   * every 'human' row, to everyone signed in (unchanged)
+--   * your OWN row, whatever your account_type -- covered by the separate
+--     "Users can view their own profile" policy (auth.uid() = auth_id).
+--     Policies OR together, so a seeded account can still resolve itself in
+--     useCurrentUser on every page load.
+--   * EVERY row to an admin, via is_admin(). This is required: the admin tabs
+--     (UsersTab, NotifyTab, BottlesTab) run client-side under the user's own
+--     JWT and are therefore subject to RLS. The /api/admin/* routes use the
+--     service role and bypass RLS either way.
+--
+-- SAFE AGAINST RECURSION: is_admin() is SECURITY DEFINER, so it does not
+-- re-enter RLS on public.users when evaluated inside this policy.
+--
+-- The login funnel is unaffected: email_exists() is SECURITY DEFINER, so a
+-- seeded account can still sign in normally.
+
+ALTER POLICY "Public read users" ON public.users
+  USING (account_type = 'human' OR public.is_admin());

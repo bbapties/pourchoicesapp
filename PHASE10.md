@@ -87,10 +87,24 @@ Two numbers drive this phase: **0 tastings** (the flagship loop is unexercised) 
   **`users!inner` is load-bearing:** measured against prod, a plain embedded filter returned all 34
   rows with 5 **null embeds**, which the feed would have rendered as "Someone drank it" instead of
   hiding them. With `!inner`, 34 -> 28 rows; pagination 20 + 8, distinct, no overlap.
-  Flagged: `Grain_of_Truth` -> `data`; `Claude Code Agent` / `GrokBuildAdmin` / `Test_User` -> `test`.
+  Flagged: `Grain_of_Truth` -> `data`; `Claude Code Agent` / `GrokBuildAdmin` / `Test_User` -> `test`;
+  `Right_Blind` (first seeded ranking account) -> `data`.
+  **Then escalated to an RLS boundary at Brian's call** (`sql/account-type-rls-migration.sql`,
+  applied): `Public read users` went from `USING (true)` to
+  `USING (account_type = 'human' OR public.is_admin())`. The feed filter alone could not stop someone
+  querying `users` directly, and did nothing for surfaces that do not exist yet -- group tastings
+  (3.4) will need a "pick someone to taste with" list, and this makes that list safe by construction.
+  **Verified by simulating three sessions:** a normal user sees only the 3 `human` rows (seeded and QA
+  accounts gone, emails included); an admin sees all 8; the seeded account still sees its own row, so
+  it logs in and resolves `useCurrentUser` normally. The feed query returns **35 rows with and without
+  the app-level filter** -- the two layers agree exactly. Safe against recursion because `is_admin()`
+  is SECURITY DEFINER; the login funnel is unaffected because `email_exists()` is too.
   **OWED BY BRIAN:** `sql/account-type-trigger-migration.sql` is **NOT applied** -- the agent sandbox
-  refused the `SECURITY DEFINER` replacement. Until it runs, `account_type` is **user-writable**
-  through the existing own-row UPDATE policies on `public.users`.
+  refused the `SECURITY DEFINER` replacement across four attempts. Until it runs, `account_type` is
+  **user-writable** through the existing own-row UPDATE policies. Demonstrated in a rolled-back
+  transaction: a normal user's `UPDATE ... SET account_type='data'` on their own row returns
+  `UPDATE 1` and takes effect. **The RLS change raises the stakes on this** -- self-flagging now buys
+  invisibility from other users, not just absence from the feed.
 - [x] **A4 Tick BUGS.md drift** — B-32, B-48, B-54, B-61 ticked; B-60 closed by the A1 rate cap.
 
 **WAVE A COMPLETE.**
