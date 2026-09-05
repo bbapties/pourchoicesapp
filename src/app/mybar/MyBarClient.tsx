@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
+import { logEvent } from "@/lib/events";
 import BottleCardMedium from "@/components/BottleCardMedium";
 import BottleDetailView from "@/components/BottleDetailView";
 import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
@@ -343,7 +344,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const vId = variantId ?? row?.variant_id ?? null;
     // B-32 "finish one": owned_count-1, emptied_count+1 (markVariantEmpty logs 'finished').
     const res = await markVariantEmpty({ userId: publicUserId, bottleId, variantId: vId });
-    if ("error" in res) { toast.error("Failed to update"); return; }
+    if ("error" in res) { toast.error(`Couldn't mark it empty: ${res.error}`); logEvent({ eventType: "error", userId: publicUserId, surface: "/mybar", metadata: { kind: "mark_empty_failed", message: res.error } }); return; }
 
     if (row) {
       const emptyRow = { ...row, emptied_count: res.emptiedCount, addedAt: new Date().toISOString(), updated_at: new Date().toISOString() };
@@ -365,7 +366,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const ownedRow = rawOwned.find(r => r.bottle_id === bottleId) || rawEmpty.find(r => r.bottle_id === bottleId);
     const vId = variantId ?? ownedRow?.variant_id ?? null;
     const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: vId });
-    if (result.error) { toast.error("Failed to remove"); return; }
+    if (result.error) { toast.error(`Couldn't remove it: ${result.error}`); logEvent({ eventType: "error", userId: publicUserId, surface: "/mybar", metadata: { kind: "remove_bottle_failed", message: result.error } }); return; }
 
     setRawOwned(prev => prev.filter(r => r.bottle_id !== bottleId));
     setRawEmpty(prev => prev.filter(r => r.bottle_id !== bottleId));

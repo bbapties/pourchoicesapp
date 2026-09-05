@@ -10,8 +10,8 @@ import EventTracker from "@/components/EventTracker";
 import NotificationNudge from "@/components/NotificationNudge";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
-  const { authId, isAdmin, loading, seenCoachIds } = useCurrentUser();
-  const announceRoutes = unseenAnnounceRoutes(seenCoachIds);
+  const { authId, isAdmin, loading } = useCurrentUser();
+  const announceRoutes = unseenAnnounceRoutes();
   const pathname = usePathname();
   const router = useRouter();
   const isAuthPage = pathname === "/";

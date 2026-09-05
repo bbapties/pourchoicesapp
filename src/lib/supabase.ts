@@ -36,15 +36,27 @@ async function boundedAuthLock<R>(
   acquireTimeout: number,
   fn: () => Promise<R>
 ): Promise<R> {
-  // Preserve the library's semantics for every bounded/non-blocking call; only cap "wait forever".
-  const timeout = acquireTimeout < 0 ? MAX_LOCK_WAIT_MS : acquireTimeout
+  // Only "wait forever" is capped. Everything else keeps the library's exact semantics.
+  const weBoundedIt = acquireTimeout < 0
+  const timeout = weBoundedIt ? MAX_LOCK_WAIT_MS : acquireTimeout
 
   try {
     return await navigatorLock(name, timeout, fn)
   } catch (err) {
+    // CRITICAL: only swallow a timeout WE introduced.
+    //
+    // auth-js calls with acquireTimeout === 0 from exactly one place -- `_autoRefreshTokenTick` --
+    // where a busy lock means "another context is already refreshing, skip this tick". It expects
+    // the throw and handles it. An earlier version of this function caught that too and ran the
+    // callback unlocked, so the background refresh raced whatever held the lock and could leave the
+    // client with no usable session. Public reads still worked; anything RLS-scoped to the user
+    // silently returned zero rows, which surfaced as "Failed to update" / "Failed to remove" on
+    // Mark as Empty and Remove from collection (2026-09-05).
+    if (!weBoundedIt) throw err
     if (!(err instanceof NavigatorLockAcquireTimeoutError)) throw err
-    // Only reachable for a wait we bounded ourselves. A holder that has not released in 5s is a
-    // dead context, not a busy one.
+
+    // Reachable only for the infinite wait we replaced. A holder that has not released in 2.5s is a
+    // dead context (a force-closed PWA), not a busy one.
     console.warn(
       `[supabase] auth lock "${name}" still held after ${MAX_LOCK_WAIT_MS}ms; proceeding without it`
     )

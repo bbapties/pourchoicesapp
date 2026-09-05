@@ -142,6 +142,6 @@ export default function CoachHost() {
  * correspond to a route at all. Kept as an empty set so the AppShell nav dot simply stops showing,
  * rather than removing a prop across the shell for a hint nothing currently produces.
  */
-export function unseenAnnounceRoutes(_seenCoachIds: string[]): Set<string> {
+export function unseenAnnounceRoutes(): Set<string> {
   return new Set<string>();
 }

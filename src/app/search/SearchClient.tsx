@@ -673,7 +673,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       ?? rows[0];
     // onToggleOwnership from the detail = "finish one" (B-32): owned_count-1, emptied_count+1.
     const res = await markVariantEmpty({ userId: publicUserId, bottleId, variantId: primaryRow.variant_id ?? null });
-    if ("error" in res) { toast.error("Failed to update"); return; }
+    if ("error" in res) { toast.error(`Couldn't mark it empty: ${res.error}`); logEvent({ eventType: "error", userId: publicUserId, surface: "/search", metadata: { kind: "mark_empty_failed", message: res.error } }); return; }
 
     setUserBottlesMap(prev => ({
       ...prev,
@@ -693,7 +693,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     const ownedRow = (variantId ? userBottlesMap[bottleId]?.find(r => r.variant_id === variantId) : undefined)
       ?? userBottlesMap[bottleId]?.find(r => r.currently_owned || (r.times_had ?? 0) >= 1);
     const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: ownedRow?.variant_id ?? null });
-    if (result.error) { toast.error("Failed to remove from collection"); return; }
+    if (result.error) { toast.error(`Couldn't remove it: ${result.error}`); logEvent({ eventType: "error", userId: publicUserId, surface: "/search", metadata: { kind: "remove_bottle_failed", message: result.error } }); return; }
 
     // Drop only the ownership row for that variant; keep any tasting-only rows.
     setUserBottlesMap(prev => {
