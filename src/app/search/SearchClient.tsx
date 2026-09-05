@@ -25,6 +25,14 @@ const LOAD_MORE_SIZE = 15;
 
 type ViewMode = 'bottles' | 'variants';
 
+// Matches no bottle. Used to express "filter to nothing" when the viewer has tried nothing yet,
+// because PostgREST rejects an empty `in.()` list outright.
+const EMPTY_UUID = '00000000-0000-0000-0000-000000000000';
+
+// A user_bottles row starts at this Elo. A row still sitting exactly on it has never been ranked,
+// so it is not evidence that the viewer has personal rankings.
+const DEFAULT_ELO = 1500;
+
 const BOTTLE_SELECT =
   "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by, default_variant_elo, default_variant_id, variant_count";
 const VARIANT_SELECT =
@@ -66,6 +74,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const [userBottlesMap, setUserBottlesMap] = useState<Record<string, UserBottleRow[]>>({});
   // B-31 earmark: bottle_ids the viewer has drunk or blind-tasted (ownership handled separately).
   const [hadItSet, setHadItSet] = useState<Set<string>>(new Set());
+  // S4 My Ranks: skuId -> the viewer's own personal Elo (max across their rows for that SKU).
+  // Preferred over stars, because blind tastings move Elo and never write a star.
+  const [personalEloMap, setPersonalEloMap] = useState<Record<string, number>>({});
   // S4 My Ranks: skuId -> the viewer's own star rating (max across their rows for that SKU).
   const [personalStarMap, setPersonalStarMap] = useState<Record<string, number>>({});
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
@@ -78,7 +89,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     publicUserId ? q.or(`attr_store_pick_name.is.null,variant_created_by.eq.${publicUserId}`) : q.is("attr_store_pick_name", null);
 
   type SortOption = 'global' | 'az' | 'za' | 'yours' | null;
-  type FilterField = 'category' | 'verified';
+  type FilterField = 'category' | 'verified' | 'hadit';
   interface FilterState {
     step: 'closed' | 'field' | 'value';
     field: FilterField | null;
@@ -87,6 +98,12 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
   const CATEGORY_VALUES = ['Whiskey', 'Gin', 'Rum', 'Vodka', 'Tequila', 'Other'];
   const VERIFIED_VALUES = ['Verified', 'Community Added'];
+  const HADIT_VALUES = ['Yes', 'No'];
+  const FILTER_FIELD_LABELS: Record<FilterField, string> = {
+    category: 'Category',
+    verified: 'Verified Status',
+    hadit: 'Had it before',
+  };
   const SORT_LABELS: Record<NonNullable<SortOption>, string> = {
     global: 'Global Ranks', az: 'A–Z', za: 'Z–A', yours: 'My Ranks',
   };
@@ -219,7 +236,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
       const { data, error } = await supabase
         .from('user_bottles')
-        .select('bottle_id, currently_owned, variant_id, times_had, owned_count, created_at, updated_at')
+        .select('bottle_id, currently_owned, variant_id, times_had, owned_count, elo, created_at, updated_at')
         .eq('user_id', publicUser.id);
 
       if (error) {
@@ -240,6 +257,18 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         });
       });
       setUserBottlesMap(map);
+
+      // My Ranks (S4) is the viewer's OWN ordering, and in this app that ordering comes from Elo --
+      // which is what a blind tasting produces. Reading only stars made "My Ranks" invisible to
+      // exactly the people who had used the headline feature: Right_Blind had 6 ranked bottles and
+      // 0 rows in user_ratings, and was told to "rate some bottles" (2026-09-05).
+      const eloMap: Record<string, number> = {};
+      (data || []).forEach((row: { bottle_id: string; elo: number | string | null }) => {
+        const e = row.elo == null ? null : Number(row.elo);
+        if (e == null || Number.isNaN(e) || e === DEFAULT_ELO) return;
+        eloMap[row.bottle_id] = Math.max(eloMap[row.bottle_id] ?? -Infinity, e);
+      });
+      setPersonalEloMap(eloMap);
 
       // B-40: personal star ("My Ranks" sort + avg-star display) now comes from user_ratings,
       // keyed to the SKU by max across the viewer's rated variants of that bottle.
@@ -280,6 +309,63 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     fetchUserBottles();
   }, []);
 
+  // The bottle_ids this viewer has ANY relationship with: owned now, owned before, drank, or blind
+  // tasted (B-31). Defined once here so the server-side filter and the in-list `hadIt` earmark can
+  // never drift apart and disagree about the same bottle.
+  const hadItIds = useMemo(() => {
+    const ids = new Set<string>(hadItSet);
+    Object.entries(userBottlesMap).forEach(([bottleId, rows]) => {
+      if (rows.some(r => r.currently_owned || (r.times_had ?? 0) >= 1)) ids.add(bottleId);
+    });
+    return ids;
+  }, [userBottlesMap, hadItSet]);
+
+  // Only changes while the "Had it before" filter is actually on, so turning it off (or loading a
+  // collection with a different filter active) does not re-fetch the browse list for no reason.
+  const hadItKey = filter.field === 'hadit' && filter.value
+    ? filter.value + ':' + [...hadItIds].sort().join(',')
+    : '';
+
+  // The bottles this viewer has actually ranked, best first. Elo and stars are different scales, so
+  // whichever signal they have decides the whole ordering rather than being blended; Elo wins when
+  // present because it is the app's real ranking system and is what a blind tasting produces.
+  const rankedIds = useMemo(() => {
+    const src = Object.keys(personalEloMap).length ? personalEloMap : personalStarMap;
+    return Object.entries(src).sort((a, b) => b[1] - a[1]).map(([id]) => id);
+  }, [personalEloMap, personalStarMap]);
+
+  const rankedKey = sortBy === 'yours' ? rankedIds.join(',') : '';
+
+  /**
+   * My Ranks has to narrow the QUERY, not just reorder what is on screen. The browse list is
+   * paginated 30 at a time out of ~90 bottles, so sorting client-side only ever reordered the
+   * current page: a viewer's ranked bottles are scattered through the full list and most of them
+   * simply were not loaded to be sorted. Measured 2026-09-05: of 4 ranked bottles, 2 were on page
+   * one. Same failure shape as B-38.
+   *
+   * So "My Ranks" means "the bottles I have ranked, best first" -- the only reading that survives
+   * pagination, and the one that matches what the sort is for.
+   */
+  const applyMyRanksToQuery = (q: any) => {
+    if (sortBy !== 'yours') return q;
+    return rankedIds.length ? q.in('bottle_id', rankedIds) : q.eq('bottle_id', EMPTY_UUID);
+  };
+
+  /**
+   * Apply the "Had it before" filter to a browse query. It has to run SERVER-side like the other
+   * two: the list is paginated, so filtering it in the client would filter only the rows already
+   * loaded and put the list back out of step with the banner count -- which is exactly B-38.
+   */
+  const applyHadItToQuery = (q: any) => {
+    if (filter.field !== 'hadit' || !filter.value) return q;
+    const ids = [...hadItIds];
+    if (filter.value === 'Yes') {
+      // Nothing tried yet: match nothing rather than sending `in.()`, which is a syntax error.
+      return ids.length ? q.in('bottle_id', ids) : q.eq('bottle_id', EMPTY_UUID);
+    }
+    return ids.length ? q.not('bottle_id', 'in', `(${ids.join(',')})`) : q;
+  };
+
   // Load browse results for the active mode — reset=true for initial load, false for load-more
   const loadDefaultBottles = useCallback(async (reset: boolean) => {
     if (!reset && isLoadingMoreRef.current) return;
@@ -308,6 +394,8 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       } else if (filter.field === 'verified' && filter.value) {
         q = q.eq(isBottles ? 'bottle_verified' : 'variant_verified', filter.value === 'Verified');
       }
+      q = applyHadItToQuery(q);
+      q = applyMyRanksToQuery(q);
       const { data, error } = await q
         .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
         .range(offset, offset + limit - 1);
@@ -336,7 +424,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       else { setIsLoadingMore(false); isLoadingMoreRef.current = false; }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, minElo, maxElo, publicUserId, filter.field, filter.value]);
+  }, [viewMode, minElo, maxElo, publicUserId, filter.field, filter.value, hadItKey, sortBy, rankedKey]);
 
   // Initial browse load (re-runs when the mode changes or the filter changes — B-38)
   useEffect(() => {
@@ -397,25 +485,38 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       } else if (filter.field === 'verified') {
         const wantVerified = filter.value === 'Verified';
         annotated = annotated.filter(b => (b.provisional === false) === wantVerified);
+      } else if (filter.field === 'hadit') {
+        // Typed search results come from a different path than the paginated browse list and are
+        // bounded to 50, so they are filtered here rather than in the query.
+        const want = filter.value === 'Yes';
+        annotated = annotated.filter(b => b.hadIt === want);
       }
     }
 
     if (sortBy === 'az') return [...annotated].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (sortBy === 'za') return [...annotated].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
     if (sortBy === 'yours') {
-      // My Ranks (S4): the viewer's own star rating, highest first; unrated bottles fall to the end.
-      return [...annotated].sort((a, b) => {
-        const sa = personalStarMap[a.bottleId ?? a.id] ?? -1;
-        const sb = personalStarMap[b.bottleId ?? b.id] ?? -1;
-        return sb - sa;
-      });
+      // My Ranks (S4): the viewer's own ordering, best first; anything they have no opinion on
+      // falls to the end.
+      //
+      // Elo and stars are different scales, so they are not blended -- whichever signal the viewer
+      // actually has decides the ordering for the whole list. Elo wins when present because it is
+      // the app's real ranking system and reflects head-to-head tastings; stars are the fallback
+      // for someone who has only ever rated.
+      const useElo = Object.keys(personalEloMap).length > 0;
+      const rank = (b: { bottleId?: string; id: string }) => {
+        const key = b.bottleId ?? b.id;
+        return (useElo ? personalEloMap[key] : personalStarMap[key]) ?? -Infinity;
+      };
+      return [...annotated].sort((a, b) => rank(b) - rank(a));
     }
     return annotated; // global/null = server Elo order
-  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, personalStarMap]);
+  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, personalStarMap, personalEloMap]);
 
   const handleSortSelect = (option: SortOption) => {
-    if (option === 'yours' && Object.keys(personalStarMap).length === 0) {
-      toast("Rate some bottles to use My Ranks");
+    if (option === 'yours' && Object.keys(personalEloMap).length === 0 && Object.keys(personalStarMap).length === 0) {
+      // Wording covers both ways in: a blind tasting ranks bottles without ever rating one.
+      toast("Rate or blind taste some bottles to use My Ranks");
       setShowSortMenu(false);
       return;
     }
@@ -424,7 +525,10 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   };
 
   const filterActive = !!(filter.field && filter.value);
-  const filterValueOptions = filter.field === 'category' ? CATEGORY_VALUES : VERIFIED_VALUES;
+  const filterValueOptions =
+    filter.field === 'category' ? CATEGORY_VALUES
+    : filter.field === 'hadit' ? HADIT_VALUES
+    : VERIFIED_VALUES;
   const sortActive = sortBy !== null;
 
   const handleFilterButtonClick = () => {
@@ -712,7 +816,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
 
   useEffect(() => {
     // Only needed when browsing (no query) with a filter active
-    if (query.trim() || !filterActive) {
+    if (query.trim() || (!filterActive && sortBy !== 'yours')) {
       setFilteredBrowseCount(null);
       return;
     }
@@ -729,13 +833,15 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         const col = isBottles ? 'bottle_verified' : 'variant_verified';
         q = q.eq(col, filter.value === 'Verified');
       }
+      q = applyHadItToQuery(q);
+      q = applyMyRanksToQuery(q);
 
       const { count } = await q;
       setFilteredBrowseCount(count ?? 0);
     }
 
     fetchCount();
-  }, [filter, query, filterActive, viewMode, publicUserId]);
+  }, [filter, query, filterActive, viewMode, publicUserId, hadItKey, sortBy, rankedKey]);
 
   // Count shown in banner
   // - No query, no filter: total DB count for the mode (from server prop)
@@ -744,7 +850,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const totalCount = viewMode === 'bottles' ? totalBottleCount : totalVariantCount;
   const displayCount = query.trim()
     ? sortedBottles.length
-    : filterActive && filteredBrowseCount !== null
+    : (filterActive || sortBy === 'yours') && filteredBrowseCount !== null
     ? filteredBrowseCount
     : totalCount;
 
@@ -804,13 +910,13 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
                         Clear filter
                       </button>
                     )}
-                    {(['category', 'verified'] as FilterField[]).map(f => (
+                    {(['category', 'verified', 'hadit'] as FilterField[]).map(f => (
                       <button
                         key={f}
                         onClick={() => handleFilterFieldSelect(f)}
                         className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-gray-50"
                       >
-                        <span>{f === 'category' ? 'Category' : 'Verified Status'}</span>
+                        <span>{FILTER_FIELD_LABELS[f]}</span>
                         <ChevronDown size={13} className="rotate-[-90deg] text-gray-400" />
                       </button>
                     ))}
@@ -823,7 +929,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
                       className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-400 hover:bg-gray-50 border-b border-gray-100 gap-1"
                     >
                       <ChevronDown size={13} className="rotate-90" />
-                      {filter.field === 'category' ? 'Category' : 'Verified Status'}
+                      {filter.field ? FILTER_FIELD_LABELS[filter.field] : ''}
                     </button>
                     {filterValueOptions.map(val => (
                       <button
