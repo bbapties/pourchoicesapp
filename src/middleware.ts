@@ -37,9 +37,18 @@ export async function middleware(request: NextRequest) {
   // getUser() authenticates the token against the Supabase Auth server (and
   // refreshes it, writing cookies onto `response`) — unlike getSession(), which
   // trusts the cookie as-is. This is the secure pattern for gating routes.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // NOTE the `error`. Discarding it conflates two very different things: "this person has no
+  // session" and "we could not reach the auth server just now". The purge below acts on that
+  // answer, so treating a network blip as a signed-out user DESTROYS a perfectly good 400-day
+  // session -- which is exactly when it bites: the first request after a force-close/reopen races
+  // a cold radio, and the user is silently logged out. ("unless the user signed out, I want it to
+  // remember you and just log right in.")
+  const { data: { user }, error } = await supabase.auth.getUser()
+
+  // Only an explicit rejection from the auth server proves the token is dead. A fetch failure,
+  // timeout or 5xx proves nothing at all.
+  const tokenDefinitelyDead =
+    !!error && typeof error.status === 'number' && error.status >= 400 && error.status < 500
 
   // Routes reachable without a session. `/` is the login/splash screen. `/reset-password`
   // consumes a Supabase recovery link: the user arrives from their email NOT yet
@@ -51,14 +60,14 @@ export async function middleware(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/'
     const redirect = NextResponse.redirect(redirectUrl)
-    // Purge any stale Supabase auth cookie on the way out. getUser() returned no user, so
-    // the token is invalid/unrefreshable; if we leave the cookie, the login page's
-    // getSession() (which only trusts the cookie) redirects straight back to /mybar and we
-    // bounce forever. Clearing it makes both sides agree there is no session and breaks the
-    // loop even for a client still running an old bundle. Only dead sessions reach here.
-    for (const c of request.cookies.getAll()) {
-      if (c.name.startsWith('sb-') && c.name.includes('auth-token')) {
-        redirect.cookies.set(c.name, '', { maxAge: 0, path: '/' })
+    // Purge the auth cookie ONLY when the auth server actually rejected the token. That still
+    // breaks the / <-> /mybar bounce it was added for (a genuinely dead token gets a 4xx), but a
+    // transient failure now leaves the cookie alone so the very next request can succeed.
+    if (tokenDefinitelyDead) {
+      for (const c of request.cookies.getAll()) {
+        if (c.name.startsWith('sb-') && c.name.includes('auth-token')) {
+          redirect.cookies.set(c.name, '', { maxAge: 0, path: '/' })
+        }
       }
     }
     return redirect
