@@ -72,6 +72,35 @@ users are now told to open in Safari rather than given Safari's UI.
 an actual iPhone. Worth confirming: home-screen icon, standalone launch with no Safari chrome, no
 white flash, and that the notch does not overlap the header.
 
+### OPEN: iPhone white screen (2026-09-05) -- mitigated, cause not confirmed
+Brian hit "Application error: a client-side exception has occurred" on iPhone. **Read this before
+assuming it is fixed.**
+
+**What the telemetry showed** (this is why the events table earns its keep): session
+`3267edec`, unauthenticated, on `/` --
+`15:01:30 page_view` -> `15:01:33 pwa_prompt_shown` (the iOS install sheet) -> `15:02:11 error`.
+Commit times are local (UTC-4), so 15:02 UTC = 11:02 local, and the code live then was **`44dd01c`
+(the iOS commit), deployed 10:57 local -- five minutes earlier.** The push feature had not shipped
+yet, which rules it out.
+
+**Two fixes shipped:**
+1. **`50da833` -- error boundaries.** The app had NONE, so any render error was a dead white page.
+   Now `error.tsx` (keeps the shell + nav, offers Try again) and `global-error.tsx` (last resort,
+   catches root-layout failures). Also: the old capture read only `ErrorEvent.message`, which
+   browsers reduce to **"Script error."** with no file or line -- exactly what we got, and it named
+   nothing. Now captures `e.error.stack`, `.name`, and the **user agent**.
+2. **`7cba88c` -- removed the explicit `<head>`** from the root layout that `44dd01c` had added to
+   carry the splash links. App Router owns that element and React 19 hoists `<link>` itself;
+   wrapping them in a literal `<head>` is not the documented pattern and is a known hydration-mismatch
+   source. A mismatch throws during hydration, which matches the symptom, and browsers differ on
+   recovery -- consistent with Chromium being fine and WebKit not. Verified the 9 links still land
+   in a single `<head>` with media queries intact.
+
+**Status: the best-supported suspect, NOT a confirmed diagnosis.** If it recurs, the boundary now
+reports a real message + stack + UA to `events` (`kind: react_route_error` / `react_global_error`),
+and the tester sees a Try again screen instead of a blank page. **Query that first:**
+`SELECT metadata FROM events WHERE event_type='error' ORDER BY created_at DESC LIMIT 5;`
+
 ### Single next step
 **Wave D1 -- admin-published What's new.** Today the digest auto-piles every `announce: true` coach,
 which would dump 7.x history on a new tester. Needs an `announcements` table + an admin
