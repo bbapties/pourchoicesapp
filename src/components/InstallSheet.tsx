@@ -6,6 +6,7 @@ import { logEvent } from "@/lib/events";
 import {
   detectPlatform,
   isInstalledOnDevice,
+  isIOSNonSafari,
   rememberDismissedInstall,
   type Platform,
 } from "@/lib/pwa";
@@ -39,6 +40,7 @@ export default function InstallSheet({
   surface: string;
 }) {
   const [platform, setPlatform] = useState<Platform>("desktop");
+  const [iosOffSafari, setIosOffSafari] = useState(false);
   const [installed, setInstalled] = useState(false);
   // Re-render whenever Chrome hands us (or takes away) a prompt.
   const deferred = useSyncExternalStore(
@@ -49,6 +51,7 @@ export default function InstallSheet({
 
   useEffect(() => {
     setPlatform(detectPlatform());
+    setIosOffSafari(isIOSNonSafari());
     if (!open) return;
     // Re-check on every open: they may have installed since the sheet last rendered.
     let cancelled = false;
@@ -120,7 +123,25 @@ export default function InstallSheet({
             </button>
           )}
 
-          {!installed && platform === "ios" && (
+          {!installed && platform === "ios" && iosOffSafari && (
+            // Chrome/Firefox/Edge on iOS are WebKit but put Share elsewhere, and older versions hide
+            // Add to Home Screen entirely. Safari is the one reliable route.
+            <div className="text-sm text-gray-700 space-y-2">
+              <p>
+                Adding to the home screen only works properly from{" "}
+                <span className="font-semibold">Safari</span> on iPhone.
+              </p>
+              <ol className="space-y-1 list-decimal list-inside">
+                <li>Open <span className="font-semibold">www.pourchoicesapp.com</span> in Safari.</li>
+                <li>
+                  Tap <span className="font-semibold">Share</span>, then{" "}
+                  <span className="font-semibold">Add to Home Screen</span>.
+                </li>
+              </ol>
+            </div>
+          )}
+
+          {!installed && platform === "ios" && !iosOffSafari && (
             <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
               <li>
                 Tap the <span className="font-semibold">Share</span> button at the bottom of Safari

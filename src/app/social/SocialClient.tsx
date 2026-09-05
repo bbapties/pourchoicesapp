@@ -209,7 +209,7 @@ export default function SocialClient() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 flex items-center justify-center">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 flex items-center justify-center" style={{ top: "env(safe-area-inset-top)" }}>
         <h1 className="text-base font-semibold text-charcoal">Social</h1>
       </header>
 
@@ -267,7 +267,7 @@ export default function SocialClient() {
         )}
       </div>
 
-      <Toaster position="top-center" style={{ top: "56px" }} />
+      <Toaster position="top-center" style={{ top: "calc(56px + env(safe-area-inset-top))" }} />
 
       {selectedBottle && (
         <BottleDetailView

@@ -41,6 +41,17 @@ export function isInAppBrowser(): boolean {
   return /FBAN|FBAV|Instagram|Line|Twitter|TikTok|Snapchat/i.test(navigator.userAgent);
 }
 
+/**
+ * On iOS every browser is WebKit, but only Safari has the reliable "Add to Home Screen" flow --
+ * Chrome (CriOS), Firefox (FxiOS) and Edge (EdgiOS) put Share somewhere else, or hide the option
+ * entirely on older versions. Telling those users to "tap Share at the bottom of Safari" is
+ * instructions for a screen they are not looking at.
+ */
+export function isIOSNonSafari(): boolean {
+  if (typeof navigator === "undefined" || !isIOS()) return false;
+  return /CriOS|FxiOS|EdgiOS|OPiOS|mercury/i.test(navigator.userAgent);
+}
+
 export function detectPlatform(): Platform {
   if (isInAppBrowser()) return "in-app-browser";
   if (isIOS()) return "ios";

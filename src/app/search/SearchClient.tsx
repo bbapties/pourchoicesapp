@@ -751,7 +751,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   return (
     <>
       {/* Fixed Header with Search Bar */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 p-2">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 p-2" style={{ top: "env(safe-area-inset-top)" }}>
         <div className="relative max-w-md mx-auto" data-coach="search.input">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal w-4 h-4" />
           <Input
@@ -774,7 +774,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       </header>
 
       {/* Results banner: Filter By | Count | Sort By — z-30 so dropdowns clear lower fixed rows */}
-      <header className="fixed top-14 left-0 right-0 h-9 bg-ivory border-b border-charcoal z-30 flex items-center justify-between px-4 gap-2">
+      <header className="fixed top-14 left-0 right-0 h-9 bg-ivory border-b border-charcoal z-30 flex items-center justify-between px-4 gap-2" style={{ top: "calc(56px + env(safe-area-inset-top))" }}>
 
         {/* Filter By */}
         <div className="relative flex-shrink-0">
@@ -887,7 +887,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       </header>
 
       {/* Bottles | All Variants toggle — own row beneath the filter/sort bar */}
-      <div className="fixed top-[92px] left-0 right-0 h-9 bg-ivory border-b border-charcoal z-20 flex items-center justify-center px-4">
+      <div className="fixed top-[92px] left-0 right-0 h-9 bg-ivory border-b border-charcoal z-20 flex items-center justify-center px-4" style={{ top: "calc(92px + env(safe-area-inset-top))" }}>
         <div className="inline-flex border border-charcoal rounded-full overflow-hidden text-sm">
           <button
             onClick={() => handleModeChange('bottles')}

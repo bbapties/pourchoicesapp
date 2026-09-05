@@ -38,7 +38,13 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       <main
         className="flex-1 overflow-y-auto min-h-0"
         style={{
-          marginTop: pathname === "/search" ? "128px" : pathname === "/mybar" ? "132px" : (pathname === "/social" || pathname === "/taste") ? "56px" : "0px",
+          // Each fixed header is offset by the notch inset (see the page headers), so the content
+          // below has to clear the header AND the inset. env() is 0 on devices without one.
+          marginTop:
+            pathname === "/search" ? "calc(128px + env(safe-area-inset-top))"
+            : pathname === "/mybar" ? "calc(132px + env(safe-area-inset-top))"
+            : (pathname === "/social" || pathname === "/taste") ? "calc(56px + env(safe-area-inset-top))"
+            : "0px",
           marginBottom: isAuthPage ? "0px" : "calc(64px + env(safe-area-inset-bottom))",
         }}
       >

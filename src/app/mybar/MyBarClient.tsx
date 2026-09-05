@@ -412,7 +412,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   return (
     <>
       {/* Row 1: Search bar (h-14) */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 p-2">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 p-2" style={{ top: "env(safe-area-inset-top)" }}>
         <div className="relative max-w-md mx-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal w-4 h-4" />
           <Input
@@ -434,7 +434,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       </header>
 
       {/* Row 2: Filter By + Sort By (h-9) — z-30 so dropdowns clear the z-20 tabs row */}
-      <div className="fixed top-14 left-0 right-0 h-9 bg-ivory border-b border-charcoal z-30 flex items-center justify-between px-4">
+      <div className="fixed top-14 left-0 right-0 h-9 bg-ivory border-b border-charcoal z-30 flex items-center justify-between px-4" style={{ top: "calc(56px + env(safe-area-inset-top))" }}>
 
         {/* Filter By */}
         <div className="relative">
@@ -542,7 +542,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       </div>
 
       {/* Row 3: Tabs (h-10) */}
-      <div className="fixed top-[92px] left-0 right-0 h-10 bg-ivory border-b border-charcoal z-20 flex">
+      <div className="fixed top-[92px] left-0 right-0 h-10 bg-ivory border-b border-charcoal z-20 flex" style={{ top: "calc(92px + env(safe-area-inset-top))" }}>
         {(['owned', 'empty', 'tasted', 'wishlist'] as TabOption[]).map(tab => (
           <button
             key={tab}

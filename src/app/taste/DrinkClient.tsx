@@ -380,7 +380,7 @@ export default function DrinkClient({
 
   return (
     <div className="max-w-md mx-auto">
-      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 flex items-center px-3">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 flex items-center px-3" style={{ top: "env(safe-area-inset-top)" }}>
         {showBack && (
           <button type="button" aria-label="Back" onClick={back} className="p-1 text-charcoal"><ChevronLeft size={22} /></button>
         )}
