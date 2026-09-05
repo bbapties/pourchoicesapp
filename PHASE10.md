@@ -113,18 +113,35 @@ ids and makes each one a chance to get it wrong.
 Doing this **before** push means `push_subscriptions.user_id` is right by construction, and 3.4 is
 unblocked whenever it comes up.
 
-## Wave C — The app feel (Brian's #1)
+## Wave C — The app feel  ✅ COMPLETE 2026-09-05
 
 `public/` has **no manifest, no service worker, no PNG icons** — only SVGs + `cellar-bg.png`.
 Icon art: **derive from `cellar-bg.png` / existing art** (Brian's call, 2026-09-04).
 
-- [ ] **C1** Manifest + icon set (192/512/maskable/apple-touch 180/favicon) + apple meta +
-  `theme-color` in `layout.tsx`. **This alone puts an icon on the home screen.**
-- [ ] **C2** Service worker, app-shell only. Boring on purpose. Required for push.
-- [ ] **C3** First-visit install prompt. Android `beforeinstallprompt`; iOS instructional Share ->
-  Add to Home Screen (**the instructional UI is the feature** — no programmatic install exists).
-  Skip if standalone; remember "continue in browser"; Profile row to see instructions again.
-  Events: `pwa_prompt_shown` / `pwa_install_clicked` / `pwa_continue_browser`.
+- [x] **C1** Manifest + icon set + apple meta + `theme-color` (`27e0f8d`). `cellar-bg.png` turned
+  out to contain a real brand mark -- the hanging barrel-head sign, already circular. Cropped to the
+  medallion and generated at 192/512/maskable/180/32. Photographic icons are a poor fit for
+  truecolour PNG (the 512 was 571 KB); an adaptive 256-colour palette holds the wood gradient for
+  2.6x less, whole set 394 KB. **Three things this surfaced:** the middleware matcher ate
+  `/manifest.webmanifest` (excluded images but not `.webmanifest`), so install was broken for
+  exactly the signed-out first visitor it targets; Next emits only `mobile-web-app-capable`, not the
+  `apple-` prefixed name iOS needs for standalone launch; and `src/app/favicon.ico` was still the
+  **Next.js default Vercel triangle**.
+- [x] **C2** Service worker (`cd77527`). Deliberately narrow: caches ONLY immutable, content-hashed,
+  same-origin assets. Never HTML, never API, never cross-origin. Navigations return early and are
+  never intercepted, so a bad deploy stays recoverable by a plain reload. No offline mode -- the
+  right trade for an auth-gated app whose screens are meaningless without fresh data. Registers in
+  production only. **Verified:** cache holds exactly 3 hashed chunks + 5 precached assets, zero HTML,
+  zero API, zero cross-origin. Adds a `pourchoices-prod` launch config, since a production-only
+  worker needs a production build to test.
+- [x] **C3** First-visit install prompt (`90f3f36`). Asks **before signup** -- installing after
+  signing up in Safari means the installed app opens in its own storage partition with no session.
+  Android one-tap; iOS instructional; in-app browsers told to open a real browser.
+  **Two flaws testing caught:** Profile's "Install the app" row routed to `/`, which silently does
+  nothing for a signed-in user (redirected to /mybar), so the sheet was split into `InstallSheet`
+  and now opens in place; and on Android without a live `beforeinstallprompt` the sheet was a dead
+  end with no button and no steps. Detection verified against six UA strings incl. iPadOS-13-as-Mac
+  and Instagram. Coach row `profile.install`; six-event funnel in TELEMETRY.md.
 
 ## Wave D — The engagement channel (his marketing lever)
 

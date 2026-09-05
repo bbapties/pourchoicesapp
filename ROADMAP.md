@@ -260,12 +260,18 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 - [ ] B-08 Signup uses same username rules as Profile; no orphan Auth users
 - [ ] B-09 … B-17 (1b cluster — scoped empty, store-pick flash, VariantSelectSheet both ids, search `.or()` escape, etc.)
 
-### 8.2 PWA — install as an app (Android + iOS)
-- [ ] Manifest + icons + apple-touch / theme-color
-- [ ] Service worker (app-shell; needed later for push)
-- [ ] First-visit prompt: Install (recommended) vs Continue in browser; skip if already installed
-- [ ] iOS: instructional Add to Home Screen (no programmatic install)
-- [ ] Events: `pwa_prompt_shown` / `pwa_install_clicked` / `pwa_continue_browser`
+### 8.2 PWA — install as an app (Android + iOS)  ✅ SHIPPED as Phase 10 Wave C (2026-09-05)
+- [x] Manifest + icons + apple-touch / theme-color (`27e0f8d`) — icon derived from the barrel-head
+      sign in `cellar-bg.png`. Also fixed: the middleware matcher was eating `/manifest.webmanifest`
+      while signed out, Next does not emit `apple-mobile-web-app-capable`, and `favicon.ico` was
+      still the Next.js default Vercel triangle.
+- [x] Service worker (app-shell; needed later for push) (`cd77527`) — immutable content-hashed
+      assets only; navigations never intercepted; no offline mode on purpose.
+- [x] First-visit prompt: Install vs Continue in browser; skip if already installed (`90f3f36`)
+- [x] iOS: instructional Add to Home Screen (no programmatic install exists)
+- [x] Events: the six-event install funnel, recorded in TELEMETRY.md
+- [ ] **Real-device confirmation still owed** — install from prod on a real iPhone and Android
+      (secure context required; the LAN QA URL is plain HTTP and cannot do this).
 
 ### 8.3 Tutorial + admin What's new
 - [ ] Discovery with Brian: new-user core steps (must include Drink)

@@ -8,93 +8,70 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `aba78f0` (+ this doc commit). Working tree clean; all on origin/MVP-v3, live and verified.
-- **Current phase:** **Phase 10** -- **[PHASE10.md](PHASE10.md)**, which supersedes the Phase 8
-  ordering. Beta is now **3 people Brian knows**, so the bar is "they install it and keep opening
-  it." **Wave A and Wave B are done. Wave C (PWA) is next and is Brian's stated #1.**
+- **Tip:** `90f3f36` (+ this doc commit). Working tree clean; all on origin/MVP-v3 and verified live.
+- **Current phase:** **Phase 10** ([PHASE10.md](PHASE10.md)). **Waves A, B and C are complete.**
+  **Wave D (What's new + push) is next** -- Brian's stated engagement channel.
 
-### Shipped this session
-1. **A1 -- the middleware had never run** (`a6de5b0`). `middleware.ts` sat at the repo root; with a
-   `src/` directory Next.js only reads `src/middleware.ts` and silently ignores the other. So
-   `/search`, `/social`, `/profile` served **200 to signed-out visitors** (no data leaked -- RLS
-   held), and both prior auth fixes were no-ops, which is why the redirect loop restarted 18 minutes
-   after being declared fixed. Moved into `src/`, plus a `PUBLIC_PATHS` allowlist -- enabling it had
-   bounced `/reset-password`, where users arrive from a recovery email unauthenticated.
-2. **A1 -- events cap + purge** (`3affaea`). `guard_event_insert` now caps each `session_id` at 200
-   rows/rolling hour (silent drop, not raise). Purged **65,215 -> 655** rows. The five loopers were
-   browser tabs, not Brian's Grok bot: `session_id` is sessionStorage-scoped, so ids persisting Sep 1
-   -> Sep 4 mean those tabs stayed open; a DB-querying bot never runs `EventTracker` at all.
-3. **A2 -- image compression** (`046f94d`, `88165e0`). Measured first: six phone JPEGs (1.1-4.6 MB)
-   were **86% of the bucket**; the bot's images were 178-505 KB. `src/lib/compressImage.ts` does
-   1200px long edge + WebP q82, EXIF-aware, alpha-safe, fails open to the original. **5.91 MB ->
-   149.8 KB verified through the real app path.** `verify-bottle`'s `clean_image.py` aligned to the
-   same spec (505 KB -> 66 KB, 495 KB -> 54 KB, transparency intact).
-4. **Wave B -- B-74 resolved** (`fab85e2`, `9c76dd3`). See below.
+### Wave C shipped this session (the PWA)
+- **C1 icons + manifest** (`27e0f8d`). `cellar-bg.png` contains a real brand mark: the barrel-head
+  sign, already circular. Cropped to the medallion, generated at 192/512/maskable/180/32, quantised
+  to a 256-colour palette (571 KB -> 217 KB on the 512; whole set 394 KB).
+- **C2 service worker** (`cd77527`). Caches ONLY immutable content-hashed same-origin assets.
+  Navigations are never intercepted. No offline mode, on purpose.
+- **C3 install prompt** (`90f3f36`). Before signup, platform-aware, never nags, Profile row to
+  re-open.
 
-### B-74: what was actually true, and how it shipped
-Measured, not assumed: **ten of twelve person-columns already used `public.users.id`.** Only
-bottles/variants `created_by`/`updated_by` used the auth id, and **uniformly** (81/82, 109/110) --
-so **B-46's "it's mixed" was false.** Three FKs to `auth.users` were enforcing it, while
-`bottle_variants.created_by` had no FK at all. The three "orphans" were one id: the `auth.users`
-row for `grainoftruth@`, whose `public.users` row had the same email and a NULL `auth_id` -- a
-broken link, repaired, so nothing was nulled.
-
-**Three steps, because code and SQL do not deploy atomically** and `created_by` is written on every
-bottle add. Migrating first would make deployed code violate the new FK; deploying first would
-violate the old one. So part 1 dropped the FKs and remapped **384** values, leaving the columns
-**unconstrained**; the app deployed writing public ids; part 2 re-swept, aborted-if-unresolvable,
-added `ON DELETE SET NULL` FKs and simplified the B-24 policy. Then `9c76dd3` deleted the dual-id
-matching everywhere. **An auth id is now unstorable -- verified by attempting one.**
+### Three real bugs Wave C surfaced (worth remembering)
+1. **The middleware matcher ate `/manifest.webmanifest`** -- it excluded image extensions but not
+   `.webmanifest`, so the manifest 307'd to the login page while signed out, which is exactly when
+   the install prompt runs. Install would have been silently impossible. **Any new public asset must
+   be added to the matcher** (now also excludes `sw.js`, `.webp`, `.ico`).
+2. **Next emits only `mobile-web-app-capable`**, not `apple-mobile-web-app-capable`. Without the
+   apple-prefixed one, iOS Add to Home Screen launches inside Safari chrome instead of standalone.
+   Added via `metadata.other`.
+3. **`src/app/favicon.ico` was still the Next.js default Vercel triangle** -- that is what the
+   browser tab had been showing. Replaced (must be RGBA; Next's ico loader rejects RGB and fails the
+   build).
 
 ### Single next step
-**Wave C1 -- PWA manifest + icon set.** `public/` has no manifest, no service worker and no PNG
-icons (only SVGs + `cellar-bg.png`). Brian's call: **derive the icon art from `cellar-bg.png` /
-existing art**. C1 alone puts an icon on the home screen, which is the single most visible change
-for his testers. Then C2 (service worker, app-shell only -- required for push) and C3 (install
-prompt; Android `beforeinstallprompt`, iOS instructional).
+**Wave D1 -- admin-published What's new.** Today the digest auto-piles every `announce: true` coach,
+which would dump 7.x history on a new tester. Needs an `announcements` table + an admin
+publish/unpublish screen, with the digest reading published-unseen rows only and existing coaches
+seeded unpublished. Schema = snapshot + Brian's go. Then D2 (core tour rewrite -- it predates Drink
+and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 
 ### Open for Brian (not code)
-- **A3 / B-26 -- ONE entry still missing from the redirect allowlist.** Brian added
-  `http://localhost:3000/reset-password` and `https://pourchoicesapp.com/reset-password`, and the
-  Reset Password template is Supabase's default (enabled). **But the canonical host is `www`:**
-  `pourchoicesapp.com` 308-redirects to `www.pourchoicesapp.com`, so `window.location.origin` is
-  always the www form and the app sends `https://www.pourchoicesapp.com/reset-password`, which is
-  NOT in the list. Supabase matches these literally, so the link falls back to Site URL -- the user
-  lands on `/` carrying a recovery fragment, supabase-js signs them in and bounces them to `/mybar`
-  **without ever setting a password.** Fix: add `https://www.pourchoicesapp.com/reset-password` and
-  confirm Site URL is the www form.
-  Note the `/auth/v1/recover` endpoint returns 200 for a disallowed `redirect_to` as well as an
-  allowed one (verified against a bogus control), so it cannot be probed from outside -- this was
-  established from the 308 plus Supabase's literal matching, not from an API response.
-  **Config is NOT reachable with our credentials:** the `auth` schema has no config table and the
-  Management API 401s the service-role key; it needs an account-wide personal access token, which we
-  deliberately did not take. Mitigation: a password can be reset via the service role if a tester is
-  stuck.
+- **B-26 redirect URL: RESOLVED as of this session** -- Brian added
+  `https://www.pourchoicesapp.com/reset-password`. The non-www entry alone was not enough because the
+  apex 308-redirects to www, so `window.location.origin` is always the www form.
 - **B-21** -- confirm the service-role env var in Vercel. Only affects admin user deletion.
-- **`Grain_of_Truth` is Brian's Grok data bot** (confirmed 2026-09-05), not a person: it polls for
-  new user bottles and runs the `verify-bottle` skill, plus one random bottle a day. It is the
-  catalog's most active contributor -- **110 `suggested_edits`** plus 1 bottle + 1 variant. Its
-  `auth_id` was NULL until the B-74 migration repaired it, so anything keyed on `auth_id` silently
-  skipped it before then. Documented in ROADMAP dev/QA accounts and in the skill's id table.
+- **Real-device install test.** Camera, install and push cannot be tested on the LAN QA URL (plain
+  HTTP, not a secure context). Brian should install from prod on a real iPhone and a real Android and
+  confirm: home-screen icon, standalone launch with no browser chrome, and that an already-installed
+  user is never re-prompted.
 
 ### Landmines carried forward
-- **Do NOT reintroduce "match both ids".** B-74 is closed and the FK rejects an auth id, so a dual
-  match is dead code that reads as if the ambiguity still exists. `authId` belongs only where it
+- **Any new public route or asset must be added to `PUBLIC_PATHS` (routes) or the matcher (assets)
+  in `src/middleware.ts`**, or it 307s to `/` for signed-out visitors. This has now bitten twice:
+  `/reset-password` and `/manifest.webmanifest`.
+- **Do NOT reintroduce "match both ids".** B-74 is closed and a foreign key rejects an auth id, so a
+  dual match is dead code that reads as if the ambiguity still exists. `authId` belongs only where it
   means "is there a session" (today: `AppShell`). See AGENTS.md.
-- **Middleware now actually runs**, calling `getUser()` on every matched request -- a cost prod never
-  paid before (measured 0.16-0.23s, fine). **Any new public route must be added to `PUBLIC_PATHS`
-  in `src/middleware.ts`** or it will 307 to `/`.
-- **Storage:** compression only affects NEW uploads. The 11 existing objects (17 MB) still need a
-  backfill re-encode -- fold it into **F1** (orphan purge + usage readout), which walks the same
-  bucket. Do that before any catalog seed.
+- **The service worker caches only content-hashed assets.** If you ever add HTML or API responses to
+  that cache, you can strand users on stale content with no way to reach them. Bump `VERSION` in
+  `public/sw.js` when its logic changes.
+- **Storage:** compression only affects NEW uploads; the 11 existing objects (17 MB) still need a
+  backfill re-encode. Fold into **F1** (orphan purge + usage readout) before any catalog seed.
 - **0 tasting sessions have ever run on prod** -- the flagship loop is unexercised by a human
   (PHASE10 E1).
 - **Ratings (B-40):** manual guesses live in **`user_ratings`**, never `user_bottles.rating_stars`.
 - **B-23 tier-2** deferred post-beta. **Do NOT rewrite the Elo trigger** (B-49/B-50 ask first).
 - **Do NOT rebuild the online barcode lookup** without new evidence -- BACKLOG > Data / Audit.
 - **Lint baseline is 2 pre-existing errors** (`SocialClient` unused `logActivity`, `useCurrentUser`
-  unused `_ids`). Judge a change by whether it moves off 2, not by whether the count is 0. Also:
-  `npx eslint .` picks up `.claude/worktrees` and reports ~3,900 -- lint `src` instead.
+  unused `_ids`). Judge a change by whether it moves off 2. Lint `src`, not `.` -- the latter picks up
+  `.claude/worktrees` and reports ~3,900.
+- **`Grain_of_Truth` is Brian's Grok data bot** (110 suggested_edits), not a person. Its id table
+  lives in the verify-bottle skill.
 
 ## Known state drift (docs vs reality)
 - ✅ **RECONCILED 2026-08-21** — **README.md** now carries a stale-banner pointing here; **ROADMAP** "WE ARE HERE"
@@ -113,6 +90,21 @@ prompt; Android `beforeinstallprompt`, iOS instructional).
 ---
 
 ## Log (newest first)
+
+### 2026-09-05 (cont.) - Claude (Wave C: the PWA is live)
+- **C1** (`27e0f8d`) icons + manifest + apple meta, derived from the barrel-head sign in
+  cellar-bg.png. **C2** (`cd77527`) a deliberately narrow app-shell service worker. **C3**
+  (`90f3f36`) the platform-aware install prompt.
+- **Three bugs found by building it**, all listed in "Right now": the middleware matcher ate the
+  manifest (install silently impossible while signed out), Next does not emit
+  `apple-mobile-web-app-capable` (iOS would launch in Safari chrome), and the favicon was still the
+  Next.js default Vercel triangle.
+- **Two design flaws found by testing rather than by reading:** Profile's install row routed to `/`,
+  which does nothing for a signed-in user; and Android without a live `beforeinstallprompt` was a
+  dead-end sheet. Both fixed by splitting `InstallSheet` out of `InstallPrompt`.
+- **B-26 closed** -- the allowlist needed the **www** form, because the apex 308-redirects to www so
+  `window.location.origin` is always www. Brian added it.
+- **Next:** Wave D1, admin-published What's new.
 
 ### 2026-09-05 - Claude (Phase 10 re-rank; middleware never ran; images; B-74 closed)
 - **Planning session** -> **[PHASE10.md](PHASE10.md)** (waves A-F), ROADMAP/AGENTS repointed at it.
