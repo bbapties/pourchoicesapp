@@ -168,9 +168,15 @@ export async function fetchLastActivityForBottle(
   });
 }
 
+// `users!inner` is deliberate: the feed is filtered to real people
+// (`account_type = 'human'`), and a plain embedded filter would null the embed
+// instead of dropping the row. Seeded ranking accounts (`data`) and QA accounts
+// (`test`) still move personal + global Elo -- they just never post here.
+// This is the ONLY activities read that spans users; every other one is already
+// scoped to the viewer's own user_id, so the feed is the only surface to filter.
 const FEED_SELECT = `
   id, action, pour_type, created_at, bottle_id, user_id,
-  users ( username ),
+  users!inner ( username ),
   bottles ( name, distillery, frontimage_url )
 `;
 
@@ -182,6 +188,7 @@ export async function fetchActivityFeed(opts: {
   const { data, error } = await supabase
     .from("activities")
     .select(FEED_SELECT)
+    .eq("users.account_type", "human")
     .order("created_at", { ascending: false })
     .range(opts.offset, to);
 

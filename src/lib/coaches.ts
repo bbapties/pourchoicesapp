@@ -1,25 +1,19 @@
 import { supabase } from "@/lib/supabase";
 
 /**
- * TEMPORARY KILL SWITCH for the AUTOMATIC coach behaviours (Brian, 2026-09-05).
+ * Master switch for the AUTOMATIC coach behaviours: the first-session core tour and the What's new
+ * digest.
  *
- * Turns off the two things that fire on their own:
- *   - the new-user core tour, which auto-plays on first login
- *   - the "What's new" digest, which auto-piles every unseen `announce: true` item
+ * This was OFF between 2026-09-05 and D1 shipping. The reason was the digest: it read every
+ * `announce: true` item straight out of this catalog, so it showed whatever the codebase happened
+ * to contain and would have handed a brand-new tester the accumulated 7.x/8.x history as if it were
+ * news. Turning it back on is safe now because **the digest reads admin-published `announcements`
+ * rows instead** -- nothing reaches a tester until Brian publishes it.
  *
- * WHY. The digest currently has no editorial control: it shows whatever the catalog happens to
- * contain, so a new tester would be handed the accumulated 7.x/8.x history as if it were news.
- * Rather than ship that at a beta, it is off until **PHASE10 D1** gives Admin a published
- * `announcements` table and a say in what appears and when.
- *
- * DELIBERATELY NOT DISABLED: Profile > "Replay tutorial". That is user-initiated, not a popup, so
- * it still plays on request via the `FORCE_REPLAY_KEY` handshake below. Leaving the button in place
- * but inert would just look broken.
- *
- * TO RE-ENABLE: set this to true. Nothing else needs to change -- the catalog, the tour player and
- * the digest sheet are all untouched.
+ * Profile > "Replay tutorial" works regardless, via the FORCE_REPLAY_KEY handshake, since it is
+ * user-initiated rather than a popup.
  */
-export const AUTO_COACHES_ENABLED = false;
+export const AUTO_COACHES_ENABLED = true;
 
 /**
  * sessionStorage handshake that lets Profile play the tour on demand while the auto behaviour above
@@ -45,7 +39,14 @@ export type CoachItem = {
   tour: TourStep[];
 };
 
-/** Current product loop + announcements. Edit this list; do not append forever. */
+/**
+ * The product's tours. Edit this list; do not append forever.
+ *
+ * `core: true` = part of the FIRST-SESSION tour, and the order below is the order it plays.
+ * `announce: true` is now only a HINT for the admin composer (Phase 10 D1) -- what a tester is
+ * actually told about lives in the `announcements` table, not here. A flag in the codebase was
+ * never the right place to decide what counts as news.
+ */
 export const COACH_CATALOG: CoachItem[] = [
   {
     id: "search.browse",
@@ -72,7 +73,7 @@ export const COACH_CATALOG: CoachItem[] = [
     title: "Scan a barcode",
     body: "Tap the scan icon in the search bar to find a bottle by its barcode — or add it if it is new.",
     route: "/search",
-    core: false,
+    core: true,
     announce: true,
     tour: [
       {
@@ -113,10 +114,10 @@ export const COACH_CATALOG: CoachItem[] = [
   },
   {
     id: "taste.blind",
-    title: "Blind tastings are live",
+    title: "Blind tastings",
     body: "Rank 2-5 bottles blind from the Drink tab. Your ranking updates your personal and the global scores.",
     route: "/taste",
-    core: false,
+    core: true,
     announce: true,
     tour: [
       {
@@ -318,8 +319,30 @@ export const COACH_CATALOG: CoachItem[] = [
   },
 ];
 
+/**
+ * The order the first-session tour plays. Explicit, because relying on catalog position made it an
+ * accident: My Bar was landing after Social purely because of where it sat in the array. The story
+ * is: find a bottle -> scan one -> what you can do with it -> the blind tasting the app is built
+ * around -> your own shelf -> what everyone else is doing -> how to tell us it broke.
+ * Any `core: true` item missing here still plays, at the end.
+ */
+const CORE_ORDER = [
+  "search.browse",
+  "search.barcode",
+  "bottle.have_a_drink",
+  "taste.blind",
+  "mybar.collection",
+  "social.feed",
+  "profile.feedback",
+];
+
 export function coreItems(): CoachItem[] {
-  return COACH_CATALOG.filter((c) => c.core);
+  const core = COACH_CATALOG.filter((c) => c.core);
+  const rank = (id: string) => {
+    const i = CORE_ORDER.indexOf(id);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...core].sort((a, b) => rank(a.id) - rank(b.id));
 }
 
 export function flattenCoreTour(): TourStep[] {

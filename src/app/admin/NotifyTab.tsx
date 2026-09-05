@@ -4,6 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
+import { COACH_CATALOG } from "@/lib/coaches";
+import {
+  fetchAllAnnouncements,
+  createAnnouncement,
+  setPublished,
+  deleteAnnouncement,
+  type Announcement,
+} from "@/lib/announcements";
 
 /**
  * Admin -> send a push notification (Phase 10 D3).
@@ -14,9 +22,18 @@ import { logEvent } from "@/lib/events";
 
 type Recipient = { id: string; username: string; devices: number };
 
-// No publicUserId prop: /api/admin/send-push derives the acting admin from the validated
-// session server-side, so passing it from the client would be decorative at best.
-export default function NotifyTab() {
+/**
+ * Admin > Notify. Two ways to reach people, deliberately on one screen:
+ *   - Push, delivered to a device (Phase 10 D3)
+ *   - What's new, shown inside the app on next open (Phase 10 D1)
+ * They answer the same question -- "tell the testers something" -- and pairing them makes
+ * "publish it AND push it" one action instead of two screens.
+ *
+ * The push send itself happens in /api/admin/send-push; the VAPID private key must never reach a
+ * browser. That route derives the acting admin from the validated session, which is why this
+ * component takes no publicUserId prop for pushing.
+ */
+export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [url, setUrl] = useState("/mybar");
@@ -27,6 +44,52 @@ export default function NotifyTab() {
   const [history, setHistory] = useState<
     { id: string; title: string; body: string; audience: string; sent_count: number; failed_count: number; created_at: string }[]
   >([]);
+
+  // --- What's new (D1) ---
+  const [anns, setAnns] = useState<Announcement[]>([]);
+  const [annTitle, setAnnTitle] = useState("");
+  const [annBody, setAnnBody] = useState("");
+  const [annCoachId, setAnnCoachId] = useState("");
+  const [annAudience, setAnnAudience] = useState<Announcement["audience"]>("all");
+  const [annBusy, setAnnBusy] = useState(false);
+
+  const loadAnns = useCallback(async () => setAnns(await fetchAllAnnouncements()), []);
+
+  const handleCreateAnnouncement = async () => {
+    if (!annTitle.trim() || !annBody.trim()) {
+      toast.error("Title and body are both required.");
+      return;
+    }
+    setAnnBusy(true);
+    const { error } = await createAnnouncement({
+      title: annTitle,
+      body: annBody,
+      coachId: annCoachId || null,
+      audience: annAudience,
+      createdBy: publicUserId,
+    });
+    setAnnBusy(false);
+    if (error) { toast.error(error); return; }
+    // Created as a DRAFT on purpose -- publishing is a second, deliberate click.
+    toast.success("Saved as a draft.");
+    setAnnTitle(""); setAnnBody(""); setAnnCoachId("");
+    loadAnns();
+  };
+
+  const handleTogglePublish = async (a: Announcement) => {
+    const { error } = await setPublished(a.id, !a.published);
+    if (error) { toast.error(error); return; }
+    toast.success(a.published ? "Unpublished." : "Published - testers see it on next open.");
+    logEvent({ eventType: "whatsnew_publish", surface: "admin_notify", metadata: { id: a.id, published: !a.published } });
+    loadAnns();
+  };
+
+  const handleDeleteAnnouncement = async (a: Announcement) => {
+    const { error } = await deleteAnnouncement(a.id);
+    if (error) { toast.error(error); return; }
+    toast.success("Deleted.");
+    loadAnns();
+  };
 
   const load = useCallback(async () => {
     // Who can actually receive one? A user with no subscribed device cannot, and saying so up
@@ -58,7 +121,7 @@ export default function NotifyTab() {
     setHistory(sent ?? []);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadAnns(); }, [load, loadAnns]);
 
   const reachable = recipients.filter((r) => r.devices > 0);
 
@@ -193,6 +256,103 @@ export default function NotifyTab() {
         >
           {sending ? "Sending…" : "Send"}
         </button>
+      </div>
+
+      <div className="border border-gray-400 rounded p-4 space-y-3 bg-white">
+        <h2 className="font-semibold">What&apos;s new</h2>
+        <p className="text-xs text-gray-600">
+          Shown inside the app on a tester&apos;s next open. Nothing appears until you publish it,
+          which is why the digest can no longer dump the whole changelog on a new user.
+        </p>
+
+        <input
+          value={annTitle}
+          onChange={(e) => setAnnTitle(e.target.value)}
+          maxLength={120}
+          placeholder="Blind tastings are live"
+          className="w-full border border-gray-400 rounded px-2 py-2 text-sm"
+        />
+        <textarea
+          value={annBody}
+          onChange={(e) => setAnnBody(e.target.value)}
+          maxLength={400}
+          rows={2}
+          placeholder="Pick 2-5 bottles, rank them blind, and see how they really stack up."
+          className="w-full border border-gray-400 rounded px-2 py-2 text-sm"
+        />
+
+        <div className="flex gap-2">
+          <select
+            value={annCoachId}
+            onChange={(e) => setAnnCoachId(e.target.value)}
+            className="flex-1 border border-gray-400 rounded px-2 py-2 text-sm"
+          >
+            <option value="">No walkthrough</option>
+            {COACH_CATALOG.filter((c) => c.tour.length > 0).map((c) => (
+              <option key={c.id} value={c.id}>Show me: {c.title}</option>
+            ))}
+          </select>
+          <select
+            value={annAudience}
+            onChange={(e) => setAnnAudience(e.target.value as Announcement["audience"])}
+            className="flex-1 border border-gray-400 rounded px-2 py-2 text-sm"
+          >
+            <option value="all">Everyone</option>
+            <option value="new">New users only</option>
+            <option value="existing">Existing users only</option>
+          </select>
+        </div>
+
+        <button
+          type="button"
+          disabled={annBusy}
+          onClick={handleCreateAnnouncement}
+          className="w-full py-2 rounded border border-gray-500 text-sm font-medium disabled:opacity-50"
+        >
+          {annBusy ? "Saving…" : "Save as draft"}
+        </button>
+
+        {anns.length === 0 ? (
+          <p className="text-sm text-gray-600">Nothing written yet.</p>
+        ) : (
+          <ul className="space-y-2 text-sm pt-1">
+            {anns.map((a) => (
+              <li key={a.id} className="border-t border-gray-200 pt-2 first:border-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium">
+                      {a.title}{" "}
+                      <span className={a.published ? "text-xs text-green-700" : "text-xs text-gray-500"}>
+                        {a.published ? "· published" : "· draft"}
+                      </span>
+                    </div>
+                    <div className="text-gray-600">{a.body}</div>
+                    <div className="text-xs text-gray-500">
+                      {a.audience === "all" ? "everyone" : a.audience + " only"}
+                      {a.coachId ? ` · walkthrough: ${a.coachId}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePublish(a)}
+                      className="text-xs px-2 py-1 border border-gray-500 rounded"
+                    >
+                      {a.published ? "Unpublish" : "Publish"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAnnouncement(a)}
+                      className="text-xs px-2 py-1 border border-gray-400 rounded text-gray-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="border border-gray-400 rounded p-4 bg-white">

@@ -52,7 +52,7 @@ export default function AdminClient({
         {tab === "users"    && <UsersTab currentPublicUserId={publicUserId} />}
         {tab === "bottles"  && <BottlesTab publicUserId={publicUserId} />}
         {tab === "feedback" && <FeedbackTab publicUserId={publicUserId} />}
-        {tab === "notify"   && <NotifyTab />}
+        {tab === "notify"   && <NotifyTab publicUserId={publicUserId} />}
         {tab === "import"   && <ImportTab />}
       </div>
     </div>

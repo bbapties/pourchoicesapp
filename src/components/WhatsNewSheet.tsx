@@ -1,7 +1,8 @@
 "use client";
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { type CoachItem } from "@/lib/coaches";
+import { itemById } from "@/lib/coaches";
+import { type Announcement } from "@/lib/announcements";
 
 export default function WhatsNewSheet({
   open,
@@ -10,8 +11,8 @@ export default function WhatsNewSheet({
   onDismiss,
 }: {
   open: boolean;
-  items: CoachItem[];
-  onShowMe: (item: CoachItem) => void;
+  items: Announcement[];
+  onShowMe: (item: Announcement) => void;
   onDismiss: () => void;
 }) {
   return (
@@ -40,7 +41,9 @@ export default function WhatsNewSheet({
                 <div className="text-sm font-medium">{item.title}</div>
                 <div className="text-xs text-gray-600 mt-0.5">{item.body}</div>
               </div>
-              {item.tour.length > 0 && (
+              {/* Only offer "Show me" when this announcement is linked to a tour that exists.
+                  Plain-text announcements have nothing to play. */}
+              {!!(item.coachId && itemById(item.coachId)?.tour.length) && (
                 <button
                   type="button"
                   onClick={() => onShowMe(item)}

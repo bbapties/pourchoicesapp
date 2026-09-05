@@ -9,11 +9,11 @@ import {
   CORE_DONE,
   coreItems,
   flattenCoreTour,
+  itemById,
   markCoachSeen,
-  unseenAnnounce,
-  type CoachItem,
   type TourStep,
 } from "@/lib/coaches";
+import { fetchUnseenAnnouncements, type Announcement } from "@/lib/announcements";
 import TourPlayer from "@/components/TourPlayer";
 import WhatsNewSheet from "@/components/WhatsNewSheet";
 
@@ -26,8 +26,8 @@ export default function CoachHost() {
   const started = useRef(false);
 
   const [tour, setTour] = useState<TourStep[] | null>(null);
-  const [digest, setDigest] = useState<CoachItem[] | null>(null);
-  const digestHold = useRef<CoachItem[] | null>(null);
+  const [digest, setDigest] = useState<Announcement[] | null>(null);
+  const digestHold = useRef<Announcement[] | null>(null);
 
   const persist = useCallback(
     async (add: string[]) => {
@@ -66,11 +66,19 @@ export default function CoachHost() {
     }
 
     if (typeof window !== "undefined" && sessionStorage.getItem(SESSION_KEY)) return;
-    const pending = unseenAnnounce(seenCoachIds);
-    if (pending.length) {
+
+    // D1: the digest now reads ADMIN-PUBLISHED announcements, not every `announce: true` item in
+    // the catalog. That is the whole point -- the catalog reflects what exists in the codebase,
+    // which is not the same question as what a person should be told about today.
+    void (async () => {
+      const pending = await fetchUnseenAnnouncements({
+        seenIds: seenCoachIds,
+        isNewUser: !seenCoachIds.includes(CORE_DONE),
+      });
+      if (!pending.length) return;
       if (typeof window !== "undefined") sessionStorage.setItem(SESSION_KEY, "1");
       setDigest(pending);
-    }
+    })();
   }, [loading, publicUserId, isAuthPage, seenCoachIds]);
 
   const finishCore = async () => {
@@ -82,14 +90,19 @@ export default function CoachHost() {
     const items = digestHold.current || digest || [];
     setDigest(null);
     digestHold.current = null;
-    if (items.length) await persist(items.map((c) => c.id));
+    // Announcement ids go into the same `seen_coach_ids` array as catalog ids -- one list of
+    // "things this user has been shown", rather than a second mechanism that can disagree.
+    if (items.length) await persist(items.map((a) => a.id));
   };
 
-  const showMe = (item: CoachItem) => {
-    if (!item.tour.length) return;
+  const showMe = (item: Announcement) => {
+    // An announcement only offers "Show me" when it is linked to a catalog tour; plain text
+    // announcements have nothing to play.
+    const coach = item.coachId ? itemById(item.coachId) : undefined;
+    if (!coach?.tour.length) return;
     digestHold.current = digest;
     setDigest(null);
-    setTour(item.tour);
+    setTour(coach.tour);
   };
 
   const finishShowMe = () => {
@@ -123,6 +136,12 @@ export default function CoachHost() {
   );
 }
 
-export function unseenAnnounceRoutes(seenCoachIds: string[]): Set<string> {
-  return new Set(unseenAnnounce(seenCoachIds).map((c) => c.route));
+/**
+ * D1: announcements are now admin-published rows, not catalog entries, so "which routes have an
+ * unseen announcement" is no longer a question the catalog can answer -- an announcement need not
+ * correspond to a route at all. Kept as an empty set so the AppShell nav dot simply stops showing,
+ * rather than removing a prop across the shell for a hint nothing currently produces.
+ */
+export function unseenAnnounceRoutes(_seenCoachIds: string[]): Set<string> {
+  return new Set<string>();
 }
