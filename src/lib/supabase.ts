@@ -47,7 +47,16 @@ async function boundedLock<R>(name: string, acquireTimeout: number, fn: () => Pr
   // BEFORE the dead-lock latch on purpose: this path must never run unlocked, dead holder or not.
   if (acquireTimeout === 0) {
     return await navigator.locks.request(name, { ifAvailable: true }, async (lock) => {
-      if (!lock) throw new Error('Acquiring an exclusive Navigator LockManager lock immediately failed')
+      if (!lock) {
+        // auth-js swallows this ONLY when it matches its own check:
+        //   `e.isAcquireTimeout || e instanceof LockAcquireTimeoutError`  (GoTrueClient tick)
+        // A plain Error matches neither, so the tick rethrows it and the refresh dies as an
+        // uncaught promise rejection -- observed in the browser console before this flag was set.
+        // `isAcquireTimeout` is the documented hook for a caller-supplied lock.
+        const err = new Error('Acquiring an exclusive Navigator LockManager lock immediately failed')
+        ;(err as Error & { isAcquireTimeout: boolean }).isAcquireTimeout = true
+        throw err
+      }
       return await fn()
     })
   }
