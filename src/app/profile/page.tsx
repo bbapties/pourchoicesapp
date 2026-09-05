@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import FeedbackSheet from "@/components/FeedbackSheet";
 import { updateUsername, resetCoaches, fetchEmail, USERNAME_MAX } from "@/lib/profile";
 import { clearDismissedInstall, isStandalone } from "@/lib/pwa";
+import { FORCE_REPLAY_KEY } from "@/lib/coaches";
 import InstallSheet from "@/components/InstallSheet";
 import NotificationSheet from "@/components/NotificationSheet";
 import { checkPushSupport, disablePush, permissionState } from "@/lib/pushNotifications";
@@ -125,6 +126,9 @@ export default function ProfilePage() {
     const { error } = await resetCoaches(publicUserId);
     if (error) { setResetting(false); toast.error(error); return; }
     logClick("replay_tutorial", { userId: publicUserId, surface: "/profile" });
+    // The automatic coach behaviours are currently off (coaches.ts AUTO_COACHES_ENABLED), so an
+    // explicit replay has to say so. CoachHost consumes this once on its next mount.
+    try { sessionStorage.setItem(FORCE_REPLAY_KEY, "1"); } catch { /* private mode: replay just no-ops */ }
     // Full reload so CoachHost re-runs the core tour from a clean mount.
     window.location.assign("/search");
   };

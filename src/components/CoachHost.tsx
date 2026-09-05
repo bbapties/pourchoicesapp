@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import {
+  AUTO_COACHES_ENABLED,
+  FORCE_REPLAY_KEY,
   CORE_DONE,
   coreItems,
   flattenCoreTour,
@@ -43,6 +45,19 @@ export default function CoachHost() {
   useEffect(() => {
     if (loading || !publicUserId || isAuthPage || started.current) return;
     started.current = true;
+
+    // Profile > "Replay tutorial" sets this right before reloading. Consume it once, so an
+    // explicit request still plays even while the automatic behaviours are switched off.
+    let forcedReplay = false;
+    try {
+      forcedReplay = sessionStorage.getItem(FORCE_REPLAY_KEY) === "1";
+      if (forcedReplay) sessionStorage.removeItem(FORCE_REPLAY_KEY);
+    } catch {
+      // Private mode: fall through to the normal (currently disabled) path.
+    }
+
+    // Kill switch for the auto-play tour and the What's new digest. See coaches.ts for why.
+    if (!AUTO_COACHES_ENABLED && !forcedReplay) return;
 
     if (!seenCoachIds.includes(CORE_DONE)) {
       const steps = flattenCoreTour();

@@ -1,5 +1,32 @@
 import { supabase } from "@/lib/supabase";
 
+/**
+ * TEMPORARY KILL SWITCH for the AUTOMATIC coach behaviours (Brian, 2026-09-05).
+ *
+ * Turns off the two things that fire on their own:
+ *   - the new-user core tour, which auto-plays on first login
+ *   - the "What's new" digest, which auto-piles every unseen `announce: true` item
+ *
+ * WHY. The digest currently has no editorial control: it shows whatever the catalog happens to
+ * contain, so a new tester would be handed the accumulated 7.x/8.x history as if it were news.
+ * Rather than ship that at a beta, it is off until **PHASE10 D1** gives Admin a published
+ * `announcements` table and a say in what appears and when.
+ *
+ * DELIBERATELY NOT DISABLED: Profile > "Replay tutorial". That is user-initiated, not a popup, so
+ * it still plays on request via the `FORCE_REPLAY_KEY` handshake below. Leaving the button in place
+ * but inert would just look broken.
+ *
+ * TO RE-ENABLE: set this to true. Nothing else needs to change -- the catalog, the tour player and
+ * the digest sheet are all untouched.
+ */
+export const AUTO_COACHES_ENABLED = false;
+
+/**
+ * sessionStorage handshake that lets Profile play the tour on demand while the auto behaviour above
+ * is off. Set immediately before the reload; CoachHost consumes it once on mount.
+ */
+export const FORCE_REPLAY_KEY = "pc.coach.forceReplay";
+
 export const CORE_DONE = "core.done";
 
 export type TourStep = {

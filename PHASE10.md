@@ -150,6 +150,11 @@ Content channel **before** delivery — push with nothing to say is worthless.
 - [ ] **D1** Admin-published What's new. `announcements` table + admin publish/unpublish; digest reads
   **published unseen rows only**; existing coaches seeded unpublished so a tester isn't handed 7.x
   history. Schema = snapshot + go.
+  > **The automatic coaches are OFF in the meantime** (Brian, 2026-09-05): `AUTO_COACHES_ENABLED =
+  > false` in `src/lib/coaches.ts` disables both the new-user core tour and the What's new digest,
+  > because the digest currently shows whatever the catalog holds and would hand a beta tester the
+  > accumulated 7.x/8.x history as news. **Flip that flag back to `true` as part of D1.** Profile >
+  > "Replay tutorial" deliberately still works, via a sessionStorage handshake.
 - [ ] **D2** Core tour rewrite — it predates Drink and barcode. Search -> barcode -> bottle card ->
   Drink -> My Bar -> Social -> Profile. Replay still replays core only. Short discovery on copy.
   Events: `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown`.
