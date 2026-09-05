@@ -36,6 +36,11 @@ must be storing *now*, before those features exist.
   `added_to_collection`, `finished`, `added_to_db`, `suggested_edit`, `verified`,
   `removed_from_collection` (+ `pour_type`, optional `variant_id`). Powers the Social feed and
   "My last activity". Standing rule: **log every bottle action** until Brian excludes one; fail-open.
+  **Feed visibility (2026-09-05):** rows are still written for *every* account, but the Social feed
+  (`fetchActivityFeed`) inner-joins `users` and filters to `account_type = 'human'`. Seeded ranking
+  accounts (`data`) and QA accounts (`test`) move personal + global Elo and keep their own per-variant
+  history, but never post publicly. **Any future feed-engagement or activity-count metric must apply
+  the same filter**, or it will silently count seeded data as user behaviour.
 - **`suggested_edits`** (7.8, `src/lib/suggestedEdits.ts`) — **append-only audit** of proposed
   corrections (`pending`/`approved`/`rejected`/`canceled`/`applied`) with reviewer + reason. A model
   for how other audit trails should look (immutable rows, status lifecycle).

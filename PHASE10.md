@@ -79,6 +79,18 @@ Two numbers drive this phase: **0 tastings** (the flagship loop is unexercised) 
   linked to a **stale Vercel project**, so `env ls` kept returning an empty list.
   `SUPABASE_SERVICE_ROLE_KEY` had in fact been set for 105 days. See AGENTS "Vercel — there are TWO
   projects".
+- [x] **A5 Data-only accounts.** **DONE 2026-09-05.** Additive `users.account_type`
+  (`'human'` | `'data'` | `'test'`, default `'human'`, CHECK-constrained) so seeded ranking accounts
+  -- published blind tastings replayed through the real UI -- move personal + global Elo without ever
+  posting to the Social feed. `fetchActivityFeed` is the **only** cross-user `activities` read; every
+  other one is already scoped to the viewer's own `user_id`, so one query is the entire surface.
+  **`users!inner` is load-bearing:** measured against prod, a plain embedded filter returned all 34
+  rows with 5 **null embeds**, which the feed would have rendered as "Someone drank it" instead of
+  hiding them. With `!inner`, 34 -> 28 rows; pagination 20 + 8, distinct, no overlap.
+  Flagged: `Grain_of_Truth` -> `data`; `Claude Code Agent` / `GrokBuildAdmin` / `Test_User` -> `test`.
+  **OWED BY BRIAN:** `sql/account-type-trigger-migration.sql` is **NOT applied** -- the agent sandbox
+  refused the `SECURITY DEFINER` replacement. Until it runs, `account_type` is **user-writable**
+  through the existing own-row UPDATE policies on `public.users`.
 - [x] **A4 Tick BUGS.md drift** — B-32, B-48, B-54, B-61 ticked; B-60 closed by the A1 rate cap.
 
 **WAVE A COMPLETE.**

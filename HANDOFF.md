@@ -220,6 +220,72 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 
 ## Log (newest first)
 
+### 2026-09-05 (cont.) - Claude (A5: data-only accounts; seeded-ranking groundwork)
+
+**Planning + build session with Brian.** Goal: seed real pairwise ranking data by replaying
+published blind tastings from YouTube channels, one account per ranker, without those accounts
+showing up on the Social feed.
+
+**Why separate accounts rather than one merged import.** `update_elo_after_result`
+(`sql/3.0-migration.sql:139-157`) weights each pairwise result by a **per-user win-rate over that
+user's last 10 head-to-heads of the same pair**. Merging two rankers into one account fabricates
+momentum neither of them has. Brian also wants the per-person preference profiles for future
+recommendation work, which needs per-ranker attribution.
+
+**Shipped:** additive `users.account_type` (`'human'` | `'data'` | `'test'`, default `'human'`,
+CHECK-constrained) + a one-query filter in `fetchActivityFeed`. Applied to prod.
+
+- **`fetchActivityFeed` is the only leak.** Every other `activities` read is already scoped to the
+  viewer's own `user_id` (`bottleHistory.ts:46`, `activities.ts:151`, `userBottles.ts:164`,
+  `SearchClient.tsx:262`, `NotificationNudge.tsx:89`). One query is the entire surface.
+- **`users!inner` is load-bearing, and this was measured, not assumed.** Against prod: a *plain*
+  embedded filter returned all **34 rows with 5 null embeds** -- the feed would have rendered those
+  as "Someone drank it" rather than hiding them. With `!inner`: 34 -> 28 rows, pagination 20 + 8,
+  distinct, no overlap. The `user?.username ?? "Someone"` fallback at `activities.ts:203` is now
+  unreachable; left in place deliberately.
+- **Filtered in the query, not in RLS**, on purpose: an RLS filter would also hide the rows from
+  that account's own per-variant history modal, and it would trip the auth guardrail.
+- **Flagged:** `Grain_of_Truth` -> `data` (0 activity rows, so cosmetic today);
+  `Claude Code Agent` / `GrokBuildAdmin` / `Test_User` -> `test`. **Side effect to remember:** the
+  Claude QA account no longer appears on the feed, so feed QA needs it flipped back to `'human'`
+  for the duration.
+
+### OWED BY BRIAN -- `account_type` is user-writable until this runs
+`sql/account-type-trigger-migration.sql` is **NOT applied.** The agent sandbox refused the
+`SECURITY DEFINER` function replacement (three attempts, consistently). `public.users` carries
+"Users can update their own profile" / "Users update own via auth" UPDATE policies, so **any
+signed-in user can currently set their own `account_type`** -- a tester could hide themselves from
+the feed, and a seeded account could un-hide itself. The file only ADDS `account_type` handling to
+the existing B-19 `protect_user_role()`; role logic is untouched, and `auth.uid()` is NULL under
+`scripts/_psql.mjs` so admin SQL is unaffected. Rollback for everything:
+`sql/account-type-snapshot.sql`.
+
+**Also honest:** `Public read users` is granted `TO authenticated`, so any signed-in user can *read*
+`account_type` and see which accounts are flagged. Codenames are what limit what that reveals.
+Locking the column against reads is a larger RLS change and was not attempted.
+
+### Operating procedure agreed with Brian (not code)
+Brian adds any missing bottles **as admin first**, so a lineup always resolves; the seeded accounts
+never add bottles. Tastings are entered **by hand through the real UI** -- no importer -- which also
+closes **PHASE10 E1** (zero tastings have ever run on prod) the first time it happens.
+Codenames and emails must not encode the source (`data1@pourchoicesapp.com`, not a person's name),
+and **the codename -> channel mapping stays out of the repo**, with the QA passwords.
+
+**Known and accepted:** global Elo is unweighted, so seeded accounts running many sessions will
+dominate `bottle_variants.elo_global` versus three humans. Brian's call -- that is the point.
+
+### ⚠️ Two sessions ran in parallel today -- the relay rule was broken
+Commit **`ba102c9`** (D1 + D2) was made by a **concurrent session** while this one was working, and
+its broad `git add` swept in **all** of this session's in-progress work as it stood mid-edit:
+`src/lib/activities.ts` (the feed filter) and `sql/account-type-{migration,snapshot}.sql`. No work
+was lost, and the SQL files were finished and re-committed afterwards -- but **the feed filter is
+committed under a message about announcements and tours, which does not mention it at all.** If you
+are reading `ba102c9` to understand the feed change, you will not find it described anywhere; read
+this entry instead. The "Right now" block above is stale (it still reads tip `90f3f36`, Wave D next) and was
+deliberately left alone by this session rather than clobbering the other session's baton.
+**AGENTS.md: never run the two agents in parallel.**
+
+
 ### 2026-09-05 (cont.) - Claude (Wave C: the PWA is live)
 - **C1** (`27e0f8d`) icons + manifest + apple meta, derived from the barrel-head sign in
   cellar-bg.png. **C2** (`cd77527`) a deliberately narrow app-shell service worker. **C3**
