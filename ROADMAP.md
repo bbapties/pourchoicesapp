@@ -273,12 +273,17 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 - [ ] **Real-device confirmation still owed** — install from prod on a real iPhone and Android
       (secure context required; the LAN QA URL is plain HTTP and cannot do this).
 
-### 8.3 Tutorial + admin What's new
-- [ ] Discovery with Brian: new-user core steps (must include Drink)
-- [ ] Rewrite `COACH_CATALOG` core flags/copy to match
-- [ ] Admin publish/unpublish for What's new (stop auto-piling every `announce: true`)
-- [ ] Replay tutorial still replays **core** only
-- [ ] Events: `tour_*` / `whatsnew_*`
+### 8.3 Tutorial + admin What's new  -- SHIPPED as Phase 10 D1 + D2 (`ba102c9`, 2026-09-05)
+- [x] Discovery with Brian: new-user core steps (must include Drink)
+- [x] Rewrite `COACH_CATALOG` core flags/copy to match -- explicit `CORE_ORDER`: Search -> barcode ->
+  bottle card -> blind tasting -> My Bar -> Social -> feedback
+- [x] Admin publish/unpublish for What's new (stop auto-piling every `announce: true`) -- an
+  admin-written `announcements` table; `AUTO_COACHES_ENABLED` is back to `true`
+- [x] Replay tutorial still replays **core** only
+- [ ] Events: `tour_*` / `whatsnew_*` -- **PARTIAL.** Only `whatsnew_publish` exists
+  (`NotifyTab.tsx:83`). Still missing the four D2 named: `tour_started`, `tour_completed`,
+  `tour_skipped`, `whatsnew_shown` -- so today there is no way to tell whether a new user finishes
+  the tour or bails, which is the whole reason the tour was rewritten.
 
 ### 8.4 Barcode scan + catalog seed
 - [ ] Census: how many `bottles.barcode` are filled
@@ -300,10 +305,10 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
   real UPCs (~6,628 curated bottles, 51-56% coverage of our catalog); Oregon has no UPCs. Open
   questions (verified status, name cleanup, dedupe, category mapping) in BACKLOG.
 
-### 8.5 Admin push notifications
-- [ ] Profile Notifications toggle, **default on**
-- [ ] Web Push (VAPID, server-only private key) + SW handler — needs 8.2
-- [ ] Admin: send to everyone **or** one user
+### 8.5 Admin push notifications  -- SHIPPED as Phase 10 D3 (`e8bfa90`, 2026-09-05)
+- [x] Profile Notifications toggle (`profile/page.tsx` reads `notify_push`)
+- [x] Web Push (VAPID, server-only private key) + SW handler — needs 8.2
+- [x] Admin: send to everyone **or** one user (`NotifyTab.tsx` `targetUserId`)
 - [ ] Optional: What's new "also send as push"
 - [ ] Browser-only users stay on What's new (no fake desktop-notification strategy in v1)
 

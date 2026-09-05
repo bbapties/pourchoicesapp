@@ -8,9 +8,51 @@ Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `90f3f36` (+ this doc commit). Working tree clean; all on origin/MVP-v3 and verified live.
-- **Current phase:** **Phase 10** ([PHASE10.md](PHASE10.md)). **Waves A, B and C are complete.**
-  **Wave D (What's new + push) is next** -- Brian's stated engagement channel.
+- **Tip:** `98bf9e4`. Working tree clean (untracked: `.claude/worktrees/`, the weekly HTML).
+  All on origin/MVP-v3.
+- **Current phase:** **Phase 10** ([PHASE10.md](PHASE10.md)). **Waves A, B, C and D are complete**
+  (D1 + D2 `ba102c9`, D3 `e8bfa90`). Wave A gained **A5, data-only accounts** (below).
+  **Wave E is next**, and E1 is in Brian's hands right now.
+
+### The single next step
+**E1 -- the first blind tasting ever run on prod.** Brian created the first seeded ranking account
+(`Right_Blind`, `account_type = 'data'`, currently empty) and is running a blind tasting through the
+real app himself. When it lands, confirm: a `tasting_sessions` row, the full pairwise
+`tasting_results` set, `bottle_variants.elo_global` moved off 1500, `user_bottles` written as
+`currently_owned = false, times_had = 0`, and **nothing on the Social feed**.
+Then **E2** (ranked tasting-results view) -- the payoff screen the core loop still lacks.
+
+### OWED BY BRIAN -- one SQL file, and it matters more than it looks
+`sql/account-type-trigger-migration.sql` is **NOT applied.** The agent sandbox refused the
+`SECURITY DEFINER` replacement four times (it allowed the `ALTER POLICY`, so the block is specific
+to replacing such a function). Until it runs, **any signed-in user can set their own
+`account_type`** -- proven in a rolled-back transaction: `UPDATE ... SET account_type='data'` on
+their own row returns `UPDATE 1` and takes effect. Since non-human rows are now hidden by RLS, that
+buys **invisibility from other users**, not merely absence from the feed.
+```
+node scripts/_psql.mjs "$(cat sql/account-type-trigger-migration.sql)"
+```
+Also still open: **B-21** (confirm the service-role env var in Vercel; only affects admin user
+deletion) and the **real-device iPhone install test**.
+
+### Known gaps left by this round (not bugs -- unfinished lines)
+- **D2 shipped without its telemetry.** Only `whatsnew_publish` exists. `tour_started`,
+  `tour_completed`, `tour_skipped` and `whatsnew_shown` were all named in the D2 spec and are
+  missing, so there is **no way to tell whether a new user finishes the tour or bails** -- which is
+  the reason the tour was rewritten. Ticked as PARTIAL in ROADMAP 8.3.
+- **The A5 feed filter was never exercised through the UI.** It is verified at the database layer
+  three ways (see the log entry), but nobody has loaded `/social` in a browser since. A logged-in
+  session is needed and the QA account password stays with Brian.
+- **The admin compose UI for announcements is unverified end-to-end** (needs an admin session; the
+  QA account is deliberately a regular user).
+
+### A5 in one paragraph (the new thing this session)
+`users.account_type` (`'human'` | `'data'` | `'test'`) lets accounts that exist only to carry ranking
+data -- published blind tastings replayed through the real UI -- move personal and global Elo while
+being invisible to real users. Enforced in **two layers**: the Social feed filters to `'human'`
+(`src/lib/activities.ts`), and `Public read users` is now
+`USING (account_type = 'human' OR public.is_admin())`, so non-human rows are hidden from the `users`
+table itself, emails included. Admins see everything; an account always sees itself.
 
 ### Wave C shipped this session (the PWA)
 - **C1 icons + manifest** (`27e0f8d`). `cellar-bg.png` contains a real brand mark: the barrel-head
