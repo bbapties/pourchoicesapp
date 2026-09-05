@@ -77,7 +77,7 @@ Two numbers drive this phase: **0 tastings** (the flagship loop is unexercised) 
   the UI and does not work today.** **B-21** — confirm the service-role env var in Vercel.
 - [ ] **A4 Tick BUGS.md drift** — B-32, B-48, B-54, B-60, B-61 shipped in PHASE9 but read as open.
 
-## Wave B — B-74 done properly (gated: snapshot + Brian's go)
+## Wave B — B-74 done properly  ✅ COMPLETE 2026-09-05
 
 Brian: *"I'd rather just do things the best way for long term."* **Measured, it is not major:**
 
@@ -88,16 +88,27 @@ Brian: *"I'd rather just do things the best way for long term."* **Measured, it 
 | `bottles.created_by` | **81/82 auth ids**, 0 public ids |
 | `bottle_variants.created_by` | **109/110 auth ids** |
 | Rows to remap | **192** |
-| Stragglers | 1 orphan bottle, 1 orphan variant, 1 loginless user |
+| Stragglers | none, as it turned out -- all three "orphan" values were one id: the `auth.users` row for `grainoftruth@`, whose `public.users` row had the same email and a NULL `auth_id`. A broken link, not an orphan. Repaired, so nothing was nulled. |
 
 **B-46's "created_by is mixed" is effectively false** — it is consistently auth ids, just a
 *different convention* from the other ten columns, which forces every ownership check to match both
 ids and makes each one a chance to get it wrong.
 
-- [ ] Snapshot -> remap 192 `created_by` auth id -> public id (NULL the 2 orphans) -> add the FK to
-  `public.users(id)` so it cannot drift -> simplify dual-id matching in `suggestedEdits.ts` (B-45),
-  `lib/variants.ts` `isVariantVisibleToViewer`, `VariantSelectSheet.tsx` (B-11), store-pick filters.
-  Decide what to do with `Grain_of_Truth`. Closes **B-74, B-45, B-46**.
+- [x] **DONE 2026-09-05.** Shipped in three steps because code and SQL do not deploy atomically and
+  `created_by` is written on every bottle add -- migrating fully first would have made the deployed
+  code violate the new FK, and deploying code first would have violated the old one. So:
+  **part 1** repaired the `auth_id` link, dropped the three `auth.users` FKs and remapped all **384**
+  values, deliberately leaving the columns unconstrained; **the app was deployed writing public ids**
+  (`fab85e2`); **part 2** re-swept, aborted-if-unresolvable, added `ON DELETE SET NULL` FKs to
+  `public.users(id)` and simplified the B-24 policy; then **`9c76dd3`** deleted the dual-id matching
+  across `variants.ts`, Search / My Bar / Social / Drink / VariantSelectSheet and `suggestedEdits`.
+  Changing the helper *signatures* rather than their bodies made the compiler enumerate every caller.
+  Removing the dual match stranded the auth-id plumbing that only fed it, so `authId` now survives in
+  exactly one place -- `AppShell`, where it genuinely means "is there a session".
+  **Verified:** an auth id in `created_by` is now rejected by the FK; store-pick privacy still holds
+  under `SET ROLE authenticated` (creator sees, others do not); All Variants shows 108 of 110, the 2
+  hidden rows being exactly the store picks owned by someone else.
+  Closes **B-74, B-45, B-46**. `sql/b74-created-by-public-id-part{1,2}-migration.sql`.
 
 Doing this **before** push means `push_subscriptions.user_id` is right by construction, and 3.4 is
 unblocked whenever it comes up.

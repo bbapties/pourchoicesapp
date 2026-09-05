@@ -316,7 +316,13 @@ Paused **out** of this cut: 3.4 group tastings, 3.5 Social `tasted` + session-de
 > build: two-count ownership (B-32), wishlist tab, per-variant history modal, global-guess rating fallback.
 
 ### 8.7 Id cleanup — before 3.4 / 8.5 (gated, auth)
-- [ ] **B-74** `public.users.id` ≠ `auth.users.id`. Do not assume they are equal. Standardize `created_by` (B-46) and any new `user_id` FKs. Snapshot + Brian's go. Until then: resolve via `users.auth_id`, match **both** ids on `created_by`. See BUGS.md B-74.
+- [x] **B-74 DONE 2026-09-05** (Phase 10 Wave B). `public.users.id` is not `auth.users.id`, and
+  `created_by`/`updated_by` on bottles/variants now reference `public.users.id` behind
+  `ON DELETE SET NULL` foreign keys — so an auth id is no longer storable there. Resolve
+  `auth.uid()` via `users.auth_id` (or `publicUserId` from `useCurrentUser`) for any NEW
+  person-column. **Do not reintroduce "match both ids" logic** — see AGENTS.md. Closes B-45 and
+  B-46 with it. This also unblocks 3.4 group tastings and 8.5 push, whose `user_id` columns can now
+  be added against a single, enforced convention.
 
 ---
 

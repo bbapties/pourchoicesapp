@@ -163,21 +163,39 @@ Gated: auth / RLS / env. Ask Brian before changing.
   Hint now "Moves to Empty Bottles, kept in your history." `MoreSheet.tsx`.
 - [ ] **B-44** (low, **DEFERRED to Phase 5**) Five–six bottom nav items on a 375px thumb zone.
   Visual/thumb-zone layout — belongs to the Phase 5 mobile thumb-zone audit (5.5), not the greyscale-first cut. `AppShell.tsx` ~24–33
-- [ ] **B-45** (low) Suggest-edit "mine" gate is auth-id only (`created_by === authId`).
-  Public-id rows go to pending. `suggestedEdits.ts` ~100–101
-- [ ] **B-46** (medium) `created_by` mixed auth id vs public id across bottles/variants.
-  Symptom of **B-74**. Until B-74, every owner-scope filter must match both. HANDOFF landmine.
+- [x] **B-45** (low) Suggest-edit "mine" gate is auth-id only (`created_by === authId`). **FIXED 2026-09-05 (`9c76dd3`).**
+  The gate compared `created_by` to the **auth** id while the column also held public ids, so a
+  user's own unverified row read as "not mine" and their edit went to the admin queue instead of
+  applying. Now compares the viewer's `public.users.id`; the `authId` parameter is gone. Closed by
+  B-74 making the column one shape. `suggestedEdits.ts`
+- [x] **B-46** (medium) `created_by` mixed auth id vs public id across bottles/variants. **RESOLVED 2026-09-05 (Phase 10 Wave B).**
+  Worth recording that the premise was wrong: when measured, `created_by` was **not** mixed — it was
+  uniformly auth ids (81/82 bottles, 109/110 variants, zero public ids). The real problem was one
+  schema carrying two *conventions*, which forced every owner-scope filter to match both ids. B-74
+  put these columns on `public.users.id` behind a foreign key, and `9c76dd3` deleted the dual
+  matching. **Do not reintroduce it** — see AGENTS.md.
 
 ---
 
 ## Auth id vs public id (do before later features — gated)
 
-- [ ] **B-74** (high, gated — auth) **`public.users.id` is not `auth.users.id`.**
-  Caught by Claude, logged 2026-08-27. `public.users` has its own UUID PK; `auth_id` is the FK to `auth.users.id`. They are **never equal** (or only by accident). Several later features will break if they write `auth.uid()` into a column that FKs to `public.users.id`, or assume `created_by` / `user_id` / `users.id` are interchangeable.
-  Already bitten: tasting-table RLS (fixed in 3.0 by resolving `auth.uid()` → `public.users.id`); `created_by` on bottles/variants is mixed (B-11, B-45, B-46); store-pick filters have to match both ids.
-  **Will bite next:** 3.4 group tasting participants, 8.5 push subscriptions / notifications `user_id`, any "this is mine" gate, admin attribution.
-  **Until a dedicated cleanup:** (1) FKs to people = `public.users.id`. Resolve with `users.auth_id = auth.uid()`. (2) Never `user_id = auth.uid()`. (3) `created_by` is mixed — match **both** ids. (4) Don't "fix" by making public PK = auth id without a snapshot + Brian's go — that's auth territory.
-  Not part of Wave 1. Schedule **before 3.4 and 8.5**, or as its own gated cleanup. Snapshot + explicit go.
+- [x] **B-74** (high) **`public.users.id` is not `auth.users.id`.** **FIXED 2026-09-05 (Phase 10 Wave B).**
+  `public.users` has its own UUID PK; `auth_id` is the FK to `auth.users.id`. They are never equal.
+  **What was actually true when we measured it** (not what this entry used to assume): ten of the
+  twelve person-columns already referenced `public.users.id`. Only `bottles`/`bottle_variants`
+  `created_by`/`updated_by` used the auth id — and **uniformly**, 81/82 and 109/110, *not* the
+  mixture B-46 claimed. Three foreign keys to `auth.users` were enforcing it
+  (`bottles_created_by_fkey`, `bottles_updated_by_fkey`, `bottle_attr_updated_by_fkey`), while
+  `bottle_variants.created_by` had no FK at all.
+  **Fix, in three steps so no deploy window could break writes** (code and SQL are not atomic, and
+  `created_by` is written on every bottle add): part 1 repaired one broken `users.auth_id` link,
+  dropped the auth.users FKs and remapped all **384** values, leaving the columns unconstrained;
+  the app was then deployed writing public ids; part 2 re-swept, aborted-if-unresolvable, added
+  `ON DELETE SET NULL` FKs to `public.users(id)` and simplified the B-24 store-pick policy.
+  **An auth id is now unstorable here — verified by attempting one and getting a constraint
+  violation.** Store-pick privacy re-verified under `SET ROLE authenticated`.
+  `sql/b74-created-by-public-id-part{1,2}-migration.sql`, rollback `...-snapshot.sql`.
+  Commits `fab85e2` (writes), `9c76dd3` (dual-match removal).
 
 ---
 

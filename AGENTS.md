@@ -54,7 +54,16 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
 - **Every bottle action logs an `activities` row** until Brian excludes it (`src/lib/activities.ts`). Fail-open. Current exclusion: admin hard-delete of a bottle (CASCADE would wipe the feed row).
 - **Every new user-facing surface** adds one row to the coach catalog (`src/lib/coaches.ts`) — `announce: true` plus a short `tour[]` if Show me should work. Do not re-audit the whole catalog. Set `core: true` only when the main loop actually changed. Quiet (`announce: false`) only for Admin / tiny fixes.
 - **Instrument as you build** — every new/reworked user-facing action emits an event (fail-open, append-only). Bottle actions → `activities`; broader usage → the generic events table once it exists. See **[TELEMETRY.md](TELEMETRY.md)**; record new event types there.
-- **`public.users.id` is not `auth.users.id` (B-74).** Never write `auth.uid()` into a column that FKs to `public.users.id`. Resolve via `users.auth_id`. `created_by` is mixed (auth id on some rows, public id on others) — match **both** until the gated cleanup. Don't "fix" the PK/FK mapping without Brian's go.
+- **`public.users.id` is not `auth.users.id`.** They are unrelated UUIDs for the same person. Never
+  write `auth.uid()` into a column that references `public.users.id`; resolve it via `users.auth_id`
+  (or read `publicUserId` from `useCurrentUser`).
+  **B-74 is RESOLVED (2026-09-05).** Every person-column in the schema — including
+  `bottles`/`bottle_variants` `created_by`/`updated_by` — now references `public.users.id`, enforced
+  by foreign keys with `ON DELETE SET NULL`. **Do NOT reintroduce "match both ids" logic**: an auth
+  id is no longer storable in those columns (the FK rejects it), so a dual match is dead code that
+  reads as if the ambiguity still exists. `authId` should appear only where it genuinely means
+  "is there a session" (today: `AppShell`). Migration `sql/b74-created-by-public-id-part{1,2}-migration.sql`,
+  rollback `sql/b74-created-by-public-id-snapshot.sql`.
 
 ## Guardrails — ask Brian first
 - **No hard-deletes** of user data.
