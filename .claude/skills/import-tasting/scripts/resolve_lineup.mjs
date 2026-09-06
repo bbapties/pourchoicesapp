@@ -241,7 +241,26 @@ const lineup = {
 
 mkdirSync(outDir, { recursive: true });
 writeFileSync(resolve(outDir, "lineup.json"), JSON.stringify(lineup, null, 2));
-writeFileSync(resolve(outDir, "confirm.html"), sheet(lineup));
+// Inline every bottle shot as a data: URI. The sheet is sent to Brian through
+// SendUserFile and rendered in a viewer that does NOT load remote images -- a
+// sheet full of broken <img> tags is worse than useless, because the whole
+// point of this step is that he confirms the bottle with his eyes. Embedding
+// also means the file stays correct if Storage or a hotlinked CDN moves.
+const shots = new Map();
+for (const p of picks) {
+  const url = p.matched?.attr_frontimage_url;
+  if (!url || shots.has(url)) continue;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const buf = Buffer.from(await r.arrayBuffer());
+    const type = r.headers.get("content-type")?.split(";")[0] || "image/webp";
+    shots.set(url, `data:${type};base64,${buf.toString("base64")}`);
+  } catch (e) {
+    console.log(`  ! could not fetch image for place ${p.place}: ${e.message}`);
+  }
+}
+writeFileSync(resolve(outDir, "confirm.html"), sheet(lineup, shots));
 
 // ---------------------------------------------------------------- report
 console.log(`user: ${user.username} (${user.account_type})  id=${user.id}`);
@@ -270,7 +289,7 @@ function esc(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-function sheet(l) {
+function sheet(l, shots = new Map()) {
   const cards = l.picks.map((p) => {
     const m = p.matched;
     const medal = p.place === 1 ? "1st" : p.place === 2 ? "2nd" : p.place === 3 ? "3rd" : `${p.place}th`;
@@ -293,7 +312,7 @@ function sheet(l) {
       <div class="rank">${medal}</div>
       <div class="shot">${
         m && m.attr_frontimage_url
-          ? `<img src="${esc(m.attr_frontimage_url)}" alt="${esc(m.bottle_name)}" loading="lazy">`
+          ? `<img src="${esc(shots.get(m.attr_frontimage_url) || m.attr_frontimage_url)}" alt="${esc(m.bottle_name)}">`
           : `<div class="noimg">?</div>`
       }</div>
       <div class="meta">

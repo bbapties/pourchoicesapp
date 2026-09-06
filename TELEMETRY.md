@@ -202,6 +202,15 @@ The same skill emits `bottle_submitted` with surface `agent_import` (rather than
 `provisional_sheet`) when a bottle named in an import has to be created before the tasting can
 be written.
 
+**Shipped 2026-09-06 — `bottle_enriched`** (surface `agent_import`, target = the
+`bottle_variant`): an existing catalog row was improved in place during an import — Brian saw
+the bottle's flaw on the confirmation sheet and asked for it fixed in the same breath as the go.
+Metadata carries `fields` (which columns were touched) and `reason`. It exists because this is
+the one path that edits a bottle **without** going through the `suggested_edits` review queue,
+so the event is the only audit trail that the edit happened at all; the replaced values are
+preserved in `bottles.extras` alongside it. First use: Larceny Small Batch, whose image was a
+hotlinked, badly-cropped retailer CDN URL.
+
 **Phase 8 (planned — record here when they land):** `pwa_prompt_shown` / `pwa_install_clicked` /
 `pwa_continue_browser`; `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown` /
 `whatsnew_show_me`; `search` with `metadata.mode = 'barcode'`; `push_permission` /

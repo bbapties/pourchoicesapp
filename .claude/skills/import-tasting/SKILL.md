@@ -1,6 +1,6 @@
 ---
 name: import-tasting
-description: Import a completed blind tasting straight into the database from a username plus the bottles in finishing order, skipping the app's UI while firing every real workflow (Elo, Social feed, star-guess cleanup, telemetry). Shows Brian the official bottle images in placement order for confirmation first, and researches + inserts any bottle the catalog is missing. Use when Brian says "import a tasting", "log a tasting for <user>", or hands over a result list of bottle names in order.
+description: Import a completed blind tasting straight into the database from a username plus the bottles in finishing order, skipping the app's UI while firing every real workflow (Elo, Social feed, star-guess cleanup, telemetry). Researches every bottle first, then shows Brian a confirmation sheet with embedded images and the exact field values in placement order; on his yes it inserts any missing bottle, optionally enriches an existing thin one, and runs the session. Use when Brian says "import a tasting", "log a tasting for <user>", or hands over a result list of bottle names in order.
 ---
 
 # import-tasting
@@ -20,6 +20,18 @@ ambiguous — "Weller 12", "makers mark", "Blanton's" — and a wrong bottle sil
 a personal ranking and the global Elo. The confirmation sheet exists so he confirms with his
 eyes, not by re-reading a name he already typed.
 
+Two corollaries, both learned the hard way on 2026-09-06:
+
+- **Research first, confirm second.** If a bottle is missing, do the research *before* the sheet
+  and put the researched values **on** the sheet. Brian's ask, verbatim: *"populate the info that
+  we would be inserting, so that when you provide me that html, it would have already had the
+  researched info for me to confirm."* Confirming a name and then inserting facts he never saw
+  is not a confirmation.
+- **Embed every image as a `data:` URI.** The sheet is delivered through `SendUserFile` into a
+  viewer that does not load remote images. A sheet of broken `<img>` tags defeats the entire
+  step. `resolve_lineup.mjs` now inlines them automatically; **any supplementary sheet you
+  hand-write must do the same.**
+
 ---
 
 ## The pipeline
@@ -37,7 +49,7 @@ prints a per-place summary. It flags, and you must resolve, all of:
 
 | flag | meaning |
 |---|---|
-| `*** NOT FOUND ***` | no candidate scored high enough — go to step 3 |
+| `*** NOT FOUND ***` | no candidate scored high enough — go to step 3a |
 | `AMBIGUOUS` | the top two candidates are within 0.08 — ask Brian which one |
 | `DUPLICATE of place N` | two names resolved to the same variant — one of them is wrong |
 | `unverified` | the bottle exists but nobody has signed off on its data |
@@ -50,15 +62,32 @@ lacks (**"Weller 12" must not match "Weller 107"**), and no non-numeric word mat
 the shared age statement alone before that penalty went in). Apostrophes are stripped, so
 `blantons` finds `Blanton's`.
 
-### 2. Show Brian the sheet and wait
+### 2. Research anything the sheet cannot yet show
 
-Send `confirm.html` with `SendUserFile` (`display: "render"`). It lays the bottles out in
-finishing order with their official images, what he typed, the match confidence, and any flags.
+Do this **before** showing Brian anything, so the sheet carries real values rather than a name.
+Two cases:
+
+- **`*** NOT FOUND ***`** — research the bottle fully (step 3a) and build its `bottle.json`, but
+  **do not run the insert yet**. The confirmation sheet quotes that JSON.
+- **an existing bottle whose row is thin or wrong** — a hotlinked image, a bad crop, empty
+  fields. Research the replacement values and show them as a proposed *update* (step 3b).
+
+Uploading a cleaned image to Storage before confirmation is fine and expected: a file no row
+points at is inert, and the sheet needs to show the image Brian is actually approving. **DB rows
+are what waits for the yes.**
+
+### 3. Show Brian the sheet and wait
+
+Send the sheet with `SendUserFile` (`display: "render"`). It lays the bottles out in finishing
+order with their images, what he typed, the match confidence, and any flags. When step 2 found
+work to do, the sheet must **also** show, per bottle: NEW-vs-EXISTING, every field that would be
+written, and every field being left `NULL` **with the reason** — an empty cell reads as an
+oversight, `"no verifiable UPC exists for this discontinued release"` reads as a decision.
 
 **Then stop and wait for an explicit yes.** Do not proceed on silence, and do not proceed on
 "looks good" for a sheet that still carries a NOT FOUND or DUPLICATE flag.
 
-### 3. Only if a bottle is missing: research and insert it
+### 3a. Researching and inserting a missing bottle
 
 A tasting cannot be imported around a bottle that does not exist — the pairing would vanish and
 the placement with it. So the missing bottle gets created properly, first.
@@ -95,7 +124,32 @@ Do the research the same way `verify-bottle` does — it is the reference for al
    transaction rather than create a duplicate: same name (case- and whitespace-insensitive) and
    barcode already in use.
 
-Then **re-run step 1** so the new bottle resolves, and show Brian the updated sheet.
+Then **re-run step 1** so the new bottle resolves.
+
+### 3b. Enriching a bottle that already exists ("the upsert half")
+
+A tasting only needs the bottle to *exist* — but a bottle Brian is looking at on the sheet is a
+bottle whose flaws he can see, and fixing them there beats filing a ticket he will read cold.
+Scope it to what he approved and nothing more.
+
+- **Only after he asks.** Do not silently improve rows; show the flaw on the sheet and let him
+  call it. On 2026-09-06 he did, in the same breath as the go: *"treat these 2 bottles as
+  upserts."*
+- **Guard on the variant id**, and `RAISE EXCEPTION` if it is missing, so a stale id updates
+  nothing instead of the wrong row.
+- **Preserve what you replace.** Write the old value into `bottles.extras`
+  (`previous_frontimage_url`, plus an `image_source` / `tasting_notes_source`) so the change is
+  reversible without a snapshot.
+- **Never clobber.** `COALESCE(NULLIF(col,''), '<new>')` fills only what is genuinely empty.
+  This is not paranoia: the Larceny row *looked* empty because the check had read
+  `bottles.nose`, and the real notes were on the **variant**. The COALESCE is the only reason
+  they survived.
+- **Leave `verified` alone.** Signing a whole row off is the `verify-bottle` lane. Brian
+  approving one image is not approving the row.
+- Emit a `bottle_enriched` event (`surface: agent_import`) naming the fields touched.
+
+There is no generator for this — write the `UPDATE` by hand, read it, and run it through
+`run_sql_file.mjs`. The Larceny update of 2026-09-06 is the reference shape.
 
 ### 4. Build the tasting SQL
 
@@ -151,6 +205,40 @@ Registered in [TELEMETRY.md](../../../TELEMETRY.md).
   value is exactly what a later `switch` trips over. Provenance lives in the events row.
 
 ---
+
+## Schema gotchas that have already cost a round-trip
+
+The column names are not the ones you would guess, and a wrong guess costs a failed query
+mid-confirmation. All verified against prod on 2026-09-06:
+
+| you will write | it is actually |
+|---|---|
+| `bottle_variants.bottle_id` | **`bottles_id`** |
+| `tasting_details.session_id` | **`tasting_session_id`** (same for `tasting_results`) |
+
+And one that fails **silently**, which is worse:
+
+- **`nose` / `palate` / `finish` exist on BOTH `bottles` and `bottle_variants`.** The variant is
+  where the real data lives. Selecting `b.nose` returns blank and makes a populated bottle look
+  empty — that is exactly how the Larceny row nearly got overwritten. **Always read `v.*`.**
+- `volume` and `barcode` are on **`bottles`**; `proof`, `age`, `frontimage_url`, `is_default`
+  and `elo_global` are on **`bottle_variants`**. Both tables have `verified` and `elo_global`.
+- `information_schema.columns` filtered by `table_name` alone returns every schema's copy —
+  four duplicates of each row. Add `AND table_schema='public'` or just read the join that fails.
+
+## When research comes up empty
+
+Not every bottle is documented. A limited or discontinued release often has **no public UPC at
+all**, and plenty of distilleries publish no tasting notes.
+
+**Leave the field NULL and say why on the sheet.** A guessed barcode is permanently worse than
+none — the scanner would resolve to that bottle forever. A reviewer's tasting notes are someone
+else's copyrighted prose and would sit in the row looking official. Record the reason in
+`extras` (`barcode_note`, `tasting_notes_note`) so the next agent does not re-run the same dead
+search. Bardstown Fusion #5 shipped this way and it was the right call.
+
+Prefer the distillery's own site for everything, and **read the label in the image you just
+downloaded** — it is the most reliable proof/ABV source there is, and it costs one `Read`.
 
 ## Guardrails
 
