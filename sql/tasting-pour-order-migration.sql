@@ -32,9 +32,9 @@ ALTER TABLE public.tasting_details
   ADD COLUMN IF NOT EXISTS rank        int;   -- 0-based finishing position (0 = the taster's favourite)
 
 COMMENT ON COLUMN public.tasting_details.pour_index IS
-  'Board #11. 0-based position in the order the glasses were poured. In helper mode this is the shuffled, secret-from-the-taster order; in self mode it is the order the bottles were picked. NULL for tastings saved before 2026-09-06.';
+  'Board #11. 0-based position in the order the glasses were poured. In helper mode this is the shuffled, secret-from-the-taster order; in self mode it is the order the bottles were picked. NULL when the pour order was not captured: tastings saved before 2026-09-06, and sessions written by the import-tasting skill, which supplies the result but not the pour order.';
 COMMENT ON COLUMN public.tasting_details.glass_letter IS
-  'Board #11. The letter physically on the glass, A-J, derived from pour_index. NULL for tastings saved before 2026-09-06.';
+  'Board #11. The letter physically on the glass, A-J, derived from pour_index. NULL wherever pour_index is NULL - see that column.';
 COMMENT ON COLUMN public.tasting_details.rank IS
   'Board #11. 0-based finishing position, 0 = ranked best. Mirrors the order of tasting_sessions.variant_ids. NULL for tastings saved before 2026-09-06.';
 

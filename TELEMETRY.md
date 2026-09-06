@@ -188,6 +188,20 @@ approve action applies a field change, and a mismatch report changes nothing on 
 these on one barcode is the signal that a `bottles.barcode` value is mapped to the wrong product —
 worth a query if scans start feeling wrong.
 
+**Shipped 2026-09-06 — `tasting_imported`** (surface `agent_import`, target = the
+`tasting_session`): a completed blind tasting was written straight to the database by the
+`import-tasting` skill instead of being entered through the app. Metadata carries `bottles`,
+`pairs`, `backdated` and the `finishing_order` names. **Its whole job is to keep imported
+sessions separable from organic ones** — the rows are otherwise identical to a real save on
+purpose (same trigger, same `tasted` activity, same star-guess cleanup), so without this event
+there would be no way to tell them apart, and any later "how often do people actually finish a
+tasting?" number would be quietly inflated by Brian's bulk entry. Filter it out of usage
+analysis; keep it in Elo analysis, where the tasting is entirely real.
+
+The same skill emits `bottle_submitted` with surface `agent_import` (rather than
+`provisional_sheet`) when a bottle named in an import has to be created before the tasting can
+be written.
+
 **Phase 8 (planned — record here when they land):** `pwa_prompt_shown` / `pwa_install_clicked` /
 `pwa_continue_browser`; `tour_started` / `tour_completed` / `tour_skipped` / `whatsnew_shown` /
 `whatsnew_show_me`; `search` with `metadata.mode = 'barcode'`; `push_permission` /
