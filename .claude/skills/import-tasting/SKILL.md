@@ -226,6 +226,35 @@ And one that fails **silently**, which is worse:
 - `information_schema.columns` filtered by `table_name` alone returns every schema's copy —
   four duplicates of each row. Add `AND table_schema='public'` or just read the join that fails.
 
+## When one barcode covers several releases
+
+Before writing any barcode, **check whether it is release-level or line-level.** Pull the same
+product from two or three Shopify retailers — `curl <product-url>.json` exposes the real
+`barcode` field — and check a *neighbouring* release too. If the code repeats across releases,
+it identifies the **line**, not the bottle.
+
+That is not a reason to discard it. It is a reason to model the line correctly:
+
+> **the series is the `bottle` (and carries the barcode) · each release is a `bottle_variant`**
+
+`bottles.barcode` is already bottle-level and `lookupBottleByBarcode()` deliberately resolves a
+scan to the bottle and lets the user pick the variant — see the comment in `src/lib/barcode.ts`.
+So this shape makes a shared UPC *correct* instead of dangerous. Put the release number in
+`bottle_variants.batch` (`'#5'`), the year in `release_year`, and the per-release proof, blend
+and image on the variant.
+
+Worked example, 2026-09-06: `857552008028` came back identical for Bardstown Fusion #5, #6 and
+#9 across five retailers. The bottle was **renamed** from the single release to the series and
+the releases became variants — renamed, not replaced, because the original variant already
+carried a tasting and a new bottle would have orphaned the session. Elo is unaffected:
+`elo_global_target()` only redirects **store picks** to the default variant, so each release
+keeps its own global score. Choosing which release is `is_default` is cosmetic.
+
+**Two useful sanity checks on the images while you are here.** Each Fusion render prints its own
+proof on the label, so the picture verifies the number you scraped. And Bardstown's own #9 page
+serves the **#8** render — so #9 was left with no image rather than a mislabelled one. A picture
+of the wrong release is the same failure as the shared barcode: confidently wrong.
+
 ## When research comes up empty
 
 Not every bottle is documented. A limited or discontinued release often has **no public UPC at
