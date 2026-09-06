@@ -31,6 +31,12 @@ Two corollaries, both learned the hard way on 2026-09-06:
   viewer that does not load remote images. A sheet of broken `<img>` tags defeats the entire
   step. `resolve_lineup.mjs` now inlines them automatically; **any supplementary sheet you
   hand-write must do the same.**
+- **Composite transparency onto WHITE when you embed it.** Bottle images are transparent by
+  design (`clean_image.py` isolates the bottle), and PIL's `.convert("RGB")` flattens alpha onto
+  **black** — so a correct, clear asset renders as a bottle on a black slab and reads as a
+  botched image. Use `Image.alpha_composite` over a white layer instead. This cost a round-trip
+  on 2026-09-06: Brian asked why the images had black backgrounds; they did not, the preview
+  did.
 
 ---
 

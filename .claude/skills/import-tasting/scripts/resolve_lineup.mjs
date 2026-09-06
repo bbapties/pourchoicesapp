@@ -129,8 +129,22 @@ function score(qRaw, row) {
   const dTok = new Set(tokens(row.bottle_distillery));
   const distilleryHit = qSig.some((t) => dTok.has(t) && !cSet.has(t)) ? 0.08 : 0;
 
+  // A number in the query usually means the proof, the age or the release --
+  // and in this schema those live in COLUMNS, not in bottles.name. Counting only
+  // the name's digits made "Coopers Craft 100" miss "Coopers' Craft Barrel
+  // Reserve", a row whose proof is exactly 100, and the penalty pushed a correct
+  // match below the threshold entirely. So the candidate's numbers are its name
+  // digits PLUS proof / age / batch / release_year.
   const qNums = qSig.filter((t) => /^\d/.test(t));
   const cNums = new Set(cSig.filter((t) => /^\d/.test(t)));
+  for (const extra of [row.attr_proof, row.attr_age, row.attr_batch, row.attr_release_year]) {
+    if (extra === null || extra === undefined) continue;
+    for (const d of String(extra).match(/\d+(?:\.\d+)?/g) || []) {
+      cNums.add(d);
+      if (d.includes(".")) cNums.add(d.split(".")[0]); // "94.9" also answers "94"
+      cNums.add(d + "year");                            // tokens() rewrites "12 year" -> "12year"
+    }
+  }
   const numMiss = qNums.some((n) => !cNums.has(n)) ? 0.35 : 0;
 
   // A shared age statement is not a match. "Weller 12 Year" against
@@ -186,7 +200,7 @@ const user = users[0];
 const catalog = query(`
   SELECT variant_id, bottle_id, bottle_name, bottle_distillery, bottle_category,
          variant_is_default, attr_store_pick_name, attr_frontimage_url,
-         attr_proof, attr_age, variant_verified
+         attr_proof, attr_age, attr_batch, attr_release_year, variant_verified
     FROM public.all_variant_details
 `);
 
