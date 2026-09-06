@@ -11,14 +11,18 @@ docs, then switches. This file is the standing context both agents load every se
 ## Read-first order (every session, before writing any code)
 1. **AGENTS.md** (this file) — rules, stack, guardrails.
 2. **[HANDOFF.md](HANDOFF.md)** — where the last agent stopped, the next step, open decisions.
-3. **[ROADMAP.md](ROADMAP.md)** — the phase checklist; source of truth for what's done vs pending. **Current work = Phase 10.**
-4. **[PHASE10.md](PHASE10.md)** — **the current ranked plan** (waves A–F, road to a 3-person beta).
-   Re-ranked with Brian 2026-09-04; **supersedes the Phase 8 ordering.**
-   [PHASE8.md](PHASE8.md) still holds the valid *specs* for PWA / tutorial + What's new / push /
-   barcode — read it for the story detail, but take the **order** from PHASE10.
-5. **[BUGS.md](BUGS.md)** — canonical bug queue from the 2026-08-27 review. Tick boxes when shipped.
-6. **[BACKLOG.md](BACKLOG.md)** — deferred items. Do **not** pull these into the current phase unless PHASE8/ROADMAP already did.
-7. **[TELEMETRY.md](TELEMETRY.md)** — instrumentation policy: capture events/activity/usage generously so future features (badges, analytics) already have data. Log as you build.
+3. **The board** — https://github.com/users/bbapties/projects/1 — **the single source of truth for
+   what is open and what order it happens in.** Read the *Top Priority* column, then *Coming Soon*.
+   See [docs/BOARD.md](docs/BOARD.md) for how it is structured and the exact `gh` commands.
+4. **[TELEMETRY.md](TELEMETRY.md)** — instrumentation policy: capture events/activity/usage generously so future features (badges, analytics) already have data. Log as you build.
+
+**Reference only — do NOT take status or order from these files any more:**
+[PHASE10.md](PHASE10.md) (why the waves are ordered the way they are), [PHASE8.md](PHASE8.md) and
+[PHASE9.md](PHASE9.md) (feature *specs* — still the best story detail for PWA / tutorial + What's new
+/ push / barcode / the bottle model), [ROADMAP.md](ROADMAP.md), [BUGS.md](BUGS.md),
+[BACKLOG.md](BACKLOG.md). Their checkboxes were frozen on 2026-09-05 when the work moved to the
+board and are **stale by design** — roughly a quarter of the unticked boxes were already shipped.
+Read them for context and specs, never for "what is left".
 
 Then summarize the current state back to Brian and confirm the next step **before** editing.
 
@@ -49,6 +53,11 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
 
 ## Working conventions
 - **One feature or fix per commit.** Small, reviewable commits.
+- **Work the board, not the markdown.** Take work from *Top Priority*, then *Coming Soon*. Close an
+  issue when it ships, with a one-line comment naming the commit. **Never tick a box in
+  BUGS/BACKLOG/ROADMAP** — those files are frozen history.
+- **Find a bug mid-session? File it as an issue** (`gh issue create`), add it to the board, set
+  Status/Size/Area. Do not bury it in a commit message and do not append it to BUGS.md.
 - **Test before every push** — see the checklist in ROADMAP.md (localhost, mobile LAN URL, prod verify).
 - Functionality first; stay **greyscale/wireframe** until Phase 5. Do not start visual polish early.
 - **Every bottle action logs an `activities` row** until Brian excludes it (`src/lib/activities.ts`). Fail-open. Current exclusion: admin hard-delete of a bottle (CASCADE would wipe the feed row).
@@ -116,12 +125,15 @@ node scripts/_psql.mjs "SELECT 1 AS ok;"
 |------|-------|
 | `AGENTS.md` | Standing rules, stack, guardrails, relay protocol (this file) |
 | `HANDOFF.md` | **Live baton** — current focus, where we stopped, next step, decisions, landmines |
-| `ROADMAP.md` | Phase checklist — what's done vs pending (canonical for scope/status) |
-| `PHASE10.md` | **Current ranked plan** — waves A–F, road to a 3-person beta (supersedes Phase 8 order) |
-| `PHASE9.md` | Bottle-model build-out — Wave 2 complete (10/10) |
-| `PHASE8.md` | Feature **specs** for PWA, tutorial + What's new, barcode, push (order superseded by PHASE10) |
-| `BUGS.md` | Bug queue (B-01…) from the 2026-08-27 review; tick when shipped |
-| `BACKLOG.md` | Deferred / do-not-pull-in list |
+| **The board** | **Canonical: what is open, and in what order.** https://github.com/users/bbapties/projects/1 |
+| `docs/BOARD.md` | How the board works — columns, Size/Area fields, labels, `gh` usage |
+| `docs/board-import-preview.md` | Record of the 2026-09-05 import: what became an issue, what was skipped, why |
+| `PHASE10.md` | **Reasoning** behind the current ordering (waves A–F). Not a status list. |
+| `PHASE9.md` | Bottle-model build-out — spec/reference |
+| `PHASE8.md` | Feature **specs** for PWA, tutorial + What's new, barcode, push |
+| `ROADMAP.md` | **Frozen 2026-09-05.** Historical phase log. Checkboxes are stale — do not tick. |
+| `BUGS.md` | **Frozen 2026-09-05.** Historical bug queue (B-01…). Checkboxes are stale — do not tick. |
+| `BACKLOG.md` | **Frozen 2026-09-05.** Historical idea list. Superseded by the board. |
 | `TELEMETRY.md` | Instrumentation policy — event/activity/usage tracking; what's logged, the proposed generic events table |
 | `DB_Schema.txt.txt` | Supabase schema dump (note: may lag reality — see HANDOFF drift notes) |
 
@@ -135,9 +147,10 @@ Both phrases are self-contained so a cold agent needs nothing else. Exact copy b
 ### START SESSION (paste first, before any work)
 ```
 START SESSION. You are one of two agents (Claude + Grok) working this repo in relay — never in parallel.
-Read AGENTS.md, then HANDOFF.md, then ROADMAP.md. Write no code yet. Reply with exactly:
+Read AGENTS.md, then HANDOFF.md, then the board (docs/BOARD.md says how). Write no code yet.
+Reply with exactly:
   1. Where the last session left off (from HANDOFF.md "Right now").
-  2. The single next step.
+  2. The single next step, taken from the board's Top Priority column.
   3. Anything you need from me before you start.
 Then wait for my go.
 ```
@@ -147,7 +160,8 @@ Then wait for my go.
 END SESSION. We're switching agents. Before you stop:
   1. Update HANDOFF.md — rewrite the "Right now" block and add a dated log entry
      (what changed, commit hashes, the next single step, any open decision).
-  2. Tick any completed items in ROADMAP.md.
+  2. Close the board issues that actually shipped, with a one-line comment naming the commit.
+     Move anything that slipped to the right column. File anything new you found.
   3. Reply with a 3-line summary: what shipped, what's committed/pushed to MVP-v3,
      and the exact next step for the other agent.
 Write for a reader with zero memory of this session.
@@ -155,8 +169,9 @@ Write for a reader with zero memory of this session.
 
 ### END SESSION — exact sequence (who commits the baton)
 1. Finish the work and **commit the code** (one change per commit).
-2. Run the ROADMAP test checklist.
-3. Update **HANDOFF.md** ("Right now" + a dated log entry) and tick **ROADMAP.md**.
+2. Run the test checklist at the top of ROADMAP.md (that checklist is still live — it is the
+   pre-push ritual, not a status list).
+3. Update **HANDOFF.md** ("Right now" + a dated log entry) and **close the shipped board issues**.
 4. **Commit the doc updates.**
 5. **Push everything to `MVP-v3`** (code + doc commits together) — the agent pushes, per Branch & deploy rules.
    The doc edits are the agent's own commit, not something Brian pushes later.
