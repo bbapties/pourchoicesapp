@@ -1,9 +1,29 @@
 import { readFileSync } from "fs";
 import { spawnSync } from "child_process";
 
-const sql = process.argv.slice(2).join(" ");
-if (!sql) {
-  console.error("usage: node scripts/_psql.mjs <sql>");
+// Two modes:
+//   node scripts/_psql.mjs "SELECT 1;"                 -- ad-hoc SQL on argv
+//   node scripts/_psql.mjs --file sql/some-migration.sql  -- run a committed migration file
+// The --file mode exists so a migration runs from the reviewed file in the repo rather than as
+// one long opaque argv string. Same connection handling either way.
+const args = process.argv.slice(2);
+const fileFlag = args.findIndex((a) => a === "--file" || a === "-f");
+let sql;
+let sourceLabel;
+if (fileFlag >= 0) {
+  const path = args[fileFlag + 1];
+  if (!path) {
+    console.error("usage: node scripts/_psql.mjs --file <path.sql>");
+    process.exit(1);
+  }
+  sql = readFileSync(path, "utf8");
+  sourceLabel = path;
+} else {
+  sql = args.join(" ");
+  sourceLabel = "<argv>";
+}
+if (!sql.trim()) {
+  console.error("usage: node scripts/_psql.mjs <sql> | --file <path.sql>");
   process.exit(1);
 }
 
@@ -31,12 +51,15 @@ const db = (slash >= 0 ? rest.slice(slash + 1).split("?")[0] : "postgres") || "p
 const r = spawnSync(
   "psql",
   ["-h", host, "-p", port, "-U", user, "-d", db, "-v", "ON_ERROR_STOP=1", "-c", sql],
+  // NOTE: -c (not -f) even in file mode, so psql runs the whole file as one implicit
+  // transaction -- a migration must not half-apply.
   {
     encoding: "utf8",
     timeout: 30000,
     env: { ...process.env, PGPASSWORD: password, PGSSLMODE: "require" },
   }
 );
+if (fileFlag >= 0) console.error(`-- ran ${sourceLabel}`);
 if (r.stdout) process.stdout.write(r.stdout);
 if (r.stderr) process.stderr.write(r.stderr.replaceAll(password, "***"));
 process.exit(r.status === 0 ? 0 : 1);
