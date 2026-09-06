@@ -9,9 +9,9 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `78fc7ad`. All on origin/MVP-v3 and live on prod.
+- **Tip:** `65f4d23`. All on origin/MVP-v3 and live on prod.
 - **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
-- **The board's In Progress lane is EMPTY.** Everything Brian staged there this session shipped.
+- **The board's In Progress lane is EMPTY.** All four cards Brian staged there shipped, plus #9.
 
 ### Read this before anything else - the queue lives on the board
 
@@ -27,55 +27,110 @@ drag cards. But note **`Closes #N` in a commit does NOT auto-close**: GitHub onl
 default branch, and we ship from `MVP-v3`. Close issues explicitly with `gh issue close`.
 
 ### The single next step
-**Top Priority holds 4 items.** Three are the Elo-correctness cluster and one is the big payoff screen:
+**Top Priority holds 2 items.**
 
-1. **#2** - global Elo lost-update. **No product decision in it - safe to just do, so start here.**
-   Read-then-write on `bottle_variants.elo_global`; fix is
-   `SET elo_global = COALESCE(elo_global,1500) + swing_global` so Postgres does the arithmetic under
-   the row lock. Recommend NOT adding `SELECT ... FOR UPDATE` around the whole calculation: it
-   serialises every concurrent tasting for contention that is near-zero at 3 testers.
-2. **#3** - the win-rate multiplier. **BLOCKED ON BRIAN, do not pick a direction unilaterally.**
-   See the section below; this was put to him this session and he deferred it.
-3. **#4** - `removeUserBottle` treats `elo === 1500` as never-tasted and hard-deletes. Needs a
-   product answer on what "tasted" means (see below). **Currently harming 0 rows** - verified - so
-   there is no clock on it.
-4. **#20** - ranked tasting-results view (L). The payoff screen the core loop still lacks.
+1. **#4** - `removeUserBottle` treats `elo === 1500` as never-tasted and hard-deletes a net-zero
+   tasting. **Still needs a product answer from Brian** on what "tasted" means (see below).
+   **Currently harming 0 rows** - verified - so there is no clock on it.
+2. **#62** - make the search bar persistent when picking bottles for a blind. No decision in it.
 
-### Brian is testing the 10-bottle tasting on a real phone tonight
-#60 shipped and was closed on his instruction *before* that test. If it misbehaves he reopens it or
-files a new card. **One thing was deliberately not verified:** saving a 10-bottle session. That
-writes 45 pairs and would move `elo_global` for 10 real bottles in prod, and Brian is monitoring
-global scores - so polluting them for a test was not worth it without asking. The save path itself
-is unchanged code, already proven at six.
+**#20** (ranked tasting-results view, L) is the big one still sitting in *Coming Soon*, and it is now
+better supported than it was: `tasting_details` finally carries `rank`, `glass_letter` and
+`pour_index` (#11), so the payoff screen can show "you had B, D and A - you ranked D first".
 
-### #3 - the Elo question Brian has NOT answered yet
-Do not "fix" this by guessing. The findings, all verified against prod this session:
+### THE ELO ENGINE WAS REWRITTEN AND ALL HISTORY REPLAYED (2026-09-06)
 
-- `swing = K * (1 - expected) * win_rate`, where `win_rate` is this pair's head-to-head record in
-  **prior** sessions, defaulting to `0.5` when they have never met.
-- **No pair in the database has ever met twice.** So `win_rate` is *always* 0.5 today, and every
-  Elo swing in the app is being **silently halved**. #3's described 10-0 failure has not bitten yet.
-- **The direction is inverted.** `(1 - expected)` already handles surprise - it is large when the
-  winner was the underdog. Multiplying by `win_rate` makes *confirmations* move more and *upsets*
-  move less, which is backwards, and redundant with the term beside it.
-- **The code and the design spec disagree.** The Momentum-Elo spec says K-factor **32 / 16 / 8**
-  diminishing on repeat matchups plus a streak edge; the code has `k_factor numeric := 32; -- FLAT`
-  and no streak logic. The win-rate multiplier looks like a *substitute* for diminishing-K,
-  implemented as a multiplier instead of a K schedule. **Which of those is authoritative is the
-  first thing to ask Brian.**
-- Options put to him: diminishing-K per the spec / plain Elo with the term dropped / floor the
-  win_rate / leave it and document. He dismissed the question rather than choosing.
-- **#60 raised the stakes:** at 10 bottles each one takes 9 head-to-heads per session instead of 5,
-  so a single sitting moves the extremes ~80% further. Brian's call was **leave the math alone and
-  monitor the scores**, adjusting later if needed.
+This is the biggest change in the session and it moved real numbers on prod. **Read this before
+touching anything Elo.**
 
-### #4 - what counts as "tasted"
+The old formula was `swing = K * (1 - expected) * win_rate`. Two things were wrong with the
+multiplier, and one of them was much bigger than the card describing it:
+
+- `win_rate` defaulted to **0.5** when a pair had never met - **and no pair in this database has
+  ever met twice** - so **every Elo swing in the entire app was being silently halved**. Board #3
+  described a 10-0 edge case that had never actually occurred; the real bug was universal.
+- It keyed off *who won historically*, which made **confirmations** of an established result move
+  MORE and **upsets** move LESS. That is backwards, and redundant with `(1 - expected)` beside it,
+  which already prices in surprise.
+
+**Brian's actual intent** (asked and answered this session) was confidence weighting: the more times
+a pair has met, the less any single result - upset or confirmation alike - should move them. That is
+a **K schedule**, not a multiplier, and it is what the Momentum-Elo spec always described. He chose
+a gentler ramp than the spec's 32/16/8:
+
+| prior meetings | which meeting | K |
+|---|---|---|
+| 0 | 1st | **32** |
+| 1-2 | 2nd-3rd | **24** |
+| 3-5 | 4th-6th | **16** |
+| 6+ | 7th+ | **8** |
+
+It lives in **`public.elo_k_for_meetings()`** - one function, one line to retune. Nothing else
+hardcodes a K. **Do not reintroduce a multiplier.**
+
+**All history was replayed** (`sql/elo-replay-history.sql`). Because the distortion was a uniform
+halving, this roughly doubled the spread (131.91 -> 243.97) and changed almost no ordering - only
+**2 of 26** bottles swapped rank, and they were 2.76 points apart. The point of the replay was
+*consistency*, not correcting the order: without it the 78 existing pairs would have been worth
+permanently half as much as every future pair, so a bottle's score would depend on *when* it was
+tasted.
+
+**The replay re-inserts rows and lets the trigger score them. It does not compute anything itself,
+and neither should any future one.** An offline recomputation would be a second implementation of
+the same maths - exactly the failure that produced #3, where the engine and the spec disagreed for
+months and nobody noticed. There is one implementation of this maths, ever.
+
+Reversible: **`sql/elo-replay-history-snapshot.sql`** restores all 52 pre-replay values exactly.
+
+Two supporting fixes went in with it:
+
+- **Meeting counts are time-bounded** (`sql/elo-meeting-count-time-bounded-migration.sql`). The
+  predicate used to be "any session but this one", which only means *prior* because a live INSERT is
+  always the newest. Replaying session 2 would have counted sessions 3-5 as its own history, and a
+  backdated `import-tasting --at` would count everything after it. Now an explicit
+  `(created_at, id)` tuple comparison, which also gives sessions sharing a timestamp one
+  deterministic order so a replay cannot differ run to run.
+- **The trigger DDL is finally in the repo** (`sql/elo-trigger-create.sql`, #9). `grep -n
+  "CREATE TRIGGER" sql/*.sql` returned **no matches** - no committed SQL had ever created
+  `trig_update_elo_after_session`. It existed on prod only because someone made it by hand. A
+  rebuild from this repo would have given you the scoring function with nothing calling it, and
+  tastings would have saved perfectly and scored nothing, silently. Three details in that file are
+  load-bearing and are commented as such: `FOR EACH STATEMENT`, `REFERENCING NEW TABLE AS
+  new_results` (this is what makes B-07 retry idempotency work), and `AFTER INSERT` only.
+
+### The import-tasting skill (new)
+
+**`.claude/skills/import-tasting/`** - Brian gives a username and a list of bottle names in
+finishing order; it writes a real tasting session, firing every workflow the app fires. Built to
+skip the *data entry*, not the correctness.
+
+The three scripts only ever **emit reviewable SQL**, run through verify-bottle's
+`run_sql_file.mjs`. `resolve_lineup.mjs` is read-only and produces `confirm.html`, a contact sheet
+of the official bottle images in finishing order - **Brian confirms with his eyes before anything is
+written**, because a wrong bottle silently corrupts a personal ranking and the global Elo at once.
+
+Things a future session should not have to rediscover:
+
+- **The Elo trigger is `FOR EACH STATEMENT`.** Every pair must go in with ONE `INSERT` or the
+  session is scored once per pair, each pass reading the last pass's ratings.
+- `saveTasting` does two things **client-side** that a naive insert drops: the B-47 star-guess
+  delete and the single B-51 `tasted` activity that puts the session on the Social feed. Both are
+  replicated in the generated SQL.
+- Matching was tuned against real failures: `"Weller 12"` must not match `"Weller 107"` (a number in
+  the query the candidate lacks is a hard penalty), `"Weller 12 Year"` scored **0.46 against a maple
+  whisky** on a shared age statement alone (so a match now needs a non-numeric word to land), and
+  apostrophes are stripped so `blantons` finds `Blanton's`.
+- New bottles are inserted **directly and verified**, unlike `verify-bottle` which files pending
+  `suggested_edits`. Deliberate: Brian is on screen approving that exact bottle as part of approving
+  the tasting, so a queue would only re-ask him to review what he just signed off on.
+
+### #4 - what counts as "tasted" (STILL OPEN, Brian has deferred twice)
 `user_bottles.elo` is `numeric DEFAULT 1500` and there is **no tasted flag**, so `elo !== 1500` is
 the only available signal - that is why the code reads that way. A net-zero tasting therefore looks
-like a mistaken add and gets hard-deleted. Options offered (Brian deferred): add a `last_tasted_at`
-column stamped by the Elo trigger (recommended - #20 and #50 both want it anyway); query
-`tasting_results` at remove time (no migration, one extra round-trip); or make `elo` NULL until first
-tasting (matches the spec, widest blast radius). Verified: **0 rows currently affected.**
+like a mistaken add and gets hard-deleted. Options offered: add a `last_tasted_at` column stamped by
+the Elo trigger (**recommended** - #20 and #50 both want it anyway); query `tasting_results` at
+remove time (no migration, one extra round-trip); or make `elo` NULL until first tasting (matches
+the spec, widest blast radius). Verified: **0 rows currently affected.**
 
 ### THE ONE THING TO READ BEFORE TOUCHING AUTH
 `src/lib/supabase.ts` has a **custom `auth.lock`** (`362458f`, corrected by `e555784`). An earlier
@@ -83,20 +138,26 @@ attempt was reverted the same day after three prod regressions, and that revert 
 it was hiding. **Do not revert it again without reading its header comment.** The rule that made the
 difference: **you cannot validate auth changes signed out.**
 
-**Minting a QA session works and is now well-trodden** - used repeatedly this session:
-`POST /auth/v1/admin/generate_link` (type `magiclink`, service-role key), then `POST /auth/v1/verify`
-with **`token_hash`** (`token` 400s) and the anon key. No password, no auth config touched. To drive
-the browser as that user, set the returned session as the cookie
-`sb-<project-ref>-auth-token` = `base64-` + base64 of the whole session JSON, `path=/`. Under 4096
-bytes, so it needs no chunking. **Navigating to the magic link directly is blocked** - the browser
-tool refuses the external supabase.co domain.
+**Signing in as the QA account is now trivial - use it.** `QA_CLAUDE_PASSWORD` is in `.env.local`
+(gitignored), so a plain password grant against `/auth/v1/token?grant_type=password` gets a session.
+**Do not print the token or the password** - the classifier blocks it, correctly. The pattern that
+works, used this session to verify #11 end to end: a throwaway Node loopback server holds the
+session and serves it with `Access-Control-Allow-Origin: *`; the page fetches it with
+`javascript_tool` and writes the cookie `sb-<project-ref>-auth-token` = `base64-` + base64 of the
+whole session JSON, `path=/`. Under 4096 bytes, so no chunking. The older
+`admin/generate_link` + `verify` with **`token_hash`** route still works if you need it without a
+password.
 
 ### Still owed by Brian
-- **Real-phone test of the 10-bottle tasting + drag** (tonight). Emulation at 375x812 passed.
+- **#4** - the product decision above. This is the only thing actually blocking a Top Priority card.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
-- **#3 and #4 product decisions** above.
+- Minor: the QA account password is **6 characters**, on an account that can write prod data.
 
 ### Open decisions
+- **Elo: the win-rate multiplier is gone, replaced by the 32/24/16/8 K schedule, and all history has
+  been replayed.** This settles the question that sat open for two sessions. Brian's earlier "leave
+  the math alone and monitor" was superseded once he saw that the multiplier was halving *every*
+  swing rather than only affecting a rare edge case.
 - **Search's My Ranks NARROWS the list, not just reorders it** (`9e60914`). Sorting client-side only
   touched the loaded page, so "my ranked bottles, best first" is the only reading that survives
   pagination. To revert, change `applyMyRanksToQuery` only. **My Bar's My Ranks is a pure sort.**
@@ -107,25 +168,123 @@ tool refuses the external supabase.co domain.
   `activities.ts` that keeps non-`human` accounts out of the Social feed. Valid values are
   `human` / `data` / `test` (CHECK constraint); flip one with
   `node scripts/_psql.mjs "UPDATE users SET account_type='data' WHERE username='...';"`.
+- **Imported tastings are separable from organic ones** via the `tasting_imported` event
+  (surface `agent_import`). The rows are otherwise identical to a real save *on purpose*, so filter
+  on that event for usage analysis and ignore it for Elo analysis, where the tasting is entirely
+  real. Registered in TELEMETRY.md.
 
 ### Landmines
 - **The agent sandbox is isolated outside the repo.** Writes **inside `C:\pourchoices-frontend`**
   reach the real disk; writes **outside it do not** - an agent-installed binary or PATH change is
   invisible to Brian's terminal, and `Test-Path` still says `True` from the agent's side. If Brian
   says "command not found" for something you just installed, believe him. Hence `gh` lives in-repo.
-- **The classifier refuses schema DDL and anything shaped like privilege escalation.** Both
-  `node scripts/_psql.mjs "<ddl>"` and the new `--file` mode are blocked; plain `SELECT`s through the
-  same helper are fine. **Do not try to route around it** - write the SQL to a reviewed file, commit
-  it, and hand Brian the one-liner. That is how #18 finally landed.
+- **`psql -c` runs the whole string as ONE implicit transaction.** This is load-bearing and useful:
+  put `ROLLBACK;` at the end of a file and you get a full dry run that still prints its output - it
+  is how the Elo rewrite and the whole import skill were verified against prod without writing
+  anything. It also means **any error aborts everything**, so a half-applied migration is not a
+  failure mode here. `\echo` and other backslash commands do **not** work under `-c`.
+- **Do NOT put a trailing `-- comment` on a `VALUES` row.** It swallows the comma separating it from
+  the next row. Put the label on its own line above. Cost one debugging cycle in the import skill.
+- **PowerShell `>>` writes UTF-16LE.** Brian added `QA_CLAUDE_PASSWORD` with a bash-style
+  `echo ... >> .env.local` that the desktop app's Run button executed in PowerShell, which appended
+  the line as UTF-16 into an otherwise UTF-8 file. It parsed as `Q\0A\0_\0C\0...` and was invisible
+  to every reader. **When handing Brian a command that writes a file, give him PowerShell syntax
+  with `-Encoding utf8`**, or write the file yourself. Repaired 2026-09-06; backup was taken first.
+- **The classifier refuses schema DDL and anything shaped like privilege escalation.** This was
+  looser on 2026-09-06 than the previous session found it - `node scripts/_psql.mjs --file <migration>`
+  ran `CREATE FUNCTION` / `ALTER TABLE` / `CREATE INDEX` / `CREATE TRIGGER` without complaint all
+  session. It still blocks **printing secrets** (`cat` of a file holding a session token). If it does
+  block a migration, do not route around it - write the SQL to a reviewed file, commit it, and hand
+  Brian the one-liner.
 - **A hidden Browser pane throttles timers.** `await setTimeout` / `requestAnimationFrame` inside
-  `javascript_tool` will hang and time out, and `computer` clicks and drags fail outright because the
-  page is not rendered. Drive multi-step UI with **one action per call** (or `browser_batch`), which
-  also gives React a real render between steps - a synchronous loop of dispatched events measures a
-  stale DOM and silently produces wrong results. This cost two false negatives before it was spotted.
+  `javascript_tool` will hang and time out, and `computer` clicks and drags **fail outright** with a
+  30s timeout because the page is not rendered. **This has now cost three sessions - stop trying.**
+  `read_page` returns `(empty page)` and `Viewport: 0x0`, which is the tell. `tabs_select` does NOT
+  fix it. What works: **`resize_window` with a preset** gives the tab a real viewport (`375x812` for
+  this mobile-first app), after which `read_page` returns refs - but `computer` clicks still time
+  out while the pane is hidden. **Drive the UI with `javascript_tool` dispatching `.click()`, one
+  action per call**, which gives React a real render between steps. A synchronous loop of dispatched
+  events measures a stale DOM and silently produces wrong results. A full helper-mode blind tasting
+  was driven this way on 2026-09-06.
 
 ---
 
-### 2026-09-05 (latest) - Claude (In Progress lane cleared: push picker, migration, 10-bottle tastings)
+### 2026-09-06 (latest) - Claude (Elo engine rewritten + all history replayed; import-tasting skill)
+
+**Shipped, all on prod.** Five board issues closed (#2, #3, #10, #11, #9); the In Progress lane is
+empty. One new issue filed (#64).
+
+- **#2 / #3 / #10 - the Elo engine** (`0a0e01a`, `sql/elo-engine-correctness-migration.sql`). One
+  commit because all three live inside the body of `update_elo_for_session()` and could not be
+  applied independently. **#3 was far bigger than its card said:** the `win_rate` multiplier
+  defaulted to 0.5 for a pair that had never met, and no pair in the database has ever met twice, so
+  **every swing in the app was being silently halved**. It also made confirmations move more than
+  upsets. Brian was asked what he had actually been trying to achieve, described confidence
+  weighting, and picked a **32 / 24 / 16 / 8 K schedule** by prior meeting count over the spec's
+  32/16/8. #2 moved the arithmetic inside the `UPDATE` (atomic under the row lock) with a
+  deterministic id order so opposite-direction sessions cannot deadlock; #10 made the meeting count
+  resolve through `elo_global_target()`, the same rollup the `UPDATE` uses.
+  Verified against prod in rolled-back transactions, matching hand-calculation to the cent: a first
+  meeting swings 16.00; a second swings 10.92 (K=32 would give 14.53, the old multiplier 5.46); and
+  a parent default that had only met an opponent *as a store pick* swung 11.61 = K=24, not 15.48.
+
+- **History replayed** (`84bb263`, `sql/elo-replay-history.sql`). Brian asked whether old scores
+  should be normalised. They should - not because the rankings were wrong, but because otherwise the
+  78 existing pairs stay worth half as much as every future pair forever. He also asked whether to
+  compute it offline and hot-fix the values; **declined, and the reasoning is worth keeping**: an
+  offline calculation is a second implementation of the same maths, which is exactly how #3 happened.
+  The replay resets the ratings and re-inserts the existing rows one session at a time in
+  chronological order, letting the real trigger rescore them. Measured effect: spread 131.91 ->
+  243.97, top 1566.06 -> 1621.69, bottom 1434.15 -> 1377.72, and **only 2 of 26 bottles changed
+  rank** (Maker's Mark Cask Strength / Jim Beam Black, 2.76 points apart). Integrity after: 5
+  sessions / 78 results / 28 details / 97 activities / 42 user_bottles / 14 still owned, all
+  unchanged. Reversible via `sql/elo-replay-history-snapshot.sql` (52 values).
+
+- **Meeting counts time-bounded** (same commit). Found while building the replay: the predicate was
+  "any session but this one", which only means *prior* because a live INSERT is always newest.
+  Replaying session 2 would have counted sessions 3-5 as its own history, and the same bug would hit
+  a backdated `import-tasting --at`. Now an explicit `(created_at, id)` comparison.
+
+- **#11 - pour order, glass letters and rank** (`eb57f9d`, `sql/tasting-pour-order-migration.sql`).
+  Three nullable columns on `tasting_details`. `rank` was added alongside the two the card asked for
+  so the row is self-describing instead of depending on an array's ordering in another table. Worth
+  knowing: **`tasting_sessions.bottle_ids` / `variant_ids` are written but never read anywhere in
+  the app** (grep-confirmed), so their ordering was never load-bearing.
+  Verified through the real UI, signed in as the QA account: a helper tasting poured A=1792,
+  B=Basil Hayden, C=Barrell Seagrass and was ranked C, A, B; the rows stored rank 0/1/2 against
+  glass C/A/B and pour_index 2/0/1. Also confirmed the payload is accepted **through PostgREST**
+  under normal RLS - the real risk, since PostgREST caches its schema and new columns can 400 until
+  it reloads. The test tasting was removed afterwards and scores restored by re-running the replay.
+
+- **#9 - the Elo trigger DDL was never in the repo** (`65f4d23`, `sql/elo-trigger-create.sql`).
+  `grep -n "CREATE TRIGGER" sql/*.sql` returned no matches. `trig_update_elo_after_session` existed
+  on prod only because someone created it by hand. A rebuild from the repo would have produced the
+  scoring function with nothing calling it - tastings would save perfectly and score nothing,
+  silently. Applied as a genuine no-op via `CREATE OR REPLACE TRIGGER` and verified byte-identical.
+
+- **import-tasting skill** (`3216128`, `.claude/skills/import-tasting/`). Brian wanted to enter a
+  finished tasting from a username plus bottle names in finishing order, without building UI for it.
+  Three scripts that only ever emit reviewable SQL, run through verify-bottle's `run_sql_file.mjs`.
+  `resolve_lineup.mjs` is read-only and builds a contact sheet of the official bottle images so he
+  confirms visually before anything is written. The generated SQL replicates the two side effects
+  that live in client-side TypeScript (B-47 star-guess delete, B-51 `tasted` activity) and adds a
+  `tasting_imported` event so imported sessions stay separable from organic usage.
+
+- **#64 filed** - a dead `update_elo_for_session(p_session_id uuid)` overload with no callers that
+  still writes to the superseded `bottles.elo_global` and upserts `user_bottles` without
+  `variant_id`. Harmless while unused, one `SELECT` away from corrupting scores. Left in place;
+  dropping it is a schema change needing Brian's sign-off. Board: Backlog / XS / Backend-DB.
+
+**Also:** `.env.local` was repaired - `QA_CLAUDE_PASSWORD` had been appended as UTF-16LE into a
+UTF-8 file and was invisible to every parser (see the PowerShell landmine). Backup at
+`scratchpad/env.local.backup`; all 8 keys parse and DB access confirmed intact.
+
+**Next single step:** #4 - `removeUserBottle`'s `elo === 1500` heuristic. It needs Brian's answer on
+what "tasted" means before it can be built; `last_tasted_at` remains the recommendation. If he has
+not answered, take **#62** (persistent search bar in the blind picker) instead - no decision in it.
+
+---
+### 2026-09-05 - Claude (In Progress lane cleared: push picker, migration, 10-bottle tastings)
 
 **Shipped, all on prod.** Six board issues closed; the In Progress lane is empty.
 
