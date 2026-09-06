@@ -5,15 +5,24 @@ import { logActivity } from "@/lib/activities";
 /**
  * How many bottles one blind tasting can cover.
  *
- * Raised 5 -> 6 on Brian's call (2026-09-05). Nothing in the engine cared: `saveTasting` builds
- * every pair dynamically (6 bottles = 15 pairs instead of 10) and the glass letters are derived
- * from the index, so A-F needed no change. The cap was only ever a UI number.
+ * Raised 5 -> 6, then 6 -> 10, both on Brian's call (2026-09-05, board #60). Nothing in the engine
+ * cares: `saveTasting` builds every pair dynamically (10 bottles = 45 pairs, vs 15 at six), the
+ * glass letters are derived from the index so A-J needed no change, and there is no CHECK
+ * constraint on any tasting table capping the count. The cap was only ever a UI number.
+ *
+ * Two consequences of 10 that are NOT visible from this constant:
+ *   - Reordering. Up/down chevrons alone would take up to 9 taps to move the last bottle to first,
+ *     so the rank step gained drag-to-reorder (`useDragReorder`) in the same change.
+ *   - Elo. Each bottle now takes 9 head-to-heads in one sitting instead of 5, so a single session
+ *     moves the top and bottom of the lineup roughly 80% further than it did at six. Left as-is
+ *     deliberately -- Brian is monitoring the scores and will adjust the math later if needed.
+ *     See board #3 for the separate question of the win-rate multiplier.
  *
  * These live here, not in DrinkClient, because the same number appears in the picker, the coach
  * copy and the bottle-card More sheet -- it was hardcoded in six places and had already drifted.
  */
 export const MIN_PICKS = 2;
-export const MAX_PICKS = 6;
+export const MAX_PICKS = 10;
 
 export type TastingPick = {
   bottleId: string;

@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronUp, ChevronDown, Check, Wine, Eye } from "lucide-react";
+import { ChevronLeft, ChevronUp, ChevronDown, Check, Wine, Eye, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import { saveTasting, type TastingPick, MIN_PICKS, MAX_PICKS } from "@/lib/tastings";
 import { logActivity, type PourType } from "@/lib/activities";
 import { logClick, logEvent } from "@/lib/events";
+import { useDragReorder, arrayMove } from "@/lib/useDragReorder";
 import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
 import PourSheet from "@/components/PourSheet";
 import RatePromptSheet from "@/components/RatePromptSheet";
@@ -250,6 +251,17 @@ export default function DrinkClient({
     });
   };
 
+  // Drag-to-reorder (B-60). At 10 bottles the chevrons alone mean up to 9 taps to move one row
+  // to the top, so the grip handle is the primary gesture and the chevrons stay as the precise,
+  // keyboard- and screen-reader-friendly fallback. Reorder is a MOVE, not a swap -- see the hook.
+  const moveTo = useCallback((from: number, to: number) => {
+    setRankOrder((prev) => arrayMove(prev, from, to));
+  }, []);
+  const { dragIndex, setRowRef, handleProps } = useDragReorder({
+    count: rankOrder.length,
+    onMove: moveTo,
+  });
+
   const handleSave = async () => {
     if (saving) return;
     setSaving(true);
@@ -485,7 +497,7 @@ export default function DrinkClient({
             <p className="text-sm text-gray-500 mb-4">Pour each bottle into the matching lettered glass, hide the letters, then shuffle so you can&apos;t tell which is which.</p>
             <div className="space-y-2 mb-6">
               {picks.map((b, i) => (
-                <div key={b.bottleId} className="flex items-center gap-3 rounded-lg border border-charcoal p-3">
+                <div key={b.variantId} className="flex items-center gap-3 rounded-lg border border-charcoal p-3">
                   <span className="w-8 h-8 flex items-center justify-center rounded-full text-white font-bold" style={{ backgroundColor: "#2F2F2F" }}>{letter(i)}</span>
                   <span>
                     <span className="block text-sm font-medium text-charcoal">{b.name}</span>
@@ -545,12 +557,34 @@ export default function DrinkClient({
             <h2 className="text-base font-semibold text-charcoal mb-1">Your ranking</h2>
             <p className="text-sm text-gray-500 mb-4">
               {mode === "helper"
-                ? "Taste each glass and put them in order — favorite at the top. Bottles are revealed when you lock in."
-                : "Taste, flip the hidden letters, then put the bottles in order — favorite at the top."}
+                ? "Taste each glass and put them in order — favorite at the top. Drag by the handle, or use the arrows. Bottles are revealed when you lock in."
+                : "Taste, flip the hidden letters, then put the bottles in order — favorite at the top. Drag by the handle, or use the arrows."}
             </p>
+            {/*
+              Keyed by variantId, NOT bottleId. A lineup can legitimately hold two variants of the
+              SAME bottle (a store pick beside the standard SKU), which makes bottleId a duplicate
+              key -- React then reuses the wrong nodes and the list renders a ghost row with a
+              repeated rank number, so the order submitted is not the order shown. The picker above
+              already keys by variantId; the label, rank and reveal lists did not. Found while
+              testing the 6 -> 10 raise (#60), which makes a collision far more likely.
+            */}
             <div className="space-y-2 mb-6">
               {rankOrder.map((b, i) => (
-                <div key={b.bottleId} className="flex items-center gap-2 rounded-lg border border-charcoal p-3">
+                <div
+                  key={b.variantId}
+                  ref={setRowRef(i)}
+                  className={`flex items-center gap-2 rounded-lg border p-3 bg-white ${
+                    dragIndex === i ? "border-charcoal ring-2 ring-charcoal opacity-90 shadow-lg" : "border-charcoal"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    aria-label={`Reorder ${mode === "helper" ? `glass ${b.glassLetter}` : b.name}, currently ${i + 1} of ${rankOrder.length}. Drag, or use the arrow keys.`}
+                    className="p-1 -ml-1 text-gray-500 cursor-grab active:cursor-grabbing touch-none"
+                    {...handleProps(i)}
+                  >
+                    <GripVertical size={18} />
+                  </button>
                   <span className="w-6 text-center font-bold text-charcoal">{i + 1}</span>
                   {mode === "helper" ? (
                     <span className="flex-1 flex items-center gap-2">
@@ -584,7 +618,7 @@ export default function DrinkClient({
             <p className="text-sm text-gray-500 mb-5">Your rankings have been updated.</p>
             <div className="space-y-2 text-left mb-6">
               {result.map((b, i) => (
-                <div key={b.bottleId} className="flex items-center gap-3 rounded-lg border border-gray-300 p-3">
+                <div key={b.variantId} className="flex items-center gap-3 rounded-lg border border-gray-300 p-3">
                   <span className="w-6 text-center font-bold text-charcoal">{i + 1}</span>
                   {mode === "helper" && (
                     <span className="w-7 h-7 flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: "#2F2F2F" }}>{b.glassLetter}</span>
