@@ -29,7 +29,23 @@ export type TastingPick = {
   variantId: string;
   name: string;
   subtitle?: string | null;
+  /**
+   * The letter physically on this bottle's glass, 'A'..'J' (board #11).
+   *
+   * Both modes already have it by the time we save -- self mode assigns it from the pick
+   * index, helper mode from the shuffled `glassAssignment` -- but it used to die in React
+   * state, so a saved tasting could not say which glass was which. Optional because the
+   * type is also used for the picker, before any glass exists.
+   */
+  glassLetter?: string;
 };
+
+/** 'A' -> 0, 'B' -> 1, ... Returns null for anything that isn't a single A-Z letter. */
+function pourIndexFromLetter(glassLetter: string | undefined): number | null {
+  if (!glassLetter || glassLetter.length !== 1) return null;
+  const i = glassLetter.toUpperCase().charCodeAt(0) - 65;
+  return i >= 0 && i < 26 ? i : null;
+}
 
 export type GlassNote = { nose?: string; palate?: string; finish?: string };
 
@@ -76,11 +92,21 @@ export async function saveTasting(opts: {
 
     // 2. Details (one per glass; optional notes). Fail-open — details are not
     //    required for scoring. Only on first creation, so a retry can't duplicate them.
-    const detailRows = picks.map((p) => ({
+    //
+    //    B-53 / board #11: this row is now self-describing — where the glass sat in the
+    //    POUR order, what letter was on it, and where it finished. `picks` arrives in
+    //    ranked order, so `rank` is the index; `pour_index` comes from the glass letter,
+    //    which is the only place the pour order survives (helper mode shuffles, so pour
+    //    order and ranked order are genuinely different sequences). All three are
+    //    nullable in the DB and stay null if a caller has no letters to give.
+    const detailRows = picks.map((p, rank) => ({
       tasting_session_id: sessionId,
       bottle_id: p.bottleId,
       variant_id: p.variantId,
       notes: opts.notes?.[p.variantId] ?? null,
+      rank,
+      glass_letter: p.glassLetter ?? null,
+      pour_index: pourIndexFromLetter(p.glassLetter),
     }));
     await supabase.from("tasting_details").insert(detailRows);
   }

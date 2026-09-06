@@ -266,7 +266,10 @@ export default function DrinkClient({
     if (saving) return;
     setSaving(true);
     try {
-      const orderedPicks: TastingPick[] = rankOrder.map((b) => ({ bottleId: b.bottleId, variantId: b.variantId, name: b.name }));
+      // Ranked order (index 0 = the taster's favourite). `glassLetter` rides along so
+      // saveTasting can persist the pour order too — in helper mode the glasses were
+      // shuffled, so it is not recoverable from this list (board #11).
+      const orderedPicks: TastingPick[] = rankOrder.map((b) => ({ bottleId: b.bottleId, variantId: b.variantId, name: b.name, glassLetter: b.glassLetter }));
       const res = await saveTasting({ userId: publicUserId, mode, picks: orderedPicks, sessionId: pendingSessionRef.current });
       // Remember the session even on failure so a retry reuses it (idempotent).
       if (res.sessionId) pendingSessionRef.current = res.sessionId;
