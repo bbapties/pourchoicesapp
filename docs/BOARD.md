@@ -124,12 +124,11 @@ By source: 16 from BUGS.md · 20 from BACKLOG.md · 15 from ROADMAP.md · 4 from
 
 ---
 
-## Still to decide
+## Housekeeping log
 
-- **The source docs are now duplicates.** BUGS.md, BACKLOG.md, ROADMAP.md and PHASE10.md still hold
-  the same items as unticked boxes. Until they're cut back there are two sources of truth and the
-  board will drift. Plan: review the board first, then delete or archive them.
-- **AGENTS.md still points both agents at the .md checkboxes.** It needs one edit — read-first order
-  points here — or the next agent ticks markdown and ignores the board. Deliberately not done yet.
+- ~~The source docs duplicate the board.~~ **Done 2026-09-05** — moved to
+  [archive/](archive/) and marked frozen. Read them for specs and history, never for status.
+- ~~AGENTS.md points agents at the .md checkboxes.~~ **Done 2026-09-05** (`cbb2db3`) — read-first
+  order is AGENTS → HANDOFF → the board.
 - **`board-import-preview.md` deviation D1** (CSV import as 1 issue, not 7) was applied. Reverse it
   by splitting [#25](https://github.com/bbapties/pourchoicesapp/issues/25) if you'd rather have 7.

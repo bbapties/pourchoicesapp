@@ -1,57 +1,149 @@
 # HANDOFF.md — The baton
 
 The living handoff between Claude and Grok. **Read the "Right now" block first; update it before switching agents.**
-Full scope/status lives in [ROADMAP.md](ROADMAP.md); this file is the narrative a checkbox can't hold.
+What is open and in what order now lives on **[the board](https://github.com/users/bbapties/projects/1)**
+([docs/BOARD.md](docs/BOARD.md) explains it); this file is the narrative a ticket can't hold.
 
 ---
 
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `ff77e8b`. Working tree clean (untracked: `.claude/worktrees/`, the weekly HTML).
-  All on origin/MVP-v3.
-- **Current phase:** **Phase 10** ([PHASE10.md](PHASE10.md)). **Waves A-D complete.** This session
-  was unplanned: three prod bugs Brian hit, then two small features. **Wave E is still next.**
+- **Tip:** `cbb2db3` + the archive commit. All on origin/MVP-v3.
+- **Current phase:** Phase 10, Waves A–D complete. **E1 is done and verified** (see below).
+- **THE BIG CHANGE THIS SESSION: work tracking moved off markdown and onto a GitHub Project.**
+
+### Read this before anything else — the queue moved
+
+**https://github.com/users/bbapties/projects/1** is now the single source of truth for what is open
+and in what order. 58 issues, all triaged into columns.
+
+`ROADMAP.md`, `BUGS.md`, `BACKLOG.md`, `PHASE8/9/10.md` have moved to **`docs/archive/`** and are
+**frozen**. Read them for specs and history — they still hold the best story-level detail — but
+**never for status, and never tick a box in them.** At freeze time ~29 of their 120 unticked boxes
+were already shipped and ~11 were duplicates across two files. That unreliability is exactly why the
+work moved.
+
+How the board is shaped, the `gh` commands, and the phrases that drive it: **[docs/BOARD.md](docs/BOARD.md)**.
+What was imported vs skipped and why: **[docs/board-import-preview.md](docs/board-import-preview.md)**.
 
 ### The single next step
-**E1 -- the first blind tasting run on prod.** `Right_Blind` now HAS a completed tasting (6 bottles,
-Elo spread 1461-1538, `times_had = 0`, `currently_owned = false`) -- so E1's data half is done and
-was used as this session's test fixture. What is still unconfirmed is the checklist: a
-`tasting_sessions` row, the full pairwise `tasting_results` set, `bottle_variants.elo_global` moved
-off 1500, and **nothing on the Social feed**. Verify those, then **E2** (ranked tasting-results
-view) -- the payoff screen the core loop still lacks.
+**Work the board's Top Priority column.** It holds 8 items, ~21 hours. Suggested order:
+
+1. **#18** — apply `sql/account-type-trigger-migration.sql` (still **owed by Brian**; the agent
+   sandbox refuses the `SECURITY DEFINER` replacement). Until it runs, `account_type` is
+   client-writable.
+2. **#59** — Admin Notify can't select a subscribed user. **Diagnosed, not fixed** (see below).
+3. **#19** — confirm the service-role env var name on Vercel.
+4. **#24** — real-device install test, iPhone + Android from prod.
+5. **#4, #3, #2** — Elo / collection correctness bugs that matter now that real tastings exist.
+6. **#20** — ranked tasting-results view. The biggest item in the lane (L) and the payoff screen the
+   core loop still lacks.
+
+### #59 — the push bug, already diagnosed (don't re-investigate)
+A tester turned notifications on, proved it with a screenshot, and Brian still couldn't send to him.
+**The tester is fine; the picker is broken.** Verified on prod: `CanalBrewery-2` has 1 subscription
+row and `notify_push = true`.
+
+`NotifyTab.tsx` (~98) counts devices with a plain client query on `push_subscriptions`, which runs
+under RLS as the admin. `sql/push-notifications-migration.sql` (~58) defines only
+`"Select own subscriptions"` — no admin SELECT policy, deliberately, because the send route uses the
+service role. So the admin sees only their own rows, every other user computes as `devices: 0`, and
+the option is disabled at `NotifyTab.tsx` ~244.
+
+**The send path is fine** — `/api/admin/send-push` uses service role and would deliver. Sending to
+"everyone" should already reach him. Preferred fix: read the counts through an admin server route
+using service role, rather than widening RLS against the migration's stated intent.
 
 ### THE ONE THING TO READ BEFORE TOUCHING AUTH
-`src/lib/supabase.ts` has a **custom `auth.lock` again** (`362458f`, corrected by `e555784`). An
-earlier attempt at this was reverted the same day after three prod regressions, and that revert
-re-introduced the bug it was hiding. **Do not revert it again without reading its header comment** --
-it documents each prior regression and the test that now covers it. The rule that made the
-difference: **you cannot validate auth changes signed out.** Mint a real session for the QA account
-via the Supabase admin API (`POST /auth/v1/admin/generate_link` type `magiclink` with the
-service-role key, then `POST /auth/v1/verify` with **`token_hash`** -- `token` 400s -- and the anon
-key). No password, no auth config touched. That single capability is what turned four sessions of
-guessing into one session of measuring.
+`src/lib/supabase.ts` has a **custom `auth.lock`** (`362458f`, corrected by `e555784`). An earlier
+attempt was reverted the same day after three prod regressions, and that revert re-introduced the bug
+it was hiding. **Do not revert it again without reading its header comment** — it documents each
+prior regression and the test that now covers it. The rule that made the difference: **you cannot
+validate auth changes signed out.** Mint a real session for the QA account via the Supabase admin API
+(`POST /auth/v1/admin/generate_link` type `magiclink` with the service-role key, then
+`POST /auth/v1/verify` with **`token_hash`** — `token` 400s — and the anon key). No password, no auth
+config touched.
 
-### OWED BY BRIAN -- one SQL file, and it matters more than it looks
-`sql/account-type-trigger-migration.sql` is **NOT applied.** The agent sandbox refused the
-`SECURITY DEFINER` replacement four times (it allowed the `ALTER POLICY`, so the block is specific
-to replacing such a function). Until it runs, **any signed-in user can set their own
-`account_type`** -- proven in a rolled-back transaction: `UPDATE ... SET account_type='data'` on
-their own row returns `UPDATE 1` and takes effect. Since non-human rows are now hidden by RLS, that
-buys **invisibility from other users**, not merely absence from the feed.
-```
-node scripts/_psql.mjs "$(cat sql/account-type-trigger-migration.sql)"
-```
-Also still open: **B-21** (confirm the service-role env var in Vercel; only affects admin user
-deletion) and the **real-device iPhone install test**.
+### Still owed by Brian
+- **`sql/account-type-trigger-migration.sql`** — board issue #18. Not applied.
+  ```
+  node scripts/_psql.mjs "$(cat sql/account-type-trigger-migration.sql)"
+  ```
+- **Real-device iPhone/Android install test** — board issue #24.
+- **Board hygiene:** the Size values on all 58 issues are Claude's first-pass estimates, not Brian's.
 
-### One open decision for Brian
-**Search's My Ranks now NARROWS the list, not just reorders it** (`9e60914`). Sorting client-side
-only ever touched the loaded page -- of 4 ranked bottles only 2 were on page one of ~90 -- so
-"my ranked bottles, best first" is the only reading that survives pagination. Brian was told and has
-not objected; if he wants the full list left in place, revert `applyMyRanksToQuery` only.
-**My Bar's My Ranks is a pure sort** and is unaffected: that list is already just the viewer's own
-bottles and is not paginated.
+### Open decisions
+- **Search's My Ranks NARROWS the list, not just reorders it** (`9e60914`). Sorting client-side only
+  touched the loaded page — of 4 ranked bottles only 2 were on page one of ~90 — so "my ranked
+  bottles, best first" is the only reading that survives pagination. Brian was told and has not
+  objected; to revert, change `applyMyRanksToQuery` only. **My Bar's My Ranks is a pure sort** and is
+  unaffected.
+- **CSV import (#25) is one issue with a 7-step checklist**, not 7 issues. Brian was asked, didn't
+  rule, and Claude proceeded with the recommendation. Split it if he prefers.
+
+### Landmine: the agent sandbox is isolated outside the repo
+Tool writes **inside `C:\pourchoices-frontend` reach the real disk** (that is how commits and deploys
+work). Writes **outside it do not** — an agent-installed binary or a PATH change is invisible to
+Brian's terminal, and `Test-Path` will still say `True` from the agent's side. This cost most of a
+session. If Brian says "command not found" for something you just installed, believe him, not your
+own filesystem check. `gh` therefore lives at **`.tools\gh\bin\gh.exe`** (gitignored), inside the repo.
+
+---
+
+### 2026-09-05 (later) — the work queue moved to a GitHub Project
+
+**Why.** Brian wanted a visual board he could reprioritise by dragging, and to see what that does to
+the rest of the backlog. Linear was evaluated and rejected (won't pay); Jira, Notion, Trello also
+rejected. GitHub Projects won because the code already lives there and issues link to commits.
+Brian wrote a setup brief; this session executed it.
+
+**What was found on the way in.** The four planning docs held **120 unticked boxes**, but raw
+checkbox state was badly unreliable:
+- **~29 were already shipped** and never ticked — every Phase 6 sub-box sat under a header reading
+  `✅ SHIPPED (ab9cfbb) · sub-boxes below not re-audited`, and the 8.1 trust bugs were all `[x]` in
+  BUGS.md already.
+- **~11 were the same item recorded in two files** (BACKLOG "Ranked tasting-results view" = PHASE10
+  E2, etc).
+- **4 were process**, not work — the pre-push test checklist.
+- PHASE10's D1/D2 were unticked but had shipped in `ba102c9`.
+
+Importing raw would have opened the board with a third of it already done. Net: **57 issues created**
+from 120 boxes, plus 2 lifted from HANDOFF prose (the account_type migration and B-21), which had
+never been checkboxes at all.
+
+**What was built.**
+- Project **Pour Choices Board** (`https://github.com/users/bbapties/projects/1`), repo linked.
+- Labels: `feature`, `other`, `needs-detail`, `imported` added; GitHub's default `bug` and
+  `enhancement` reused.
+- Fields: **Size** (XS 30m–1h · S 2h · M 4h · L 8h · XL multi-day) and **Area** (13 colour-coded
+  options). A `Priority` field was created and then **deleted** — Brian drives priority by which
+  column a card is in, not a field.
+- Brian built the columns himself: **To be reviewed · North Star · Backlog · Coming Soon ·
+  Top Priority · In Progress · Done** — a readiness pipeline, not an urgency scale.
+- All 58 issues triaged out of *To be reviewed*: **Top Priority 8 (~21h) · Coming Soon 16 (~28h) ·
+  Backlog 27 (~148h) · North Star 7 (~152h)**. Roughly **350 hours** total on the board.
+
+**The number worth remembering:** Top Priority + Coming Soon ≈ **47 hours** — that is the whole road
+to a 3-person beta. Everything else is deliberately parked.
+
+**North Star holds what can't move forward as-is:** badges (needs a catalog + award-logic design),
+catalog seed (Brian's own doc says "design session with Brian, not solo"), group tastings (PAUSED,
+needs schema), follows/likes/comments (a social graph), bottle-detail UX pass (no defined scope),
+AI background removal (on-device vs service undecided), flavour tagging (needs a taxonomy first).
+
+**New bug filed: #59** — Admin Notify can't select a subscribed user. Diagnosis above; verified
+against the prod DB.
+
+**Docs.** `AGENTS.md` now points at the board and marks the markdown queues frozen; the pre-push test
+checklist moved into it (live process, not history). The six planning docs moved to `docs/archive/`
+with a README explaining what they are still good for. `docs/BOARD.md` is the working guide;
+`docs/board-import-preview.md` is the import record, including every skipped item and why.
+
+**Commits:** `1c15f5c` (board docs), `cbb2db3` (AGENTS.md), plus the archive move.
+
+**E1 is done.** Brian confirmed the first real blind tasting ran on prod and the data is flowing, so
+Wave E's opening item is closed. **E2 (#20) is the next real feature.**
 
 ### 2026-09-05 (late) -- three prod bugs were ONE bug, then two features
 
@@ -548,7 +640,7 @@ deliberately left alone by this session rather than clobbering the other session
 - **Next:** Wave D1, admin-published What's new.
 
 ### 2026-09-05 - Claude (Phase 10 re-rank; middleware never ran; images; B-74 closed)
-- **Planning session** -> **[PHASE10.md](PHASE10.md)** (waves A-F), ROADMAP/AGENTS repointed at it.
+- **Planning session** -> **[PHASE10.md](docs/archive/PHASE10.md)** (waves A-F), ROADMAP/AGENTS repointed at it.
   Beta re-scoped to 3 known people, so the bar became retention, not onboarding (`47e8e7f`).
 - **A1** (`a6de5b0`, `3affaea`): found that `middleware.ts` had **never run** (root-level file with a
   `src/` dir). Fixed by moving it, caught that enabling it broke `/reset-password`, added a
@@ -567,7 +659,7 @@ deliberately left alone by this session rather than clobbering the other session
 
 ### 2026-09-05 - Claude (Phase 10 re-rank; middleware had never run; events loop closed)
 - **Planning session.** Brian dialed the beta back to **3 people he knows** and asked for a full
-  re-stack-rank. Wrote **[PHASE10.md](PHASE10.md)** (waves A-F) and repointed ROADMAP "WE ARE HERE" +
+  re-stack-rank. Wrote **[PHASE10.md](docs/archive/PHASE10.md)** (waves A-F) and repointed ROADMAP "WE ARE HERE" +
   AGENTS read-first/doc-map at it. Phase 8 stories remain the specs; **its ordering is superseded**.
   Ticked PHASE9 drift in BUGS.md (`47e8e7f`).
 - **Investigating A1 found the real bug: `middleware.ts` was at the repo root, so with a `src/`
@@ -773,7 +865,7 @@ Ten commits, all pushed to prod (`cccae51..1b4de16`).
   (B-49/B-50). The "click for details" ranked tasting-results view (D.1) also remains a follow-up.
 
 ### 2026-08-30 — Claude (END SESSION — PHASE9: 5 model build-out stories, autonomous)
-- Continued the autonomous mandate: planned [PHASE9.md](PHASE9.md) from the model, then built +
+- Continued the autonomous mandate: planned [PHASE9.md](docs/archive/PHASE9.md) from the model, then built +
   deployed the next 5 stories safest-first (app-only or additive; snapshots for schema).
 - **Shipped to prod** (`9869795`, `f7a5d39`, `975f53b`, `d48e1cf`, `8314a03`): S1 per-variant
   **history modal** (read-only over activities + tastings); S2 **wishlist** — new `public.wishlists`

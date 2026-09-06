@@ -17,10 +17,10 @@ docs, then switches. This file is the standing context both agents load every se
 4. **[TELEMETRY.md](TELEMETRY.md)** — instrumentation policy: capture events/activity/usage generously so future features (badges, analytics) already have data. Log as you build.
 
 **Reference only — do NOT take status or order from these files any more:**
-[PHASE10.md](PHASE10.md) (why the waves are ordered the way they are), [PHASE8.md](PHASE8.md) and
-[PHASE9.md](PHASE9.md) (feature *specs* — still the best story detail for PWA / tutorial + What's new
-/ push / barcode / the bottle model), [ROADMAP.md](ROADMAP.md), [BUGS.md](BUGS.md),
-[BACKLOG.md](BACKLOG.md). Their checkboxes were frozen on 2026-09-05 when the work moved to the
+[PHASE10.md](docs/archive/PHASE10.md) (why the waves are ordered the way they are), [PHASE8.md](docs/archive/PHASE8.md) and
+[PHASE9.md](docs/archive/PHASE9.md) (feature *specs* — still the best story detail for PWA / tutorial + What's new
+/ push / barcode / the bottle model), [ROADMAP.md](docs/archive/ROADMAP.md), [BUGS.md](docs/archive/BUGS.md),
+[BACKLOG.md](docs/archive/BACKLOG.md). Their checkboxes were frozen on 2026-09-05 when the work moved to the
 board and are **stale by design** — roughly a quarter of the unticked boxes were already shipped.
 Read them for context and specs, never for "what is left".
 
@@ -38,15 +38,15 @@ Login lands on `/mybar`. Drink is `/taste` (Have a drink **or** solo blind tasti
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · shadcn/ui + Radix ·
 Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
 
-> ⚠️ **README.md is stale** (says Next 15, features "not implemented"). Trust ROADMAP + the code, not the README.
+> ⚠️ **README.md is stale** (says Next 15, features "not implemented"). Trust the board + the code, not the README.
 
 ---
 
 ## Branch & deploy rules — READ THIS
 - **Active branch: `MVP-v3`.** All work happens here.
 - **Production deploys from `MVP-v3`, NOT `main`.** Pushing to `MVP-v3` = a **live prod release** on Vercel.
-- **The agents push, not Brian.** When work is ready — committed **and** the test checklist at the top of
-  **ROADMAP.md** passes — push it to `MVP-v3` yourself. Brian does not do the push.
+- **The agents push, not Brian.** When work is ready — committed **and** the test checklist under
+  Working conventions passes — push it to `MVP-v3` yourself. Brian does not do the push.
 - **Never push untested code.** "Ready" means the checklist passed. If it can't be tested yet, commit but don't push.
 
 ---
@@ -58,7 +58,16 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
   BUGS/BACKLOG/ROADMAP** — those files are frozen history.
 - **Find a bug mid-session? File it as an issue** (`gh issue create`), add it to the board, set
   Status/Size/Area. Do not bury it in a commit message and do not append it to BUGS.md.
-- **Test before every push** — see the checklist in ROADMAP.md (localhost, mobile LAN URL, prod verify).
+- **Test before every push** — the checklist below. It used to live at the top of ROADMAP.md and
+  moved here when that file was archived, because it is live process, not history.
+
+  **Test checklist before every push:**
+  - [ ] Works locally (localhost:3000)
+  - [ ] Works on mobile (LAN URL — **confirm the current IP with `ipconfig` first; DHCP moves it**,
+        it was .74 and is now 192.168.68.65. Note the LAN URL is **HTTP**, so camera/PWA/push
+        do not work there — those need prod or an HTTPS tunnel.)
+  - [ ] Pushed to GitHub
+  - [ ] Verified on prod (www.pourchoicesapp.com)
 - Functionality first; stay **greyscale/wireframe** until Phase 5. Do not start visual polish early.
 - **Every bottle action logs an `activities` row** until Brian excludes it (`src/lib/activities.ts`). Fail-open. Current exclusion: admin hard-delete of a bottle (CASCADE would wipe the feed row).
 - **Every new user-facing surface** adds one row to the coach catalog (`src/lib/coaches.ts`) — `announce: true` plus a short `tour[]` if Show me should work. Do not re-audit the whole catalog. Set `core: true` only when the main loop actually changed. Quiet (`announce: false`) only for Admin / tiny fixes.
@@ -128,12 +137,7 @@ node scripts/_psql.mjs "SELECT 1 AS ok;"
 | **The board** | **Canonical: what is open, and in what order.** https://github.com/users/bbapties/projects/1 |
 | `docs/BOARD.md` | How the board works — columns, Size/Area fields, labels, `gh` usage |
 | `docs/board-import-preview.md` | Record of the 2026-09-05 import: what became an issue, what was skipped, why |
-| `PHASE10.md` | **Reasoning** behind the current ordering (waves A–F). Not a status list. |
-| `PHASE9.md` | Bottle-model build-out — spec/reference |
-| `PHASE8.md` | Feature **specs** for PWA, tutorial + What's new, barcode, push |
-| `ROADMAP.md` | **Frozen 2026-09-05.** Historical phase log. Checkboxes are stale — do not tick. |
-| `BUGS.md` | **Frozen 2026-09-05.** Historical bug queue (B-01…). Checkboxes are stale — do not tick. |
-| `BACKLOG.md` | **Frozen 2026-09-05.** Historical idea list. Superseded by the board. |
+| `docs/archive/` | **Frozen 2026-09-05.** ROADMAP / BUGS / BACKLOG / PHASE8-10 — research only, never status. See its README. |
 | `TELEMETRY.md` | Instrumentation policy — event/activity/usage tracking; what's logged, the proposed generic events table |
 | `DB_Schema.txt.txt` | Supabase schema dump (note: may lag reality — see HANDOFF drift notes) |
 
@@ -169,8 +173,7 @@ Write for a reader with zero memory of this session.
 
 ### END SESSION — exact sequence (who commits the baton)
 1. Finish the work and **commit the code** (one change per commit).
-2. Run the test checklist at the top of ROADMAP.md (that checklist is still live — it is the
-   pre-push ritual, not a status list).
+2. Run the test checklist under **Working conventions**.
 3. Update **HANDOFF.md** ("Right now" + a dated log entry) and **close the shipped board issues**.
 4. **Commit the doc updates.**
 5. **Push everything to `MVP-v3`** (code + doc commits together) — the agent pushes, per Branch & deploy rules.
