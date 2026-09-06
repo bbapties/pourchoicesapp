@@ -57,6 +57,7 @@ prints a per-place summary. It flags, and you must resolve, all of:
 |---|---|
 | `*** NOT FOUND ***` | no candidate scored high enough — go to step 3a |
 | `AMBIGUOUS` | the top two candidates are within 0.08 — ask Brian which one |
+| `MORE SPECIFIC THAN YOU TYPED` | the winner carries an age or number the query never said, and a plainer row also matched — **always ask** |
 | `DUPLICATE of place N` | two names resolved to the same variant — one of them is wrong |
 | `unverified` | the bottle exists but nobody has signed off on its data |
 | `NO IMAGE` | there is nothing to show on the sheet, so Brian cannot confirm it visually |
@@ -231,6 +232,39 @@ And one that fails **silently**, which is worse:
   and `elo_global` are on **`bottle_variants`**. Both tables have `verified` and `elo_global`.
 - `information_schema.columns` filtered by `table_name` alone returns every schema's copy —
   four duplicates of each row. Add `AND table_schema='public'` or just read the join that fails.
+
+## Two rows for the same bottle, one narrower than the other
+
+A candidate that is a **superset** of what was typed wins on score without ever looking close,
+because every word the query used really is in it. On 2026-09-06 "Wild Turkey 101" scored **0.907**
+against *Wild Turkey 101 8-Year-Old* and beat the plain *Wild Turkey 101 Kentucky Straight Bourbon
+Whiskey* outright. Nothing flagged it, the gap was far too wide to read as ambiguous, and **both
+rows had real Elo history** — 9 prior head-to-heads for the standard, 5 for the 8-year — so the
+wrong pick would have moved a ranking other sessions had built.
+
+`resolve_lineup.mjs` now flags this as `MORE SPECIFIC THAN YOU TYPED`, listing the extra tokens.
+**Treat it exactly like NOT FOUND: stop and ask.** Naming a bottle plainly means the standard
+release; a taster who poured the 8-year says "8 year".
+
+The useful move when you hit it is to **rehearse both** and put the numbers in front of Brian.
+Two `ROLLBACK` runs cost nothing and turn "which bottle?" into a visible consequence:
+
+```
+Option A  8-Year-Old  1426.40 -> 1445.74   Blanton's 1500 -> 1480.66
+Option B  standard    1377.72 -> 1399.13   Blanton's 1500 -> 1478.59
+```
+
+Build the second lineup by copying `lineup.json` and swapping `variant_id` / `bottle_id` /
+`bottle_name` on the disputed pick.
+
+**Check prior history before asking**, and say it out loud — a row with tastings behind it raises
+the stakes of a wrong pick from "one bad row" to "a corrupted ranking":
+
+```
+node scripts/_psql.mjs "SELECT b.name, count(r.id) FROM bottles b
+  LEFT JOIN tasting_results r ON r.winner_bottle_id=b.id OR r.loser_bottle_id=b.id
+  WHERE b.name ILIKE '%<brand>%' GROUP BY b.name;"
+```
 
 ## When one barcode covers several releases
 

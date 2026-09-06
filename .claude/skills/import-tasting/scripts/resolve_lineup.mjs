@@ -213,12 +213,28 @@ const picks = names.map((raw, i) => {
   // "Ambiguous" = the top two are close enough that a human should look. The
   // confirmation sheet flags these rather than the script guessing silently.
   const ambiguous = best && runnerUp && best.s - runnerUp.s < 0.08 && runnerUp.s > 0.45;
+
+  // A candidate can be MORE SPECIFIC than what was typed and still win on score,
+  // because every word the query used does appear in it. "Wild Turkey 101"
+  // scored 0.91 against "Wild Turkey 101 8-Year-Old" and beat the plain
+  // "Wild Turkey 101 Kentucky Straight Bourbon Whiskey" outright -- two real
+  // bottles, BOTH with Elo history, and nothing flagged it. Plainly naming a
+  // bottle means the standard release, so when the winner carries an extra
+  // number or age statement the taster never said, and some other candidate
+  // does not, that is a question for Brian rather than a decision for the
+  // matcher.
+  const overSpecific = Boolean(
+    best && best.s >= 0.45 && extraSpecifiers(raw, best.row).length &&
+    ranked.some((r) => r !== best && r.s > 0.45 && !extraSpecifiers(raw, r.row).length)
+  );
   return {
     place: i + 1,
     query: raw,
     matched: best && best.s >= 0.45 ? best.row : null,
     confidence: best ? Number(best.s.toFixed(3)) : 0,
     ambiguous: Boolean(ambiguous),
+    overSpecific,
+    extraSpecifiers: best ? extraSpecifiers(raw, best.row) : [],
     alternatives: ranked.slice(0, 4).filter((r) => r.s > 0.3).map((r) => ({
       variant_id: r.row.variant_id,
       label: label(r.row),
@@ -226,6 +242,17 @@ const picks = names.map((raw, i) => {
     })),
   };
 });
+
+/**
+ * Numeric/age tokens the CANDIDATE carries that the query never mentioned --
+ * i.e. the ways this row is a narrower product than what was typed. "8year" for
+ * "Wild Turkey 101" against the 8-Year-Old; empty for the standard bottle.
+ */
+function extraSpecifiers(qRaw, row) {
+  const q = new Set(tokens(qRaw));
+  const cand = [row.bottle_name, row.attr_store_pick_name].filter(Boolean).join(" ");
+  return tokens(cand).filter((t) => /^\d/.test(t) && !q.has(t));
+}
 
 function label(row) {
   const bits = [row.bottle_name];
@@ -250,7 +277,7 @@ const lineup = {
   sessionName: sessionName || null,
   picks,
   unresolved: picks.filter((p) => !p.matched).map((p) => p.query),
-  needsAttention: picks.some((p) => !p.matched || p.ambiguous || p.duplicateOf),
+  needsAttention: picks.some((p) => !p.matched || p.ambiguous || p.duplicateOf || p.overSpecific),
 };
 
 mkdirSync(outDir, { recursive: true });
@@ -283,6 +310,7 @@ for (const p of picks) {
   const flags = [
     p.ambiguous ? "AMBIGUOUS" : null,
     p.duplicateOf ? `DUPLICATE of place ${p.duplicateOf}` : null,
+    p.overSpecific ? `MORE SPECIFIC THAN YOU TYPED (${p.extraSpecifiers.join(", ")})` : null,
     m && !m.variant_verified ? "unverified" : null,
     m && !m.attr_frontimage_url ? "NO IMAGE" : null,
   ].filter(Boolean).join(" ");
@@ -311,6 +339,7 @@ function sheet(l, shots = new Map()) {
       !m ? ["not-found", "NOT FOUND IN CATALOG"] : null,
       p.ambiguous ? ["warn", "Ambiguous &mdash; close second match"] : null,
       p.duplicateOf ? ["not-found", `Duplicate of place ${p.duplicateOf}`] : null,
+      p.overSpecific ? ["not-found", `More specific than you typed &mdash; this row adds ${p.extraSpecifiers.join(", ")}. A plainer version of the same bottle also matched.`] : null,
       m && !m.variant_verified ? ["warn", "Bottle not verified"] : null,
       m && !m.attr_frontimage_url ? ["warn", "No image on file"] : null,
     ].filter(Boolean).map(([k, t]) => `<div class="flag ${k}">${t}</div>`).join("");
