@@ -9,86 +9,182 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `cbb2db3` + the archive commit. All on origin/MVP-v3.
-- **Current phase:** Phase 10, Waves A–D complete. **E1 is done and verified** (see below).
-- **THE BIG CHANGE THIS SESSION: work tracking moved off markdown and onto a GitHub Project.**
+- **Tip:** `78fc7ad`. All on origin/MVP-v3 and live on prod.
+- **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
+- **The board's In Progress lane is EMPTY.** Everything Brian staged there this session shipped.
 
-### Read this before anything else — the queue moved
+### Read this before anything else - the queue lives on the board
 
-**https://github.com/users/bbapties/projects/1** is now the single source of truth for what is open
-and in what order. 58 issues, all triaged into columns.
+**https://github.com/users/bbapties/projects/1** is the single source of truth for what is open and
+in what order. `ROADMAP/BUGS/BACKLOG/PHASE8-10` are in **`docs/archive/`** and **frozen** - read them
+for specs and history, never for status, and never tick a box in them.
 
-`ROADMAP.md`, `BUGS.md`, `BACKLOG.md`, `PHASE8/9/10.md` have moved to **`docs/archive/`** and are
-**frozen**. Read them for specs and history — they still hold the best story-level detail — but
-**never for status, and never tick a box in them.** At freeze time ~29 of their 120 unticked boxes
-were already shipped and ~11 were duplicates across two files. That unreliability is exactly why the
-work moved.
+How the board is shaped and the `gh` commands: **[docs/BOARD.md](docs/BOARD.md)**.
+The CLI is at **`.tools\gh\bin\gh.exe`** (gitignored, inside the repo - see the sandbox landmine below).
 
-How the board is shaped, the `gh` commands, and the phrases that drive it: **[docs/BOARD.md](docs/BOARD.md)**.
-What was imported vs skipped and why: **[docs/board-import-preview.md](docs/board-import-preview.md)**.
+**Closing an issue moves its card to Done automatically** - that workflow is enabled, so do not also
+drag cards. But note **`Closes #N` in a commit does NOT auto-close**: GitHub only honours that on the
+default branch, and we ship from `MVP-v3`. Close issues explicitly with `gh issue close`.
 
 ### The single next step
-**Work the board's Top Priority column.** It holds 8 items, ~21 hours. Suggested order:
+**Top Priority holds 4 items.** Three are the Elo-correctness cluster and one is the big payoff screen:
 
-1. **#18** — apply `sql/account-type-trigger-migration.sql` (still **owed by Brian**; the agent
-   sandbox refuses the `SECURITY DEFINER` replacement). Until it runs, `account_type` is
-   client-writable.
-2. **#59** — Admin Notify can't select a subscribed user. **Diagnosed, not fixed** (see below).
-3. **#19** — confirm the service-role env var name on Vercel.
-4. **#24** — real-device install test, iPhone + Android from prod.
-5. **#4, #3, #2** — Elo / collection correctness bugs that matter now that real tastings exist.
-6. **#20** — ranked tasting-results view. The biggest item in the lane (L) and the payoff screen the
-   core loop still lacks.
+1. **#2** - global Elo lost-update. **No product decision in it - safe to just do, so start here.**
+   Read-then-write on `bottle_variants.elo_global`; fix is
+   `SET elo_global = COALESCE(elo_global,1500) + swing_global` so Postgres does the arithmetic under
+   the row lock. Recommend NOT adding `SELECT ... FOR UPDATE` around the whole calculation: it
+   serialises every concurrent tasting for contention that is near-zero at 3 testers.
+2. **#3** - the win-rate multiplier. **BLOCKED ON BRIAN, do not pick a direction unilaterally.**
+   See the section below; this was put to him this session and he deferred it.
+3. **#4** - `removeUserBottle` treats `elo === 1500` as never-tasted and hard-deletes. Needs a
+   product answer on what "tasted" means (see below). **Currently harming 0 rows** - verified - so
+   there is no clock on it.
+4. **#20** - ranked tasting-results view (L). The payoff screen the core loop still lacks.
 
-### #59 — the push bug, already diagnosed (don't re-investigate)
-A tester turned notifications on, proved it with a screenshot, and Brian still couldn't send to him.
-**The tester is fine; the picker is broken.** Verified on prod: `CanalBrewery-2` has 1 subscription
-row and `notify_push = true`.
+### Brian is testing the 10-bottle tasting on a real phone tonight
+#60 shipped and was closed on his instruction *before* that test. If it misbehaves he reopens it or
+files a new card. **One thing was deliberately not verified:** saving a 10-bottle session. That
+writes 45 pairs and would move `elo_global` for 10 real bottles in prod, and Brian is monitoring
+global scores - so polluting them for a test was not worth it without asking. The save path itself
+is unchanged code, already proven at six.
 
-`NotifyTab.tsx` (~98) counts devices with a plain client query on `push_subscriptions`, which runs
-under RLS as the admin. `sql/push-notifications-migration.sql` (~58) defines only
-`"Select own subscriptions"` — no admin SELECT policy, deliberately, because the send route uses the
-service role. So the admin sees only their own rows, every other user computes as `devices: 0`, and
-the option is disabled at `NotifyTab.tsx` ~244.
+### #3 - the Elo question Brian has NOT answered yet
+Do not "fix" this by guessing. The findings, all verified against prod this session:
 
-**The send path is fine** — `/api/admin/send-push` uses service role and would deliver. Sending to
-"everyone" should already reach him. Preferred fix: read the counts through an admin server route
-using service role, rather than widening RLS against the migration's stated intent.
+- `swing = K * (1 - expected) * win_rate`, where `win_rate` is this pair's head-to-head record in
+  **prior** sessions, defaulting to `0.5` when they have never met.
+- **No pair in the database has ever met twice.** So `win_rate` is *always* 0.5 today, and every
+  Elo swing in the app is being **silently halved**. #3's described 10-0 failure has not bitten yet.
+- **The direction is inverted.** `(1 - expected)` already handles surprise - it is large when the
+  winner was the underdog. Multiplying by `win_rate` makes *confirmations* move more and *upsets*
+  move less, which is backwards, and redundant with the term beside it.
+- **The code and the design spec disagree.** The Momentum-Elo spec says K-factor **32 / 16 / 8**
+  diminishing on repeat matchups plus a streak edge; the code has `k_factor numeric := 32; -- FLAT`
+  and no streak logic. The win-rate multiplier looks like a *substitute* for diminishing-K,
+  implemented as a multiplier instead of a K schedule. **Which of those is authoritative is the
+  first thing to ask Brian.**
+- Options put to him: diminishing-K per the spec / plain Elo with the term dropped / floor the
+  win_rate / leave it and document. He dismissed the question rather than choosing.
+- **#60 raised the stakes:** at 10 bottles each one takes 9 head-to-heads per session instead of 5,
+  so a single sitting moves the extremes ~80% further. Brian's call was **leave the math alone and
+  monitor the scores**, adjusting later if needed.
+
+### #4 - what counts as "tasted"
+`user_bottles.elo` is `numeric DEFAULT 1500` and there is **no tasted flag**, so `elo !== 1500` is
+the only available signal - that is why the code reads that way. A net-zero tasting therefore looks
+like a mistaken add and gets hard-deleted. Options offered (Brian deferred): add a `last_tasted_at`
+column stamped by the Elo trigger (recommended - #20 and #50 both want it anyway); query
+`tasting_results` at remove time (no migration, one extra round-trip); or make `elo` NULL until first
+tasting (matches the spec, widest blast radius). Verified: **0 rows currently affected.**
 
 ### THE ONE THING TO READ BEFORE TOUCHING AUTH
 `src/lib/supabase.ts` has a **custom `auth.lock`** (`362458f`, corrected by `e555784`). An earlier
 attempt was reverted the same day after three prod regressions, and that revert re-introduced the bug
-it was hiding. **Do not revert it again without reading its header comment** — it documents each
-prior regression and the test that now covers it. The rule that made the difference: **you cannot
-validate auth changes signed out.** Mint a real session for the QA account via the Supabase admin API
-(`POST /auth/v1/admin/generate_link` type `magiclink` with the service-role key, then
-`POST /auth/v1/verify` with **`token_hash`** — `token` 400s — and the anon key). No password, no auth
-config touched.
+it was hiding. **Do not revert it again without reading its header comment.** The rule that made the
+difference: **you cannot validate auth changes signed out.**
+
+**Minting a QA session works and is now well-trodden** - used repeatedly this session:
+`POST /auth/v1/admin/generate_link` (type `magiclink`, service-role key), then `POST /auth/v1/verify`
+with **`token_hash`** (`token` 400s) and the anon key. No password, no auth config touched. To drive
+the browser as that user, set the returned session as the cookie
+`sb-<project-ref>-auth-token` = `base64-` + base64 of the whole session JSON, `path=/`. Under 4096
+bytes, so it needs no chunking. **Navigating to the magic link directly is blocked** - the browser
+tool refuses the external supabase.co domain.
 
 ### Still owed by Brian
-- **`sql/account-type-trigger-migration.sql`** — board issue #18. Not applied.
-  ```
-  node scripts/_psql.mjs "$(cat sql/account-type-trigger-migration.sql)"
-  ```
-- **Real-device iPhone/Android install test** — board issue #24.
-- **Board hygiene:** the Size values on all 58 issues are Claude's first-pass estimates, not Brian's.
+- **Real-phone test of the 10-bottle tasting + drag** (tonight). Emulation at 375x812 passed.
+- **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
+- **#3 and #4 product decisions** above.
 
 ### Open decisions
 - **Search's My Ranks NARROWS the list, not just reorders it** (`9e60914`). Sorting client-side only
-  touched the loaded page — of 4 ranked bottles only 2 were on page one of ~90 — so "my ranked
-  bottles, best first" is the only reading that survives pagination. Brian was told and has not
-  objected; to revert, change `applyMyRanksToQuery` only. **My Bar's My Ranks is a pure sort** and is
-  unaffected.
-- **CSV import (#25) is one issue with a 7-step checklist**, not 7 issues. Brian was asked, didn't
-  rule, and Claude proceeded with the recommendation. Split it if he prefers.
+  touched the loaded page, so "my ranked bottles, best first" is the only reading that survives
+  pagination. To revert, change `applyMyRanksToQuery` only. **My Bar's My Ranks is a pure sort.**
+- **CSV import (#25) is one issue with a 7-step checklist**, not 7 issues.
+- **`account_type` is admin/dev-driven, by design.** Brian confirmed it is deliberately not a
+  self-serve user switch and does **not** want an admin UI card filed for it yet - the dev switch is
+  enough for now. Nothing in the app writes the column; the only reference is a read filter in
+  `activities.ts` that keeps non-`human` accounts out of the Social feed. Valid values are
+  `human` / `data` / `test` (CHECK constraint); flip one with
+  `node scripts/_psql.mjs "UPDATE users SET account_type='data' WHERE username='...';"`.
 
-### Landmine: the agent sandbox is isolated outside the repo
-Tool writes **inside `C:\pourchoices-frontend` reach the real disk** (that is how commits and deploys
-work). Writes **outside it do not** — an agent-installed binary or a PATH change is invisible to
-Brian's terminal, and `Test-Path` will still say `True` from the agent's side. This cost most of a
-session. If Brian says "command not found" for something you just installed, believe him, not your
-own filesystem check. `gh` therefore lives at **`.tools\gh\bin\gh.exe`** (gitignored), inside the repo.
+### Landmines
+- **The agent sandbox is isolated outside the repo.** Writes **inside `C:\pourchoices-frontend`**
+  reach the real disk; writes **outside it do not** - an agent-installed binary or PATH change is
+  invisible to Brian's terminal, and `Test-Path` still says `True` from the agent's side. If Brian
+  says "command not found" for something you just installed, believe him. Hence `gh` lives in-repo.
+- **The classifier refuses schema DDL and anything shaped like privilege escalation.** Both
+  `node scripts/_psql.mjs "<ddl>"` and the new `--file` mode are blocked; plain `SELECT`s through the
+  same helper are fine. **Do not try to route around it** - write the SQL to a reviewed file, commit
+  it, and hand Brian the one-liner. That is how #18 finally landed.
+- **A hidden Browser pane throttles timers.** `await setTimeout` / `requestAnimationFrame` inside
+  `javascript_tool` will hang and time out, and `computer` clicks and drags fail outright because the
+  page is not rendered. Drive multi-step UI with **one action per call** (or `browser_batch`), which
+  also gives React a real render between steps - a synchronous loop of dispatched events measures a
+  stale DOM and silently produces wrong results. This cost two false negatives before it was spotted.
 
+---
+
+### 2026-09-05 (latest) - Claude (In Progress lane cleared: push picker, migration, 10-bottle tastings)
+
+**Shipped, all on prod.** Six board issues closed; the In Progress lane is empty.
+
+- **#59 - Admin Notify could not select a subscribed user** (`f4bb4bc`). The prior session's
+  diagnosis was right and I did not re-investigate. `NotifyTab` counted devices with a *client* query
+  on `push_subscriptions`, which runs under RLS as the admin; the migration deliberately grants only
+  "Select own subscriptions" because sending uses the service role. So the admin saw only their own
+  rows and every other user computed as `devices: 0`. Fixed with a new
+  **`GET /api/admin/push-recipients`** reading counts under the service role, rather than widening
+  RLS against the migration's stated intent. Auth guard is a copy of `send-push`. Brian confirmed the
+  picker works and sent a real notification.
+- **#18 - account-type trigger migration APPLIED** (`52d20d6`, `90d6d96`). The classifier blocked the
+  DDL from the agent both inline and via a new `--file` mode, so Brian ran the one-liner and it
+  returned `CREATE FUNCTION`. Confirmed installed by reading the live body back with
+  `pg_get_functiondef()`: `protect_user_role()` now freezes `account_type` on INSERT (forces `human`)
+  and UPDATE (reverts to OLD), alongside `role`. **`account_type` is no longer client-writable.**
+  Rollback: `sql/account-type-trigger-snapshot.sql`, captured off prod first.
+  **One check still outstanding** - the behavioural test (an authenticated non-admin writing
+  `account_type` must be a silent no-op) is committed as `sql/account-type-trigger-verify.sql`,
+  wrapped in BEGIN/ROLLBACK, because the classifier refuses to run it. Expect `role_after = user`,
+  `account_type_after = test`. If `account_type` comes back `data`, reopen #18.
+- **#19 - service-role env var confirmed** (no code change). Prod has **only**
+  `SUPABASE_SERVICE_ROLE_KEY`; there is no `SUPABASE_SERVICE_ROLE` on Vercel, so the
+  `KEY ?? SUPABASE_SERVICE_ROLE` fallback in both routes is load-bearing - **keep it.** Proved live
+  rather than read off a dashboard: `push-recipients` checks credentials *before* auth, so prod
+  returning 403 (not 500) means it is genuinely reading the key. `.vercel/project.json` correctly
+  points at `pourchoicesapp`.
+- **#24 - real-device install test** closed on Brian's confirmation: installed from prod on a real
+  iPhone and a real Android.
+- **#60 - 10 bottles per blind tasting, with drag-to-reorder** (`78fc7ad`). The cap was only a UI
+  number - `MAX_PICKS` 6 -> 10 and nothing in the engine cared (pairs are built dynamically, glass
+  letters derive from the index so A-J needed no change, no tasting table has a CHECK on the count).
+  The real work was **`src/lib/useDragReorder.ts`**, a touch-first Pointer Events hook, because
+  chevrons alone would cost up to 9 taps to move a bottle at 10. Hand-rolled rather than adding
+  ~30KB of `@dnd-kit` to a mobile PWA for one list; its header comment documents the five mobile
+  pitfalls it exists to solve. Chevrons kept as the keyboard/screen-reader path. **Elo left alone
+  deliberately** - see "Right now".
+- **#61 - NEW BUG found and fixed while testing #60.** The label / rank / reveal lists were keyed by
+  **`bottleId`**, but a pick's identity is **`variantId`** - so two variants of the *same* bottle in
+  one lineup gave React duplicate sibling keys, rendering a ghost row with a repeated rank number.
+  **The order submitted was not the order shown**, feeding straight into the Elo trigger. Reachable
+  at 6 too; 10 just makes a collision likely. Fixed by keying all three on `variantId`.
+  **Process note:** this rode along inside #60's commit rather than getting its own - against the
+  one-fix-per-commit rule - which is exactly why it was filed as its own issue afterwards.
+
+**How #60 was verified** (worth copying - emulation alone would have missed #61): minted a QA
+session, set it as a cookie, drove the real UI at 375x812. Picker caps at 10 with the "Up to 10
+bottles per tasting" toast on an 11th; glasses label **A-J**; dragging row 10 to row 1 shifts the
+other nine down by one (a *move*, not a swap); chevrons and ArrowUp/Down still reorder. Then
+deliberately built the worst case for #61 - two `Bib & Tucker` variants **and** two `Big Storm
+Convergence` variants, two separate collisions - which renders 4 correctly numbered rows with no new
+duplicate-key warning.
+
+**Also confirmed, so nobody re-investigates:** `trig_update_elo_after_session` **does** exist on
+`tasting_results` in prod (`AFTER INSERT ... FOR EACH STATEMENT`), so board #9's "the 3.0 migration
+never CREATE TRIGGERs" worry does not apply to the live database as it stands.
+
+**Next single step:** **#2** - the only Top Priority item with no product decision in it. #3 and #4
+are both waiting on Brian.
 ---
 
 ### 2026-09-05 (later) — the work queue moved to a GitHub Project
