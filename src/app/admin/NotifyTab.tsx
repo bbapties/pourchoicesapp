@@ -94,9 +94,13 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
   const load = useCallback(async () => {
     // Who can actually receive one? A user with no subscribed device cannot, and saying so up
     // front beats sending into the void and reading "0 sent".
-    const [{ data: subs }, { data: users }, { data: sent }] = await Promise.all([
-      supabase.from("push_subscriptions").select("user_id"),
-      supabase.from("users").select("id, username, notify_push"),
+    //
+    // The device counts come from /api/admin/push-recipients, NOT a client query (B-59). RLS gives
+    // the admin no read on other users' push_subscriptions rows -- by design, since sending runs
+    // server-side under the service role -- so counting them here made every other user look like
+    // "0 devices" and disabled them in the picker. Do not move this back to a browser query.
+    const [recipientsRes, { data: sent }] = await Promise.all([
+      fetch("/api/admin/push-recipients"),
       supabase
         .from("notifications")
         .select("id, title, body, audience, sent_count, failed_count, created_at")
@@ -104,20 +108,13 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
         .limit(10),
     ]);
 
-    const counts = new Map<string, number>();
-    (subs ?? []).forEach((s: { user_id: string }) =>
-      counts.set(s.user_id, (counts.get(s.user_id) ?? 0) + 1)
-    );
-    setRecipients(
-      (users ?? [])
-        .filter((u: { notify_push: boolean }) => u.notify_push)
-        .map((u: { id: string; username: string }) => ({
-          id: u.id,
-          username: u.username,
-          devices: counts.get(u.id) ?? 0,
-        }))
-        .sort((a, b) => b.devices - a.devices || a.username.localeCompare(b.username))
-    );
+    const recipientsJson = await recipientsRes.json().catch(() => ({}));
+    if (!recipientsRes.ok) {
+      toast.error(recipientsJson.error ?? "Could not load the recipient list.");
+      setRecipients([]);
+    } else {
+      setRecipients(recipientsJson.recipients ?? []);
+    }
     setHistory(sent ?? []);
   }, []);
 
