@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `dc93fe3`. All on origin/MVP-v3 and live on prod.
+- **Tip:** `e401282`. All on origin/MVP-v3 and live on prod.
 - **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
 - **The board's In Progress lane is EMPTY.** The three cards Brian staged there (#65, #66, #62)
   all shipped, plus #4 from Top Priority.
@@ -45,18 +45,42 @@ prod: the schema and split operation (#71), the admin triage queue (#76), the sc
 and the search/detail wiring plus the picker label (#74, partly). Also #77, a security hole found on
 the way.
 
-**Still open, in the order I would take them:**
-1. **#73** - a submitted variant must be private to its creator until an admin verifies it, and
-   verification is where the axis gets declared. Today the triage queue is the only way to declare
-   an axis, so a user-contributed variant goes live immediately. This is the real gap.
-2. **#74 remainder** - the "See all versions" breakdown screen with a star per version.
-3. **#75** - the data pass over the 20 multi-variant bottles, done THROUGH the triage queue.
-4. **#67 / #68** - the delete gate and the merge tool. #68 and #71 both repoint `tasting_results`
-   across four columns; whoever builds the second should reuse the first's helper.
+**#70 IS BUILT.** #71, #72, #73, #74 and #76 all shipped on 2026-09-07. #67's delete BLOCK shipped
+too. What is left of the model is data work and two things blocked on one decision.
 
-**Brian can safely triage now.** Splitting a bottle is already safe ahead of the rest: the catch-all
-keeps `is_default`, so interactions still land on it, which is exactly where unlabelled history
-belongs, and the picker already offers the named versions beside it.
+### THE ONE DECISION EVERYTHING IS WAITING ON: #79
+
+**A tasting's Elo depends on the arbitrary order its pairs happen to be stored in.** Found while
+building #67's purge. Scoring the same 45-pair session from a clean slate with the pairs inserted in
+opposite orders moves **10 bottles by up to 15.01 Elo**. A full replay of prod does not reproduce
+the stored numbers either -- 11 bottles move by up to 9 - while two consecutive replays agree
+exactly. `update_elo_for_session()` updates sequentially inside a session with no ORDER BY, so each
+pair is scored against whatever the pairs before it left behind, and a replay re-inserts in a
+different order.
+
+It matters beyond replays: inside one sitting there IS no chronology between pairs -- somebody
+ranked N bottles at once - so an arbitrary storage order is deciding who gains what.
+
+**Both remaining pieces end in a replay, so both are blocked on it:** #67's purge and #68's merge.
+`replay_elo_history()` is written, correct and admin-gated (`sql/elo-replay-function.sql`) but
+**nothing calls it yet, on purpose**. Recommendation in the issue is option B: score a session
+simultaneously - read the ratings once, compute every swing against those, apply together. Needs
+Brian's approval and a one-off replay, same shape as 2026-09-06.
+
+**Still open, in the order I would take them:**
+1. **#79** - the decision above. Everything else waits on it.
+2. **#67's purge** and then **#68's merge** - both trivial once #79 is settled, both already have
+   their impact-gathering and replay pieces built.
+3. **#75** - the data pass over the 20 multi-variant bottles, done THROUGH the triage queue.
+4. **#78** - the versions table on bottle detail. Worth nothing until bottles are split.
+
+**Brian can safely triage now.** Splitting a bottle is already safe: the catch-all keeps
+`is_default`, so interactions still land on it, which is exactly where unlabelled history belongs,
+and both search modes and the picker already read the right level.
+
+**Nothing in the admin screens has been seen signed in.** An agent cannot type a password, and the
+QA account was demoted from admin in B-22. The Variants tab, the axis modal on the verify queue and
+the new delete dialog are all unverified visually.
 
 Also unverified rather than unfinished: **#66's slider fix can only be proven on an iPhone**, and
 the sticky search bar (#62) and the admin bells (#65) were shipped without a signed-in look, because
