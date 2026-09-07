@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `f90ccda` + this commit. All on origin/MVP-v3 and live on prod. 31 commits on 2026-09-07.
+- **Tip:** `f985177` + this commit. All on origin/MVP-v3 and live on prod. 33 commits on 2026-09-07.
 - **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
 - **The board's In Progress lane is EMPTY.** The three cards Brian staged there (#65, #66, #62)
   all shipped, plus #4 from Top Priority.
@@ -210,6 +210,19 @@ session and serves it with `Access-Control-Allow-Origin: *`; the page fetches it
 whole session JSON, `path=/`. Under 4096 bytes, so no chunking. The older
 `admin/generate_link` + `verify` with **`token_hash`** route still works if you need it without a
 password.
+
+### Docs were audited at the end of 2026-09-07 - they are current
+- **AGENTS.md** - read-first order fixed (priority runs RIGHT to LEFT), the START SESSION script
+  fixed, doc map points at the schema generator.
+- **docs/BOARD.md** - the new lane and its meaning, plus the two example phrases that used to train
+  the "read Top Priority and stop" habit.
+- **DB_Schema.txt.txt** - regenerated from live, and now reproducible:
+  **`node scripts/dump_schema.mjs` after any migration.** It records views (owner vs invoker),
+  functions (SECURITY DEFINER), triggers and RLS policies, not just columns.
+- **TELEMETRY.md** - the five new events (`push_resync`, `variant_triage`, `variant_split`,
+  `bottle_purge`, `bottle_merge`).
+- **README.md is still stale** and was left alone (it says Next 15 and "not implemented"). It is the
+  one doc nobody has claimed; fix or delete it rather than half-trusting it.
 
 ### Still owed by Brian
 - **#75, the triage pass.** Judgement work per bottle; the tooling is all built.
