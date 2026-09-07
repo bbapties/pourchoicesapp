@@ -79,9 +79,48 @@ type QueueBottle = {
 };
 
 // The row targeted by the delete-confirm modal — either a whole bottle or a single variant.
+/**
+ * #67: everything a delete would destroy, not just who owns it. Counts come from
+ * bottle_delete_impact / variant_delete_impact so the dialog, the merge tool and anything else
+ * that asks get the same answer -- and so the count is complete, which a browser reading through
+ * RLS cannot guarantee.
+ */
+export type DeleteImpact = {
+  in_bars: number;
+  emptied: number;
+  tasted: number;
+  blind_tastings: number;
+  head_to_head_pairs: number;
+  pours: number;
+  feed_posts: number;
+  star_ratings: number;
+  wishlisted: number;
+  pending_edits: number;
+  versions?: number;
+  usernames: string[];
+};
+
+/** Rows the dialog lists, in the order a person would want to read them. */
+const IMPACT_ROWS: { key: keyof DeleteImpact; label: (n: number) => string }[] = [
+  { key: "in_bars",            label: (n) => `in ${n} ${n === 1 ? "person's" : "people's"} bar` },
+  { key: "emptied",            label: (n) => `finished by ${n} ${n === 1 ? "person" : "people"}` },
+  { key: "blind_tastings",     label: (n) => `${n} blind tasting${n === 1 ? "" : "s"}` },
+  { key: "head_to_head_pairs", label: (n) => `${n} head-to-head result${n === 1 ? "" : "s"} that feed Elo` },
+  { key: "pours",              label: (n) => `${n} logged pour${n === 1 ? "" : "s"}` },
+  { key: "star_ratings",       label: (n) => `${n} star rating${n === 1 ? "" : "s"}` },
+  { key: "wishlisted",         label: (n) => `wishlisted by ${n}` },
+  { key: "feed_posts",         label: (n) => `${n} Social feed post${n === 1 ? "" : "s"}` },
+  { key: "pending_edits",      label: (n) => `${n} pending suggested edit${n === 1 ? "" : "s"}` },
+];
+
+function impactTotal(i: DeleteImpact | null): number {
+  if (!i) return 0;
+  return IMPACT_ROWS.reduce((sum, r) => sum + (Number(i[r.key]) || 0), 0);
+}
+
 type DeleteTarget =
-  | { kind: "bottle"; id: string; label: string; ownerNames: string[]; variantCount: number }
-  | { kind: "variant"; id: string; label: string; ownerNames: string[] };
+  | { kind: "bottle"; id: string; label: string; impact: DeleteImpact | null; variantCount: number }
+  | { kind: "variant"; id: string; label: string; impact: DeleteImpact | null };
 
 // Editable field set for the verify-review modal. The admin fixes gaps here and
 // verifies in one pass, rather than bouncing to the app to suggest an edit to
@@ -478,34 +517,31 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   };
 
   // ---- Delete: gather impact, then confirm ----
-  const ownersOfBottle = async (bottleId: string): Promise<string[]> => {
-    const { data: ub } = await supabase.from("user_bottles").select("user_id").eq("bottle_id", bottleId);
-    const userIds = [...new Set((ub || []).map((r) => r.user_id))];
-    if (!userIds.length) return [];
-    const { data } = await supabase.from("users").select("username").in("id", userIds);
-    return (data || []).map((u) => u.username);
-  };
-
-  const ownersOfVariant = async (variantId: string): Promise<string[]> => {
-    const { data: ub } = await supabase.from("user_bottles").select("user_id").eq("variant_id", variantId);
-    const userIds = [...new Set((ub || []).map((r) => r.user_id))];
-    if (!userIds.length) return [];
-    const { data } = await supabase.from("users").select("username").in("id", userIds);
-    return (data || []).map((u) => u.username);
-  };
-
   const openDeleteBottle = async (b: QueueBottle) => {
     setBusyId(b.id);
-    const ownerNames = await ownersOfBottle(b.id);
+    const { data, error } = await supabase.rpc("bottle_delete_impact", { p_bottle: b.id });
     setBusyId(null);
-    setTarget({ kind: "bottle", id: b.id, label: b.name, ownerNames, variantCount: b.variants.length });
+    if (error) { toast.error(`Could not check what this would delete: ${error.message}`); return; }
+    setTarget({
+      kind: "bottle",
+      id: b.id,
+      label: b.name,
+      impact: (data as DeleteImpact) ?? null,
+      variantCount: b.variants.length,
+    });
   };
 
   const openDeleteVariant = async (b: QueueBottle, v: QueueVariant) => {
     setBusyId(v.id);
-    const ownerNames = await ownersOfVariant(v.id);
+    const { data, error } = await supabase.rpc("variant_delete_impact", { p_variant: v.id });
     setBusyId(null);
-    setTarget({ kind: "variant", id: v.id, label: `${b.name} — ${variantLabel(v)}`, ownerNames });
+    if (error) { toast.error(`Could not check what this would delete: ${error.message}`); return; }
+    setTarget({
+      kind: "variant",
+      id: v.id,
+      label: `${b.name} — ${variantLabel(v)}`,
+      impact: (data as DeleteImpact) ?? null,
+    });
   };
 
   const closeDelete = () => {
@@ -514,7 +550,8 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   };
 
   const confirmDelete = async () => {
-    if (!target || target.ownerNames.length > 0) return; // blocked when owned
+    // #67: blocked while ANY interaction exists, not just ownership.
+    if (!target || impactTotal(target.impact) > 0) return;
     setDeleting(true);
 
     if (target.kind === "bottle") {
@@ -893,23 +930,37 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
               </p>
             </div>
 
-            {target.ownerNames.length > 0 ? (
-              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3 space-y-1">
-                <p>
-                  {target.ownerNames.length} user{target.ownerNames.length === 1 ? "" : "s"} have this in My Bar:
-                </p>
-                <p className="text-xs">{target.ownerNames.join(", ")}</p>
+            {impactTotal(target.impact) > 0 ? (
+              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3 space-y-2">
+                <p className="font-semibold">This would destroy real history:</p>
+                <ul className="text-xs list-disc pl-4 space-y-0.5">
+                  {IMPACT_ROWS.filter((r) => Number(target.impact?.[r.key]) > 0).map((r) => (
+                    <li key={String(r.key)}>{r.label(Number(target.impact?.[r.key]))}</li>
+                  ))}
+                </ul>
+                {target.impact!.usernames.length > 0 && (
+                  <p className="text-xs">Affects: {target.impact!.usernames.join(", ")}</p>
+                )}
+                {Number(target.impact?.head_to_head_pairs) > 0 && (
+                  <p className="text-xs text-red-600">
+                    Those head-to-head results are what every other bottle&apos;s Elo was built from.
+                    Deleting them leaves the other bottles holding points won against something that
+                    no longer exists.
+                  </p>
+                )}
                 <p className="text-xs text-red-600">
-                  Deletion is blocked while it&apos;s owned — a cascade delete for owned bottles isn&apos;t built yet.
+                  Blocked. Move these onto the right bottle first — the merge tool is #68; until it
+                  lands, flag it as <span className="font-semibold">Needs merge</span> in Variants.
                 </p>
               </div>
             ) : (
               <p className="text-sm text-gray-600">
-                No users own this
+                Nobody has interacted with this — no bar entries, tastings, pours, ratings or
+                wishlists
                 {target.kind === "bottle" && target.variantCount > 0
-                  ? `. Its ${target.variantCount} variant${target.variantCount === 1 ? "" : "s"} will also be removed.`
-                  : "."}{" "}
-                This cannot be undone.
+                  ? `. Its ${target.variantCount} version${target.variantCount === 1 ? "" : "s"} will also be removed.`
+                  : ""}
+                . This cannot be undone.
               </p>
             )}
 
@@ -919,7 +970,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
               </button>
               <button
                 onClick={confirmDelete}
-                disabled={deleting || target.ownerNames.length > 0}
+                disabled={deleting || impactTotal(target.impact) > 0}
                 className="px-3 py-2 text-sm bg-red-600 text-white rounded disabled:opacity-40"
               >
                 {deleting ? "Deleting…" : "Delete permanently"}
