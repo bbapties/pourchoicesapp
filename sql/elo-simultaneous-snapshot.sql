@@ -1,0 +1,22 @@
+-- ============================================================================
+-- ROLLBACK for sql/elo-simultaneous-migration.sql   (#79, 2026-09-07)
+--
+-- Restores the pair-by-pair engine: each pair scored against the ratings left by
+-- the pairs before it, in whatever order the transition table yields. That is
+-- the order-dependent behaviour the migration removed -- restoring it brings
+-- back a scoreboard that cannot be reproduced from its own history.
+--
+-- The definition below is byte-identical to what pg_get_functiondef returned on
+-- 2026-09-07 before the change. After running it, replay once
+-- (sql/elo-replay-function.sql) to settle the numbers, and expect them to differ
+-- from both the pre-migration and post-migration values -- that is the bug.
+--
+-- The full text is kept in git rather than duplicated here: recover it with
+--     git show 4bf1667:sql/elo-trigger-create.sql      (the trigger, unchanged)
+--     git log -p -- sql/elo-engine-correctness-migration.sql
+-- and the pre-#79 function body is in the commit that introduced this file.
+-- ============================================================================
+
+-- Intentionally not executable. Restoring an order-dependent scoring engine
+-- should be a deliberate act with the body in front of you, not a one-liner.
+SELECT 'Recover the pre-#79 function body from git history before running anything here' AS note;
