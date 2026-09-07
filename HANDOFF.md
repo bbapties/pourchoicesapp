@@ -16,6 +16,18 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ### Read this before anything else - the queue lives on the board
 
+**THE BOARD HAS A LANE THAT IS EASY TO MISS.** Columns are, left to right:
+`To be reviewed | North Star | Backlog | Coming Soon | Top Priority | Next Items per Brian |
+In Progress | Done`. **Priority runs RIGHT to LEFT** - the rightmost non-Done lane is next. An agent
+that reads "Top Priority" and stops will skip the lane Brian actually fills in, which happened on
+2026-09-07.
+
+**"Next Items per Brian" is a proposal lane, not an order.** Its own description: *"if you logically
+think it's better to be skipped for another priority or wait for it to be joined with another, or
+needs more details, then move it appropriately and add comments."* Judge each card, then either work
+it or move it **with a comment explaining why**. **Re-read the column list and their descriptions
+every session** - the set has changed once already, and the descriptions carry instructions.
+
 **https://github.com/users/bbapties/projects/1** is the single source of truth for what is open and
 in what order. `ROADMAP/BUGS/BACKLOG/PHASE8-10` are in **`docs/archive/`** and **frozen** - read them
 for specs and history, never for status, and never tick a box in them.

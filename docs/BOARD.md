@@ -14,7 +14,19 @@ Set up 2026-09-05. Import record, including everything deliberately skipped:
 ## How the board works
 
 **Priority is not a field.** It's expressed by which column a card sits in — Brian drives that by
-dragging. The columns are a *readiness* pipeline, not just urgency:
+dragging. The columns are a *readiness* pipeline, not just urgency.
+
+**THE RULE: the further RIGHT a card sits, the sooner it happens.** Read right to left, skipping
+Done — *In Progress*, then *Next Items per Brian*, then *Top Priority*, then *Coming Soon*. An agent
+that reads only "Top Priority" will walk straight past the lane Brian actually filled in, which
+happened on 2026-09-07. **Re-read the columns each session** (`gh project field-list 1 --owner
+bbapties`); the set has changed once already and the descriptions carry instructions:
+
+```
+gh api graphql -f query='query { user(login:"bbapties"){ projectV2(number:1){
+  field(name:"Status"){ ... on ProjectV2SingleSelectField { options { name description } } } } } }'
+```
+
 
 | Column | Means |
 |---|---|
@@ -23,6 +35,7 @@ dragging. The columns are a *readiness* pipeline, not just urgency:
 | **Backlog** | Broken into features. Waiting for prioritization. |
 | **Coming Soon** | Broken into tasks. Coming up soon in the roadmap. |
 | **Top Priority** | Immediate work. |
+| **Next Items per Brian** | **What Brian wants to see next — but it is a PROPOSAL, not an order.** His own words on the column: *"if you logically think it's better to be skipped for another priority or wait for it to be joined with another, or needs more details, then move it appropriately and add comments."* So an agent is expected to judge each card and either work it or move it **with a comment saying why**. Never silently leave one sitting. |
 | **In Progress** | Actively being worked. |
 | **Done** | Completed. |
 
