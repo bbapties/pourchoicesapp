@@ -152,6 +152,11 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [target, setTarget] = useState<DeleteTarget | null>(null);
+  // #67: the second kind of admin delete. A duplicate gets MERGED (#68); junk and test rows get
+  // PURGED -- bottle and history together, then every Elo rebuilt from what survives. It is the
+  // only path that deliberately destroys other people's history, so it asks for the name.
+  const [purgeMode, setPurgeMode] = useState(false);
+  const [purgeText, setPurgeText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [suggestions, setSuggestions] = useState<AdminSuggestion[]>([]);
   const [sugNotes, setSugNotes] = useState<Record<string, string>>({});
@@ -547,6 +552,36 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   const closeDelete = () => {
     if (deleting) return;
     setTarget(null);
+    setPurgeMode(false);
+    setPurgeText("");
+  };
+
+  /**
+   * Purge: delete the bottle AND everything attached, then replay every Elo in the same
+   * transaction. Only trustworthy because of #79 -- until the engine scored a session
+   * simultaneously, a replay did not reproduce the numbers it replaced, so this would have
+   * reshuffled bottles that had nothing to do with the purge.
+   */
+  const confirmPurge = async () => {
+    if (!target || target.kind !== "bottle") return;
+    setDeleting(true);
+    const { data, error } = await supabase.rpc("purge_bottle", {
+      p_bottle: target.id,
+      p_confirm_name: purgeText,
+    });
+    setDeleting(false);
+    if (error) { toast.error(`Purge failed: ${error.message}`); return; }
+    const res = data as { bottle: string; sessions_replayed: number } | null;
+    logEvent({
+      eventType: "bottle_purge",
+      surface: "admin_bottles",
+      metadata: { bottleId: target.id, impact: target.impact },
+    });
+    toast.success(
+      `Purged ${res?.bottle ?? target.label}. Rebuilt every score from the ${res?.sessions_replayed ?? 0} remaining tastings.`
+    );
+    closeDelete();
+    load();
   };
 
   const confirmDelete = async () => {
@@ -949,9 +984,48 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                   </p>
                 )}
                 <p className="text-xs text-red-600">
-                  Blocked. Move these onto the right bottle first — the merge tool is #68; until it
-                  lands, flag it as <span className="font-semibold">Needs merge</span> in Variants.
+                  Blocked. If this is the same whiskey twice, move these onto the right bottle first
+                  — the merge tool is #68; until it lands, flag it as{" "}
+                  <span className="font-semibold">Needs merge</span> in Variants.
                 </p>
+
+                {/* The other kind of delete: this is junk, and its history is junk too. */}
+                {target.kind === "bottle" && !purgeMode && (
+                  <button
+                    type="button"
+                    onClick={() => setPurgeMode(true)}
+                    className="text-xs underline decoration-dotted underline-offset-2 text-red-700"
+                  >
+                    This is junk or test data — purge it and its history
+                  </button>
+                )}
+
+                {target.kind === "bottle" && purgeMode && (
+                  <div className="border-t border-red-200 pt-2 space-y-2">
+                    <p className="text-xs">
+                      Purging deletes the bottle and everything above it, then rebuilds every score
+                      from the tastings that survive. Other people&apos;s rankings can move. They are
+                      not told.
+                    </p>
+                    <label className="block text-xs">
+                      Type <span className="font-mono font-semibold">{target.label}</span> to confirm
+                      <input
+                        autoFocus
+                        value={purgeText}
+                        onChange={(e) => setPurgeText(e.target.value)}
+                        className="mt-1 w-full border border-red-300 rounded px-2 py-1.5 text-xs"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={confirmPurge}
+                      disabled={deleting || purgeText !== target.label}
+                      className="text-xs px-3 py-1.5 rounded bg-red-700 text-white disabled:opacity-40"
+                    >
+                      {deleting ? "Purging…" : "Purge and rebuild scores"}
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-sm text-gray-600">

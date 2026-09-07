@@ -126,10 +126,15 @@ Variant model (#70), from the admin triage queue:
 |-------|------|
 | `variant_triage` | an admin decided a bottle is `single` or `needs_merge` (metadata: `bottleId`, `triage`) |
 | `variant_split` | a bottle became a rollup parent (metadata: `bottleId`, `axis`) |
+| `bottle_purge` | an admin deleted a bottle AND its history, rebuilding every Elo (metadata: `bottleId`, `impact`) |
 
 `variant_split` is the interesting one to watch: it is irreversible in practice, it changes what
 every user sees in search for that bottle, and the axis chosen is a judgement that cannot be
 re-derived from the data. Keep it even if the triage queue is later retired.
+
+`bottle_purge` carries the full impact payload on purpose -- it is the only record of what was
+destroyed, since the rows themselves are gone. If a user ever asks why a bottle vanished from their
+bar, this event is the answer.
 
 Watch for `push_prompt_shown` on iOS with no `push_permission` following: on iPhone the APIs only
 exist inside an installed PWA, so that gap is an install problem, not a notification problem.
