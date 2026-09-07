@@ -127,6 +127,7 @@ Variant model (#70), from the admin triage queue:
 | `variant_triage` | an admin decided a bottle is `single` or `needs_merge` (metadata: `bottleId`, `triage`) |
 | `variant_split` | a bottle became a rollup parent (metadata: `bottleId`, `axis`) |
 | `bottle_purge` | an admin deleted a bottle AND its history, rebuilding every Elo (metadata: `bottleId`, `impact`) |
+| `bottle_merge` | a duplicate was folded into another bottle (metadata: `source`, `target`, `map`) |
 
 `variant_split` is the interesting one to watch: it is irreversible in practice, it changes what
 every user sees in search for that bottle, and the axis chosen is a judgement that cannot be

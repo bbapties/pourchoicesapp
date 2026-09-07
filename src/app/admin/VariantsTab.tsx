@@ -103,6 +103,57 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
   const [confirming, setConfirming] = useState<{ bottle: BottleRow; axis: Axis } | null>(null);
   const [axisDraft, setAxisDraft] = useState<Record<string, Axis>>({});
 
+  /**
+   * #68: merge a duplicate into the real bottle. Lives here rather than in the delete dialog
+   * because this is the screen where Brian decides something IS a duplicate -- "Needs merge" and
+   * the merge itself should be one step apart, not one screen apart.
+   *
+   * Version mapping is deliberately manual (his call): the admin says where each version goes, or
+   * brings it across whole. No auto-matching on proof/age/label.
+   */
+  const [mergeFor, setMergeFor] = useState<BottleRow | null>(null);
+  const [mergeQuery, setMergeQuery] = useState("");
+  const [mergeTarget, setMergeTarget] = useState<BottleRow | null>(null);
+  const [mergeMap, setMergeMap] = useState<Record<string, string>>({});
+  const [mergeConfirm, setMergeConfirm] = useState("");
+  const [merging, setMerging] = useState(false);
+
+  const closeMerge = () => {
+    if (merging) return;
+    setMergeFor(null); setMergeQuery(""); setMergeTarget(null);
+    setMergeMap({}); setMergeConfirm("");
+  };
+
+  const mergeCandidates = useMemo(() => {
+    const q = mergeQuery.trim().toLowerCase();
+    if (!mergeFor || q.length < 2) return [];
+    return bottles.filter((b) => b.id !== mergeFor.id && b.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [bottles, mergeQuery, mergeFor]);
+
+  const runMerge = async () => {
+    if (!mergeFor || !mergeTarget) return;
+    setMerging(true);
+    const { data, error } = await supabase.rpc("merge_bottle", {
+      p_source: mergeFor.id,
+      p_target: mergeTarget.id,
+      p_variant_map: mergeMap,
+      p_confirm_name: mergeConfirm,
+    });
+    setMerging(false);
+    if (error) { toast.error(`Merge failed: ${error.message}`); return; }
+    const res = data as { merged: string; into: string; versions_folded: number; versions_moved: number } | null;
+    logEvent({
+      eventType: "bottle_merge",
+      surface: "admin_variants",
+      metadata: { source: mergeFor.id, target: mergeTarget.id, map: mergeMap },
+    });
+    toast.success(
+      `Merged ${res?.merged} into ${res?.into} — ${res?.versions_folded ?? 0} version(s) folded, ${res?.versions_moved ?? 0} brought across. Scores rebuilt.`
+    );
+    closeMerge();
+    load();
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     const [bottlesRes, variantsRes, ubRes, actRes] = await Promise.all([
@@ -328,6 +379,18 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
                   </button>
                 </div>
               )}
+
+              {/* #68: available whether or not it has been flagged -- deciding it is a duplicate
+                  and acting on that should not be two visits. */}
+              {(b.triage === "needs_merge" || !b.triage) && (
+                <button
+                  type="button"
+                  onClick={() => { setMergeFor(b); setMergeConfirm(""); }}
+                  className="text-xs underline decoration-dotted underline-offset-2 text-amber-700"
+                >
+                  Merge this into another bottle…
+                </button>
+              )}
             </li>
           );
         })}
@@ -337,6 +400,104 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
           </li>
         )}
       </ul>
+
+      {mergeFor && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
+             onClick={closeMerge}>
+          <div className="bg-white rounded-lg w-full max-w-md p-5 space-y-4 my-8" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <h2 className="font-semibold text-charcoal">Merge {mergeFor.name}</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Everything attached to it moves to the bottle you pick — bar entries add up, the
+                most recent star rating wins, tastings are repointed rather than deleted — and every
+                score is rebuilt afterwards. This bottle then stops existing.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-600">Merge into</label>
+              {mergeTarget ? (
+                <div className="flex items-center justify-between border border-charcoal rounded px-3 py-2 mt-1">
+                  <span className="text-sm font-medium">{mergeTarget.name}</span>
+                  <button type="button" onClick={() => { setMergeTarget(null); setMergeMap({}); }}
+                          className="text-xs text-gray-500 underline">change</button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    autoFocus
+                    value={mergeQuery}
+                    onChange={(e) => setMergeQuery(e.target.value)}
+                    placeholder="Search for the bottle to keep"
+                    className="mt-1 w-full border border-gray-400 rounded px-2 py-2 text-sm"
+                  />
+                  <ul className="mt-1 space-y-1">
+                    {mergeCandidates.map((c) => (
+                      <li key={c.id}>
+                        <button type="button" onClick={() => setMergeTarget(c)}
+                                className="w-full text-left text-sm border border-gray-200 rounded px-2 py-1.5 hover:bg-gray-50">
+                          {c.name}
+                          <span className="text-xs text-gray-500">
+                            {" "}· {c.variants.filter((v) => !v.storePickName).length} version(s)
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+
+            {mergeTarget && (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-600">
+                  Where does each version go? Nothing is guessed — leave one as &ldquo;bring it
+                  across&rdquo; if the survivor has no equivalent.
+                </p>
+                {mergeFor.variants.map((v) => (
+                  <div key={v.id} className="text-xs">
+                    <div className="text-charcoal">{variantLabel(v)}</div>
+                    <select
+                      value={mergeMap[v.id] ?? ""}
+                      onChange={(e) => setMergeMap((m) => ({ ...m, [v.id]: e.target.value }))}
+                      className="mt-1 w-full border border-gray-400 rounded px-2 py-1.5"
+                    >
+                      <option value="">Bring it across as its own version</option>
+                      {mergeTarget.variants.map((tv) => (
+                        <option key={tv.id} value={tv.id}>Fold into: {variantLabel(tv)}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {mergeTarget && (
+              <label className="block text-xs text-gray-600">
+                Type <span className="font-mono font-semibold">{mergeFor.name}</span> to confirm
+                <input
+                  value={mergeConfirm}
+                  onChange={(e) => setMergeConfirm(e.target.value)}
+                  className="mt-1 w-full border border-charcoal rounded px-2 py-1.5 text-sm"
+                />
+              </label>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button onClick={closeMerge} disabled={merging} className="px-3 py-2 text-sm text-gray-600">
+                Cancel
+              </button>
+              <button
+                onClick={runMerge}
+                disabled={merging || !mergeTarget || mergeConfirm !== mergeFor.name}
+                className="px-3 py-2 text-sm bg-gray-900 text-white rounded disabled:opacity-40"
+              >
+                {merging ? "Merging…" : "Merge and rebuild scores"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirming && (
         <div
