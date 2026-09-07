@@ -410,6 +410,11 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       q = applyHadItToQuery(q);
       q = applyMyRanksToQuery(q);
       const { data, error } = await q
+        // Sort by the star the card actually SHOWS. It used to sort by Elo while displaying the
+        // blended score, which put W.L. Weller Antique 107 -- one manual 5.0, never blind-tasted,
+        // so still on the 1500 baseline -- seventeen rows below bottles showing 3.8. Elo stays as
+        // the tiebreak so bottles on the same star fall in tasting order.
+        .order("blended_star", { ascending: false, nullsFirst: false })
         .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
         .range(offset, offset + limit - 1);
 
@@ -727,6 +732,11 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         .or(orClause);
       if (!isBottles) sq = scopeVariantQuery(sq);
       const { data: searchResults, error } = await sq
+        // Sort by the star the card actually SHOWS. It used to sort by Elo while displaying the
+        // blended score, which put W.L. Weller Antique 107 -- one manual 5.0, never blind-tasted,
+        // so still on the 1500 baseline -- seventeen rows below bottles showing 3.8. Elo stays as
+        // the tiebreak so bottles on the same star fall in tasting order.
+        .order("blended_star", { ascending: false, nullsFirst: false })
         .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
 
