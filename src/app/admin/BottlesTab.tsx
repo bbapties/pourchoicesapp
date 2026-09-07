@@ -68,6 +68,8 @@ type QueueBottle = {
   distillery: string | null;
   category: string | null;
   parentVerified: boolean; // parent bottle may already be verified but have unverified variants
+  /** #73: null until an admin declares it. Verifying the FIRST real variant is where that happens. */
+  variantAxis: string | null;
   submittedBy: string;
   created_at: string;
   updated_at: string | null;
@@ -252,7 +254,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
     const [bottlesRes, variantsRes] = await Promise.all([
       supabase
         .from("bottles")
-        .select("id, name, distillery, category, verified, created_by, created_at, updated_at")
+        .select("id, name, distillery, category, verified, created_by, created_at, updated_at, variant_axis")
         .eq("verified", false),
       supabase
         .from("bottle_variants")
@@ -280,7 +282,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
     if (missingParentIds.length) {
       const parentsRes = await supabase
         .from("bottles")
-        .select("id, name, distillery, category, verified, created_by, created_at, updated_at")
+        .select("id, name, distillery, category, verified, created_by, created_at, updated_at, variant_axis")
         .in("id", missingParentIds);
       parentBottles = parentsRes.data || [];
     }
@@ -354,6 +356,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
         distillery: b.distillery,
         category: b.category,
         parentVerified: b.verified,
+        variantAxis: (b as { variant_axis?: string | null }).variant_axis ?? null,
         submittedBy: nameFor(b.created_by),
         created_at: b.created_at,
         updated_at: b.updated_at ?? null,
@@ -384,6 +387,54 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
         b.submittedBy.toLowerCase().includes(q)
     );
   }, [queue, search]);
+
+  /**
+   * #73: verifying a bottle's FIRST real version is the moment it becomes a rollup parent, so the
+   * axis has to be declared here -- it is the question every future contributor gets asked, and it
+   * cannot be inferred from the data (see the triage queue). A store pick never triggers this: it
+   * is a private clone, not a global variation.
+   */
+  const [axisPrompt, setAxisPrompt] = useState<
+    { bottle: QueueBottle; variant: QueueVariant; axis: string } | null
+  >(null);
+
+  const AXIS_OPTIONS: { value: string; label: string; question: string }[] = [
+    { value: "release_year", label: "Release year", question: "Which year is this?" },
+    { value: "batch",        label: "Batch",        question: "Which batch is this?" },
+    { value: "rickhouse",    label: "Rickhouse / floor", question: "Which rickhouse or floor?" },
+    { value: "barrel",       label: "Barrel number", question: "Which barrel?" },
+    { value: "custom",       label: "Custom (free text)", question: "Which version is this?" },
+  ];
+
+  /** Declare the axis, split the bottle, then verify the version that triggered it. */
+  const confirmAxisAndVerify = async () => {
+    if (!axisPrompt) return;
+    const { bottle, variant, axis } = axisPrompt;
+    setBusyId(variant.id);
+    const { error } = await supabase.rpc("split_bottle_into_variants", {
+      p_bottle: bottle.id,
+      p_axis: axis,
+    });
+    if (error) {
+      setBusyId(null);
+      toast.error(`Could not split: ${error.message}`);
+      return;
+    }
+    logEvent({
+      eventType: "variant_split",
+      surface: "admin_bottles",
+      metadata: { bottleId: bottle.id, axis, via: "verify" },
+    });
+    setAxisPrompt(null);
+    setBusyId(null);
+    await verify({
+      table: "bottle_variants",
+      id: variant.id,
+      bottleId: bottle.id,
+      variantId: variant.id,
+      label: variantLabel(variant),
+    });
+  };
 
   // ---- Verify ----
   const verify = async (opts: {
@@ -672,15 +723,22 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                     <div className="flex flex-col gap-1.5 shrink-0">
                       <button
                         disabled={busyId === v.id}
-                        onClick={() =>
+                        onClick={() => {
+                          // #73: the first real version of a bottle cannot be verified without
+                          // declaring what the bottle varies BY -- that is what turns it into a
+                          // rollup parent. Store picks skip it; they are clones, not variations.
+                          if (!b.variantAxis && !v.store_pick_name) {
+                            setAxisPrompt({ bottle: b, variant: v, axis: "" });
+                            return;
+                          }
                           verify({
                             table: "bottle_variants",
                             id: v.id,
                             bottleId: b.id,
                             variantId: v.id,
                             label: variantLabel(v),
-                          })
-                        }
+                          });
+                        }}
                         className="text-xs px-3 py-1.5 border border-green-700 text-green-700 rounded disabled:opacity-40"
                       >
                         Verify
@@ -865,6 +923,64 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                 className="px-3 py-2 text-sm bg-red-600 text-white rounded disabled:opacity-40"
               >
                 {deleting ? "Deleting…" : "Delete permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* #73: declare the axis before the first real version goes live. */}
+      {axisPrompt && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => { if (!busyId) setAxisPrompt(null); }}
+        >
+          <div className="bg-white rounded-lg w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <h2 className="font-semibold text-charcoal">What does this bottle vary by?</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Verifying <span className="font-semibold">{variantLabel(axisPrompt.variant)}</span> makes{" "}
+                <span className="font-semibold">{axisPrompt.bottle.name}</span> a bottle with versions.
+                Pick the one thing that tells them apart — it becomes the question every future
+                contributor is asked.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              {AXIS_OPTIONS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setAxisPrompt((p) => (p ? { ...p, axis: o.value } : p))}
+                  className={`w-full text-left rounded border px-3 py-2 text-sm ${
+                    axisPrompt.axis === o.value ? "border-charcoal bg-gray-100" : "border-gray-300"
+                  }`}
+                >
+                  <div className="font-medium text-charcoal">{o.label}</div>
+                  <div className="text-xs text-gray-500">&ldquo;{o.question}&rdquo;</div>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Its existing history becomes the &ldquo;unknown&rdquo; version — nothing moves — and the
+              bottle itself becomes a rollup of its versions. The axis is declared once.
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setAxisPrompt(null)}
+                disabled={!!busyId}
+                className="px-3 py-2 text-sm text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmAxisAndVerify}
+                disabled={!axisPrompt.axis || !!busyId}
+                className="px-3 py-2 text-sm bg-gray-900 text-white rounded disabled:opacity-40"
+              >
+                {busyId ? "Working…" : "Declare & verify"}
               </button>
             </div>
           </div>

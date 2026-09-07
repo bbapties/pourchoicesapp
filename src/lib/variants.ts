@@ -97,6 +97,13 @@ export async function fetchVariantsForSku(
  * pick never flashes before the authoritative refetch (B-10).
  *
  * B-74: takes the viewer's public.users.id. It used to take both ids and match either.
+ *
+ * #73 NOTE: the read rule grew a second half -- an added version is private to its creator until an
+ * admin verifies it -- but that half is NOT duplicated here. It is enforced by the "Public read"
+ * policy on bottle_variants, and `all_variant_details` / `all_bottle_details` are
+ * security_invoker views, so every list this seeds from has already been filtered. This helper
+ * stays as the belt-and-braces store-pick check it has always been. If a caller ever reads variants
+ * from a source RLS does not filter, encode the whole rule there rather than widening this.
  */
 export function isVariantVisibleToViewer(
   storePickName: string | null | undefined,
