@@ -19,6 +19,7 @@ import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty, type UserBottleRow } from "@/lib/userBottles";
 import { logEvent, logClick } from "@/lib/events";
+import { fetchBottleScores, type BottleScore } from "@/lib/scores";
 
 const DEFAULT_PAGE_SIZE = 30;
 const LOAD_MORE_SIZE = 15;
@@ -80,6 +81,13 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   // S4 My Ranks: skuId -> the viewer's own star rating (max across their rows for that SKU).
   const [personalStarMap, setPersonalStarMap] = useState<Record<string, number>>({});
   const [publicUserId, setPublicUserId] = useState<string | null>(null);
+  // A.2 -> #70: the list card star is the GLOBAL rollup, identical for every viewer. It used to be
+  // the average of the viewer's own rating and the global one, which quietly made the same bottle
+  // show a different score to different people on the screen where they compare bottles. Brian,
+  // 2026-09-07: "in the main search results, it should always be a weighted average seen by
+  // everyone the same" -- the personal number belongs on the detail page, labelled.
+  const [bottleScores, setBottleScores] = useState<Record<string, BottleScore>>({});
+  const requestedScoreIds = useRef<Set<string>>(new Set());
 
   // 7.9: store picks are private to their creator. Scope an all_variant_details query to
   // global variants + the viewer's own store picks. B-74: `created_by` is a public.users.id,
@@ -431,6 +439,27 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     loadDefaultBottles(true);
   }, [loadDefaultBottles]);
 
+  // Rollup stars for whatever is on screen (#70/#72). Fetched alongside the list rather than
+  // baked into all_bottle_details: the view counts blind tastings the browser cannot see -- under
+  // RLS a user reads only their OWN tasting_results -- so this has to come back as its own read.
+  // Merged into a map rather than onto the rows so a page appended by infinite scroll keeps the
+  // scores already fetched. Fails open: a missing row falls back to the old client-side scaling.
+  useEffect(() => {
+    const ids = [...bottles, ...defaultBottles]
+      .map((b) => (b.bottleId ?? b.id) as string | undefined)
+      .filter((id): id is string => !!id && !requestedScoreIds.current.has(id));
+    if (!ids.length) return;
+    // Track what has been ASKED for, not what came back. A bottle with no variants has no row in
+    // the view, so keying this off the result map would re-request it on every render forever.
+    ids.forEach((id) => requestedScoreIds.current.add(id));
+    let cancelled = false;
+    fetchBottleScores(ids).then((map) => {
+      if (cancelled || !Object.keys(map).length) return;
+      setBottleScores((prev) => ({ ...prev, ...map }));
+    });
+    return () => { cancelled = true; };
+  }, [bottles, defaultBottles]);
+
   // Infinite scroll — listen on the AppShell <main> scroll container.
   // IntersectionObserver won't work here because scroll happens inside overflow-y:auto <main>,
   // not the viewport, so the sentinel never intersects the viewport root.
@@ -467,14 +496,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         currentlyOwned: userBottlesMap[skuId]?.some(r => r.currently_owned) ?? false,
         // "Had it" (earmark) = owned/past OR drank OR blind-tasted — any relationship (B-31).
         hadIt: inCollection || hadItSet.has(skuId),
-        // A.2: the list card star is the average of my rating and the global rating (whichever
-        // exist); the detail breaks the two apart.
-        stars: (() => {
-          const mine = personalStarMap[skuId];
-          const global = bottle.stars as number | null | undefined;
-          if (mine != null && global != null) return (mine + global) / 2;
-          return mine ?? global ?? null;
-        })(),
+        // #70: the global rollup, the same for everyone. `bottle.stars` is the old client-side
+        // scaling of elo_global and stays as the fallback for a bottle the view has no row for.
+        stars: bottleScores[skuId]?.star ?? (bottle.stars as number | null | undefined) ?? null,
       };
     });
 
@@ -511,7 +535,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       return [...annotated].sort((a, b) => rank(b) - rank(a));
     }
     return annotated; // global/null = server Elo order
-  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, personalStarMap, personalEloMap]);
+  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, personalStarMap, personalEloMap, bottleScores]);
 
   const handleSortSelect = (option: SortOption) => {
     if (option === 'yours' && Object.keys(personalEloMap).length === 0 && Object.keys(personalStarMap).length === 0) {

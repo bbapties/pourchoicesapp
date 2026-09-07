@@ -14,6 +14,7 @@ import MoreSheet from "@/components/MoreSheet";
 import HistoryModal from "@/components/HistoryModal";
 import RatePromptSheet from "@/components/RatePromptSheet";
 import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
+import { fetchVariantScores, evidenceLabel, type VariantScore } from "@/lib/scores";
 import { fetchWishlistVariantIds, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 import { reportBarcodeMismatch } from "@/lib/feedback";
 import { supabase } from "@/lib/supabase";
@@ -132,6 +133,11 @@ export default function BottleDetailView({
   const [personalElo, setPersonalElo] = useState<number | null>(null);
   // D.2: community guess-average star for a variant with no real global Elo yet.
   const [communityGuessStar, setCommunityGuessStar] = useState<number | null>(null);
+  // #70/#72: the version's published star and what is behind it. The database computes it -- the
+  // blend of the Elo-derived star and everyone's manual ratings, weighted by how many people are
+  // behind each -- and it is the only place that CAN: a browser reads only its own tasting_results
+  // under RLS, so anything scaled here is one user's slice of the evidence.
+  const [variantScore, setVariantScore] = useState<VariantScore | null>(null);
   const [showRatePrompt, setShowRatePrompt] = useState(false);
   const [ratingSaving, setRatingSaving] = useState(false);
   const [gRange, setGRange] = useState<{ min: number; max: number } | null>(null);
@@ -269,8 +275,13 @@ export default function BottleDetailView({
   };
   // D.2: real global Elo once a blind tasting has moved it off the 1500 baseline; until then the
   // community star falls back to the average of everyone's manual guesses (already 0-5, no scaling).
+  // D.2 -> #70: `variant_scores.star` already IS the blend of blind tastings and manual ratings, so
+  // it replaces the old "real Elo, else the guess average" either/or -- a version with 10 tastings
+  // and 1 manual rating now shows both, weighted, instead of ignoring the rating outright. The old
+  // computation stays as the fallback for the moment before the fetch lands.
   const hasRealGlobal = shown.elo != null && Number(shown.elo) !== 1500;
-  const globalStar = hasRealGlobal ? scaleStar(shown.elo) : communityGuessStar;
+  const globalStar = variantScore?.star ?? (hasRealGlobal ? scaleStar(shown.elo) : communityGuessStar);
+  const globalEvidence = evidenceLabel(variantScore);
   // My rating: the manual guess while untasted; the (locked) Elo-derived star once tasted.
   const myStar = hasTasted ? scaleStar(personalElo) : ratingStars;
   // D.2: a manual guess is editable given ANY prior contact (owned/past, or a logged pour/
@@ -368,6 +379,12 @@ export default function BottleDetailView({
         const row = (data as { avg_stars: number | null }[] | null)?.[0];
         setCommunityGuessStar(row?.avg_stars != null ? Number(row.avg_stars) : null);
       });
+      fetchVariantScores([vId]).then((map) => {
+        if (cancelled) return;
+        setVariantScore(map[vId] ?? null);
+      });
+    } else {
+      setVariantScore(null);
     }
     return () => { cancelled = true; };
   }, [bottle.id, currentVariant?.variantId, publicUserId]);
@@ -943,7 +960,12 @@ export default function BottleDetailView({
                 </div>
                 <div className="border-t border-gray-200 mt-2 pt-2 text-sm space-y-1.5">
                   <div>
-                    <div className="text-[11px] text-gray-500">Global rating</div>
+                    {/* Brian, 2026-09-07: say which is which. This star is everyone's; "My rating"
+                        further down is the viewer's own, and they were previously two unlabelled
+                        star rows separated by other content. */}
+                    <div className="text-[11px] text-gray-500">
+                      Global rating{globalEvidence ? <span className="text-gray-400"> · {globalEvidence}</span> : null}
+                    </div>
                     <div>{starBar(globalStar)}</div>
                   </div>
                   <div>
@@ -985,7 +1007,7 @@ export default function BottleDetailView({
         {/* 3.1: My rating — manual guess while untasted, locked Elo star once tasted */}
         {!isEditing && !onAddSlide && publicUserId && (
           <div className="flex items-center justify-between text-sm mb-3 -mt-1">
-            <span className="text-gray-500">My rating</span>
+            <span className="text-gray-500">My rating <span className="text-gray-400">· only you see this</span></span>
             {hasTasted ? (
               <button type="button" onClick={handleLockedRatingTap} className="inline-flex items-center gap-1.5">
                 {starBar(myStar)}
