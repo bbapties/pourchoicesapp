@@ -120,13 +120,14 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   // Fetched once per mount: a shelf is small, and the personal view is RLS-scoped so it only ever
   // returns this user's rows.
   useEffect(() => {
-    let cancelled = false;
-    fetchMyScores().then((m) => { if (!cancelled) setMyScores(m); });
+    // No per-run cancellation: this effect keys off props whose array identity changes on any
+    // parent re-render, and cancelling on cleanup would throw away the answer. Results are plain
+    // maps keyed by id, so a late arrival is never stale. Same bug as the Search fetch, avoided.
+    fetchMyScores().then(setMyScores);
     const ids = [...initialOwned, ...initialEmpty, ...initialTasted, ...initialWishlist]
       .map((d: any) => d?.bottle_id as string | undefined)
       .filter((id): id is string => !!id);
-    fetchBottleScores(ids).then((g) => { if (!cancelled) setBottleScores(g); });
-    return () => { cancelled = true; };
+    fetchBottleScores(ids).then(setBottleScores);
   }, [initialOwned, initialEmpty, initialTasted, initialWishlist]);
 
   const [activeTab, setActiveTab] = useState<TabOption>('owned');

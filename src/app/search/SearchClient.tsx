@@ -451,18 +451,29 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   // scores already fetched. Fails open: a missing row falls back to the old client-side scaling.
   useEffect(() => {
     const rows = [...bottles, ...defaultBottles];
-    let cancelled = false;
 
-    // Track what has been ASKED for, not what came back. A bottle with no variants has no row in
-    // the view, so keying this off the result map would re-request it on every render forever.
+    // NO PER-RUN CANCELLATION HERE, deliberately. The first version cancelled in-flight requests on
+    // cleanup, which fires on every re-run -- and this effect re-runs constantly, because typing a
+    // query clears `bottles` and infinite scroll appends to `defaultBottles`. The ids were already
+    // marked as requested, so a cancelled batch was never asked for again and every card sat on the
+    // fallback star forever. That is the bug Brian caught: Early Times reading 5.0 in Search (its
+    // raw Elo star, the top of the range) against 4.3 on its own detail page (the real blended
+    // score). Results are keyed by id and merged into a map, so a late arrival is never stale --
+    // there is nothing to cancel.
     const bottleIds = rows
       .map((b) => (b.bottleId ?? b.id) as string | undefined)
       .filter((id): id is string => !!id && !requestedScoreIds.current.has(id));
     if (bottleIds.length) {
       bottleIds.forEach((id) => requestedScoreIds.current.add(id));
       fetchBottleScores(bottleIds).then((map) => {
-        if (cancelled || !Object.keys(map).length) return;
-        setBottleScores((prev) => ({ ...prev, ...map }));
+        if (Object.keys(map).length) {
+          setBottleScores((prev) => ({ ...prev, ...map }));
+        } else {
+          // Empty for a whole batch means the read failed far more often than it means fifty
+          // scoreless bottles, and the fetchers fail open so the two look identical from here.
+          // Let them be asked for again rather than freezing on the fallback.
+          bottleIds.forEach((id) => requestedScoreIds.current.delete(id));
+        }
       });
     }
 
@@ -472,12 +483,13 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     if (variantIds.length) {
       variantIds.forEach((id) => requestedVariantScoreIds.current.add(id));
       fetchVariantScores(variantIds).then((map) => {
-        if (cancelled || !Object.keys(map).length) return;
-        setVariantScores((prev) => ({ ...prev, ...map }));
+        if (Object.keys(map).length) {
+          setVariantScores((prev) => ({ ...prev, ...map }));
+        } else {
+          variantIds.forEach((id) => requestedVariantScoreIds.current.delete(id));
+        }
       });
     }
-
-    return () => { cancelled = true; };
   }, [bottles, defaultBottles]);
 
   // Infinite scroll — listen on the AppShell <main> scroll container.
