@@ -386,6 +386,17 @@ export default function DrinkClient({
   };
 
   const primaryBtn = "w-full rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-40";
+  /*
+   * #62: the search field stays put while the results scroll under it. Picking bottles for a blind
+   * is a search-scroll-search loop -- you type "buffalo", scroll, then want to try "eagle" -- and
+   * scrolling the field off the top made every refinement a scroll back to the top first. The
+   * running "Selected 2/6" count rides along with it for the same reason.
+   *
+   * The scroll container is AppShell's <main>, whose margin-top already clears the fixed header,
+   * so top-0 pins this directly beneath it. The negative margins let the ivory background span the
+   * full width and hide rows passing underneath, which the parent's p-4 would otherwise expose.
+   */
+  const stickySearch = "sticky top-0 z-10 bg-ivory -mx-4 px-4 pt-2 pb-3 mb-1";
   const secondaryBtn = "w-full rounded-lg border border-charcoal py-3 text-sm font-medium text-charcoal";
   const helperSecretStep = step === "helperSetup" || step === "handback";
   const showBack = step !== "home" && step !== "done" && !helperSecretStep;
@@ -419,9 +430,11 @@ export default function DrinkClient({
         {/* POUR PICK — single bottle for a regular drink (or jump into a tasting) */}
         {step === "pourPick" && (
           <div className="pt-2">
-            <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search for a bottle..."
-              className="w-full rounded-full border border-charcoal px-4 h-10 text-base bg-ivory text-charcoal mb-3" />
-            <p className="text-xs text-gray-500 mb-2">Pick a bottle to log a pour or start a blind tasting</p>
+            <div className={stickySearch}>
+              <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search for a bottle..."
+                className="w-full rounded-full border border-charcoal px-4 h-10 text-base bg-ivory text-charcoal" />
+              <p className="text-xs text-gray-500 mt-2">Pick a bottle to log a pour or start a blind tasting</p>
+            </div>
             <div className="space-y-1 mb-8">
               {filtered.map((b) => (
                 <button key={b.variantId} type="button" onClick={() => openPourFor(b)}
@@ -461,9 +474,11 @@ export default function DrinkClient({
         {/* PICK */}
         {step === "pick" && (
           <div className="pt-2">
-            <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search bottles to add..."
-              className="w-full rounded-full border border-charcoal px-4 h-10 text-base bg-ivory text-charcoal mb-3" />
-            <p className="text-xs text-gray-500 mb-2">Selected {picks.length}/{MAX_PICKS} · pick {MIN_PICKS}–{MAX_PICKS}</p>
+            <div className={stickySearch}>
+              <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search bottles to add..."
+                className="w-full rounded-full border border-charcoal px-4 h-10 text-base bg-ivory text-charcoal" />
+              <p className="text-xs text-gray-500 mt-2">Selected {picks.length}/{MAX_PICKS} · pick {MIN_PICKS}–{MAX_PICKS}</p>
+            </div>
             <div className="space-y-1 mb-24">
               {filtered.map((b) => {
                 const picked = isPicked(b.variantId);
