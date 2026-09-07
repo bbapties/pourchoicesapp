@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `e401282`. All on origin/MVP-v3 and live on prod.
+- **Tip:** `fdf801a`. All on origin/MVP-v3 and live on prod. 23 commits on 2026-09-07.
 - **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
 - **The board's In Progress lane is EMPTY.** The three cards Brian staged there (#65, #66, #62)
   all shipped, plus #4 from Top Priority.
@@ -27,56 +27,27 @@ The CLI is at **`.tools\gh\bin\gh.exe`** (gitignored, inside the repo - see the 
 drag cards. But note **`Closes #N` in a commit does NOT auto-close**: GitHub only honours that on the
 default branch, and we ship from `MVP-v3`. Close issues explicitly with `gh issue close`.
 
+**#70 IS BUILT AND SO IS EVERYTHING AROUND IT.** The whole variant model shipped on 2026-09-07
+(#70-#76), plus the delete pair (#67 block + purge, #68 merge), the Elo ordering fix (#79), an RLS
+hole found on the way (#77), the three bugs Brian staged that morning (#66, #65, #62), #4, and #80.
+**In Progress is empty and Top Priority holds two items.**
+
 ### The single next step
-**#67 - make the admin bottle delete block on any interaction.** Top Priority, size S, planned in
-full with Brian on 2026-09-07 (the issue body carries the whole design and the prod measurements).
-It closes a real hole: the delete guard checks `user_bottles` only, while the FKs cascade to
-`tasting_results` - so deleting a bottle can destroy match history while every other bottle keeps
-the Elo it won from those matches, and the scoreboard stops being replayable. 13 of 109 bottles
-would pass the guard today and still take data with them.
+**#75 - the triage pass, and it is BRIAN'S work, not an agent's.** Every tool it needs now exists:
+Admin > Variants lists all 109 bottles, sorted by how likely each is to need a decision, with three
+outcomes per bottle (split with a declared axis / single bottling / needs merge) and a merge flow
+beside them. Nothing about it can be automated - there are no duplicate barcodes and no duplicate
+bottle names, so every call is a judgement. Do not "help" by guessing.
 
-**#68** (merge duplicate bottles, L, *Coming Soon*) is the other half and is fully specified in its
-body - do not re-litigate the rules, they were decided one at a time with Brian. **#69** is a small
-safety chore: a dead `update_elo_for_session(uuid)` still holds the pre-#3 formula.
+**#8** (confirm the search `.or()` filter injection is really closed by B-13) is the other Top
+Priority item and is unrelated to this thread - an XS verification job.
 
-**#70, the variant model, is HALF BUILT and is the current focus.** Brian's call on 2026-09-07:
-build it to the fullest, because leaving it would only pile up data to unwind later. Shipped and on
-prod: the schema and split operation (#71), the admin triage queue (#76), the scoring views (#72),
-and the search/detail wiring plus the picker label (#74, partly). Also #77, a security hole found on
-the way.
+**#64** is the one piece of tidy-up waiting on a decision: the dead
+`update_elo_for_session(p_session_id uuid)` overload is now TWO engine generations stale - it has
+the `win_rate` multiplier removed in #3 AND the pair-by-pair scoring removed in #79 - and dropping a
+function is destructive, so it needs Brian's go.
 
-**#70 IS BUILT.** #71, #72, #73, #74 and #76 all shipped on 2026-09-07. #67's delete BLOCK shipped
-too. What is left of the model is data work and two things blocked on one decision.
-
-### THE ONE DECISION EVERYTHING IS WAITING ON: #79
-
-**A tasting's Elo depends on the arbitrary order its pairs happen to be stored in.** Found while
-building #67's purge. Scoring the same 45-pair session from a clean slate with the pairs inserted in
-opposite orders moves **10 bottles by up to 15.01 Elo**. A full replay of prod does not reproduce
-the stored numbers either -- 11 bottles move by up to 9 - while two consecutive replays agree
-exactly. `update_elo_for_session()` updates sequentially inside a session with no ORDER BY, so each
-pair is scored against whatever the pairs before it left behind, and a replay re-inserts in a
-different order.
-
-It matters beyond replays: inside one sitting there IS no chronology between pairs -- somebody
-ranked N bottles at once - so an arbitrary storage order is deciding who gains what.
-
-**Both remaining pieces end in a replay, so both are blocked on it:** #67's purge and #68's merge.
-`replay_elo_history()` is written, correct and admin-gated (`sql/elo-replay-function.sql`) but
-**nothing calls it yet, on purpose**. Recommendation in the issue is option B: score a session
-simultaneously - read the ratings once, compute every swing against those, apply together. Needs
-Brian's approval and a one-off replay, same shape as 2026-09-06.
-
-**Still open, in the order I would take them:**
-1. **#79** - the decision above. Everything else waits on it.
-2. **#67's purge** and then **#68's merge** - both trivial once #79 is settled, both already have
-   their impact-gathering and replay pieces built.
-3. **#75** - the data pass over the 20 multi-variant bottles, done THROUGH the triage queue.
-4. **#78** - the versions table on bottle detail. Worth nothing until bottles are split.
-
-**Brian can safely triage now.** Splitting a bottle is already safe: the catch-all keeps
-`is_default`, so interactions still land on it, which is exactly where unlabelled history belongs,
-and both search modes and the picker already read the right level.
+**#78** (versions table on bottle detail) is in Backlog and is worth nothing until bottles are split.
 
 **Nothing in the admin screens has been seen signed in.** An agent cannot type a password, and the
 QA account was demoted from admin in B-22. The Variants tab, the axis modal on the verify queue and
@@ -93,6 +64,10 @@ better supported than it was: `tasting_details` carries `rank`, `glass_letter` a
 show "you had B, D and A - you ranked D first" and know when each was tasted.
 
 ### THE ELO ENGINE WAS REWRITTEN AND ALL HISTORY REPLAYED (2026-09-06)
+
+> **Superseded in part on 2026-09-07 by #79 — see "THE ELO ENGINE SCORES A WHOLE SESSION AT ONCE"
+> below. The K schedule and everything about meeting counts below is still current; the pair-by-pair
+> application described here is not.**
 
 This is the biggest change in the session and it moved real numbers on prod. **Read this before
 touching anything Elo.**
@@ -217,8 +192,12 @@ whole session JSON, `path=/`. Under 4096 bytes, so no chunking. The older
 password.
 
 ### Still owed by Brian
-- **Eyes on three shipped surfaces** (see The single next step): the #66 slider on his iPhone, and
-  the sticky bottle-search bar and admin notification bells while signed in.
+- **#75, the triage pass.** Judgement work per bottle; the tooling is all built.
+- **Eyes on every admin screen shipped 2026-09-07** — Variants (triage + merge), the axis modal on
+  the verify queue, and the delete/purge dialog. **None of them has ever been seen signed in**: an
+  agent cannot type a password, and the QA account was demoted from admin in B-22. Also the #66
+  slider on his iPhone, and the sticky bottle-search bar.
+- **#64** — permission to drop the dead `update_elo_for_session(uuid)` overload.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
 - Minor: the QA account password is **6 characters**, on an account that can write prod data.
 
@@ -242,30 +221,69 @@ password.
   on that event for usage analysis and ignore it for Elo analysis, where the tasting is entirely
   real. Registered in TELEMETRY.md.
 
-### THE VARIANT MODEL (designed 2026-09-07, not built) - #70
+### THE VARIANT MODEL (BUILT 2026-09-07) - #70
 
 Read **#70** before touching anything about variants, defaults, store picks or how a star is
-computed. The short version, so nobody re-derives it:
+computed. Every rule was decided one question at a time with Brian. **Build to the issue bodies; do
+not re-open the rules.** The short version:
 
 - **"Default" is the wrong word - it is the MAIN record**, one per barcode, with two kinds of
   spin-off: a **store pick** (a store's clone, private to its creator, tastings roll up to the
-  parent - this is already built and correct) and a **variant** (a global variation: release year,
-  batch, rickhouse, barrel).
-- **The first verified variant turns the main record into a ghost.** A catch-all `"[axis] unknown"`
-  child is created, the main's entire history moves onto it (including any store picks), and the
-  main becomes display-only - still in search, never interacted with directly. Interacting with a
-  split bottle always asks which version.
-- **Rollups are weighted by evidence, never straight averages.** Brian's own example proves why: 10
-  tastings at 1586 and 2 at 1650 average to 1618, which sits nearer the release nobody has tasted.
-- **A variant's star blends its Elo-derived star with manual ratings, equally weighted, by count.**
-  Four worked examples in #70, all confirmed against his numbers (4.09 / 4.5 / 4.96 / 4.04).
-  **B-47's guess-deletion is what stops a user counting twice - it is load-bearing now.**
-- **One axis per bottle**, declared by an admin when verifying the first variant. Until verified the
-  variant is private to whoever added it, exactly like a store pick.
-- **Store picks hang off a variant, not the parent**, once a bottle has split.
+  parent) and a **variant** (a global variation: release year, batch, rickhouse, barrel).
+- **The first verified variant turns the main record into a ghost.** THE SPLIT MOVES NOTHING: the
+  main variant already holds the unlabelled history, so it is relabelled `is_catchall` and the
+  bottle gets its axis. Brian's sketch copied rows to a new child; relabelling reaches the identical
+  end state with zero rows changing hands.
+- **One axis per bottle** (`bottles.variant_axis`), declared by an admin - either in the triage
+  queue or when verifying the bottle's first variant. Until verified, a contributed variant is
+  **private to its creator**, like a store pick.
+- **Scores live in views, not the browser** (`variant_scores`, `bottle_scores`, `my_variant_scores`).
+  A variant's star blends its Elo star with manual ratings, weighted by how many people are behind
+  each; a bottle's star applies the same formula over its versions' pooled evidence, so a parent is
+  weighted, never averaged. Brian's four worked examples reproduce exactly (4.09 / 4.5 / 4.96 / 4.04).
+- **THE TWO GLOBAL VIEWS RUN AS THEIR OWNER AND MUST.** `tasting_results` is readable only for your
+  OWN sessions, so a security_invoker view would hand every user a different "global" star, silently.
+  The cost: RLS does not filter them, so **every privacy rule has to be written INTO them by hand**.
+  Two are: store picks are creator-only, and an unverified version is creator-only. **If a new
+  privacy rule ever lands on `bottle_variants`, repeat it in `variant_scores` or it leaks.**
+  `my_variant_scores` is the opposite - security_invoker on purpose, because it is only ever about
+  the caller.
+- **Search shows the right level per mode**: Bottles = the rollup, Show variants = each version's own
+  score. Keying both off the SKU was a real bug (fixed in `c039df7`) - it gave every batch of a
+  bottle the same star, defeating the toggle.
+- **B-47's guess-deletion is load-bearing now** - it is the only thing stopping a user counting on
+  both sides of the star blend. Do not "fix" it.
 
-Everything above was decided one question at a time. **Build to the issue bodies; do not re-open the
-rules.**
+### THE ELO ENGINE SCORES A WHOLE SESSION AT ONCE (#79, 2026-09-07)
+
+**This is the second engine rewrite in two days. Read it before touching scoring.**
+
+The engine used to update ratings as it looped a session's pairs, with no ORDER BY - so each pair
+was scored against whatever the pairs before it left behind, in whatever order the transition table
+yielded. Feeding the real 45-pair session in opposite orders moved **10 bottles, the largest by
+15.01 Elo**. A replay of prod did not reproduce prod's own numbers while two consecutive replays
+agreed exactly: the scoreboard was reproducible only by accident.
+
+It now reads every rating ONCE at the start of a session, prices every pair against those, and
+applies the totals together. Verified: the same pairs in opposite orders give **0 differing rows**,
+and a ten-bottle sweep pays exactly **+144.00 / -144.00**.
+
+Brian's own proposal - a defined bottom-up order - was rejected **on the numbers, not the effort**
+(it was 15 lines): with ten unrated bottles it pays 5th and 6th place **+5.6 and -18.0** for records
+that differ by a single pair, and which end you start from decides who is advantaged.
+
+**Knowingly given up:** a bottle that shocks on the night is still judged at the rating it walked in
+with, so beating it pays little even if it finishes second. Measured across nine scenarios as 2-4
+Elo, and it corrects itself as soon as that bottle's new rating lands. The principled version is a
+fixed-point iteration and the current code is its first half; the whole analysis is in #79.
+
+A settling replay was applied: largest change 23.77, spread 222.56 -> 265.78, and **ignoring ties
+exactly 7 of 666 pairs changed order** (Buffalo Trace crossing a block tied at 1516, and Benchmark
+Single Barrel passing Jim Beam Black and Maker's Mark Cask Strength).
+
+**THE PROPERTY EVERY DESTRUCTIVE OPERATION DEPENDS ON:** a replay of unchanged history is now a
+no-op. Purge (#67) and merge (#68) both end in `replay_elo_history()`, and that is only safe while
+this holds. **Re-check it before wiring anything else to a replay.**
 
 ### Landmines
 - **The agent sandbox is isolated outside the repo.** Writes **inside `C:\pourchoices-frontend`**
@@ -303,7 +321,7 @@ rules.**
 
 ---
 
-### 2026-09-07 (latest) - Claude (three reported bugs, the tasted-fact migration, and the delete design)
+### 2026-09-07 (latest) - Claude (23 commits: three bugs, the variant model end to end, the Elo rewrite, delete + merge)
 
 **Shipped, all on prod.** Four board issues closed (#66, #65, #62, #4); three filed (#67, #68, #69).
 Commits `c7c78b0`, `b5ff83f`, `93b32b5`, `44d92f9`, `14e311d`.
@@ -386,6 +404,31 @@ policies beside them restricted nothing and **suggested_edits was a convention, 
 any signed-in user could rewrite the catalog from a browser. Now: admins, plus a contributor editing
 their own row while it is unverified, which is the app's actual direct-apply rule. Verified as a
 real non-admin session, including that self-verifying is refused.
+
+**THE SESSION KEPT GOING AND BUILT THE WHOLE VARIANT MODEL.** Everything designed that morning was
+then built the same day: #71 schema and split, #76 triage queue, #72 scoring views, #73
+private-until-verified with the axis gate, #74 the app wiring, and #70 itself closed. Then #67
+(block, then purge), #68 (merge) and #80 (My Bar). Nine issues closed after the design, four filed.
+
+**#79 IS THE ONE TO UNDERSTAND.** Building #67's purge meant running a replay, and a replay turned
+out not to reproduce the numbers it replaced. The engine scored a session pair by pair with no
+defined order. Brian argued for a defined bottom-up order and it was a genuinely good argument -- it
+recognises the night's own form, which simultaneous scoring cannot. It was settled with numbers over
+nine scenarios rather than opinion: bottom-up pays 5th and 6th place +5.6 and -18.0 for records
+differing by one pair, and in every scenario involving an outsider all three candidate models landed
+within 2-4 Elo of each other. He chose simultaneous. The details are in the standing section above.
+
+**THE ORDER OF WORK WAS THE POINT.** #67's block shipped alone, deliberately, and the purge was held
+back until #79 landed -- a purge wired to an untrustworthy replay would have silently reshuffled
+unrelated bottles. That sequencing is the single most important thing to copy from this session.
+
+**Two bugs found by Brian reading the work back, both before they reached a user:** the search card
+was showing the parent rollup in Show variants mode (every batch identical, defeating the toggle),
+and My Bar was showing a global number scaled by hand on the screen about your own bottles (#80).
+
+**Board hygiene:** #69 turned out to duplicate #64 and was closed as such. #7 was commented -- half
+of it now points the wrong way, since Brian's call is that the delete blocks on MORE, not fewer,
+interactions. #78 was filed for the versions table from his own use case.
 
 **Process note from Brian, now in Claude's memory:** ask **one question at a time**. Ending a
 message with three or four open questions is overwhelming; step through decisions conversationally
