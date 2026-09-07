@@ -19,7 +19,7 @@ import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty, type UserBottleRow } from "@/lib/userBottles";
 import { logEvent, logClick } from "@/lib/events";
-import { fetchBottleScores, type BottleScore } from "@/lib/scores";
+import { fetchBottleScores, fetchVariantScores, type BottleScore, type VariantScore } from "@/lib/scores";
 
 const DEFAULT_PAGE_SIZE = 30;
 const LOAD_MORE_SIZE = 15;
@@ -87,7 +87,12 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   // 2026-09-07: "in the main search results, it should always be a weighted average seen by
   // everyone the same" -- the personal number belongs on the detail page, labelled.
   const [bottleScores, setBottleScores] = useState<Record<string, BottleScore>>({});
+  // Show variants (#70): a batch is judged on ITS OWN evidence, not its parent's. Keyed by variant
+  // id, and deliberately a separate map -- keying both modes off the SKU would give every batch of
+  // a bottle the same star, which is the opposite of what the Show variants toggle is for.
+  const [variantScores, setVariantScores] = useState<Record<string, VariantScore>>({});
   const requestedScoreIds = useRef<Set<string>>(new Set());
+  const requestedVariantScoreIds = useRef<Set<string>>(new Set());
 
   // 7.9: store picks are private to their creator. Scope an all_variant_details query to
   // global variants + the viewer's own store picks. B-74: `created_by` is a public.users.id,
@@ -445,18 +450,33 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   // Merged into a map rather than onto the rows so a page appended by infinite scroll keeps the
   // scores already fetched. Fails open: a missing row falls back to the old client-side scaling.
   useEffect(() => {
-    const ids = [...bottles, ...defaultBottles]
-      .map((b) => (b.bottleId ?? b.id) as string | undefined)
-      .filter((id): id is string => !!id && !requestedScoreIds.current.has(id));
-    if (!ids.length) return;
+    const rows = [...bottles, ...defaultBottles];
+    let cancelled = false;
+
     // Track what has been ASKED for, not what came back. A bottle with no variants has no row in
     // the view, so keying this off the result map would re-request it on every render forever.
-    ids.forEach((id) => requestedScoreIds.current.add(id));
-    let cancelled = false;
-    fetchBottleScores(ids).then((map) => {
-      if (cancelled || !Object.keys(map).length) return;
-      setBottleScores((prev) => ({ ...prev, ...map }));
-    });
+    const bottleIds = rows
+      .map((b) => (b.bottleId ?? b.id) as string | undefined)
+      .filter((id): id is string => !!id && !requestedScoreIds.current.has(id));
+    if (bottleIds.length) {
+      bottleIds.forEach((id) => requestedScoreIds.current.add(id));
+      fetchBottleScores(bottleIds).then((map) => {
+        if (cancelled || !Object.keys(map).length) return;
+        setBottleScores((prev) => ({ ...prev, ...map }));
+      });
+    }
+
+    const variantIds = rows
+      .map((b) => b.variantId as string | undefined)
+      .filter((id): id is string => !!id && !requestedVariantScoreIds.current.has(id));
+    if (variantIds.length) {
+      variantIds.forEach((id) => requestedVariantScoreIds.current.add(id));
+      fetchVariantScores(variantIds).then((map) => {
+        if (cancelled || !Object.keys(map).length) return;
+        setVariantScores((prev) => ({ ...prev, ...map }));
+      });
+    }
+
     return () => { cancelled = true; };
   }, [bottles, defaultBottles]);
 
@@ -496,9 +516,24 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         currentlyOwned: userBottlesMap[skuId]?.some(r => r.currently_owned) ?? false,
         // "Had it" (earmark) = owned/past OR drank OR blind-tasted — any relationship (B-31).
         hadIt: inCollection || hadItSet.has(skuId),
-        // #70: the global rollup, the same for everyone. `bottle.stars` is the old client-side
-        // scaling of elo_global and stays as the fallback for a bottle the view has no row for.
-        stars: bottleScores[skuId]?.star ?? (bottle.stars as number | null | undefined) ?? null,
+        // #70: the global score, the same for everyone -- but from the right level. In Bottles the
+        // card is a SKU and shows the rollup across its versions; in Show variants the card IS one
+        // version and shows that version's own score, which is the entire point of the toggle.
+        // `bottle.stars` is the old client-side scaling of elo_global, kept as the fallback for
+        // anything the views have no row for.
+        stars:
+          (bottle.variantId
+            ? variantScores[bottle.variantId as string]?.star
+            : bottleScores[skuId]?.star) ??
+          (bottle.stars as number | null | undefined) ??
+          null,
+        // #70: once a bottle has split, its main row IS the catch-all, so calling it "Default"
+        // tells the reader they are looking at the standard bottling when they are looking at the
+        // opposite. The score view knows which row that is, so no extra query.
+        variantLabel:
+          bottle.variantId && variantScores[bottle.variantId as string]?.isCatchall
+            ? 'Version unknown'
+            : bottle.variantLabel,
       };
     });
 
@@ -535,7 +570,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       return [...annotated].sort((a, b) => rank(b) - rank(a));
     }
     return annotated; // global/null = server Elo order
-  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, personalStarMap, personalEloMap, bottleScores]);
+  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, personalStarMap, personalEloMap, bottleScores, variantScores]);
 
   const handleSortSelect = (option: SortOption) => {
     if (option === 'yours' && Object.keys(personalEloMap).length === 0 && Object.keys(personalStarMap).length === 0) {
