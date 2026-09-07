@@ -47,6 +47,18 @@
 -- A variant with no blind tastings falls back to a pure manual average, and one
 -- with neither scores NULL -- "no opinion yet", which the app already renders as
 -- a dash.
+--
+-- THESE VIEWS RUN AS THEIR OWNER, NOT AS THE CALLER, AND THAT IS DELIBERATE.
+-- `tasting_results` is readable only for your OWN sessions (plus admins), so a
+-- security_invoker view would count only the tastings the viewer happens to be
+-- able to see -- every user would get a different "global" star, silently and
+-- with no error. A global number has to be computed from the global truth.
+--
+-- The cost is that RLS no longer filters the rows, so any privacy rule these
+-- views need must be written INTO them. There is exactly one: store picks are
+-- visible only to their creator, restated in the WHERE clause of variant_scores
+-- and by excluding picks from bottle_scores entirely. If a future privacy rule
+-- lands on bottle_variants, it has to be repeated here too.
 -- ============================================================================
 
 BEGIN;
@@ -120,7 +132,13 @@ SELECT
   END                                     AS star
 FROM public.bottle_variants bv
 LEFT JOIN blind  b ON b.variant_id = bv.id
-LEFT JOIN manual m ON m.variant_id = bv.id;
+LEFT JOIN manual m ON m.variant_id = bv.id
+-- STORE-PICK PRIVACY, RE-STATED HERE ON PURPOSE. This view runs as its owner, not
+-- as the caller (see the note below), so the "Public read" policy on
+-- bottle_variants does NOT filter it and a private pick would otherwise be
+-- visible to everyone. Same rule as that policy and as isVariantVisibleToViewer().
+WHERE bv.store_pick_name IS NULL
+   OR bv.created_by = (SELECT u.id FROM public.users u WHERE u.auth_id = auth.uid());
 
 COMMENT ON VIEW public.variant_scores IS
   'One row per variant: its blind-tasting count, manual-rating count, Elo-derived star and the blended 0-5 star shown in the app (#70/#72).';
@@ -158,5 +176,9 @@ GROUP BY vs.bottle_id;
 
 COMMENT ON VIEW public.bottle_scores IS
   'One row per bottle: the rollup shown in search, weighted by evidence across its versions, never a straight average (#70/#72). Store picks excluded -- private, and already counted through the variant they are a pick of.';
+
+-- PostgREST reaches these as the anon/authenticated roles, and a fresh view
+-- inherits no grants.
+GRANT SELECT ON public.variant_scores, public.bottle_scores TO anon, authenticated;
 
 COMMIT;
