@@ -145,7 +145,7 @@ node scripts/_psql.mjs "SELECT 1 AS ok;"
 | `docs/board-import-preview.md` | Record of the 2026-09-05 import: what became an issue, what was skipped, why |
 | `docs/archive/` | **Frozen 2026-09-05.** ROADMAP / BUGS / BACKLOG / PHASE8-10 — research only, never status. See its README. |
 | `TELEMETRY.md` | Instrumentation policy — event/activity/usage tracking; what's logged, the proposed generic events table |
-| `DB_Schema.txt.txt` | Supabase schema dump (note: may lag reality — see HANDOFF drift notes) |
+| `DB_Schema.txt.txt` | Supabase schema dump — tables, views (owner vs invoker), functions (SECURITY DEFINER), triggers, RLS policies. **Regenerate after any migration: `node scripts/dump_schema.mjs`** |
 
 ---
 

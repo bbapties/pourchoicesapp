@@ -1,6 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
--- Regenerated from the live prod DB on 2026-09-02 (B-73) via scripts against information_schema/pg_catalog.
+-- Regenerated from the live prod DB on 2026-09-07 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
 
 CREATE TABLE public.activities (
@@ -10,8 +10,18 @@ CREATE TABLE public.activities (
   variant_id uuid,
   action text NOT NULL,
   pour_type text,
-  created_at timestamp with time zone NOT NULL DEFAULT now()
-);
+  created_at timestamp with time zone NOT NULL DEFAULT now());
+
+CREATE TABLE public.announcements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  body text NOT NULL,
+  coach_id text,
+  published boolean NOT NULL DEFAULT false,
+  audience text NOT NULL DEFAULT 'all'::text,
+  created_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  published_at timestamp with time zone);
 
 CREATE TABLE public.bottle_variants (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -33,8 +43,9 @@ CREATE TABLE public.bottle_variants (
   nose text,
   palate text,
   finish text,
-  is_default boolean NOT NULL DEFAULT false
-);
+  is_default boolean NOT NULL DEFAULT false,
+  is_catchall boolean NOT NULL DEFAULT false,
+  store_pick_of_variant_id uuid);
 
 CREATE TABLE public.bottles (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -57,8 +68,11 @@ CREATE TABLE public.bottles (
   age text,
   volume text,
   frontimage_url text,
-  backimage_url text
-);
+  backimage_url text,
+  variant_axis text,
+  variant_triage text,
+  variant_triaged_at timestamp with time zone,
+  variant_triaged_by uuid);
 
 CREATE TABLE public.events (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -69,8 +83,7 @@ CREATE TABLE public.events (
   target_type text,
   target_id text,
   metadata jsonb,
-  created_at timestamp with time zone NOT NULL DEFAULT now()
-);
+  created_at timestamp with time zone NOT NULL DEFAULT now());
 
 CREATE TABLE public.feedback (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -86,8 +99,29 @@ CREATE TABLE public.feedback (
   viewport text,
   route text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone
-);
+  updated_at timestamp with time zone);
+
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_by uuid,
+  title text NOT NULL,
+  body text NOT NULL,
+  url text,
+  audience text NOT NULL DEFAULT 'everyone'::text,
+  target_user_id uuid,
+  sent_count integer NOT NULL DEFAULT 0,
+  failed_count integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now());
+
+CREATE TABLE public.push_subscriptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  endpoint text NOT NULL,
+  p256dh text NOT NULL,
+  auth text NOT NULL,
+  user_agent text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_used_at timestamp with time zone);
 
 CREATE TABLE public.suggested_edits (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -103,8 +137,7 @@ CREATE TABLE public.suggested_edits (
   review_note text,
   submission_group uuid NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  reviewed_at timestamp with time zone
-);
+  reviewed_at timestamp with time zone);
 
 CREATE TABLE public.tasting_details (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -112,8 +145,10 @@ CREATE TABLE public.tasting_details (
   bottle_id uuid NOT NULL,
   notes jsonb,
   created_at timestamp with time zone DEFAULT now(),
-  variant_id uuid
-);
+  variant_id uuid,
+  pour_index integer,
+  glass_letter text,
+  rank integer);
 
 CREATE TABLE public.tasting_results (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -122,19 +157,17 @@ CREATE TABLE public.tasting_results (
   loser_bottle_id uuid NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   winner_variant_id uuid,
-  loser_variant_id uuid
-);
+  loser_variant_id uuid);
 
 CREATE TABLE public.tasting_sessions (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL,
   name text,
-  bottle_ids uuid[] NOT NULL DEFAULT '{}'::uuid[],
+  bottle_ids ARRAY NOT NULL DEFAULT '{}'::uuid[],
   is_blind boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT now(),
-  variant_ids uuid[] NOT NULL DEFAULT '{}'::uuid[],
-  mode text
-);
+  variant_ids ARRAY NOT NULL DEFAULT '{}'::uuid[],
+  mode text);
 
 CREATE TABLE public.user_bottles (
   user_id uuid NOT NULL,
@@ -148,8 +181,9 @@ CREATE TABLE public.user_bottles (
   times_had integer NOT NULL DEFAULT 1,
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   owned_count integer NOT NULL DEFAULT 0,
-  emptied_count integer NOT NULL DEFAULT 0
-);
+  emptied_count integer NOT NULL DEFAULT 0,
+  tasted_at timestamp with time zone,
+  blind_tasted_at timestamp with time zone);
 
 CREATE TABLE public.user_ratings (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -158,20 +192,20 @@ CREATE TABLE public.user_ratings (
   variant_id uuid NOT NULL,
   stars numeric NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now()
-);
+  updated_at timestamp with time zone NOT NULL DEFAULT now());
 
 CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   username text NOT NULL,
   email text NOT NULL,
-  collection uuid[] DEFAULT '{}'::uuid[],
+  collection ARRAY DEFAULT '{}'::uuid[],
   created_at timestamp with time zone DEFAULT now(),
   auth_id uuid,
   role text NOT NULL DEFAULT 'user'::text,
-  seen_coach_ids text[] NOT NULL DEFAULT '{}'::text[],
-  account_type text NOT NULL DEFAULT 'human'::text  -- CHECK IN ('human','data','test')
-);
+  seen_coach_ids ARRAY NOT NULL DEFAULT '{}'::text[],
+  notify_push boolean NOT NULL DEFAULT true,
+  notify_prompt_optout boolean NOT NULL DEFAULT false,
+  account_type text NOT NULL DEFAULT 'human'::text);
 
 CREATE TABLE public.wishlists (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -181,111 +215,107 @@ CREATE TABLE public.wishlists (
   created_at timestamp with time zone NOT NULL DEFAULT now()
 );
 
--- ============================================================
--- FOREIGN KEYS (column -> referenced)
--- ============================================================
-  activities.bottle_id -> bottles.id
-  activities.user_id -> users.id
-  activities.variant_id -> bottle_variants.id
-  bottle_variants.bottles_id -> bottles.id
-  events.user_id -> users.id
-  feedback.reviewed_by -> users.id
-  feedback.submitted_by -> users.id
-  suggested_edits.bottle_id -> bottles.id
-  suggested_edits.reviewed_by -> users.id
-  suggested_edits.submitted_by -> users.id
-  suggested_edits.variant_id -> bottle_variants.id
-  tasting_details.bottle_id -> bottles.id
-  tasting_details.tasting_session_id -> tasting_sessions.id
-  tasting_details.variant_id -> bottle_variants.id
-  tasting_results.loser_bottle_id -> bottles.id
-  tasting_results.loser_variant_id -> bottle_variants.id
-  tasting_results.tasting_session_id -> tasting_sessions.id
-  tasting_results.winner_bottle_id -> bottles.id
-  tasting_results.winner_variant_id -> bottle_variants.id
-  tasting_sessions.user_id -> users.id
-  user_bottles.bottle_id -> bottles.id
-  user_bottles.user_id -> users.id
-  user_bottles.variant_id -> bottle_variants.id
-  user_ratings.bottle_id -> bottles.id
-  user_ratings.user_id -> users.id
-  user_ratings.variant_id -> bottle_variants.id
-  wishlists.bottle_id -> bottles.id
-  wishlists.user_id -> users.id
-  wishlists.variant_id -> bottle_variants.id
+-- Views
+--   all_bottle_details  [security_invoker=true]
+--   all_variant_details  [security_invoker=true]
+--   bottle_scores  [runs as owner]
+--   my_variant_scores  [security_invoker=true]
+--   variant_scores  [runs as owner]
 
--- ============================================================
--- VIEWS (public)
--- ============================================================
-  all_bottle_details
-  all_variant_details
+-- Functions
+--   bottle_delete_impact(p_bottle uuid)  SECURITY DEFINER
+--   commit_bottle_import(payload jsonb)  SECURITY DEFINER
+--   default_to_admin()  SECURITY DEFINER
+--   delete_user_cascade(target_user_id uuid)  SECURITY DEFINER
+--   elo_global_target(p_variant uuid)
+--   elo_k_for_meetings(p_prior_meetings integer)
+--   elo_star(p_elo numeric)
+--   email_exists(p_email text)  SECURITY DEFINER
+--   guard_event_insert()
+--   is_admin()  SECURITY DEFINER
+--   merge_bottle(p_source uuid, p_target uuid, p_variant_map jsonb, p_confirm_name text)  SECURITY DEFINER
+--   merge_variant_into(p_source uuid, p_target uuid)  SECURITY DEFINER
+--   protect_submission_update()  SECURITY DEFINER
+--   protect_user_role()  SECURITY DEFINER
+--   purge_bottle(p_bottle uuid, p_confirm_name text)  SECURITY DEFINER
+--   replay_elo_history()  SECURITY DEFINER
+--   split_bottle_into_variants(p_bottle uuid, p_axis text)
+--   stamp_blind_tasted_for_session()
+--   stamp_tasted_for_pour()
+--   update_elo_after_result()
+--   update_elo_for_session()
+--   update_elo_for_session(p_session_id uuid)
+--   update_timestamp()  SECURITY DEFINER
+--   variant_delete_impact(p_variant uuid)  SECURITY DEFINER
+--   variant_guess_avg(variant_ids uuid[])  SECURITY DEFINER
 
--- ============================================================
--- FUNCTIONS (public)
--- ============================================================
-  commit_bottle_import(payload jsonb)  [SECURITY DEFINER]
-  default_to_admin()  [SECURITY DEFINER]
-  delete_user_cascade(target_user_id uuid)  [SECURITY DEFINER]
-  email_exists(p_email text)  [SECURITY DEFINER]
-  guard_event_insert()
-  is_admin()  [SECURITY DEFINER]
-  protect_submission_update()  [SECURITY DEFINER]
-  protect_user_role()  [SECURITY DEFINER]
-  update_elo_after_result()
-  update_elo_for_session(p_session_id uuid)
-  update_elo_for_session()
-  update_timestamp()  [SECURITY DEFINER]
-  variant_guess_avg(variant_ids uuid[])  [SECURITY DEFINER]
+-- Triggers
+--   trig_stamp_tasted_after_pour on activities
+--   trg_default_to_admin_bottle_attr on bottle_variants
+--   trg_update_timestamp_bottle_attr on bottle_variants
+--   trg_default_to_admin_bottles on bottles
+--   trg_update_timestamp_bottles on bottles
+--   trg_guard_event_insert on events
+--   trg_protect_feedback_update on feedback
+--   trg_protect_suggested_edits_update on suggested_edits
+--   trig_update_elo_after_session on tasting_results
+--   trig_zz_stamp_tasted_after_session on tasting_results
+--   trg_protect_user_role on users
 
--- ============================================================
--- RLS POLICIES (public)
--- ============================================================
-  activities: activities_delete_own [DELETE]
-  activities: activities_insert_own [INSERT]
-  activities: activities_select_authenticated [SELECT]
-  bottle_variants: Auth insert variants [INSERT]
-  bottle_variants: Auth update variants [UPDATE]
-  bottle_variants: Public read [SELECT]
-  bottle_variants: admins can delete variants [DELETE]
-  bottle_variants: admins can update variants [UPDATE]
-  bottle_variants: admins delete variants [DELETE]
-  bottle_variants: admins update variants [UPDATE]
-  bottles: Auth insert bottles [INSERT]
-  bottles: Auth update bottles [UPDATE]
-  bottles: Public read bottles [SELECT]
-  bottles: admins can delete bottles [DELETE]
-  bottles: admins can update bottles [UPDATE]
-  bottles: admins delete bottles [DELETE]
-  bottles: admins update bottles [UPDATE]
-  events: events_insert_anon [INSERT]
-  events: events_insert_auth [INSERT]
-  events: events_select_admin [SELECT]
-  feedback: feedback_insert_own [INSERT]
-  feedback: feedback_select [SELECT]
-  feedback: feedback_update [UPDATE]
-  suggested_edits: suggested_edits_insert_own [INSERT]
-  suggested_edits: suggested_edits_select [SELECT]
-  suggested_edits: suggested_edits_update [UPDATE]
-  tasting_details: Users can manage their own tasting details [ALL]
-  tasting_details: admins read all tasting_details [SELECT]
-  tasting_results: Users insert own tasting results [INSERT]
-  tasting_results: Users read own tasting results [SELECT]
-  tasting_results: admins read all tasting_results [SELECT]
-  tasting_sessions: Users can manage their own tasting sessions [ALL]
-  tasting_sessions: admins read all tasting_sessions [SELECT]
-  user_bottles: Users can manage their own bottle data [ALL]
-  user_bottles: admins read all user_bottles [SELECT]
-  user_ratings: user_ratings_delete_own [DELETE]
-  user_ratings: user_ratings_insert_own [INSERT]
-  user_ratings: user_ratings_select [SELECT]
-  user_ratings: user_ratings_update_own [UPDATE]
-  users: Allow anon insert via auth [INSERT]
-  users: Public read users [SELECT]
-  users: Users can insert their own profile [INSERT]
-  users: Users can update their own profile [UPDATE]
-  users: Users can view their own profile [SELECT]
-  users: Users own their data [ALL]
-  users: Users update own via auth [UPDATE]
-  wishlists: wishlists_delete_own [DELETE]
-  wishlists: wishlists_insert_own [INSERT]
-  wishlists: wishlists_select [SELECT]
+-- RLS policies
+--   activities: activities_delete_own (DELETE)
+--   activities: activities_insert_own (INSERT)
+--   activities: activities_select_authenticated (SELECT)
+--   announcements: Admin manage announcements (ALL)
+--   announcements: Read published announcements (SELECT)
+--   bottle_variants: admins can delete variants (DELETE)
+--   bottle_variants: admins delete variants (DELETE)
+--   bottle_variants: Auth insert variants (INSERT)
+--   bottle_variants: Public read (SELECT)
+--   bottle_variants: Own unverified update variants (UPDATE)
+--   bottle_variants: admins can update variants (UPDATE)
+--   bottle_variants: admins update variants (UPDATE)
+--   bottles: admins can delete bottles (DELETE)
+--   bottles: admins delete bottles (DELETE)
+--   bottles: Auth insert bottles (INSERT)
+--   bottles: Public read bottles (SELECT)
+--   bottles: Own unverified update bottles (UPDATE)
+--   bottles: admins can update bottles (UPDATE)
+--   bottles: admins update bottles (UPDATE)
+--   events: events_insert_anon (INSERT)
+--   events: events_insert_auth (INSERT)
+--   events: events_select_admin (SELECT)
+--   feedback: feedback_insert_own (INSERT)
+--   feedback: feedback_select (SELECT)
+--   feedback: feedback_update (UPDATE)
+--   notifications: Admin read notifications (SELECT)
+--   push_subscriptions: Delete own subscription (DELETE)
+--   push_subscriptions: Insert own subscription (INSERT)
+--   push_subscriptions: Select own subscriptions (SELECT)
+--   push_subscriptions: Update own subscription (UPDATE)
+--   suggested_edits: suggested_edits_insert_own (INSERT)
+--   suggested_edits: suggested_edits_select (SELECT)
+--   suggested_edits: suggested_edits_update (UPDATE)
+--   tasting_details: Users can manage their own tasting details (ALL)
+--   tasting_details: admins read all tasting_details (SELECT)
+--   tasting_results: Users insert own tasting results (INSERT)
+--   tasting_results: Users read own tasting results (SELECT)
+--   tasting_results: admins read all tasting_results (SELECT)
+--   tasting_sessions: Users can manage their own tasting sessions (ALL)
+--   tasting_sessions: admins read all tasting_sessions (SELECT)
+--   user_bottles: Users can manage their own bottle data (ALL)
+--   user_bottles: admins read all user_bottles (SELECT)
+--   user_ratings: user_ratings_delete_own (DELETE)
+--   user_ratings: user_ratings_insert_own (INSERT)
+--   user_ratings: user_ratings_select (SELECT)
+--   user_ratings: user_ratings_update_own (UPDATE)
+--   users: Users own their data (ALL)
+--   users: Allow anon insert via auth (INSERT)
+--   users: Users can insert their own profile (INSERT)
+--   users: Public read users (SELECT)
+--   users: Users can view their own profile (SELECT)
+--   users: Users can update their own profile (UPDATE)
+--   users: Users update own via auth (UPDATE)
+--   wishlists: wishlists_delete_own (DELETE)
+--   wishlists: wishlists_insert_own (INSERT)
+--   wishlists: wishlists_select (SELECT)

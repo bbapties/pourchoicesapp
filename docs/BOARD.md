@@ -105,10 +105,10 @@ issue moves the card by itself.
 
 ## Phrases that work with Claude
 
-- "Read the board. Recommend the next mix." — reads Top Priority then Coming Soon.
+- "Read the board. Recommend the next mix." — reads right to left from the rightmost non-Done lane.
 - "Close #12 and #18."
 - "Move #31 to Backlog." / "Move #20 to In Progress."
-- "What's in Top Priority right now?"
+- "What's next?" / "What's in Next Items per Brian?"
 - "Size #44 as a Large."
 - "File that as a new issue in Coming Soon, area Tastings, size M."
 
