@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `fdf801a`. All on origin/MVP-v3 and live on prod. 23 commits on 2026-09-07.
+- **Tip:** `2fca1e5`. All on origin/MVP-v3 and live on prod. 25 commits on 2026-09-07.
 - **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
 - **The board's In Progress lane is EMPTY.** The three cards Brian staged there (#65, #66, #62)
   all shipped, plus #4 from Top Priority.
@@ -421,6 +421,22 @@ within 2-4 Elo of each other. He chose simultaneous. The details are in the stan
 **THE ORDER OF WORK WAS THE POINT.** #67's block shipped alone, deliberately, and the purge was held
 back until #79 landed -- a purge wired to an untrustworthy replay would have silently reshuffled
 unrelated bottles. That sequencing is the single most important thing to copy from this session.
+
+**A THIRD BUG BRIAN CAUGHT, AFTER END SESSION, AND THE ONE THAT DID REACH PROD.** Search showed
+Early Times as 5 stars while its detail page showed 4.3. The database was right and consistent
+(both views say 4.25); Search was rendering the fallback, `calcStars(elo)`, and Early Times holds
+the top Elo so it maps to exactly 5.00. Cause: the score-fetch effect cancelled in-flight requests
+in its cleanup, which fires on every RE-RUN -- and Search re-runs it constantly, since typing clears
+`bottles` and infinite scroll appends to `defaultBottles`. The ids were already marked as requested,
+so a cancelled batch was never re-fetched and every card froze on the fallback. Detail was fine
+because it fetches once. **The lesson worth keeping: when a fetch result is keyed by id and merged
+into a map, there is nothing to cancel -- a late arrival cannot be stale.** Fixed in `2fca1e5`,
+same pattern removed from MyBarClient.
+
+**Worth a decision (not yet filed):** W.L. Weller Antique 107 currently tops the rollup at **5.00**
+on the strength of ONE manual star rating and zero blind tastings. The blend is behaving exactly as
+specified -- but a leaderboard whose top entry is one person's gut call may want a minimum-evidence
+rule. Brian's call.
 
 **Two bugs found by Brian reading the work back, both before they reached a user:** the search card
 was showing the parent rollup in Show variants mode (every batch identical, defeating the toggle),
