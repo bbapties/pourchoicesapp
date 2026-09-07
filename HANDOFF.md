@@ -9,9 +9,10 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `65f4d23`. All on origin/MVP-v3 and live on prod.
+- **Tip:** `14e311d`. All on origin/MVP-v3 and live on prod.
 - **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
-- **The board's In Progress lane is EMPTY.** All four cards Brian staged there shipped, plus #9.
+- **The board's In Progress lane is EMPTY.** The three cards Brian staged there (#65, #66, #62)
+  all shipped, plus #4 from Top Priority.
 
 ### Read this before anything else - the queue lives on the board
 
@@ -27,16 +28,26 @@ drag cards. But note **`Closes #N` in a commit does NOT auto-close**: GitHub onl
 default branch, and we ship from `MVP-v3`. Close issues explicitly with `gh issue close`.
 
 ### The single next step
-**Top Priority holds 2 items.**
+**#67 - make the admin bottle delete block on any interaction.** Top Priority, size S, planned in
+full with Brian on 2026-09-07 (the issue body carries the whole design and the prod measurements).
+It closes a real hole: the delete guard checks `user_bottles` only, while the FKs cascade to
+`tasting_results` - so deleting a bottle can destroy match history while every other bottle keeps
+the Elo it won from those matches, and the scoreboard stops being replayable. 13 of 109 bottles
+would pass the guard today and still take data with them.
 
-1. **#4** - `removeUserBottle` treats `elo === 1500` as never-tasted and hard-deletes a net-zero
-   tasting. **Still needs a product answer from Brian** on what "tasted" means (see below).
-   **Currently harming 0 rows** - verified - so there is no clock on it.
-2. **#62** - make the search bar persistent when picking bottles for a blind. No decision in it.
+**#68** (merge duplicate bottles, L, *Coming Soon*) is the other half and is fully specified in its
+body - do not re-litigate the rules, they were decided one at a time with Brian. **#69** is a small
+safety chore: a dead `update_elo_for_session(uuid)` still holds the pre-#3 formula.
+
+Also unverified rather than unfinished: **#66's slider fix can only be proven on an iPhone**, and
+the sticky search bar (#62) and the admin bells (#65) were shipped without a signed-in look, because
+the QA account is no longer admin and an agent cannot type a password into a login form. Ask Brian
+what he saw before assuming they are good.
 
 **#20** (ranked tasting-results view, L) is the big one still sitting in *Coming Soon*, and it is now
-better supported than it was: `tasting_details` finally carries `rank`, `glass_letter` and
-`pour_index` (#11), so the payoff screen can show "you had B, D and A - you ranked D first".
+better supported than it was: `tasting_details` carries `rank`, `glass_letter` and `pour_index`
+(#11), and `user_bottles` now carries `tasted_at` / `blind_tasted_at` (#4), so the payoff screen can
+show "you had B, D and A - you ranked D first" and know when each was tasted.
 
 ### THE ELO ENGINE WAS REWRITTEN AND ALL HISTORY REPLAYED (2026-09-06)
 
@@ -124,13 +135,27 @@ Things a future session should not have to rediscover:
   `suggested_edits`. Deliberate: Brian is on screen approving that exact bottle as part of approving
   the tasting, so a queue would only re-ask him to review what he just signed off on.
 
-### #4 - what counts as "tasted" (STILL OPEN, Brian has deferred twice)
-`user_bottles.elo` is `numeric DEFAULT 1500` and there is **no tasted flag**, so `elo !== 1500` is
-the only available signal - that is why the code reads that way. A net-zero tasting therefore looks
-like a mistaken add and gets hard-deleted. Options offered: add a `last_tasted_at` column stamped by
-the Elo trigger (**recommended** - #20 and #50 both want it anyway); query `tasting_results` at
-remove time (no migration, one extra round-trip); or make `elo` NULL until first tasting (matches
-the spec, widest blast radius). Verified: **0 rows currently affected.**
+### THE THREE WORDS FOR "HAS THIS PERSON HAD THIS BOTTLE" (settled 2026-09-07)
+
+Brian's terminology, and now the schema's:
+
+| term | means | stored as |
+|---|---|---|
+| **Blind Tasted** | did the blind tasting flow | `user_bottles.blind_tasted_at` |
+| **Tasted** | blind tasted **or** logged a pour | `user_bottles.tasted_at` |
+| **Had it** | either of those, or ever added to a bar | the row existing at all |
+
+**The rule that falls out of it:** removing a bottle from your bar clears the SHELF facts
+(`currently_owned`, `times_had`, `owned_count`) and nothing else. Drinking it and blind-tasting it
+are a **separate, permanent history** that the bar button cannot reach - a blind tasting is part of
+the global Elo, so unpicking it would move other people's numbers. There is deliberately no user-
+facing way to erase a tasting.
+
+Both columns are stamped by triggers (`sql/b52-tasted-at-migration.sql`), NOT by application code,
+and deliberately **not** by editing `update_elo_for_session()` - a stamp is not Elo, and that
+function stays the single implementation of the maths. Use `tasted_at IS NOT NULL` as the test for
+"Tasted"; **never reintroduce `elo !== 1500`**, which was wrong twice over (a net-zero tasting lands
+back on 1500, and a pour never moves Elo at all - 5 prod rows were pour-only and exposed).
 
 ### THE ONE THING TO READ BEFORE TOUCHING AUTH
 `src/lib/supabase.ts` has a **custom `auth.lock`** (`362458f`, corrected by `e555784`). An earlier
@@ -149,7 +174,8 @@ whole session JSON, `path=/`. Under 4096 bytes, so no chunking. The older
 password.
 
 ### Still owed by Brian
-- **#4** - the product decision above. This is the only thing actually blocking a Top Priority card.
+- **Eyes on three shipped surfaces** (see The single next step): the #66 slider on his iPhone, and
+  the sticky bottle-search bar and admin notification bells while signed in.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
 - Minor: the QA account password is **6 characters**, on an account that can write prod data.
 
@@ -209,7 +235,76 @@ password.
 
 ---
 
-### 2026-09-06 (latest) - Claude (Elo engine rewritten + all history replayed; import-tasting skill)
+### 2026-09-07 (latest) - Claude (three reported bugs, the tasted-fact migration, and the delete design)
+
+**Shipped, all on prod.** Four board issues closed (#66, #65, #62, #4); three filed (#67, #68, #69).
+Commits `c7c78b0`, `b5ff83f`, `93b32b5`, `44d92f9`, `14e311d`.
+
+**#66 - the star slider froze on an installed iOS PWA.** Reported by PourChoicesOG on bottle
+detail: the thumb would not follow his finger, took three attempts, then worked after he closed and
+reopened the page. The slider is `StarRatingSlider`, and it only ever renders inside
+`RatePromptSheet` - a **modal Radix Dialog**, which wraps its content in `react-remove-scroll`. That
+attaches a non-passive `touchmove` listener and cancels moves it reads as an attempt to scroll the
+locked page, which is exactly the touch stream a native `<input type="range">` thumb rides on iOS.
+The scroll lock and the slider were fighting over one gesture. Replaced with pointer events +
+`touch-action: none` + `setPointerCapture`, which stops it being a scroll candidate at all.
+**Keep `touch-action: none` on that track** - removing it brings the bug straight back. Verified in
+a 375px viewport with synthetic touch pointers; **the real proof is an iPhone and has not happened
+yet.**
+
+**#65 - a tester's notifications said On while Admin said he was unreachable. Both were telling the
+truth.** Not a refresh lag: his `push_subscriptions` row genuinely did not exist until 11:55 UTC
+that day. Root cause is that **a push subscription is not permanent and nothing ever put one back** -
+iOS rotates endpoints, `/api/admin/send-push` prunes on 404/410 (correctly), and `enablePush` was
+reachable only from the notification sheet, so the sole repair was the user toggling off and on.
+Profile compounded it by reading "On" from preference + OS permission, neither of which knows
+whether a device is registered. On the day: 8 users with `notify_push = true`, 4 with a device.
+
+Fix: `syncPushSubscription()` re-registers silently on open, once per browser session, and **bails
+unless permission is already granted and the preference is already true** - so it can neither spend
+the one-shot OS dialog nor undo an opt-out. Profile now requires a live subscription to say On and
+repairs one in place. Admin's Users list grew a bell per user - filled = reachable, struck-through =
+enabled but unreachable, none = never enabled - fed by `/api/admin/push-recipients` because RLS
+blocks a client-side count (B-59). New event `push_resync` in TELEMETRY.md.
+
+**#4 - "tasted" is a stored fact now.** See the terminology section above; do not re-derive it.
+The exposure was **wider than the card said**: the recorded "0 rows affected" only counted net-zero
+blind tastings, but a **logged pour never moves Elo at all**, so 5 pour-only rows were sitting at
+exactly 1500 and would have been hard-deleted. Migration is additive with a rollback beside it;
+both triggers were verified against prod **inside a rolled-back transaction** (a pour creates a
+stamped tasting-only row and leaves Elo alone; a blind tasting still scores +/-16 at K=32 and stamps
+both columns).
+
+**The delete feature was designed end to end with Brian and NOT built.** It is two issues:
+
+- **#67 (Top Priority, S)** - the gate. Today's guard checks `user_bottles` only, but `bottles`
+  CASCADEs to `activities`, `bottle_variants`, `suggested_edits`, `tasting_details`,
+  `tasting_results`, `user_bottles`, `user_ratings` and `wishlists`. Deleting a bottle therefore
+  deletes the matches it played while every **other** bottle keeps the points it won from them -
+  the scoreboard stops being replayable, which is the property the 2026-09-06 rewrite established.
+  Measured: 109 bottles, 50 blocked today, 46 clean, **13 that would pass the guard and still
+  destroy data**. A purge ends by re-running `sql/elo-replay-history.sql`; users are told nothing.
+- **#68 (Coming Soon, L)** - merge. Variant mapping is **manual**; `user_bottles` conflicts **sum**;
+  star guesses keep the **most recent**; personal Elo needs no rule because the replay rebuilds it;
+  self-matches need no handling because the scoring function already skips `w_variant = l_variant`.
+
+Each of those rules was decided one at a time. **Do not re-open them** - build to the issue bodies.
+
+**#69** - there are two `update_elo_for_session` functions in the database and the legacy
+`(p_session_id uuid)` one still contains the pre-#3 formula, `win_rate` multiplier and all. Nothing
+calls it. It is a loaded gun for anyone who greps for "the scoring function"; dropping it needs
+Brian's go.
+
+**Process note from Brian, now in Claude's memory:** ask **one question at a time**. Ending a
+message with three or four open questions is overwhelming; step through decisions conversationally
+and wait for each answer. The whole delete design was done that way and it worked.
+
+**Landmine confirmed again:** the Browser pane was hidden all session, so `computer` clicks and
+drags time out after 30s and `tabs_select` does not help. `resize_window` + `javascript_tool`
+dispatching synthetic events is what worked. Also: an agent **cannot** verify anything behind login -
+entering a password is off-limits, and the QA account was demoted from admin in B-22.
+
+### 2026-09-06 - Claude (Elo engine rewritten + all history replayed; import-tasting skill)
 
 **Shipped, all on prod.** Five board issues closed (#2, #3, #10, #11, #9); the In Progress lane is
 empty. One new issue filed (#64).
