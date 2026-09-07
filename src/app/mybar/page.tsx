@@ -140,15 +140,9 @@ export default async function MyBarPage() {
     });
   }
 
-  // Star scaling uses default-variant Elo (same as Search). bottles.elo_global is
-  // legacy — the 3.0 trigger only writes bottle_variants.elo_global (B-04).
-  const { data: eloRows } = await supabase
-    .from('all_bottle_details')
-    .select('default_variant_elo, bottle_elo_global')
-    .order('default_variant_elo', { ascending: false, nullsFirst: false });
-  const allBottlesElo = (eloRows || [])
-    .map((r) => r.default_variant_elo ?? r.bottle_elo_global)
-    .filter((e): e is number => e != null);
+  // #80: the star scaling that needed every bottle's Elo is gone. My Bar shows the viewer's OWN
+  // rating now, from my_variant_scores, and falls back to the shared rollup in bottle_scores -- both
+  // scaled in the database, so this screen agrees with Search instead of computing its own number.
 
   // Tasted = variants this user ranked that they do not own and never finished
   // (tasting-only). Excludes star-guess placeholders (no tasting_results) and
@@ -272,7 +266,6 @@ export default async function MyBarPage() {
       emptyCollection={emptyCollection}
       tastedCollection={tastedCollection}
       wishlistCollection={wishlistCollection}
-      allBottlesElo={allBottlesElo}
       publicUserId={publicUser.id}
     />
   );

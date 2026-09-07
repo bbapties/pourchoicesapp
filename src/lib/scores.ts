@@ -126,3 +126,35 @@ export function evidenceLabel(s: { blindTastings: number; manualCount: number } 
   if (s.manualCount > 0) bits.push(`${s.manualCount} rating${s.manualCount === 1 ? "" : "s"}`);
   return bits.length ? bits.join(" · ") : null;
 }
+
+export type MyScore = {
+  variantId: string;
+  bottleId: string;
+  /** The viewer's own 0-5 star: Elo-derived once they have blind-tasted it, else their manual guess. */
+  yourStar: number | null;
+  tasted: boolean;
+};
+
+/**
+ * The viewer's OWN stars, per version (#80). Unlike the global views this one is security_invoker,
+ * so RLS scopes it to the caller -- it is only ever about them, and no privacy rule has to be
+ * restated. Returns everything the caller has, which is bounded by their own collection.
+ */
+export async function fetchMyScores(): Promise<Record<string, MyScore>> {
+  const { data, error } = await supabase
+    .from("my_variant_scores")
+    .select("variant_id, bottle_id, your_star, tasted");
+  if (error || !data) return {};
+  const out: Record<string, MyScore> = {};
+  for (const r of data as {
+    variant_id: string; bottle_id: string; your_star: number | string | null; tasted: boolean;
+  }[]) {
+    out[r.variant_id] = {
+      variantId: r.variant_id,
+      bottleId: r.bottle_id,
+      yourStar: num(r.your_star),
+      tasted: !!r.tasted,
+    };
+  }
+  return out;
+}

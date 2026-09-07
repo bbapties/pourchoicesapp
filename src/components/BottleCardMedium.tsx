@@ -8,6 +8,8 @@ export interface BottleCardMediumData {
   style?: string;
   proof?: number;
   stars?: number | null;
+  /** #80: true when the star is the viewer's own rating rather than the shared one. */
+  starIsMine?: boolean;
   image_url?: string;
   addedAt?: string;
   dateLabel?: string;
@@ -109,10 +111,18 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
           {/* Row 2: stars (2/3) | proof (1/3 right-aligned) */}
           <div className="flex gap-2 items-center">
             <span className="flex-[2]">
-              {bottle.stars != null
-                ? <StarRating value={bottle.stars} />
-                : <span className="text-xs text-gray-400">No rating yet</span>
-              }
+              {bottle.stars != null ? (
+                <span className="inline-flex items-center gap-1">
+                  <StarRating value={bottle.stars} />
+                  {/* #80: an unlabelled star was the bug -- My Bar shows YOUR rating where you have
+                      one and the shared rollup otherwise, and they are different numbers. */}
+                  <span className="text-[10px] text-gray-400">
+                    {bottle.starIsMine ? "yours" : "global"}
+                  </span>
+                </span>
+              ) : (
+                <span className="text-xs text-gray-400">No rating yet</span>
+              )}
             </span>
             <span className="flex-[1] text-sm text-gray-500 text-right">
               {bottle.proof ? `${bottle.proof}% ABV` : ''}

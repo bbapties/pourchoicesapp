@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect} from "react";
 import { Search, ChevronDown, Check, X, ScanLine } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -15,13 +15,13 @@ import { lookupBottleByBarcode } from "@/lib/barcode";
 import { type BottleDetails } from "@/lib/types";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty } from "@/lib/userBottles";
 import { isVariantVisibleToViewer } from "@/lib/variants";
+import { fetchMyScores, fetchBottleScores, type MyScore, type BottleScore } from "@/lib/scores";
 
 interface MyBarClientProps {
   ownedCollection: any[];
   emptyCollection: any[];
   tastedCollection: any[];
   wishlistCollection: any[];
-  allBottlesElo: number[];
   publicUserId: string;
 }
 
@@ -50,10 +50,6 @@ const SORT_LABELS: Record<NonNullable<SortOption>, string> = {
   yours: 'My Ranks',
 };
 
-function calcStarsFromElo(elo: number | null | undefined, minElo: number, maxElo: number): number | null {
-  if (elo == null || maxElo === minElo) return null;
-  return Math.min(5, Math.max(0, ((elo - minElo) / (maxElo - minElo)) * 5));
-}
 
 
 function variantSubtitle(d: any): string | undefined {
@@ -63,7 +59,30 @@ function variantSubtitle(d: any): string | undefined {
   return d.bottle_style;
 }
 
-function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: boolean, tasted: boolean, labelOverride?: string) {
+/**
+ * #80: which star a My Bar card shows.
+ *
+ * It used to be the GLOBAL Elo, scaled here in the browser -- so the same bottle could show one
+ * number in Search (which reads the scoring views) and a different one on your own shelf, which is
+ * exactly the confusion the Global/Yours labels were added to remove.
+ *
+ * My Bar is a personal shelf, so it shows YOUR rating: your Elo-derived star once you have
+ * blind-tasted it, otherwise your manual guess. Only when you have no opinion at all -- a wishlist
+ * bottle you have never touched -- does it fall back to the global rollup, so the card is not blank.
+ * `owned` says which of the two is on screen, because an unlabelled star is the original problem.
+ */
+function starFor(
+  d: any,
+  mine: Record<string, MyScore>,
+  global: Record<string, BottleScore>
+): { value: number | null; owned: boolean } {
+  const my = d.variant_id ? mine[d.variant_id] : undefined;
+  if (my?.yourStar != null) return { value: my.yourStar, owned: true };
+  const g = d.bottle_id ? global[d.bottle_id] : undefined;
+  return { value: g?.star ?? null, owned: false };
+}
+
+function mapToCardData(d: any, currentlyOwned: boolean, tasted: boolean, labelOverride?: string, mine: Record<string, MyScore> = {}, global: Record<string, BottleScore> = {}) {
   return {
     id: tasted ? (d.variant_id || d.bottle_id) : d.bottle_id,
     name: d.bottle_name,
@@ -72,7 +91,7 @@ function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: b
     style: tasted ? variantSubtitle(d) : d.bottle_style,
     proof: d.attr_proof,
     image_url: d.attr_frontimage_url,
-    stars: calcStarsFromElo(eloOf(d), minElo, maxElo),
+    ...(() => { const st = starFor(d, mine, global); return { stars: st.value, starIsMine: st.owned }; })(),
     addedAt: d.addedAt,
     dateLabel: labelOverride ?? (tasted ? "Tasted" : "Added"),
     provisional: !d.bottle_verified,
@@ -85,16 +104,30 @@ function mapToCardData(d: any, minElo: number, maxElo: number, currentlyOwned: b
   };
 }
 
-export default function MyBarClient({ ownedCollection: initialOwned, emptyCollection: initialEmpty, tastedCollection: initialTasted, wishlistCollection: initialWishlist, allBottlesElo, publicUserId }: MyBarClientProps) {
-  const { minElo, maxElo } = useMemo(() => {
-    if (!allBottlesElo.length) return { minElo: 1500, maxElo: 1500 };
-    return { maxElo: Math.max(...allBottlesElo), minElo: Math.min(...allBottlesElo) };
-  }, [allBottlesElo]);
+export default function MyBarClient({ ownedCollection: initialOwned, emptyCollection: initialEmpty, tastedCollection: initialTasted, wishlistCollection: initialWishlist, publicUserId }: MyBarClientProps) {
+
+  // #80: the viewer's own stars, and the global rollup as the fallback for a bottle they have no
+  // opinion on. Both fail open to an empty map -- a missing star renders as a dash, never a wrong
+  // number.
+  const [myScores, setMyScores] = useState<Record<string, MyScore>>({});
+  const [bottleScores, setBottleScores] = useState<Record<string, BottleScore>>({});
 
   const [rawOwned, setRawOwned] = useState<any[]>(initialOwned);
   const [rawEmpty, setRawEmpty] = useState<any[]>(initialEmpty);
   const [rawTasted, setRawTasted] = useState<any[]>(initialTasted);
   const [rawWishlist] = useState<any[]>(initialWishlist);
+
+  // Fetched once per mount: a shelf is small, and the personal view is RLS-scoped so it only ever
+  // returns this user's rows.
+  useEffect(() => {
+    let cancelled = false;
+    fetchMyScores().then((m) => { if (!cancelled) setMyScores(m); });
+    const ids = [...initialOwned, ...initialEmpty, ...initialTasted, ...initialWishlist]
+      .map((d: any) => d?.bottle_id as string | undefined)
+      .filter((id): id is string => !!id);
+    fetchBottleScores(ids).then((g) => { if (!cancelled) setBottleScores(g); });
+    return () => { cancelled = true; };
+  }, [initialOwned, initialEmpty, initialTasted, initialWishlist]);
 
   const [activeTab, setActiveTab] = useState<TabOption>('owned');
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,7 +154,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const isOwned = kind === 'owned';
     const variantKeyed = kind === 'tasted' || kind === 'wishlist';
     const label = kind === 'wishlist' ? 'Wishlisted' : undefined;
-    let cards = raw.map(d => mapToCardData(d, minElo, maxElo, isOwned, variantKeyed, label));
+    let cards = raw.map(d => mapToCardData(d, isOwned, variantKeyed, label, myScores, bottleScores));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       cards = cards.filter(c =>
@@ -139,7 +172,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       }
     }
     return cards;
-  }, [searchQuery, filter, minElo, maxElo]);
+  }, [searchQuery, filter, myScores, bottleScores]);
 
   // Counts for each tab — always reflect active search + filter
   const tabCounts = useMemo(() => ({
