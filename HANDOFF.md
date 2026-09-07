@@ -39,6 +39,12 @@ would pass the guard today and still take data with them.
 body - do not re-litigate the rules, they were decided one at a time with Brian. **#69** is a small
 safety chore: a dead `update_elo_for_session(uuid)` still holds the pre-#3 formula.
 
+**#70 is the big new thing and Brian has not picked a column for it yet.** The variant model was
+designed end to end on 2026-09-07 and sits in *North Star* with five tasks (#71-#75) in *Backlog*.
+Everything is written down in #70 - vocabulary, the ghost-parent split, the weighted rollup, the
+star blend with its four confirmed worked examples, the one-axis-per-bottle rule, and what the 20
+existing multi-variant bottles need. **Ask Brian where it goes; do not start it off your own bat.**
+
 Also unverified rather than unfinished: **#66's slider fix can only be proven on an iPhone**, and
 the sticky search bar (#62) and the admin bells (#65) were shipped without a signed-in look, because
 the QA account is no longer admin and an agent cannot type a password into a login form. Ask Brian
@@ -198,6 +204,31 @@ password.
   (surface `agent_import`). The rows are otherwise identical to a real save *on purpose*, so filter
   on that event for usage analysis and ignore it for Elo analysis, where the tasting is entirely
   real. Registered in TELEMETRY.md.
+
+### THE VARIANT MODEL (designed 2026-09-07, not built) - #70
+
+Read **#70** before touching anything about variants, defaults, store picks or how a star is
+computed. The short version, so nobody re-derives it:
+
+- **"Default" is the wrong word - it is the MAIN record**, one per barcode, with two kinds of
+  spin-off: a **store pick** (a store's clone, private to its creator, tastings roll up to the
+  parent - this is already built and correct) and a **variant** (a global variation: release year,
+  batch, rickhouse, barrel).
+- **The first verified variant turns the main record into a ghost.** A catch-all `"[axis] unknown"`
+  child is created, the main's entire history moves onto it (including any store picks), and the
+  main becomes display-only - still in search, never interacted with directly. Interacting with a
+  split bottle always asks which version.
+- **Rollups are weighted by evidence, never straight averages.** Brian's own example proves why: 10
+  tastings at 1586 and 2 at 1650 average to 1618, which sits nearer the release nobody has tasted.
+- **A variant's star blends its Elo-derived star with manual ratings, equally weighted, by count.**
+  Four worked examples in #70, all confirmed against his numbers (4.09 / 4.5 / 4.96 / 4.04).
+  **B-47's guess-deletion is what stops a user counting twice - it is load-bearing now.**
+- **One axis per bottle**, declared by an admin when verifying the first variant. Until verified the
+  variant is private to whoever added it, exactly like a store pick.
+- **Store picks hang off a variant, not the parent**, once a bottle has split.
+
+Everything above was decided one question at a time. **Build to the issue bodies; do not re-open the
+rules.**
 
 ### Landmines
 - **The agent sandbox is isolated outside the repo.** Writes **inside `C:\pourchoices-frontend`**
