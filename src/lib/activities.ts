@@ -174,10 +174,25 @@ export async function fetchLastActivityForBottle(
 // (`test`) still move personal + global Elo -- they just never post here.
 // This is the ONLY activities read that spans users; every other one is already
 // scoped to the viewer's own user_id, so the feed is the only surface to filter.
+/**
+ * #63: the image comes from the VARIANT, never `bottles.frontimage_url`.
+ *
+ * That column is the pre-7.1 legacy one. Every other screen resolves an image from the default
+ * variant, and `adminUpdateBottleFields` deliberately writes display fields there -- its own
+ * comment says writing them to `bottles` would leave the edit invisible in search. So verifying a
+ * bottle updated the variant while the feed kept rendering whatever stale value sat on `bottles`,
+ * which is exactly what Brian reported: the picture frozen as it was when the post was made.
+ * Measured 2026-09-07: 62 bottles disagreed between the two columns, 58 of them present in the
+ * feed, and 60 had no legacy image at all despite having a real one.
+ *
+ * `name` and `distillery` stay on `bottles` on purpose -- those are identity fields and an admin
+ * edit writes them there, so they are current.
+ */
 const FEED_SELECT = `
-  id, action, pour_type, created_at, bottle_id, user_id,
+  id, action, pour_type, created_at, bottle_id, variant_id, user_id,
   users!inner ( username ),
-  bottles ( name, distillery, frontimage_url )
+  bottles ( name, distillery ),
+  bottle_variants ( frontimage_url )
 `;
 
 export async function fetchActivityFeed(opts: {
@@ -197,9 +212,29 @@ export async function fetchActivityFeed(opts: {
     return { rows: [], error: error.message };
   }
 
-  const rows: ActivityRow[] = (data || []).map((raw: any) => {
+  const raws = (data || []) as any[];
+
+  // Just over half of the feed predates per-variant activity logging and carries no variant_id, so
+  // those rows need the bottle's DEFAULT variant image. all_bottle_details already resolves exactly
+  // that, and reusing it means the feed cannot drift from what search shows.
+  const needDefault = [...new Set(
+    raws.filter((r) => !r.variant_id).map((r) => r.bottle_id as string).filter(Boolean)
+  )];
+  const defaultImages = new Map<string, string | null>();
+  if (needDefault.length) {
+    const { data: defs } = await supabase
+      .from("all_bottle_details")
+      .select("bottle_id, attr_frontimage_url")
+      .in("bottle_id", needDefault);
+    (defs || []).forEach((d: { bottle_id: string; attr_frontimage_url: string | null }) =>
+      defaultImages.set(d.bottle_id, d.attr_frontimage_url)
+    );
+  }
+
+  const rows: ActivityRow[] = raws.map((raw: any) => {
     const user = Array.isArray(raw.users) ? raw.users[0] : raw.users;
     const bottle = Array.isArray(raw.bottles) ? raw.bottles[0] : raw.bottles;
+    const variant = Array.isArray(raw.bottle_variants) ? raw.bottle_variants[0] : raw.bottle_variants;
     return {
       id: raw.id,
       action: raw.action as ActivityAction,
@@ -210,7 +245,9 @@ export async function fetchActivityFeed(opts: {
       username: user?.username ?? "Someone",
       bottleName: bottle?.name ?? "Unknown bottle",
       bottleDistillery: bottle?.distillery ?? null,
-      bottleImageUrl: bottle?.frontimage_url ?? null,
+      // The version the post was actually about, when it names one -- a store pick or a specific
+      // batch should show its own bottle, not the SKU's stand-in.
+      bottleImageUrl: variant?.frontimage_url ?? defaultImages.get(raw.bottle_id) ?? null,
     };
   });
 
