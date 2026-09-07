@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `14e311d`. All on origin/MVP-v3 and live on prod.
+- **Tip:** `dc93fe3`. All on origin/MVP-v3 and live on prod.
 - **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
 - **The board's In Progress lane is EMPTY.** The three cards Brian staged there (#65, #66, #62)
   all shipped, plus #4 from Top Priority.
@@ -39,11 +39,24 @@ would pass the guard today and still take data with them.
 body - do not re-litigate the rules, they were decided one at a time with Brian. **#69** is a small
 safety chore: a dead `update_elo_for_session(uuid)` still holds the pre-#3 formula.
 
-**#70 is the big new thing and Brian has not picked a column for it yet.** The variant model was
-designed end to end on 2026-09-07 and sits in *North Star* with five tasks (#71-#75) in *Backlog*.
-Everything is written down in #70 - vocabulary, the ghost-parent split, the weighted rollup, the
-star blend with its four confirmed worked examples, the one-axis-per-bottle rule, and what the 20
-existing multi-variant bottles need. **Ask Brian where it goes; do not start it off your own bat.**
+**#70, the variant model, is HALF BUILT and is the current focus.** Brian's call on 2026-09-07:
+build it to the fullest, because leaving it would only pile up data to unwind later. Shipped and on
+prod: the schema and split operation (#71), the admin triage queue (#76), the scoring views (#72),
+and the search/detail wiring plus the picker label (#74, partly). Also #77, a security hole found on
+the way.
+
+**Still open, in the order I would take them:**
+1. **#73** - a submitted variant must be private to its creator until an admin verifies it, and
+   verification is where the axis gets declared. Today the triage queue is the only way to declare
+   an axis, so a user-contributed variant goes live immediately. This is the real gap.
+2. **#74 remainder** - the "See all versions" breakdown screen with a star per version.
+3. **#75** - the data pass over the 20 multi-variant bottles, done THROUGH the triage queue.
+4. **#67 / #68** - the delete gate and the merge tool. #68 and #71 both repoint `tasting_results`
+   across four columns; whoever builds the second should reuse the first's helper.
+
+**Brian can safely triage now.** Splitting a bottle is already safe ahead of the rest: the catch-all
+keeps `is_default`, so interactions still land on it, which is exactly where unlabelled history
+belongs, and the picker already offers the named versions beside it.
 
 Also unverified rather than unfinished: **#66's slider fix can only be proven on an iPhone**, and
 the sticky search bar (#62) and the admin bells (#65) were shipped without a signed-in look, because
@@ -325,6 +338,30 @@ Each of those rules was decided one at a time. **Do not re-open them** - build t
 `(p_session_id uuid)` one still contains the pre-#3 formula, `win_rate` multiplier and all. Nothing
 calls it. It is a loaded gun for anyone who greps for "the scoring function"; dropping it needs
 Brian's go.
+
+**Then the variant model was designed and half built in the same session** - see #70 and the
+section above. Six issues filed (#70-#75), a seventh added when Brian pointed out that triage had
+nowhere to happen (#76), and four of them shipped. Three things worth knowing that are not in the
+issue bodies:
+
+- **The split moves nothing.** Brian's sketch copied the old history onto a new "unknown" child; the
+  main variant already holds it, so the split relabels instead. Identical end state, zero rows
+  changing hands - which deletes the riskiest part of the whole feature.
+- **The scoring views run as their OWNER, not the caller, and must.** `tasting_results` is readable
+  only for your own sessions under RLS, so a security_invoker view would hand every user a different
+  "global" star, silently. The cost is that RLS no longer filters them, so the one privacy rule -
+  store picks are visible only to their creator - is written INTO `variant_scores`. **Any future
+  privacy rule on `bottle_variants` has to be repeated there.**
+- **Search was showing everyone a different number.** The list card star was `(my rating + global)/2`,
+  so the screen for comparing bottles was personalised. It is now the global rollup for everyone,
+  with the personal star on the detail page, labelled.
+
+**#77, found on the way and fixed with Brian's approval:** `bottles` and `bottle_variants` each had
+an UPDATE policy whose whole condition was `auth.uid() IS NOT NULL`. Policies are OR'd, so the admin
+policies beside them restricted nothing and **suggested_edits was a convention, not a control** -
+any signed-in user could rewrite the catalog from a browser. Now: admins, plus a contributor editing
+their own row while it is unverified, which is the app's actual direct-apply rule. Verified as a
+real non-admin session, including that self-verifying is refused.
 
 **Process note from Brian, now in Claude's memory:** ask **one question at a time**. Ending a
 message with three or four open questions is overwhelming; step through decisions conversationally
