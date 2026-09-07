@@ -31,6 +31,24 @@ interface VariantSelectSheetProps {
   onContributed?: (variantId: string | null) => void;
 }
 
+/**
+ * #70: once a bottle has SPLIT, its main record is a rollup and the thing that used to be "the
+ * standard bottle" is the catch-all — the version for interactions where nobody recorded which one
+ * it was. Same row, same behaviour; calling it "Standard bottle" after a split would tell people
+ * they are picking a specific bottling when they are picking the opposite.
+ *
+ * The axis is fetched here rather than plumbed through BottleDetails: it is one small read, needed
+ * by one component, and threading a new field through every query path that builds a bottle would
+ * be a much larger change for the same label.
+ */
+const AXIS_UNKNOWN_LABEL: Record<string, string> = {
+  release_year: "Year unknown",
+  batch: "Batch unknown",
+  rickhouse: "Rickhouse unknown",
+  barrel: "Barrel unknown",
+  custom: "Version unknown",
+};
+
 type BottleKind =
   | { kind: "standard" }
   | { kind: "batch"; variantId: string; data: BatchVariant }
@@ -49,6 +67,20 @@ export default function VariantSelectSheet({
   // match the auth id OR the public id (B-11) because the column held both.
   const isContribute = mode === "contribute";
   const [isFetching, setIsFetching] = useState(false);
+  // The bottle's variant axis, when it has split (#70). Null for every bottle that has not.
+  const [axis, setAxis] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    supabase
+      .from("bottles")
+      .select("variant_axis")
+      .eq("id", bottle.id)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancelled) setAxis((data?.variant_axis as string | null) ?? null); });
+    return () => { cancelled = true; };
+  }, [open, bottle.id]);
+
   const [isAdding, setIsAdding] = useState(false);
   const [batchVariants, setBatchVariants] = useState<BatchVariant[]>([]);
   const [myStores, setMyStores] = useState<string[]>([]);
@@ -320,14 +352,16 @@ export default function VariantSelectSheet({
               {!isContribute && (
                 <SelectRow
                   isSelected={bottleKind.kind === "standard"}
-                  label="Standard bottle"
+                  label={axis ? (AXIS_UNKNOWN_LABEL[axis] ?? "Version unknown") : "Standard bottle"}
                   sublabel={
-                    [
-                      bottle.proof ? `${bottle.proof} proof` : null,
-                      bottle.age,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "Default version"
+                    axis
+                      ? "Pick this if you don't know which one you have"
+                      : [
+                          bottle.proof ? `${bottle.proof} proof` : null,
+                          bottle.age,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "Default version"
                   }
                   onClick={() => setBottleKind({ kind: "standard" })}
                 />
