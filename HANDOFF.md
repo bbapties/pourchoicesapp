@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `2fca1e5`. All on origin/MVP-v3 and live on prod. 25 commits on 2026-09-07.
+- **Tip:** `eb9f6ab` + this commit. All on origin/MVP-v3 and live on prod. 28 commits on 2026-09-07.
 - **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
 - **The board's In Progress lane is EMPTY.** The three cards Brian staged there (#65, #66, #62)
   all shipped, plus #4 from Top Priority.
@@ -45,6 +45,14 @@ hole found on the way (#77), the three bugs Brian staged that morning (#66, #65,
 **In Progress is empty and Top Priority holds two items.**
 
 ### The single next step
+**Read the board RIGHT TO LEFT before anything else** (see the lane note above). As of the end of
+2026-09-07: *In Progress* is empty, *Next Items per Brian* holds only **#13**, and *Top Priority*
+holds **#8** and **#75**.
+
+**#13** (CoachHost `seen_coach_ids` last-write-wins across tabs) was deliberately LEFT in Brian's
+lane rather than worked: it is two tabs racing over one coach mark and the loser sees a tour again -
+the smallest possible harm, nowhere near the main loop. Work it or move it, but say which.
+
 **#75 - the triage pass, and it is BRIAN'S work, not an agent's.** Every tool it needs now exists:
 Admin > Variants lists all 109 bottles, sorted by how likely each is to need a decision, with three
 outcomes per bottle (split with a declared axis / single bottling / needs merge) and a merge flow
@@ -449,6 +457,24 @@ same pattern removed from MyBarClient.
 on the strength of ONE manual star rating and zero blind tastings. The blend is behaving exactly as
 specified -- but a leaderboard whose top entry is one person's gut call may want a minimum-evidence
 rule. Brian's call.
+
+**THE BOARD HAS A LANE AN AGENT MISSED ALL DAY.** *Next Items per Brian* sits between Top Priority
+and In Progress, and Claude read only Top Priority for the entire session - because AGENTS.md said
+to, in three places including the START SESSION script itself. All three are fixed, along with
+docs/BOARD.md, whose "Phrases that work with Claude" section literally said "reads Top Priority then
+Coming Soon". **Priority runs right to left, and the column set has changed once already: re-read it,
+descriptions included, every session.**
+
+Worked from that lane once found: **#63** fixed, **#6** moved to join #5 with comments on both
+(they are one job - which paths the middleware matcher covers, and what an RSC render does on a path
+it skips), **#13** left with reasons.
+
+**#63 was the second stale-column bug of the day.** The Social feed read
+`bottles.frontimage_url`, the pre-7.1 legacy column, while admin edits deliberately write display
+fields to the default variant. 62 bottles disagreed between the two columns, 58 of them in the feed,
+and 60 had no legacy image at all. **If a screen looks stale, check which column it reads before
+anything else** - `bottles.frontimage_url` and `bottles.elo_global` are both superseded and both
+still populated with old values.
 
 **Two bugs found by Brian reading the work back, both before they reached a user:** the search card
 was showing the parent rollup in Show variants mode (every batch identical, defeating the toggle),

@@ -12,7 +12,12 @@ docs, then switches. This file is the standing context both agents load every se
 1. **AGENTS.md** (this file) — rules, stack, guardrails.
 2. **[HANDOFF.md](HANDOFF.md)** — where the last agent stopped, the next step, open decisions.
 3. **The board** — https://github.com/users/bbapties/projects/1 — **the single source of truth for
-   what is open and what order it happens in.** Read the *Top Priority* column, then *Coming Soon*.
+   what is open and what order it happens in.** **PRIORITY RUNS RIGHT TO LEFT** — read the rightmost
+   non-Done lane first: *In Progress*, then *Next Items per Brian*, then *Top Priority*, then
+   *Coming Soon*. **Re-read the column list every session**, descriptions included; the set has
+   already changed once and an agent that stopped at *Top Priority* walked straight past the lane
+   Brian had filled in (2026-09-07). *Next Items per Brian* is a **proposal** lane — judge each card
+   and either work it or move it **with a comment saying why**.
    See [docs/BOARD.md](docs/BOARD.md) for how it is structured and the exact `gh` commands.
 4. **[TELEMETRY.md](TELEMETRY.md)** — instrumentation policy: capture events/activity/usage generously so future features (badges, analytics) already have data. Log as you build.
 
@@ -53,7 +58,8 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
 
 ## Working conventions
 - **One feature or fix per commit.** Small, reviewable commits.
-- **Work the board, not the markdown.** Take work from *Top Priority*, then *Coming Soon*. Close an
+- **Work the board, not the markdown.** Take work from the rightmost non-Done lane first (see the
+  read-first order above — it is NOT simply *Top Priority*). Close an
   issue when it ships, with a one-line comment naming the commit. **Never tick a box in
   BUGS/BACKLOG/ROADMAP** — those files are frozen history.
 - **Find a bug mid-session? File it as an issue** (`gh issue create`), add it to the board, set
@@ -154,7 +160,9 @@ START SESSION. You are one of two agents (Claude + Grok) working this repo in re
 Read AGENTS.md, then HANDOFF.md, then the board (docs/BOARD.md says how). Write no code yet.
 Reply with exactly:
   1. Where the last session left off (from HANDOFF.md "Right now").
-  2. The single next step, taken from the board's Top Priority column.
+  2. The single next step. Read the board's columns RIGHT TO LEFT, skipping Done — In Progress, then
+     Next Items per Brian, then Top Priority. Re-read the column list and its descriptions; do not
+     assume you know them.
   3. Anything you need from me before you start.
 Then wait for my go.
 ```
