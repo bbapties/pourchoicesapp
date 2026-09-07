@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Bell, BellOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type AdminUser = {
@@ -12,6 +13,8 @@ type AdminUser = {
   created_at: string;
   bottleCount: number;
   sessionCount: number;
+  /** null = notifications not enabled at all; a number = enabled, with this many registered devices. */
+  pushDevices: number | null;
 };
 
 export default function UsersTab({ currentPublicUserId }: { currentPublicUserId: string }) {
@@ -25,10 +28,17 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
   const load = async () => {
     setLoading(true);
 
-    const [usersRes, bottlesRes, sessionsRes] = await Promise.all([
+    // Push reachability comes from /api/admin/push-recipients, not a client query: RLS gives an
+    // admin no read on other users' push_subscriptions rows, so counting them here would report
+    // every other user as 0 devices (B-59). The route returns only users with notify_push = true,
+    // which is exactly the distinction the bell draws -- absent means "not enabled".
+    const [usersRes, bottlesRes, sessionsRes, pushRes] = await Promise.all([
       supabase.from("users").select("id, username, email, role, created_at"),
       supabase.from("user_bottles").select("user_id"),
       supabase.from("tasting_sessions").select("user_id"),
+      fetch("/api/admin/push-recipients")
+        .then((r) => (r.ok ? r.json() : { recipients: [] }))
+        .catch(() => ({ recipients: [] })),
     ]);
 
     if (usersRes.error) {
@@ -41,6 +51,11 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
     (bottlesRes.data || []).forEach((r) => {
       bottleCounts.set(r.user_id, (bottleCounts.get(r.user_id) || 0) + 1);
     });
+    const pushDevices = new Map<string, number>();
+    ((pushRes as { recipients?: { id: string; devices: number }[] }).recipients ?? []).forEach((r) =>
+      pushDevices.set(r.id, r.devices)
+    );
+
     const sessionCounts = new Map<string, number>();
     (sessionsRes.data || []).forEach((r) => {
       sessionCounts.set(r.user_id, (sessionCounts.get(r.user_id) || 0) + 1);
@@ -54,6 +69,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
       created_at: u.created_at,
       bottleCount: bottleCounts.get(u.id) || 0,
       sessionCount: sessionCounts.get(u.id) || 0,
+      pushDevices: pushDevices.has(u.id) ? pushDevices.get(u.id)! : null,
     }));
 
     merged.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
@@ -147,6 +163,34 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
                       you
                     </span>
                   )}
+                  {/*
+                    Notification state at a glance (#65). Three distinct states, because the
+                    difference between them is the whole bug: a filled bell is genuinely
+                    reachable, a struck-through bell wants notifications but has no registered
+                    device (their Profile used to claim "On" anyway), and no bell means they
+                    never turned them on.
+                  */}
+                  {u.pushDevices !== null &&
+                    (u.pushDevices > 0 ? (
+                      <span
+                        className="flex items-center gap-0.5 text-charcoal"
+                        title={`Notifications on — ${u.pushDevices} device${u.pushDevices === 1 ? "" : "s"}`}
+                        aria-label={`Notifications on, ${u.pushDevices} device${u.pushDevices === 1 ? "" : "s"}`}
+                      >
+                        <Bell className="w-3.5 h-3.5" fill="currentColor" strokeWidth={1.5} />
+                        {u.pushDevices > 1 && (
+                          <span className="text-[10px] tabular-nums">{u.pushDevices}</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span
+                        className="text-gray-400"
+                        title="Notifications enabled, but no registered device — they cannot receive one"
+                        aria-label="Notifications enabled but unreachable"
+                      >
+                        <BellOff className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      </span>
+                    ))}
                 </div>
                 <div className="text-xs text-gray-500 truncate">{u.email}</div>
                 <div className="text-xs text-gray-400 mt-1">
