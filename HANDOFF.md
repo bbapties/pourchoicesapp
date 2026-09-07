@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `eb9f6ab` + this commit. All on origin/MVP-v3 and live on prod. 28 commits on 2026-09-07.
+- **Tip:** `f90ccda` + this commit. All on origin/MVP-v3 and live on prod. 31 commits on 2026-09-07.
 - **Current phase:** Phase 10, Waves A-D complete, E1 verified. Working the board, not the markdown.
 - **The board's In Progress lane is EMPTY.** The three cards Brian staged there (#65, #66, #62)
   all shipped, plus #4 from Top Priority.
@@ -453,10 +453,26 @@ because it fetches once. **The lesson worth keeping: when a fetch result is keye
 into a map, there is nothing to cancel -- a late arrival cannot be stale.** Fixed in `2fca1e5`,
 same pattern removed from MyBarClient.
 
-**Worth a decision (not yet filed):** W.L. Weller Antique 107 currently tops the rollup at **5.00**
-on the strength of ONE manual star rating and zero blind tastings. The blend is behaving exactly as
-specified -- but a leaderboard whose top entry is one person's gut call may want a minimum-evidence
-rule. Brian's call.
+**A THIRD DISPLAY BUG FROM THE SAME ROOT, caught by Brian asking why Weller was not showing as
+5.0 in search.** It was - seventeen rows down. The list was ordered by `default_variant_elo` while
+the card displayed the BLENDED star, and those are different numbers now that the star includes
+manual ratings. Before 2026-09-07 the card's star was derived from Elo, so order and display always
+agreed; adding the blend broke that silently. Fixed by giving `all_bottle_details` and
+`all_variant_details` a `blended_star` column and sorting on it, with Elo as the tiebreak - **in the
+view, not the browser**, because search is paginated and a client-side sort would only reorder the
+loaded page (the My Ranks mistake, recorded below).
+
+**THE PATTERN BEHIND ALL THREE OF TODAY'S DISPLAY BUGS:** a screen kept reading the old source after
+the real one moved. Search read a stale fallback star; the Social feed read
+`bottles.frontimage_url`; the list sorted on Elo while showing a blend. **`bottles.frontimage_url`
+and `bottles.elo_global` are both superseded and both still populated with old values** - if a
+screen looks stale, check which column it reads before anything else.
+
+**STILL OPEN, and now more visible than ever:** W.L. Weller Antique 107 **tops the search list** on
+ONE manual rating of 5 and zero blind tastings. The blend and the sort are both behaving exactly as
+specified. Whether a leaderboard should let one gut call sit at number one is a product question -
+the fix would be a minimum-evidence rule (a Bayesian pull toward the mean until a few people agree).
+**Brian's call, not yet filed.**
 
 **THE BOARD HAS A LANE AN AGENT MISSED ALL DAY.** *Next Items per Brian* sits between Top Priority
 and In Progress, and Claude read only Top Priority for the entire session - because AGENTS.md said
