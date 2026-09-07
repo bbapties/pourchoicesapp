@@ -136,7 +136,7 @@ export async function removeUserBottle(opts: {
 
   let query = supabase
     .from("user_bottles")
-    .select("id, elo")
+    .select("id, tasted_at")
     .eq("user_id", opts.userId)
     .eq("bottle_id", opts.bottleId);
   if (variantId) query = query.eq("variant_id", variantId);
@@ -146,9 +146,23 @@ export async function removeUserBottle(opts: {
   const row = rows?.[0];
   if (!row) return {}; // nothing to remove
 
-  const hasTasting = row.elo != null && Number(row.elo) !== 1500;
+  /*
+   * #4 / B-52: "have they tasted this" is a stored fact now, not a guess.
+   *
+   * This used to read `elo !== 1500`, because there was no tasted flag and Elo was the only
+   * available signal. Two ways that was wrong: a blind tasting that nets to zero lands back on
+   * exactly 1500 and read as a mistaken add, and a logged pour never moves Elo at all -- 5 rows
+   * on prod were pour-only and sitting at 1500 when this shipped.
+   *
+   * Brian's terminology (2026-09-07): Blind Tasted = did the tasting flow; Tasted = that or a
+   * logged pour; Had it = either, or ever added to a bar. Removing from your bar clears the SHELF
+   * facts and nothing else -- drinking and blind-tasting are a separate, permanent history this
+   * button cannot reach. `tasted_at` is stamped by triggers on tasting_results and on a `drank`
+   * activity (sql/b52-tasted-at-migration.sql) and is never cleared here.
+   */
+  const hasTasting = row.tasted_at != null;
   if (hasTasting) {
-    // Remove from the shelf but keep the row (its Elo → Tasted). B-32: clear owned_count too.
+    // Remove from the shelf but keep the row (Tasted survives). B-32: clear owned_count too.
     const { error } = await supabase
       .from("user_bottles")
       .update({ currently_owned: false, times_had: 0, owned_count: 0, updated_at: new Date().toISOString() })
@@ -156,7 +170,7 @@ export async function removeUserBottle(opts: {
     if (error) return { error: error.message };
     await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "removed_from_collection", variantId });
   } else {
-    // Mistaken add (no tasting history): hard-delete the row AND erase its "added to collection"
+    // Never tasted or drunk -- only ever "Had it". A mistaken add: hard-delete the row AND erase its "added to collection"
     // feed/history post so the mistake leaves no trace (B.4 cascade). No "removed" post either.
     const { error } = await supabase.from("user_bottles").delete().eq("id", row.id);
     if (error) return { error: error.message };
