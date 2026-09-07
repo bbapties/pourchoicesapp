@@ -120,6 +120,17 @@ single OS dialog (spent once).
 | `push_unsubscribe` | turned off from Profile |
 | `push_send` | an admin sent one (metadata: `audience`, `sent`, `failed`) |
 
+Variant model (#70), from the admin triage queue:
+
+| event | when |
+|-------|------|
+| `variant_triage` | an admin decided a bottle is `single` or `needs_merge` (metadata: `bottleId`, `triage`) |
+| `variant_split` | a bottle became a rollup parent (metadata: `bottleId`, `axis`) |
+
+`variant_split` is the interesting one to watch: it is irreversible in practice, it changes what
+every user sees in search for that bottle, and the axis chosen is a judgement that cannot be
+re-derived from the data. Keep it even if the triage queue is later retired.
+
 Watch for `push_prompt_shown` on iOS with no `push_permission` following: on iPhone the APIs only
 exist inside an installed PWA, so that gap is an install problem, not a notification problem.
 

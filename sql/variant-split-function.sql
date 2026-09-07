@@ -34,6 +34,23 @@ DECLARE
   v_catchall uuid;
   v_existing text;
 BEGIN
+  -- ADMIN ONLY, CHECKED HERE.
+  --
+  -- This is a callable RPC, and PostgREST exposes it to every signed-in user. It cannot lean on
+  -- RLS to stop them: `bottles` and `bottle_variants` both carry an "Auth update ..." policy whose
+  -- USING clause is only `auth.uid() IS NOT NULL`, and policies are OR'd, so the admin policies
+  -- beside them restrict nothing. Any authenticated user can already update those tables directly
+  -- (pre-existing, filed separately -- do NOT quietly widen it further here).
+  --
+  -- Splitting a bottle changes what every user sees in search, so it gets its own gate rather than
+  -- trusting the one that is not there.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.users u
+     WHERE u.auth_id = auth.uid() AND u.role = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'split_bottle_into_variants: admins only';
+  END IF;
+
   IF p_axis IS NULL THEN
     RAISE EXCEPTION 'split_bottle_into_variants: an axis is required -- it is the question asked of everyone who adds a version';
   END IF;
