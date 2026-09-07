@@ -6,7 +6,7 @@ import NotificationSheet from "@/components/NotificationSheet";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
-import { canStillAsk, checkPushSupport } from "@/lib/pushNotifications";
+import { canStillAsk, checkPushSupport, syncPushSubscription } from "@/lib/pushNotifications";
 import { isStandalone } from "@/lib/pwa";
 
 /**
@@ -29,6 +29,7 @@ import { isStandalone } from "@/lib/pwa";
  */
 
 const SESSION_KEY = "pc.push.nudged";
+const SYNC_SESSION_KEY = "pc.push.synced";
 
 function nudgedThisSession(): boolean {
   try {
@@ -50,6 +51,25 @@ export default function NotificationNudge() {
   const pathname = usePathname();
   const { publicUserId, loading } = useCurrentUser();
   const [open, setOpen] = useState(false);
+
+  /**
+   * Repair a lost subscription on open (#65). Separate from the nudge on purpose: the nudge is
+   * about people who have never said yes, this is about people who did and quietly stopped being
+   * reachable when their endpoint rotated or was pruned as dead. It shows no UI and cannot spend
+   * the OS dialog -- `syncPushSubscription` bails unless permission is already granted and the
+   * stored preference is already true. Once per browser session is plenty; the endpoint is stable
+   * within a session.
+   */
+  useEffect(() => {
+    if (loading || !publicUserId) return;
+    try {
+      if (sessionStorage.getItem(SYNC_SESSION_KEY) === "1") return;
+      sessionStorage.setItem(SYNC_SESSION_KEY, "1");
+    } catch {
+      // Private mode: it runs again next navigation. An upsert of the same endpoint is a no-op.
+    }
+    syncPushSubscription(publicUserId);
+  }, [loading, publicUserId]);
 
   useEffect(() => {
     if (loading || !publicUserId) return;

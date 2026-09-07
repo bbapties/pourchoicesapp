@@ -12,7 +12,7 @@ import { clearDismissedInstall, isStandalone } from "@/lib/pwa";
 import { FORCE_REPLAY_KEY } from "@/lib/coaches";
 import InstallSheet from "@/components/InstallSheet";
 import NotificationSheet from "@/components/NotificationSheet";
-import { checkPushSupport, disablePush, permissionState } from "@/lib/pushNotifications";
+import { checkPushSupport, disablePush, hasDeviceSubscription, permissionState, syncPushSubscription } from "@/lib/pushNotifications";
 import { logClick, logEvent } from "@/lib/events";
 
 export default function ProfilePage() {
@@ -52,17 +52,28 @@ export default function ProfilePage() {
     setPushBlocked(permissionState() === "denied");
     if (!publicUserId) return;
     let cancelled = false;
-    supabase
-      .from("users")
-      .select("notify_push")
-      .eq("id", publicUserId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        // "On" means BOTH: they want it and the browser actually granted it. Showing a toggle as on
-        // while the OS blocks delivery would be a lie.
-        setNotifyOn(!!data?.notify_push && permissionState() === "granted");
-      });
+    (async () => {
+      const { data } = await supabase
+        .from("users")
+        .select("notify_push")
+        .eq("id", publicUserId)
+        .maybeSingle();
+      if (cancelled) return;
+      // "On" means THREE things: they want it, the browser granted it, and THIS DEVICE is actually
+      // registered to receive one. The device check is the part that was missing (#65) -- a
+      // subscription can be dropped by iOS or pruned as dead long after the preference was saved,
+      // and a tester read "On" here while Admin correctly listed them as unreachable. The
+      // re-sync in NotificationNudge normally repairs that before this ever renders; if it could
+      // not, saying "Off" is at least true, and turning it back on is one tap.
+      const wanted = !!data?.notify_push && permissionState() === "granted";
+      let live = wanted ? await hasDeviceSubscription() : false;
+      // They asked for notifications and the OS allows them, but this device is not registered.
+      // Repair it here rather than reporting Off and making them toggle: no dialog is spent, and
+      // Profile is exactly where someone goes to check that notifications are working.
+      if (wanted && !live) live = (await syncPushSubscription(publicUserId)).synced;
+      if (cancelled) return;
+      setNotifyOn(wanted && live);
+    })();
     return () => { cancelled = true; };
   }, [publicUserId]);
 

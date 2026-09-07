@@ -116,11 +116,16 @@ single OS dialog (spent once).
 | `push_never_ask` | "Don't ask me again" -> `users.notify_prompt_optout` |
 | `push_permission` | the OS dialog resolved (metadata: `result` granted/denied/default) |
 | `push_subscribe` | a device subscription was stored (metadata: `standalone`) |
+| `push_resync` | a lost device subscription was silently re-registered on open (metadata: `standalone`) (#65) |
 | `push_unsubscribe` | turned off from Profile |
 | `push_send` | an admin sent one (metadata: `audience`, `sent`, `failed`) |
 
 Watch for `push_prompt_shown` on iOS with no `push_permission` following: on iPhone the APIs only
 exist inside an installed PWA, so that gap is an install problem, not a notification problem.
+
+Watch `push_resync` too: a steady trickle is the system working (endpoints rotate, and the repair is
+silent), but a spike on one platform means subscriptions are being dropped faster than users open
+the app, and the reachable count in Admin will sag behind the opt-in count.
 
 
 ### Write guards — `guard_event_insert` (BEFORE INSERT trigger)

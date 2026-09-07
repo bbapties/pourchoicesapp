@@ -59,6 +59,36 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return out;
 }
 
+/**
+ * Write a subscription to `push_subscriptions` for this user. Shared by the first opt-in and by the
+ * unattended re-sync so there is one definition of what a registered device row looks like.
+ */
+async function storeSubscription(
+  publicUserId: string,
+  subscription: PushSubscription
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const json = subscription.toJSON();
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+    return { ok: false, error: "Incomplete subscription" };
+  }
+  // Endpoint is globally unique and unique-indexed, so this upsert reassigns a device that changed
+  // hands instead of creating a duplicate row.
+  const { error } = await supabase
+    .from("push_subscriptions")
+    .upsert(
+      {
+        user_id: publicUserId,
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh,
+        auth: json.keys.auth,
+        user_agent: navigator.userAgent.slice(0, 400),
+        last_used_at: new Date().toISOString(),
+      },
+      { onConflict: "endpoint" }
+    );
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 export type SubscribeResult =
   | { ok: true }
   | { ok: false; reason: "denied" | "ios-needs-install" | "unsupported" | "no-key" | "error"; message?: string };
@@ -109,27 +139,8 @@ export async function enablePush(publicUserId: string): Promise<SubscribeResult>
       });
     }
 
-    const json = subscription.toJSON();
-    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-      return { ok: false, reason: "error", message: "Incomplete subscription" };
-    }
-
-    // Endpoint is globally unique and unique-indexed, so this upsert reassigns a device that
-    // changed hands instead of creating a duplicate row.
-    const { error } = await supabase
-      .from("push_subscriptions")
-      .upsert(
-        {
-          user_id: publicUserId,
-          endpoint: json.endpoint,
-          p256dh: json.keys.p256dh,
-          auth: json.keys.auth,
-          user_agent: navigator.userAgent.slice(0, 400),
-          last_used_at: new Date().toISOString(),
-        },
-        { onConflict: "endpoint" }
-      );
-    if (error) return { ok: false, reason: "error", message: error.message };
+    const stored = await storeSubscription(publicUserId, subscription);
+    if (!stored.ok) return { ok: false, reason: "error", message: stored.error };
 
     // Turning it on here is an explicit yes; make sure the stored preference agrees.
     await supabase.from("users").update({ notify_push: true }).eq("id", publicUserId);
@@ -140,6 +151,67 @@ export async function enablePush(publicUserId: string): Promise<SubscribeResult>
     const message = e instanceof Error ? e.message : String(e);
     console.error("enablePush:", message);
     return { ok: false, reason: "error", message };
+  }
+}
+
+/**
+ * Re-establish THIS device's subscription without spending a dialog (#65).
+ *
+ * WHY THIS EXISTS. A push subscription is not permanent. iOS rotates or drops the endpoint on an
+ * app update, an OS update, or when an installed PWA sits unopened; `/api/admin/send-push` deletes
+ * a row the moment the push service answers 404/410, because that endpoint is permanently dead.
+ * Nothing in the app ever put one back: `enablePush` is only reachable from the notification sheet,
+ * so the sole repair was the user toggling notifications off and on again. Meanwhile Profile read
+ * "On" from the stored preference plus the OS permission, neither of which knows whether a device
+ * is registered -- so a tester could show us a screenshot saying On while Admin correctly listed
+ * them as unreachable. That is exactly what happened: 8 users had `notify_push = true` and only 4
+ * had a subscription row.
+ *
+ * The repair is safe to run unattended because it never asks for anything. It returns immediately
+ * unless permission is ALREADY granted and the user's stored preference is ALREADY true, so it can
+ * neither spend the one-shot OS dialog nor resurrect notifications someone deliberately turned off.
+ *
+ * It re-registers whatever subscription the browser currently holds. If that endpoint is itself
+ * dead, the next send prunes it again and we are no worse off than before; the case this fixes is
+ * the common one, where the browser has a live subscription (new or rotated) and our row does not.
+ */
+export async function syncPushSubscription(
+  publicUserId: string
+): Promise<{ synced: boolean; reason?: "unsupported" | "not-granted" | "opted-out" | "no-key" | "error" }> {
+  if (!checkPushSupport().supported) return { synced: false, reason: "unsupported" };
+  if (permissionState() !== "granted") return { synced: false, reason: "not-granted" };
+
+  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!vapidPublicKey) return { synced: false, reason: "no-key" };
+
+  try {
+    // Respect the stored preference. Someone who turned notifications off keeps them off, even
+    // though the OS permission they granted months ago is still sitting there granted.
+    const { data: prefs } = await supabase
+      .from("users")
+      .select("notify_push")
+      .eq("id", publicUserId)
+      .maybeSingle();
+    if (!prefs?.notify_push) return { synced: false, reason: "opted-out" };
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      // No dialog: permission is already granted, so this resolves silently.
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
+      });
+    }
+
+    const stored = await storeSubscription(publicUserId, subscription);
+    if (!stored.ok) return { synced: false, reason: "error" };
+
+    logEvent({ eventType: "push_resync", metadata: { standalone: isStandalone() } });
+    return { synced: true };
+  } catch (e) {
+    console.error("syncPushSubscription:", e instanceof Error ? e.message : String(e));
+    return { synced: false, reason: "error" };
   }
 }
 
