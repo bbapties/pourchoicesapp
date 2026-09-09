@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `6153071` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `430ebba` + this doc commit. All on origin/MVP-v3 and live on prod.
 - **Current phase:** **The Home screen ("The Cabinet") is BUILT AND LIVE.** Designed and shipped
   on 2026-09-09 in one session: #82 and all eight tasks, plus #83's admin tool.
 - **THE NAV CHANGED FOR EVERY USER.** It is now Search / Social / **Home** / My Bar / Profile
@@ -34,15 +34,26 @@ the ghost, and **Admin > Images**) · #90 pick a bottle up · #92 coach + teleme
 switch. #84 (user-arranged cabinets) is North Star and explicitly NOT built.
 
 **WAITING ON BRIAN - three things, none of them code:**
-1. **Curate the images.** Admin > Images. **133 variants, 0 approved.** Every bottle on Home is a
-   ghost until he approves it. Looking at them, **most images are already fine** - the flag simply
-   defaults false - so this is mostly tapping Approve. Use the **Checker backdrop** first: the
-   shelf is ivory and so is a bad background, so a white box is invisible against it.
-2. **#93 - approve one RLS line.** `bottle_variants` has admin policies for UPDATE and DELETE but
-   **none for SELECT**, so 2 of 133 variants are invisible to the admin and can never be reviewed.
-   Additive; not applied because RLS needs his explicit go.
+1. **#95 - publish the What's New.** THE ONE GENUINELY UNFINISHED PIECE. #92 delivered the coach
+   entry and the telemetry; the What's New half was missed and the card was closed anyway.
+   `announcements` is EMPTY. **Drink's tab vanished for every existing user on 2026-09-09** and
+   nobody has been told - someone who used it to start a tasting will find it gone with no way to
+   learn that picking a bottle up off a shelf is now how you do that. It is Brian's to write
+   (Admin > Notify): the digest reads admin-published rows on purpose, so a flag in the codebase
+   cannot decide what counts as news. He said he would do it later.
+2. **Keep curating images.** Admin > Images. As of session end: **10 approved, 39 rejected, 2
+   flagged, 84 unreviewed of 133** - Brian was curating live while this shipped. Use the **Checker backdrop** first - the shelf is ivory and so
+   is a bad background, so a white box is invisible against it.
 3. **A fine-tuning pass on the cabinet.** Agreed rule: report anything STRUCTURAL immediately;
    save anything about LOOK for a dedicated session, because Phase 5 restyles every screen at once.
+
+**PARKED BY BRIAN:** **#93** (no admin SELECT policy on `bottle_variants`, so 2 of 133 variants are
+unreachable in the review tool and will stay ghosts). His words: *"leave those 2 variants alone for
+now... we can circle back."* Do not apply it without asking again.
+
+**UNJUDGED CARD:** **#6** appeared in *Next Items per Brian* during the 2026-09-09 session and was
+never assessed - that lane is a proposal lane, so the next agent must either work it or move it
+with a comment saying why. #13 is still sitting there from before, deliberately left.
 
 **STYLING RULE, learned the hard way this session.** The first cut of the cabinet was a dark, lit
 mancave against an app that is a light greyscale wireframe everywhere else. Brian rejected it:
@@ -60,6 +71,21 @@ cards already use - `#22c55e` had-it, `#FFD700` unverified.
 - **The picked-up bottle must stay an OVERLAY, never a route** (`PickedUpBottle`). Putting a bottle
   back has to leave you where you were on the shelf; a route change resets every run, silently.
 
+**BOTTLE IMAGES HAVE THEIR OWN CANONICAL DOC: [docs/IMAGE_PIPELINE.md](docs/IMAGE_PIPELINE.md).**
+Read it before touching one. Review states and transitions, who may write them,
+`scripts/shelf_image.mjs`, and the scale contract. It is in the AGENTS.md doc map and in Working
+conventions so neither agent can miss it. Two things from it that matter most:
+- **12 INCHES (305mm) IS RATIO 1.** `bottle_height` is millimetres of real glass and drives how tall
+  a bottle draws. It must always be set together with `bottle_height_source`
+  (`measured`/`published`/`estimated`) - a CHECK constraint enforces the pair. **`estimated` IS the
+  re-research queue.** Per-bottle heights are mostly NOT published, so a bot that blocks on
+  researching one will stall on most of the catalogue: fall back to a form-factor default, record
+  `estimated`, move on.
+- **THE wsrv.nl UNFLATTEN TRICK.** Many stored URLs run through the proxy with `&bg=white&output=jpg`,
+  which flattens a transparent PNG onto white. Dropping those two parameters brings the cut-out
+  back. **55 images force a white background, 31 from a PNG source, and 10 of the 22 "background not
+  removed" rejections are this and nothing else.** Try it before anything expensive.
+
 **Reuse decisions worth keeping:** the empty-bar scan button links to `/search?scan=1` rather than
 mounting a second scanner; "Have a drink" opens `BottleDetailView` with `autoOpenPour` rather than
 running its own pour flow; `lib/bottleDetails` reads the same view Search reads. Home is an
@@ -70,14 +96,15 @@ it was declined). Signed-in screens were verified through the **Claude-in-Chrome
 Brian's own already-signed-in browser**. That is the way to see a signed-in screen; use it.
 
 ### The single next step
-**Ask Brian what he saw on Home**, then work whatever he raises. The build is finished and every
-task issue is closed; what is left is his three items above (curate images, approve #93, tuning
-pass) and they are all decisions, not code.
+**Read the board RIGHT TO LEFT and start with *Next Items per Brian*, which now holds TWO cards:
+#13 and #6.** #6 arrived during the 2026-09-09 session and was never judged - that lane is a
+proposal lane, so work it or move it with a comment saying why. Do not leave it sitting.
 
-If he has nothing: **read the board RIGHT TO LEFT.** *In Progress* is empty. *Top Priority* holds
-**#93** (the one-line RLS fix, blocked on his approval), **#8** (verify the search `.or()`
-injection is closed, XS) and **#75** (the variant triage - BRIAN'S work, not an agent's).
-*Next Items per Brian* still holds only **#13**.
+*In Progress* is empty. *Top Priority* holds **#95** (Brian's to write, not an agent's), **#93**
+(PARKED by Brian - do not apply), **#8** (verify the search `.or()` injection is closed, XS) and
+**#75** (the variant triage - BRIAN'S work, not an agent's).
+
+The Home screen is finished and live; nothing on it is waiting on code.
 
 **#13** (CoachHost `seen_coach_ids` last-write-wins across tabs) was deliberately LEFT in Brian's
 lane rather than worked: it is two tabs racing over one coach mark and the loser sees a tour again -
@@ -477,6 +504,40 @@ cannot type a password):
 
 **#93 filed and NOT fixed:** `bottle_variants` has admin UPDATE and DELETE policies but no admin
 SELECT, so 2 of 133 variants are unreachable in the review tool. One additive policy; needs Brian.
+
+**THEN THE IMAGE PIPELINE, same session.** Brian started curating while the build finished, and the
+rejection reasons immediately paid for themselves: 22 background-not-removed, 8 no-image-at-all, 4
+low-resolution, 4 wrong-crop, 2 not-on-baseline - a real work queue rather than a pile of noes.
+
+Commits after the nav switch: `7aa818b` (review ordered by recent activity + an owned-only slicer),
+`a87d08f` (bottle_height scaling + `scripts/shelf_image.mjs` + server-write fix), `75d0ad5` (the
+aspect-ratio bug), `05c36bb` (the 12in baseline), `2710fac` (`bottle_height_source` +
+docs/IMAGE_PIPELINE.md), `430ebba` (image-load fallback, dead `.pc-led` removed).
+
+**Three bottles were curated end to end as a worked example** - Blanton's (216mm, published), Jim
+Beam Black (292mm, estimated) and Old Forester 100 (298mm, estimated), all owned by Brian, all
+visible on Home. **Two already-rejected bottles were flagged back into the queue** (Knob Creek 9,
+Baker's 7) so the re-review state could be seen working.
+
+**Four things worth not rediscovering:**
+- **The guard trigger blocked its own bot.** Writing review state from psql or the service role was
+  refused as "admin-only" - correct for end users, fatal for the scheduled job Brian plans. Now
+  allows `auth.uid() IS NULL`. Not a hole: RLS decides WHO may update, the trigger only decides
+  WHICH COLUMNS a permitted non-admin may touch.
+- **A fixed slot aspect ratio silently cancelled the height scaling.** A wide squat bottle placed in
+  a tall thin box gets fitted by width, so its height collapses - Blanton's rendered a third shorter
+  than its measured height asked for. Width must follow the bottle's own shape.
+- **A white review shelf hid the fault the tool exists to catch.** An image with a white box behind
+  it looked identical to a clean cut-out. Hence the checker/shelf/dark backdrops.
+- **Per-bottle heights are mostly unpublished.** Blanton's is listed; Jim Beam Black and Old Forester
+  100 are listed nowhere. This is why `bottle_height_source` exists.
+
+**Brian's own two contributions here were the good ones:** rejections carrying REASONS (so curation
+doubles as the cleanup queue), and 12 inches as ratio 1. Claude added: keep the ratio in the number
+rather than baked as padding into the image, because most heights are estimates and a stored number
+is corrected with one UPDATE where baked padding means re-rendering.
+
+**Ended with the What's New (#95) unwritten - see "Right now".**
 
 
 ### 2026-09-07 (latest) - Claude (23 commits: three bugs, the variant model end to end, the Elo rewrite, delete + merge)
