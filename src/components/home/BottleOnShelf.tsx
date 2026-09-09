@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { ShelfBottle } from "@/lib/shelves";
 
 /**
@@ -96,7 +97,12 @@ export default function BottleOnShelf({
   onPick?: (b: ShelfBottle) => void;
 }) {
   const heightPct = heightFor(bottle.bottleId, bottle.heightMm);
-  const isGhost = bottle.imageState !== "ready";
+  // An approved image can still fail to load — the file is deleted, storage has a bad minute, the
+  // device is offline mid-scroll. Falling back to the ghost keeps a bottle standing in its place
+  // instead of leaving a hole in the run, and it is the same silhouette the shelf already uses, so
+  // nothing about the layout moves.
+  const [imageFailed, setImageFailed] = useState(false);
+  const isGhost = bottle.imageState !== "ready" || imageFailed;
   const mark = markColor(bottle);
   const lines = isGhost ? shortName(bottle.name) : [];
   const firstLineY = 104 - (lines.length - 1) * 6;
@@ -144,6 +150,7 @@ export default function BottleOnShelf({
           alt={bottle.name}
           loading="lazy"
           decoding="async"
+          onError={() => setImageFailed(true)}
           // Anchored to the bottom so every bottle stands ON the deck. A photograph with
           // different padding than its neighbours must not float above the wood.
           style={{ objectFit: "contain", objectPosition: "bottom" }}

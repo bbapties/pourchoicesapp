@@ -43,7 +43,6 @@ export default function Shelf({
       <div className="pc-face pc-back" />
       <div className="pc-face pc-top" />
       <div className="pc-face pc-deck" />
-      <div className="pc-led" />
 
       {isEmpty ? (
         <div className="pc-empty">
