@@ -119,6 +119,11 @@ to a 600px shelf derivative → WebP with alpha → upload to our own bucket →
 - **It does not write to the database.** Approving is a judgement and belongs in Admin › Images,
   where the image can be seen on a real shelf first.
 
+**Known inconsistency:** `shelf_image.mjs` writes a **600px** derivative, the verify-bottle skill's
+`clean_image.py` writes **1200px**. 600px is ample on a shelf and thin in the bottle detail view on
+a high-DPR phone. New work should use the skill's 1200px; the 19 bottles bulk-fixed on 2026-09-09
+are 600px and can be re-run if the detail view ever looks soft.
+
 ### Try this before anything expensive
 
 Many stored URLs run through the **wsrv.nl** proxy with `&bg=white&output=jpg`, which **flattens a
@@ -159,6 +164,11 @@ the thing that gives the illusion away.
 A `CHECK` constraint keeps the pair together: a height with no provenance is exactly the ambiguity
 this column exists to remove.
 
+**Do NOT derive height from the image's aspect ratio.** It cannot separate a short wide bottle from
+a tall wide one — a shape-based guess put Knob Creek at 230mm when it is wide *and* about 11.5in.
+Use a form-factor default for the bottle CLASS: **squat decanter 230mm · standard 750ml 290mm ·
+tall/slim 315mm**.
+
 **Per-bottle heights are mostly NOT published.** Blanton's is listed at 8.5in; Jim Beam Black and
 Old Forester 100 are listed nowhere. **A bot that blocks on a researched height will stall on most
 of the catalogue** — it should fall back to a form-factor default, record `estimated`, and move on.
@@ -174,5 +184,7 @@ Upgrading an estimate later is one `UPDATE`, which is the whole point of the col
 | Queries & transitions | `src/lib/imageReview.ts` |
 | Shelf rendering | `src/components/home/BottleOnShelf.tsx` |
 | Image preparation | `scripts/shelf_image.mjs` |
+| Bulk URL-unflatten | `scripts/shelf_image_batch.mjs` |
+| Full bottle enrichment | the **verify-bottle** skill (`.claude/skills/verify-bottle/`) — research, dedupe, barcode, image AND height, filed as pending `suggested_edits` |
 | Migrations | `sql/home-shelf-ready-*.sql`, `sql/home-image-review-*.sql`, `sql/bottle-height-source-*.sql` |
 | Schema reference | `DB_Schema.txt.txt` — regenerate with `node scripts/dump_schema.mjs` |

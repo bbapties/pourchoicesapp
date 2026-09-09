@@ -40,7 +40,7 @@ Auth ids are deliberately not listed: there is no longer any column that wants o
 
 ## Field → target table routing (matches src/lib/suggestedEdits.ts)
 - **identity → `bottles`**: name, distillery, category, style, volume, **barcode**, **extras**
-- **variant → `bottle_variants`**: proof, age, nose, palate, finish, batch, release_year, frontimage_url, backimage_url
+- **variant → `bottle_variants`**: proof, age, nose, palate, finish, batch, release_year, frontimage_url, backimage_url, **bottle_height**, **bottle_height_source**
 
 `barcode` and `extras` are not yet first-class in the app's editable-field UI — file them anyway (the generic mechanism carries them); see QUEUE_SPEC.md for the Grok work to label them nicely.
 
@@ -75,7 +75,38 @@ Find duplicate/near-duplicate rows (same name, or same distillery + overlapping 
 3. Upload: `node .claude/skills/verify-bottle/scripts/upload_image.mjs <out.webp> bottle-images variants/<variant_id>/front.webp` (from repo root). Bucket `bottle-images` exists (public). Prints the public URL. (Uploading is harmless even if the suggestion is later rejected — worst case an orphan file.)
 4. Emit a `frontimage_url` suggestion pointing at that URL.
 
-### 5. Hand off for review
+### 5. Height — the shelf scale
+
+**Canonical doc: [docs/IMAGE_PIPELINE.md](../../../docs/IMAGE_PIPELINE.md). Read it before filing a height.**
+
+The Home screen scales every bottle by its REAL height, so a squat Blanton's reads as squat beside
+a tall bourbon. A cut-out's pixel height only describes how it was cropped, which is why this is a
+stored number and not something the renderer can work out.
+
+- `bottle_height` — **millimetres of real glass**. **12 inches (305mm) is ratio 1.**
+- `bottle_height_source` — **`measured` / `published` / `estimated`. NEVER omit it.** A CHECK
+  constraint rejects a height with no provenance, so a suggestion missing it cannot be applied.
+
+Emit **both** as `bottle_variants` suggestions, on every variant that gets an image.
+
+**Most bottles do not publish a height.** Blanton's is listed at 8.5in; Jim Beam Black and Old
+Forester 100 are listed nowhere. **Do not stall on research** — fall back to a form-factor default,
+record `estimated`, and move on. `estimated` IS the re-research queue, and upgrading later is one
+suggestion.
+
+**Do NOT derive height from the image's aspect ratio.** It cannot tell a short wide bottle from a
+tall wide one — a shape-based guess put Knob Creek at 230mm when it is wide AND about 11.5in. Use a
+form-factor default for the bottle CLASS instead:
+
+| class | default | examples |
+|---|---|---|
+| squat decanter | 230mm | Blanton's |
+| standard 750ml | 290mm | most bourbon |
+| tall / slim | 315mm | many single malts |
+
+A ruler beats all of it. If Brian ever measures one, it becomes `measured` and leaves the queue.
+
+### 6. Hand off for review
 Report the `submission_group` id and a summary of every suggested change (field, old→new, plus any merge/delete). Brian reviews in the admin queue, approves, then flips `verified=true` on the bottle + default variant as his sign-off.
 
 ## Known landmines (from the 2026-08-27 sweep)
@@ -83,9 +114,19 @@ Report the `submission_group` id and a summary of every suggested change (field,
 - **Missing barcodes:** ~27 bottles had none. **Shared barcode:** `096749002368` on 4 Elijah Craig Barrel Proof batches (by design).
 - **Name-variant pairs to judge:** Blanton's Original vs Blanton's Single Barrel; Wild Turkey 101 vs 101 8-Year-Old.
 - **All images hotlinked**, many dead. Self-host as you verify.
+- **A URL that only LOOKS opaque.** Many stored images run through the wsrv.nl proxy with
+  `&bg=white&output=jpg`, which flattens a transparent PNG source onto white. Dropping those two
+  parameters restores the cut-out — no rembg, no re-shoot. **Try this before any image work.**
+  `scripts/shelf_image_batch.mjs` does it in bulk.
+- **Single-barrel and store picks must NOT get brand-level tasting notes.** Every barrel genuinely
+  differs, so notes copied from the product line are a fabrication dressed as data. Leaving
+  nose/palate/finish empty is the honest outcome for a private barrel.
+- **Store picks have no official packshot.** Standing in the brand's standard bottle is usually
+  right (correct shape, wrong label text, invisible at shelf scale) — but SAY SO in the hand-off so
+  Brian can reject it; do not present a substitution as the real thing.
 
 ## Definition of done (per bottle)
-One pending `submission_group` covering: corrected identity (name/category/style/volume) · clean split nose/palate/finish · proof/age · enriched extras · validated barcode · self-hosted image URL · any needed merge/delete — all as reviewable old→new rows. Brian's approval + `verified` flip completes it.
+One pending `submission_group` covering: corrected identity (name/category/style/volume) · clean split nose/palate/finish · proof/age · enriched extras · validated barcode · self-hosted image URL · **`bottle_height` + `bottle_height_source` (both, always)** · any needed merge/delete — all as reviewable old→new rows. Brian's approval + `verified` flip completes it.
 
 ## Dependencies on Grok (see QUEUE_SPEC.md)
 `barcode`/`extras` as first-class editable fields, and handler/UI support for `__merge__`/`__delete__` suggestions. Until shipped, those rows are visible in the queue but not one-click applicable.
