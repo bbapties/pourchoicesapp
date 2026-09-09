@@ -101,7 +101,8 @@ export default function BottleOnShelf({
       {isGhost ? (
         // The silhouette is drawn, not photographed: dashed so it reads as a stand-in rather than
         // a bottle whose label nobody can see.
-        <svg viewBox="0 0 58 180" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+        <svg viewBox="0 0 58 180" preserveAspectRatio="xMidYMax meet" aria-hidden="true"
+             style={{ aspectRatio: "58 / 180" }}>
           <path
             d="M23 7h12v27c0 8 13 12 13 27v102c0 7-4 10-10 10H20c-6 0-10-3-10-10V61c0-15 13-19 13-27z"
             fill="#F7F7F7"

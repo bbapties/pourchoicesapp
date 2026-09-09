@@ -180,12 +180,14 @@ body {
 .pc-endwall { flex: none; align-self: stretch; display: block; }
 .pc-endwall-r { margin-left: auto; }
 
-/* Height is a fraction of the run, width follows from the bottle's own aspect -- so a shelf
-   that shrank to fit 2.5 into a short screen holds shorter bottles rather than clipping them. */
+/* Height is a fraction of the run; WIDTH FOLLOWS THE BOTTLE'S OWN SHAPE.
+   The slot must NOT impose an aspect ratio. A fixed tall-thin box letterboxes a wide squat
+   bottle inside it, so a Blanton's ends up a third shorter than its measured height asked for --
+   the fixed box quietly cancels out the whole point of scaling by bottle_height. Let the image
+   set its own width and the button shrink to it. */
 .pc-slot { position: relative; flex: none; background: none; border: 0; padding: 0;
-           cursor: pointer; -webkit-tap-highlight-color: transparent; display: block;
-           aspect-ratio: 58 / 180; }
-.pc-slot > svg, .pc-slot > img { display: block; width: 100%; height: 100%; }
+           cursor: pointer; -webkit-tap-highlight-color: transparent; display: block; }
+.pc-slot > svg, .pc-slot > img { display: block; height: 100%; width: auto; }
 .pc-slot:focus-visible { outline: 2px solid var(--color-charcoal); outline-offset: 3px; }
 /* status, in the app's own earmark colours: green = had it, yellow = unverified */
 .pc-mark { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
