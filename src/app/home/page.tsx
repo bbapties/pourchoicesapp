@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import HomeProbe from "./HomeProbe";
+import HomeClient from "./HomeClient";
 
 /**
  * /home — the Home screen ("The Cabinet", #82).
@@ -26,5 +26,5 @@ export default async function HomePage() {
 
   if (!publicUser) redirect("/");
 
-  return <HomeProbe viewerId={publicUser.id} />;
+  return <HomeClient viewerId={publicUser.id} />;
 }

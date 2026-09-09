@@ -56,6 +56,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const [hasMore, setHasMore] = useState(true);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [selectedBottle, setSelectedBottle] = useState<BottleDetails | null>(null);
+  // `?scan=1` opens the scanner on arrival. Home's empty-bar prompt (#82) sends people here
+  // rather than mounting its own scanner, so the whole match / owned-version / add-provisional
+  // flow below stays in one place instead of being reimplemented on another screen.
   const [showScanner, setShowScanner] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | undefined>(undefined);
   // S3: on a barcode hit, open pinned to the version the viewer already owns (else default-first).
@@ -228,6 +231,19 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       finish: result.attr_finish,
     } as any;
   };
+
+  // `?scan=1` — arrive with the scanner already open. Read after mount rather than in the
+  // useState initializer, because the server renders it closed and a client-only initial value
+  // would be a hydration mismatch. The param is then stripped so a back-navigation or a refresh
+  // doesn't reopen the camera.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("scan") !== "1") return;
+    setShowScanner(true);
+    params.delete("scan");
+    const qs = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+  }, []);
 
   // Fetch the current user's collection on mount
   useEffect(() => {

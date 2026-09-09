@@ -77,6 +77,8 @@ export type ShelfDef = {
   href: string;
   empty: ShelfEmptyState;
   fetchPage(opts: ShelfFetchOpts): Promise<ShelfPage>;
+  /** Length of the whole run, engraved on the plate. Null when it can't be determined. */
+  fetchCount(viewerId: string | null): Promise<number | null>;
 };
 
 /* ------------------------------------------------------------------ helpers */
@@ -333,6 +335,61 @@ async function fetchVerified({ viewerId, cursor, limit = SHELF_PAGE_SIZE }: Shel
   return buildPage(seeds, nextCursor, viewerId, "verified");
 }
 
+/* ------------------------------------------------------------------- counts */
+
+/**
+ * The number on the plate. Two of these count distinct bottles, which PostgREST cannot do with a
+ * HEAD count, so they read the id column and reduce it here.
+ *
+ * That is fine at present scale (a collection is tens of rows; activities is in the hundreds) and
+ * it is bounded by real limits — but the Social one grows with the whole feed forever. **When the
+ * feed gets big, move that one to a SQL count and stop reading ids into the client.**
+ */
+function distinct(
+  label: string,
+  res: { data: { bottle_id: string }[] | null; error: { message: string } | null }
+): number | null {
+  if (res.error) {
+    console.error(`shelf count ${label}:`, res.error.message);
+    return null;
+  }
+  return new Set((res.data || []).map((r) => r.bottle_id)).size;
+}
+
+async function countMyBar(viewerId: string | null) {
+  if (!viewerId) return 0;
+  return distinct(
+    "mybar",
+    await supabase
+      .from("user_bottles")
+      .select("bottle_id")
+      .eq("user_id", viewerId)
+      .gt("owned_count", 0)
+  );
+}
+
+async function countSocial() {
+  return distinct(
+    "social",
+    await supabase
+      .from("activities")
+      .select("bottle_id, users!inner(account_type)")
+      .eq("users.account_type", "human")
+  );
+}
+
+async function countVerified() {
+  const { count, error } = await supabase
+    .from("bottles")
+    .select("id", { count: "exact", head: true })
+    .eq("verified", true);
+  if (error) {
+    console.error("shelf count verified:", error.message);
+    return null;
+  }
+  return count ?? null;
+}
+
 /* ----------------------------------------------------------------- registry */
 
 /**
@@ -350,6 +407,7 @@ export const SHELVES: ShelfDef[] = [
       cta: { label: "Scan a barcode", action: "scan" },
     },
     fetchPage: fetchMyBar,
+    fetchCount: countMyBar,
   },
   {
     id: "social",
@@ -360,6 +418,7 @@ export const SHELVES: ShelfDef[] = [
       body: "Add a bottle, or pour one.",
     },
     fetchPage: fetchSocial,
+    fetchCount: countSocial,
   },
   {
     id: "verified",
@@ -370,6 +429,7 @@ export const SHELVES: ShelfDef[] = [
       body: "Check back soon.",
     },
     fetchPage: fetchVerified,
+    fetchCount: countVerified,
   },
 ];
 
