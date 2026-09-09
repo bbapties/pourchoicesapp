@@ -109,7 +109,19 @@ export default function ShelfRun({
     }
   };
 
-  const wallHeight = 250; // the run's own height: 276px block less the 26px lip
+  // The run's height comes from the viewport now (#89 sizes a shelf so 2.5 fit), so the end
+  // walls have to be measured rather than assumed. Their sloped edges must meet the back wall
+  // exactly; a hardcoded height would leave the perspective disagreeing with the box on every
+  // screen but one.
+  const [wallHeight, setWallHeight] = useState(250);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setWallHeight(el.clientHeight));
+    ro.observe(el);
+    setWallHeight(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
 
   return (
     <div
@@ -136,7 +148,7 @@ export default function ShelfRun({
       {done ? (
         <EndWall side="right" height={wallHeight} />
       ) : (
-        <div style={{ flex: "none", width: 58, height: 120 }} aria-hidden="true" />
+        <div style={{ flex: "none", width: 58 }} aria-hidden="true" />
       )}
     </div>
   );

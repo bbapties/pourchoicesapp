@@ -15,14 +15,18 @@ import type { ShelfBottle } from "@/lib/shelves";
  * curates one bottle.
  */
 
-/** Bottle heights vary a little so a run doesn't read as a picket fence. Deterministic per id. */
-const HEIGHTS = [172, 180, 188, 196, 176, 192];
-const SHELF_BOTTLE_WIDTH = 58;
+/**
+ * Bottle heights vary a little so a run doesn't read as a picket fence, and they are a FRACTION
+ * OF THE RUN rather than a pixel count — a shelf sizes itself so 2.5 fit the viewport (#89), so a
+ * fixed height would clip on a short screen and float on a tall one. Deterministic per bottle id,
+ * so a bottle is the same height every time you see it.
+ */
+const HEIGHT_PCT = [78, 82, 86, 90, 80, 88];
 
 function heightFor(id: string): number {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return HEIGHTS[h % HEIGHTS.length];
+  return HEIGHT_PCT[h % HEIGHT_PCT.length];
 }
 
 /** Two or three short lines, so a ghost still tells you which bottle it is. */
@@ -62,7 +66,7 @@ export default function BottleOnShelf({
   bottle: ShelfBottle;
   onPick?: (b: ShelfBottle) => void;
 }) {
-  const height = heightFor(bottle.bottleId);
+  const heightPct = heightFor(bottle.bottleId);
   const isGhost = bottle.imageState !== "ready";
   const mark = markColor(bottle);
   const lines = isGhost ? shortName(bottle.name) : [];
@@ -72,20 +76,14 @@ export default function BottleOnShelf({
     <button
       type="button"
       className="pc-slot"
-      style={{ width: SHELF_BOTTLE_WIDTH, height }}
+      style={{ height: `${heightPct}%` }}
       aria-label={isGhost ? `${bottle.name} — no shelf-ready image` : bottle.name}
       onClick={() => onPick?.(bottle)}
     >
       {isGhost ? (
         // The silhouette is drawn, not photographed: dashed so it reads as a stand-in rather than
         // a bottle whose label nobody can see.
-        <svg
-          width={SHELF_BOTTLE_WIDTH}
-          height={height}
-          viewBox="0 0 58 180"
-          aria-hidden="true"
-          style={{ display: "block" }}
-        >
+        <svg viewBox="0 0 58 180" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
           <path
             d="M23 7h12v27c0 8 13 12 13 27v102c0 7-4 10-10 10H20c-6 0-10-3-10-10V61c0-15 13-19 13-27z"
             fill="#F7F7F7"
@@ -113,12 +111,11 @@ export default function BottleOnShelf({
         <img
           src={bottle.imageUrl ?? ""}
           alt={bottle.name}
-          width={SHELF_BOTTLE_WIDTH}
-          height={height}
           loading="lazy"
           decoding="async"
-          style={{ display: "block", width: SHELF_BOTTLE_WIDTH, height, objectFit: "contain",
-                   objectPosition: "bottom" }}
+          // Anchored to the bottom so every bottle stands ON the deck. A photograph with
+          // different padding than its neighbours must not float above the wood.
+          style={{ objectFit: "contain", objectPosition: "bottom" }}
         />
       )}
 
