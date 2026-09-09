@@ -216,3 +216,20 @@ body {
   background: var(--color-ivory); color: var(--color-charcoal);
   font-size: 12.5px; font-weight: 600; opacity: 1;
 }
+
+/* Admin › Images — backdrops for judging a cut-out (#83).
+   A white shelf hides the exact fault the review exists to catch: an image with a white box
+   behind it is indistinguishable from a properly cut-out one. The checker shows any opaque
+   background instantly; the dark backdrop catches pale fringing and haloes that survive a
+   careless removal. */
+.pc-bg-checker .pc-back, .pc-bg-checker .pc-deck {
+  background-color: #FFFFFF;
+  background-image:
+    linear-gradient(45deg, #D8D8D8 25%, transparent 25%, transparent 75%, #D8D8D8 75%),
+    linear-gradient(45deg, #D8D8D8 25%, transparent 25%, transparent 75%, #D8D8D8 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}
+.pc-bg-dark .pc-back { background: #2F2F2F; }
+.pc-bg-dark .pc-deck { background: #444444; }
+.pc-bg-dark .pc-empty { color: #FFFFFF; }

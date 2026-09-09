@@ -44,6 +44,10 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
   const [shelf, setShelf] = useState<ReviewBottle[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<ReviewBottle | null>(null);
+  // A white shelf hides the very fault this tool exists to catch — an image with a white box
+  // behind it looks exactly like a clean cut-out. The checker exposes any opaque background at a
+  // glance; the dark backdrop catches the pale fringing a careless removal leaves behind.
+  const [backdrop, setBackdrop] = useState<"shelf" | "checker" | "dark">("checker");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -96,6 +100,21 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
         })}
       </div>
 
+      <div className="flex gap-2">
+        {([["checker", "Checker"], ["shelf", "Shelf"], ["dark", "Dark"]] as const).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setBackdrop(id)}
+            className={`px-3 py-1.5 rounded-lg text-xs border ${
+              backdrop === id ? "bg-charcoal text-ivory border-charcoal" : "bg-ivory text-charcoal border-gray-300"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="text-xs text-gray-500 self-center ml-1">backdrop</span>
+      </div>
+
       {states.includes("rejected") && reasons.length > 0 ? (
         <select
           value={reasonFilter ?? ""}
@@ -113,7 +132,10 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
 
       {/* the shelf itself — the same box Home uses, so a decision here is the decision there */}
       <div className="border border-charcoal rounded-lg overflow-hidden">
-        <div className="pc-shelf" style={{ borderBottom: "none" }}>
+        <div
+          className={`pc-shelf ${backdrop === "checker" ? "pc-bg-checker" : backdrop === "dark" ? "pc-bg-dark" : ""}`}
+          style={{ borderBottom: "none" }}
+        >
           <div className="pc-face pc-back" />
           <div className="pc-face pc-top" />
           <div className="pc-face pc-deck" />
