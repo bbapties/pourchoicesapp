@@ -48,17 +48,20 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
   // behind it looks exactly like a clean cut-out. The checker exposes any opaque background at a
   // glance; the dark backdrop catches the pale fringing a careless removal leaves behind.
   const [backdrop, setBackdrop] = useState<"shelf" | "checker" | "dark">("checker");
+  // Somebody owning a bottle is the strongest signal that its image will actually be looked at:
+  // it is on their Home every time they open the app.
+  const [ownedOnly, setOwnedOnly] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     const [rows, c] = await Promise.all([
-      fetchReviewShelf({ states, reasonId: reasonFilter, limit: 12 }),
+      fetchReviewShelf({ states, reasonId: reasonFilter, ownedOnly, limit: 12 }),
       fetchReviewCounts(),
     ]);
     setShelf(rows);
     setCounts(c);
     setLoading(false);
-  }, [states, reasonFilter]);
+  }, [states, reasonFilter, ownedOnly]);
 
   useEffect(() => {
     void refresh();
@@ -78,6 +81,7 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
         <p className="text-xs text-gray-500 mt-0.5">
           Judge each image as it will appear on Home. Approve puts it on the shelf; rejecting tags
           what is wrong with it, which becomes the work queue for cleanup.
+          <strong className="text-charcoal"> Most recently active on the left.</strong>
         </p>
       </div>
 
@@ -99,6 +103,15 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
           );
         })}
       </div>
+
+      <button
+        onClick={() => setOwnedOnly((v) => !v)}
+        className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
+          ownedOnly ? "bg-charcoal text-ivory border-charcoal" : "bg-ivory text-charcoal border-gray-300"
+        }`}
+      >
+        Only bottles someone owns
+      </button>
 
       <div className="flex gap-2">
         {([["checker", "Checker"], ["shelf", "Shelf"], ["dark", "Dark"]] as const).map(([id, label]) => (
@@ -176,8 +189,12 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
                       </text>
                     </svg>
                   )}
+                  {/* Green = at least one person has this on their shelf, the same colour a
+                      bottle card uses for had-it. Yellow = a user flagged the image. */}
                   {b.state === "needs_rereview" ? (
                     <span className="pc-mark" style={{ background: "#FFD700" }} />
+                  ) : b.ownerCount > 0 ? (
+                    <span className="pc-mark" style={{ background: "#22c55e" }} />
                   ) : null}
                 </button>
               ))}
@@ -193,7 +210,8 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
       </div>
 
       <p className="text-xs text-gray-500">
-        Tap a bottle to approve it or say what is wrong with it.
+        Tap a bottle to approve it or say what is wrong with it. A green dot means someone has it in
+        their bar; yellow means a user flagged the image.
       </p>
 
       {open ? (
@@ -266,6 +284,17 @@ function DecisionSheet({
             Close
           </button>
         </div>
+
+        <p className="mt-1 text-xs text-gray-500">
+          {bottle.ownerCount > 0
+            ? `${bottle.ownerCount} ${bottle.ownerCount === 1 ? "person has" : "people have"} this in their bar`
+            : "Nobody owns this yet"}
+          {bottle.lastActivityAt
+            ? ` · last activity ${new Date(bottle.lastActivityAt).toLocaleDateString("en-US", {
+                month: "short", day: "numeric",
+              })}`
+            : " · never touched"}
+        </p>
 
         {bottle.state === "needs_rereview" ? (
           <p className="mt-2 text-xs text-charcoal bg-yellow-100 border border-yellow-300 rounded p-2">

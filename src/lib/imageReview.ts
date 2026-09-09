@@ -27,6 +27,11 @@ export type ReviewBottle = {
   reasonIds: string[];
   note: string | null;
   flagNote: string | null;
+  /** How many people have this on their shelf right now. A bottle somebody owns is one somebody
+   *  will actually see on Home, so it is worth reviewing before one nobody has. */
+  ownerCount: number;
+  /** Most recent activity anywhere on this bottle, for the ordering. Null if never touched. */
+  lastActivityAt: string | null;
 };
 
 type VariantRow = {
@@ -50,6 +55,57 @@ function stateOf(r: VariantRow): ReviewState {
   return "unreviewed";
 }
 
+
+/**
+ * Who owns what, across all users — admins can read every `user_bottles` row.
+ * Keyed by variant AND by bottle: a person may own a store pick while the image under review is
+ * the SKU default, and that still counts as "somebody has this bottle".
+ */
+async function fetchOwnership(): Promise<{ byVariant: Map<string, number>; byBottle: Map<string, number> }> {
+  const byVariant = new Map<string, number>();
+  const byBottle = new Map<string, number>();
+  const { data, error } = await supabase
+    .from("user_bottles")
+    .select("bottle_id, variant_id, owned_count")
+    .gt("owned_count", 0);
+  if (error) {
+    console.error("fetchOwnership:", error.message);
+    return { byVariant, byBottle };
+  }
+  for (const r of (data || []) as { bottle_id: string; variant_id: string | null }[]) {
+    if (r.variant_id) byVariant.set(r.variant_id, (byVariant.get(r.variant_id) ?? 0) + 1);
+    byBottle.set(r.bottle_id, (byBottle.get(r.bottle_id) ?? 0) + 1);
+  }
+  return { byVariant, byBottle };
+}
+
+/**
+ * The most recent activity per bottle and per variant.
+ *
+ * This drives the ORDER of the review shelf: the bottles people are actually drinking, rating and
+ * adding are the ones whose images get seen, so they are worth fixing first. Reading the feed
+ * newest-first and keeping the first sighting of each id gives the latest without a per-bottle
+ * query.
+ */
+async function fetchLastActivity(): Promise<{ byVariant: Map<string, string>; byBottle: Map<string, string> }> {
+  const byVariant = new Map<string, string>();
+  const byBottle = new Map<string, string>();
+  const { data, error } = await supabase
+    .from("activities")
+    .select("bottle_id, variant_id, created_at")
+    .order("created_at", { ascending: false })
+    .limit(2000);
+  if (error) {
+    console.error("fetchLastActivity:", error.message);
+    return { byVariant, byBottle };
+  }
+  for (const r of (data || []) as { bottle_id: string; variant_id: string | null; created_at: string }[]) {
+    if (r.variant_id && !byVariant.has(r.variant_id)) byVariant.set(r.variant_id, r.created_at);
+    if (r.bottle_id && !byBottle.has(r.bottle_id)) byBottle.set(r.bottle_id, r.created_at);
+  }
+  return { byVariant, byBottle };
+}
+
 export async function fetchRejectReasons(): Promise<RejectReason[]> {
   const { data, error } = await supabase
     .from("image_reject_reasons")
@@ -69,15 +125,20 @@ export async function fetchRejectReasons(): Promise<RejectReason[]> {
 }
 
 /**
- * The review queue, ordered the way the work actually wants doing: **flagged live images first**
- * (a bad image is on everyone's Home right now), then never-reviewed, then anything else.
+ * The review queue, **always ordered by most recent activity, newest on the left.**
  *
- * `states` filters the shelf — the slicer. Rejected bottles are hidden by default so the queue
- * empties as you work, and can be brought back a reason at a time.
+ * That ordering is the point: the bottles people are drinking, rating and adding are the ones
+ * whose images actually get looked at, so fixing those first puts the work where it shows.
+ * Bottles nobody has touched sort to the end rather than being hidden.
+ *
+ * The state list and `ownedOnly` are the slicers. Owning is a strong signal for the same reason —
+ * a bottle on somebody's shelf is one somebody will meet on their own Home.
  */
 export async function fetchReviewShelf(opts: {
   states: ReviewState[];
   reasonId?: string | null;
+  /** Only bottles at least one person has in their bar. */
+  ownedOnly?: boolean;
   limit?: number;
 }): Promise<ReviewBottle[]> {
   const limit = opts.limit ?? 12;
@@ -85,15 +146,17 @@ export async function fetchReviewShelf(opts: {
   // Filtering on derived state cannot be pushed into PostgREST without a view, so this reads a
   // generous window ordered by the queue index and reduces it here. Bounded by the catalogue
   // (133 variants today); revisit if the catalogue reaches thousands.
-  const { data, error } = await supabase
-    .from("bottle_variants")
-    .select(
-      "id, bottles_id, frontimage_url, shelf_ready, image_reject_reason_ids, image_review_note, " +
-        "image_reviewed_at, image_flagged_at, image_flag_note, bottles(name, distillery)"
-    )
-    .order("image_flagged_at", { ascending: false, nullsFirst: false })
-    .order("image_reviewed_at", { ascending: true, nullsFirst: true })
-    .limit(400);
+  const [{ data, error }, ownership, activity] = await Promise.all([
+    supabase
+      .from("bottle_variants")
+      .select(
+        "id, bottles_id, frontimage_url, shelf_ready, image_reject_reason_ids, image_review_note, " +
+          "image_reviewed_at, image_flagged_at, image_flag_note, bottles(name, distillery)"
+      )
+      .limit(400),
+    fetchOwnership(),
+    fetchLastActivity(),
+  ]);
 
   if (error) {
     console.error("fetchReviewShelf:", error.message);
@@ -107,6 +170,11 @@ export async function fetchReviewShelf(opts: {
     if (!opts.states.includes(state)) continue;
     const reasonIds = r.image_reject_reason_ids || [];
     if (opts.reasonId && !reasonIds.includes(opts.reasonId)) continue;
+
+    const ownerCount =
+      (ownership.byVariant.get(r.id) ?? 0) || (ownership.byBottle.get(r.bottles_id) ?? 0);
+    if (opts.ownedOnly && ownerCount === 0) continue;
+
     const b = Array.isArray(r.bottles) ? r.bottles[0] : r.bottles;
     out.push({
       variantId: r.id,
@@ -118,10 +186,25 @@ export async function fetchReviewShelf(opts: {
       reasonIds,
       note: r.image_review_note,
       flagNote: r.image_flag_note,
+      ownerCount,
+      // A variant's own activity is more specific than the SKU's, so prefer it.
+      lastActivityAt: activity.byVariant.get(r.id) ?? activity.byBottle.get(r.bottles_id) ?? null,
     });
-    if (out.length === limit) break;
   }
-  return out;
+
+  // Newest activity on the left. Never-touched bottles fall to the end rather than disappearing,
+  // ranked among themselves by how many people own them.
+  //
+  // Sorted AFTER filtering and across the whole candidate set, not per page -- otherwise the
+  // leftmost bottle would only be the most active one of an arbitrary first slice.
+  out.sort((a, b) => {
+    if (a.lastActivityAt && b.lastActivityAt) return a.lastActivityAt < b.lastActivityAt ? 1 : -1;
+    if (a.lastActivityAt) return -1;
+    if (b.lastActivityAt) return 1;
+    return b.ownerCount - a.ownerCount;
+  });
+
+  return out.slice(0, limit);
 }
 
 /** Counts for the slicer, so the tab can show how much work is left without loading it. */
