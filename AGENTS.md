@@ -80,6 +80,11 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
   - [ ] Verified on prod (www.pourchoicesapp.com)
 - Functionality first; stay **greyscale/wireframe** until Phase 5. Do not start visual polish early.
 - **Every bottle action logs an `activities` row** until Brian excludes it (`src/lib/activities.ts`). Fail-open. Current exclusion: admin hard-delete of a bottle (CASCADE would wipe the feed row).
+  **LOGGED and SHOWN are two different decisions.** `FEED_HIDDEN_ACTIONS` in `src/lib/activities.ts`
+  lists actions that are still recorded but never appear socially — currently `verified`, which is
+  admin bookkeeping and was 68 of 137 rows. Filtered at every social read (the Social tab and Home's
+  Social shelf); per-bottle history and admin screens still show it. **Hide there, do not stop
+  logging** — `activities` is the audit trail of what happened to a bottle.
 - **Never touch a bottle image without reading [docs/IMAGE_PIPELINE.md](docs/IMAGE_PIPELINE.md).**
   An image only reaches the Home shelf when it is a real transparent cut-out, trimmed tight, and
   carries a `bottle_height` **with** a `bottle_height_source`. Prepare images with

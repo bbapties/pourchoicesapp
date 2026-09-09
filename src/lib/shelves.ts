@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { FEED_HIDDEN_FILTER } from "@/lib/activities";
 
 /**
  * The Home screen ("The Cabinet", #82) — the shelf registry and its queries.
@@ -291,6 +292,9 @@ async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE }: ShelfF
     .from("activities")
     .select("bottle_id, variant_id, created_at, users!inner(account_type)")
     .eq("users.account_type", "human")
+    // Same exclusion as the Social tab -- the shelf is that tab seen from across the room, so a
+    // bottle that only ever got verified must not appear on it either.
+    .not("action", "in", FEED_HIDDEN_FILTER)
     .order("created_at", { ascending: false })
     .limit(window);
   if (cursor) q = q.lt("created_at", cursor);
@@ -385,6 +389,7 @@ async function countSocial() {
       .from("activities")
       .select("bottle_id, users!inner(account_type)")
       .eq("users.account_type", "human")
+      .not("action", "in", FEED_HIDDEN_FILTER)
   );
 }
 

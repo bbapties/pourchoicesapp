@@ -18,6 +18,22 @@ export type ActivityAction =
 
 export type PourType = "neat" | "rocks" | "mixed" | "blind";
 
+/**
+ * Actions that are recorded but NEVER shown socially.
+ *
+ * `verified` is admin bookkeeping, not something anyone did with a bottle — and it was 68 of 137
+ * rows, so nearly half of Social was Brian ticking boxes. Hiding it here rather than not logging
+ * it keeps the audit trail whole: `activities` is the record of what happened to a bottle, and a
+ * verification IS something that happened. It just is not news.
+ *
+ * Filtered at every SOCIAL read (this feed and Home's Social shelf). Per-bottle history and admin
+ * screens still show it, which is where it belongs.
+ */
+export const FEED_HIDDEN_ACTIONS: ActivityAction[] = ["verified"];
+
+/** PostgREST `not.in` list, e.g. `(verified)`. */
+export const FEED_HIDDEN_FILTER = `(${FEED_HIDDEN_ACTIONS.join(",")})`;
+
 export type ActivityRow = {
   id: string;
   action: ActivityAction;
@@ -204,6 +220,7 @@ export async function fetchActivityFeed(opts: {
     .from("activities")
     .select(FEED_SELECT)
     .eq("users.account_type", "human")
+    .not("action", "in", FEED_HIDDEN_FILTER)
     .order("created_at", { ascending: false })
     .range(opts.offset, to);
 
