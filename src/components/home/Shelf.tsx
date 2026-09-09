@@ -23,6 +23,8 @@ export default function Shelf({
   shelf,
   count,
   isEmpty,
+  onPlateOpen,
+  onScanFromEmpty,
   children,
 }: {
   shelf: ShelfDef;
@@ -30,10 +32,14 @@ export default function Shelf({
   count: number | null;
   /** True only once we know the run is genuinely empty — not merely still loading. */
   isEmpty: boolean;
+  /** The plate is the door to a tab; Home wants to know which doors get used. */
+  onPlateOpen?: () => void;
+  /** Taken from the empty-bar prompt — the one measure of whether that prompt works. */
+  onScanFromEmpty?: () => void;
   children?: React.ReactNode;
 }) {
   return (
-    <section className="pc-shelf" aria-label={shelf.label}>
+    <section className="pc-shelf" aria-label={shelf.label} data-coach="home.shelf">
       <div className="pc-face pc-back" />
       <div className="pc-face pc-top" />
       <div className="pc-face pc-deck" />
@@ -49,7 +55,7 @@ export default function Shelf({
               be exercised on the LAN URL — prod or a tunnel only. */}
           {shelf.empty.cta ? (
             <div>
-              <Link href="/search?scan=1">
+              <Link href="/search?scan=1" onClick={onScanFromEmpty}>
                 <ScanLine size={17} aria-hidden="true" />
                 {shelf.empty.cta.label}
               </Link>
@@ -63,7 +69,13 @@ export default function Shelf({
       <div className="pc-face pc-lip" />
 
       {/* The plate names the shelf AND opens it: Home is a zoomed-out view of the other tabs. */}
-      <Link href={shelf.href} className="pc-plate" aria-label={`Open ${shelf.label}`}>
+      <Link
+        href={shelf.href}
+        className="pc-plate"
+        data-coach="home.plate"
+        aria-label={`Open ${shelf.label}`}
+        onClick={onPlateOpen}
+      >
         {shelf.label}
         {count !== null ? <span className="pc-plate-count">{count}</span> : null}
         <span className="pc-plate-go" aria-hidden="true">

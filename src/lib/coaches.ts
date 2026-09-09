@@ -50,6 +50,33 @@ export type CoachItem = {
  */
 export const COACH_CATALOG: CoachItem[] = [
   {
+    // The landing surface, and the reason Drink no longer has a tab -- so this is core: the main
+    // loop genuinely changed. It plays first, because it is the first thing anyone now sees.
+    id: "home.cabinet",
+    title: "Your cabinet",
+    body: "Home is your bar, seen from across the room. Each shelf is a different view: what you own, what everyone is drinking, what is newly verified.",
+    route: "/home",
+    core: true,
+    announce: true,
+    tour: [
+      {
+        route: "/home",
+        anchor: "home.shelf",
+        caption: "Drag a shelf sideways to walk along it. Scroll up and down to move between shelves.",
+      },
+      {
+        route: "/home",
+        anchor: "home.plate",
+        caption: "Tap a shelf label to open that whole tab.",
+      },
+      {
+        route: "/home",
+        anchor: "home.bottle",
+        caption: "Tap a bottle to take it down -- pour one, see its details, or add it to your bar.",
+      },
+    ],
+  },
+  {
     id: "search.browse",
     title: "Search",
     body: "Find a bottle by name, distillery, or category.",

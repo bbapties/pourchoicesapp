@@ -76,6 +76,7 @@ export default function BottleOnShelf({
     <button
       type="button"
       className="pc-slot"
+      data-coach="home.bottle"
       style={{ height: `${heightPct}%` }}
       aria-label={isGhost ? `${bottle.name} — no shelf-ready image` : bottle.name}
       onClick={() => onPick?.(bottle)}

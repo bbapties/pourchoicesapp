@@ -145,6 +145,28 @@ silent), but a spike on one platform means subscriptions are being dropped faste
 the app, and the reachable count in Admin will sag behind the opt-in count.
 
 
+### Home — "The Cabinet" (#82, 2026-09-09)
+
+Home replaced Drink in the nav and became the landing surface, so what it records is how we find
+out whether the shelf ORDER is right — not just that people arrived.
+
+| event | when | metadata |
+|---|---|---|
+| `home_view` | Home mounts | — |
+| `click` · `home_bottle` | a bottle is picked up off a shelf | `shelf`, `image`, `status` |
+| `click` · `home_plate` | a shelf's label plate is used as the door to its tab | `shelf`, `to`, `count` |
+| `click` · `home_scan_empty` | the scanner is opened from the empty-bar prompt | `shelf` |
+| `click` · `home_add_to_bar` | a bottle is added from the picked-up sheet | — |
+
+**The one worth watching is `image` on `home_bottle`.** It records whether the bottle a person
+actually touched was a real photograph or a ghost placeholder, so the share of ghosts among things
+people *reach for* — not among rows in the table — is the number that says when Home has stopped
+being a wireframe. It also ranks the image-curation queue by what anyone is actually looking at.
+
+`home_plate` answers whether Home works as a **zoomed-out view of the other tabs** or is being used
+as a destination in itself: plates that never get tapped mean a shelf is a dead end. And if people
+land on Home and immediately open My Bar, the shelf order is wrong.
+
 ### Write guards — `guard_event_insert` (BEFORE INSERT trigger)
 
 Telemetry must never be able to break the app, so every guard here **shapes or drops** a row; none

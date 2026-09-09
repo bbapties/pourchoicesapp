@@ -5,6 +5,7 @@ import Shelf from "@/components/home/Shelf";
 import ShelfRun from "@/components/home/ShelfRun";
 import PickedUpBottle from "@/components/home/PickedUpBottle";
 import { Toaster } from "@/components/ui/sonner";
+import { logClick, logEvent } from "@/lib/events";
 import { SHELVES, type ShelfBottle, type ShelfId } from "@/lib/shelves";
 
 /**
@@ -47,6 +48,14 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
     };
   }, [viewerId, reloadKey]);
 
+  // One view event carrying how long each shelf actually is. Worth having from day one: it is the
+  // only way to tell later whether the shelf ORDER is right, and whether anyone ever reaches the
+  // third shelf at all.
+  useEffect(() => {
+    logEvent({ eventType: "home_view", surface: "/home", userId: viewerId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="bg-ivory min-h-full">
       {SHELVES.map((shelf) => {
@@ -55,13 +64,40 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
         // still in flight tells a new user something false about their own collection.
         const isEmpty = !s.loading && (s.count ?? 0) === 0;
         return (
-          <Shelf key={shelf.id} shelf={shelf} count={s.count} isEmpty={isEmpty}>
+          <Shelf
+            key={shelf.id}
+            shelf={shelf}
+            count={s.count}
+            isEmpty={isEmpty}
+            onPlateOpen={() =>
+              logClick("home_plate", {
+                userId: viewerId,
+                surface: "/home",
+                metadata: { shelf: shelf.id, to: shelf.href, count: s.count },
+              })
+            }
+            onScanFromEmpty={() =>
+              logClick("home_scan_empty", { userId: viewerId, surface: "/home",
+                metadata: { shelf: shelf.id } })
+            }
+          >
             {s.loading ? null : (
               <ShelfRun
                 key={`${shelf.id}:${reloadKey}`}
                 shelf={shelf}
                 viewerId={viewerId}
-                onPick={setPicked}
+                onPick={(b) => {
+                  // Ghost-vs-real on every pick-up: the share of what people actually touch that
+                  // is still a placeholder is the number that says when Home stops being a
+                  // wireframe.
+                  logClick("home_bottle", {
+                    userId: viewerId,
+                    surface: "/home",
+                    targetId: b.bottleId,
+                    metadata: { shelf: shelf.id, image: b.imageState, status: b.status },
+                  });
+                  setPicked(b);
+                }}
               />
             )}
           </Shelf>
