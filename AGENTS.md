@@ -80,6 +80,11 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
   - [ ] Verified on prod (www.pourchoicesapp.com)
 - Functionality first; stay **greyscale/wireframe** until Phase 5. Do not start visual polish early.
 - **Every bottle action logs an `activities` row** until Brian excludes it (`src/lib/activities.ts`). Fail-open. Current exclusion: admin hard-delete of a bottle (CASCADE would wipe the feed row).
+- **Never touch a bottle image without reading [docs/IMAGE_PIPELINE.md](docs/IMAGE_PIPELINE.md).**
+  An image only reaches the Home shelf when it is a real transparent cut-out, trimmed tight, and
+  carries a `bottle_height` **with** a `bottle_height_source`. Prepare images with
+  `node scripts/shelf_image.mjs`; approving one is a judgement and happens in Admin > Images, on a
+  real shelf, never straight from a table.
 - **Every new user-facing surface** adds one row to the coach catalog (`src/lib/coaches.ts`) — `announce: true` plus a short `tour[]` if Show me should work. Do not re-audit the whole catalog. Set `core: true` only when the main loop actually changed. Quiet (`announce: false`) only for Admin / tiny fixes.
 - **Instrument as you build** — every new/reworked user-facing action emits an event (fail-open, append-only). Bottle actions → `activities`; broader usage → the generic events table once it exists. See **[TELEMETRY.md](TELEMETRY.md)**; record new event types there.
 - **`public.users.id` is not `auth.users.id`.** They are unrelated UUIDs for the same person. Never
@@ -148,6 +153,7 @@ node scripts/_psql.mjs "SELECT 1 AS ok;"
 | `docs/BOARD.md` | How the board works — columns, Size/Area fields, labels, `gh` usage |
 | `docs/board-import-preview.md` | Record of the 2026-09-05 import: what became an issue, what was skipped, why |
 | `docs/archive/` | **Frozen 2026-09-05.** ROADMAP / BUGS / BACKLOG / PHASE8-10 — research only, never status. See its README. |
+| [docs/IMAGE_PIPELINE.md](docs/IMAGE_PIPELINE.md) | **Bottle images — canonical.** Shelf-ready review states and transitions, who may write them, the prepare-an-image script, and the 12in scale contract with `bottle_height_source`. Read before touching any bottle image. |
 | `TELEMETRY.md` | Instrumentation policy — event/activity/usage tracking; what's logged, the proposed generic events table |
 | `DB_Schema.txt.txt` | Supabase schema dump — tables, views (owner vs invoker), functions (SECURITY DEFINER), triggers, RLS policies. **Regenerate after any migration: `node scripts/dump_schema.mjs`** |
 

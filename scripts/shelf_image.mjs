@@ -1,7 +1,7 @@
 /**
  * Prepare one bottle image for the Home cabinet shelf (#83 / #82).
  *
- *   node scripts/shelf_image.mjs <variantId> <sourceUrl> [--height-mm 216]
+ *   node scripts/shelf_image.mjs <variantId> <sourceUrl> [--height-mm 216 --height-source published]
  *
  * The shelf stands every bottle as a cut-out on a deck, so an image only works if it has a real
  * transparent background, is cropped tight to the glass, and sits on a baseline. This does the
@@ -54,8 +54,23 @@ async function main() {
   const [variantId, srcUrlRaw] = process.argv.slice(2);
   const heightArg = process.argv.indexOf("--height-mm");
   const heightMm = heightArg > -1 ? Number(process.argv[heightArg + 1]) : null;
+  const srcArg = process.argv.indexOf("--height-source");
+  const heightSource = srcArg > -1 ? process.argv[srcArg + 1] : null;
   if (!variantId || !srcUrlRaw) {
-    console.error("usage: node scripts/shelf_image.mjs <variantId> <sourceUrl> [--height-mm N]");
+    console.error(
+      "usage: node scripts/shelf_image.mjs <variantId> <sourceUrl> " +
+      "[--height-mm N --height-source measured|published|estimated]"
+    );
+    process.exit(1);
+  }
+  // A height with no provenance is exactly the ambiguity bottle_height_source exists to remove,
+  // and the database rejects the pair anyway -- fail here rather than after the upload.
+  if ((heightMm && !heightSource) || (heightSource && !heightMm)) {
+    console.error("--height-mm and --height-source must be given together.");
+    process.exit(1);
+  }
+  if (heightSource && !["measured", "published", "estimated"].includes(heightSource)) {
+    console.error("--height-source must be measured, published or estimated.");
     process.exit(1);
   }
 
@@ -124,7 +139,7 @@ async function main() {
   console.log("\nSQL to apply (review it on a shelf before approving):");
   console.log(
     `UPDATE public.bottle_variants SET frontimage_url = '${publicUrl}'` +
-    (heightMm ? `, bottle_height = ${heightMm}` : "") +
+    (heightMm ? `, bottle_height = ${heightMm}, bottle_height_source = '${heightSource}'` : "") +
     ` WHERE id = '${variantId}';`
   );
 }

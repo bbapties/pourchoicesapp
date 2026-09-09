@@ -54,7 +54,8 @@ CREATE TABLE public.bottle_variants (
   image_flagged_at timestamp with time zone,
   image_flagged_by uuid,
   image_flag_note text,
-  bottle_height numeric);
+  bottle_height numeric,
+  bottle_height_source text);
 
 CREATE TABLE public.bottles (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
