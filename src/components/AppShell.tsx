@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Search, Users, GlassWater, Wine, User as UserIcon, Shield } from "lucide-react";
+import { Search, Users, GlassWater, LayoutGrid, User as UserIcon, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CurrentUserProvider, useCurrentUser } from "@/lib/useCurrentUser";
@@ -22,11 +22,15 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     }
   }, [authId, loading, isAuthPage, router]);
 
+  // Home takes the CENTRE slot and Drink loses its tab (#91). Starting a tasting is something you
+  // do to a bottle now -- pick one up off a shelf -- which is why Drink no longer needs a home of
+  // its own. `/taste` is still a route; only the icon is gone, so every existing link into it and
+  // every hand-off from a bottle still works. Five icons, unchanged (#17).
   const navItems = [
     { href: "/search",  icon: <Search size={24} />,      label: "Search"  },
     { href: "/social",  icon: <Users size={24} />,       label: "Social"  },
+    { href: "/home",    icon: <LayoutGrid size={24} />,  label: "Home"    },
     { href: "/mybar",   icon: <GlassWater size={24} />,  label: "My Bar"  },
-    { href: "/taste",   icon: <Wine size={24} />,        label: "Drink"   },
     { href: "/profile", icon: <UserIcon size={24} />,    label: "Profile" },
   ];
   if (isAdmin) {
@@ -63,6 +67,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
               href === "/search" ? "nav.search"
               : href === "/social" ? "nav.social"
               : href === "/mybar" ? "nav.mybar"
+              : href === "/home" ? "nav.home"
               : href === "/taste" ? "nav.taste"
               : href === "/profile" ? "nav.profile"
               : undefined;

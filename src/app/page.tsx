@@ -42,16 +42,17 @@ export default function Home() {
   // Only set authChecked (show Get Started) if there is NO authenticated user.
   // If authenticated, navigate away while still showing the splash — no flash.
   //
-  // Use getUser() (validates the token against the Auth server) — the SAME check the
-  // middleware uses to gate /mybar. getSession() only trusts the cookie, so a stale or
-  // unrefreshable token made this redirect to /mybar while the middleware bounced it back
-  // to / — an infinite /<->/mybar loop (the page_view flood since 2026-08-27).
+  // Use getUser() (validates the token against the Auth server) — the SAME check the middleware
+  // uses to gate the app. getSession() only trusts the cookie, so a stale or unrefreshable token
+  // made this redirect inward while the middleware bounced it back to / — an infinite loop (the
+  // page_view flood since 2026-08-27). The landing route is now /home (#91); the trap is the same
+  // whatever it points at.
   useEffect(() => {
     let settled = false;
     const finish = (user: unknown) => {
       if (settled) return;
       settled = true;
-      if (user) router.replace("/mybar");
+      if (user) router.replace("/home");
       else setAuthChecked(true);
     };
 
@@ -63,8 +64,8 @@ export default function Home() {
     // background image with no Get Started and no way out. The lock itself is now bounded in
     // lib/supabase.ts; this is the belt-and-braces so the splash can NEVER trap a user again,
     // whatever the cause (dead network, stalled DNS, a future library change).
-    // Falling through to the login screen is always safe. Redirecting to /mybar on a guess is not --
-    // that is how the 2026-08-27 `/` <-> `/mybar` loop happened.
+    // Falling through to the login screen is always safe. Redirecting INWARD on a guess is not --
+    // that is how the 2026-08-27 `/` <-> `/mybar` loop happened. Same rule now that it is /home.
     const bail = setTimeout(() => finish(null), 8000);
 
     Promise.all([supabase.auth.getUser(), minDelay])
@@ -192,7 +193,7 @@ export default function Home() {
         setIsLoading(false);
         return;
       }
-      router.replace("/mybar");
+      router.replace("/home");
     } else {
       // B-25: enforce a client-side password minimum (server min may be lower/unset).
       if (password.length < PASSWORD_MIN) {
@@ -229,7 +230,7 @@ export default function Home() {
           return;
         }
       }
-      router.replace("/mybar");
+      router.replace("/home");
     }
     setIsLoading(false);
   };

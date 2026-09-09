@@ -37,8 +37,12 @@ Then summarize the current state back to Brian and confirm the next step **befor
 Pour Choices — a mobile-first spirits app to discover, rate, and collect bottles, with an
 Elo ranking system and (future) blind tastings. Live at **www.pourchoicesapp.com**.
 
-**Current nav (logged in):** Search / Social / My Bar / Drink / Profile (+ Admin if `users.role = 'admin'`).
-Login lands on `/mybar`. Drink is `/taste` (Have a drink **or** solo blind tasting; join is a stub). My Bar has Owned / Empty / Tasted. Profile is real (username, email, replay tutorial, feedback, sign out). Group tasting (3.4) is still a stub.
+**Current nav (logged in):** Search / Social / **Home** / My Bar / Profile (+ Admin if `users.role = 'admin'`).
+**Login lands on `/home`** — the cabinet (#82): shelves of bottles, one shelf per tab, ~2.5 visible,
+each scrolling sideways. Tap a bottle to take it down; that sheet is an **overlay, never a route**.
+**Drink no longer has a tab** — starting a tasting is something you do to a bottle. `/taste` is still
+a route and every link into it still works. My Bar has Owned / Empty / Tasted. Profile is real
+(username, email, replay tutorial, feedback, sign out). Group tasting (3.4) is still a stub.
 
 **Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · shadcn/ui + Radix ·
 Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
