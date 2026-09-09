@@ -21,15 +21,19 @@ export type PourType = "neat" | "rocks" | "mixed" | "blind";
 /**
  * Actions that are recorded but NEVER shown socially.
  *
- * `verified` is admin bookkeeping, not something anyone did with a bottle — and it was 68 of 137
- * rows, so nearly half of Social was Brian ticking boxes. Hiding it here rather than not logging
- * it keeps the audit trail whole: `activities` is the record of what happened to a bottle, and a
- * verification IS something that happened. It just is not news.
+ * Both entries are CATALOGUE ADMIN rather than anything anyone did with a bottle:
+ *   `verified`    — Brian ticking a box. 68 of 137 rows.
+ *   `added_to_db` — a bottle record being created. A row appearing in the catalogue is not an
+ *                   event in anyone's drinking life; adding it to your OWN bar is, and that is
+ *                   `added_to_collection`, which stays.
+ *
+ * Hiding them here rather than not logging them keeps the audit trail whole: `activities` is the
+ * record of what happened to a bottle, and both of these DID happen. They just are not news.
  *
  * Filtered at every SOCIAL read (this feed and Home's Social shelf). Per-bottle history and admin
- * screens still show it, which is where it belongs.
+ * screens still show them, which is where they belong. Adding another action is one line.
  */
-export const FEED_HIDDEN_ACTIONS: ActivityAction[] = ["verified"];
+export const FEED_HIDDEN_ACTIONS: ActivityAction[] = ["verified", "added_to_db"];
 
 /** PostgREST `not.in` list, e.g. `(verified)`. */
 export const FEED_HIDDEN_FILTER = `(${FEED_HIDDEN_ACTIONS.join(",")})`;
