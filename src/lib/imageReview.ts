@@ -1,0 +1,200 @@
+import { supabase } from "@/lib/supabase";
+
+/**
+ * Image review for the Home cabinet (#83, part of #82).
+ *
+ * `shelf_ready` says an image can stand on a shelf. This is the other half: WHY one cannot. A
+ * rejection carrying reasons is not a dead end, it is a work order — "every image needing
+ * background removal" is one query, so the curation pass doubles as the queue for the cleanup
+ * jobs that come later.
+ *
+ * The four states are DERIVED, never stored. In particular "needs re-review" is just
+ * `flagged_at > reviewed_at`, so a user flag reopens a decision without any state machine that
+ * can get stuck, and reviewing again clears it by definition.
+ */
+
+export type ReviewState = "needs_rereview" | "approved" | "rejected" | "unreviewed";
+
+export type RejectReason = { id: string; slug: string; label: string; sortOrder: number };
+
+export type ReviewBottle = {
+  variantId: string;
+  bottleId: string;
+  name: string;
+  distillery: string | null;
+  imageUrl: string | null;
+  state: ReviewState;
+  reasonIds: string[];
+  note: string | null;
+  flagNote: string | null;
+};
+
+type VariantRow = {
+  id: string;
+  bottles_id: string;
+  frontimage_url: string | null;
+  shelf_ready: boolean;
+  image_reject_reason_ids: string[] | null;
+  image_review_note: string | null;
+  image_reviewed_at: string | null;
+  image_flagged_at: string | null;
+  image_flag_note: string | null;
+  bottles: { name: string; distillery: string | null } | { name: string; distillery: string | null }[] | null;
+};
+
+function stateOf(r: VariantRow): ReviewState {
+  const flagged = r.image_flagged_at;
+  if (flagged && (!r.image_reviewed_at || flagged > r.image_reviewed_at)) return "needs_rereview";
+  if (r.shelf_ready) return "approved";
+  if ((r.image_reject_reason_ids || []).length > 0) return "rejected";
+  return "unreviewed";
+}
+
+export async function fetchRejectReasons(): Promise<RejectReason[]> {
+  const { data, error } = await supabase
+    .from("image_reject_reasons")
+    .select("id, slug, label, sort_order")
+    .eq("active", true)
+    .order("sort_order");
+  if (error) {
+    console.error("fetchRejectReasons:", error.message);
+    return [];
+  }
+  return (data || []).map((r) => ({
+    id: r.id as string,
+    slug: r.slug as string,
+    label: r.label as string,
+    sortOrder: r.sort_order as number,
+  }));
+}
+
+/**
+ * The review queue, ordered the way the work actually wants doing: **flagged live images first**
+ * (a bad image is on everyone's Home right now), then never-reviewed, then anything else.
+ *
+ * `states` filters the shelf — the slicer. Rejected bottles are hidden by default so the queue
+ * empties as you work, and can be brought back a reason at a time.
+ */
+export async function fetchReviewShelf(opts: {
+  states: ReviewState[];
+  reasonId?: string | null;
+  limit?: number;
+}): Promise<ReviewBottle[]> {
+  const limit = opts.limit ?? 12;
+
+  // Filtering on derived state cannot be pushed into PostgREST without a view, so this reads a
+  // generous window ordered by the queue index and reduces it here. Bounded by the catalogue
+  // (133 variants today); revisit if the catalogue reaches thousands.
+  const { data, error } = await supabase
+    .from("bottle_variants")
+    .select(
+      "id, bottles_id, frontimage_url, shelf_ready, image_reject_reason_ids, image_review_note, " +
+        "image_reviewed_at, image_flagged_at, image_flag_note, bottles(name, distillery)"
+    )
+    .order("image_flagged_at", { ascending: false, nullsFirst: false })
+    .order("image_reviewed_at", { ascending: true, nullsFirst: true })
+    .limit(400);
+
+  if (error) {
+    console.error("fetchReviewShelf:", error.message);
+    return [];
+  }
+
+  const rows = (data || []) as unknown as VariantRow[];
+  const out: ReviewBottle[] = [];
+  for (const r of rows) {
+    const state = stateOf(r);
+    if (!opts.states.includes(state)) continue;
+    const reasonIds = r.image_reject_reason_ids || [];
+    if (opts.reasonId && !reasonIds.includes(opts.reasonId)) continue;
+    const b = Array.isArray(r.bottles) ? r.bottles[0] : r.bottles;
+    out.push({
+      variantId: r.id,
+      bottleId: r.bottles_id,
+      name: b?.name ?? "Unknown bottle",
+      distillery: b?.distillery ?? null,
+      imageUrl: r.frontimage_url,
+      state,
+      reasonIds,
+      note: r.image_review_note,
+      flagNote: r.image_flag_note,
+    });
+    if (out.length === limit) break;
+  }
+  return out;
+}
+
+/** Counts for the slicer, so the tab can show how much work is left without loading it. */
+export async function fetchReviewCounts(): Promise<Record<ReviewState, number>> {
+  const counts: Record<ReviewState, number> = {
+    needs_rereview: 0,
+    approved: 0,
+    rejected: 0,
+    unreviewed: 0,
+  };
+  const { data, error } = await supabase
+    .from("bottle_variants")
+    .select("id, bottles_id, frontimage_url, shelf_ready, image_reject_reason_ids, " +
+            "image_review_note, image_reviewed_at, image_flagged_at, image_flag_note, bottles(name)");
+  if (error) {
+    console.error("fetchReviewCounts:", error.message);
+    return counts;
+  }
+  for (const r of (data || []) as unknown as VariantRow[]) counts[stateOf(r)]++;
+  return counts;
+}
+
+/** Approve: the image goes on the shelf, and any previous rejection is cleared with it. */
+export async function approveImage(variantId: string, reviewerId: string) {
+  const { error } = await supabase
+    .from("bottle_variants")
+    .update({
+      shelf_ready: true,
+      image_reject_reason_ids: [],
+      image_review_note: null,
+      image_reviewed_at: new Date().toISOString(),
+      image_reviewed_by: reviewerId,
+    })
+    .eq("id", variantId);
+  return { error: error?.message };
+}
+
+/**
+ * Reject with one or more reasons. Several can be true at once, and the second reason is exactly
+ * what tells an automated job it cannot fix this image on its own.
+ */
+export async function rejectImage(
+  variantId: string,
+  reviewerId: string,
+  reasonIds: string[],
+  note?: string
+) {
+  const { error } = await supabase
+    .from("bottle_variants")
+    .update({
+      shelf_ready: false,
+      image_reject_reason_ids: reasonIds,
+      image_review_note: note?.trim() || null,
+      image_reviewed_at: new Date().toISOString(),
+      image_reviewed_by: reviewerId,
+    })
+    .eq("id", variantId);
+  return { error: error?.message };
+}
+
+/** A reason typed once joins the list, so the vocabulary grows out of the work itself. */
+export async function addRejectReason(label: string, createdBy: string): Promise<RejectReason | null> {
+  const clean = label.trim();
+  if (!clean) return null;
+  const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 60);
+  const { data, error } = await supabase
+    .from("image_reject_reasons")
+    .insert({ slug, label: clean, sort_order: 500, created_by: createdBy })
+    .select("id, slug, label, sort_order")
+    .single();
+  if (error) {
+    console.error("addRejectReason:", error.message);
+    return null;
+  }
+  return { id: data.id, slug: data.slug, label: data.label, sortOrder: data.sort_order };
+}

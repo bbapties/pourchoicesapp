@@ -46,7 +46,14 @@ CREATE TABLE public.bottle_variants (
   is_default boolean NOT NULL DEFAULT false,
   is_catchall boolean NOT NULL DEFAULT false,
   store_pick_of_variant_id uuid,
-  shelf_ready boolean NOT NULL DEFAULT false);
+  shelf_ready boolean NOT NULL DEFAULT false,
+  image_reject_reason_ids ARRAY NOT NULL DEFAULT '{}'::uuid[],
+  image_review_note text,
+  image_reviewed_at timestamp with time zone,
+  image_reviewed_by uuid,
+  image_flagged_at timestamp with time zone,
+  image_flagged_by uuid,
+  image_flag_note text);
 
 CREATE TABLE public.bottles (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -101,6 +108,15 @@ CREATE TABLE public.feedback (
   route text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone);
+
+CREATE TABLE public.image_reject_reasons (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  slug text NOT NULL,
+  label text NOT NULL,
+  sort_order integer NOT NULL DEFAULT 100,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_by uuid);
 
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -232,10 +248,12 @@ CREATE TABLE public.wishlists (
 --   elo_k_for_meetings(p_prior_meetings integer)
 --   elo_star(p_elo numeric)
 --   email_exists(p_email text)  SECURITY DEFINER
+--   flag_variant_image(p_variant uuid, p_note text)  SECURITY DEFINER
 --   guard_event_insert()
 --   is_admin()  SECURITY DEFINER
 --   merge_bottle(p_source uuid, p_target uuid, p_variant_map jsonb, p_confirm_name text)  SECURITY DEFINER
 --   merge_variant_into(p_source uuid, p_target uuid)  SECURITY DEFINER
+--   protect_image_review()  SECURITY DEFINER
 --   protect_submission_update()  SECURITY DEFINER
 --   protect_user_role()  SECURITY DEFINER
 --   purge_bottle(p_bottle uuid, p_confirm_name text)  SECURITY DEFINER
@@ -253,6 +271,7 @@ CREATE TABLE public.wishlists (
 -- Triggers
 --   trig_stamp_tasted_after_pour on activities
 --   trg_default_to_admin_bottle_attr on bottle_variants
+--   trg_protect_image_review on bottle_variants
 --   trg_update_timestamp_bottle_attr on bottle_variants
 --   trg_default_to_admin_bottles on bottles
 --   trg_update_timestamp_bottles on bottles
@@ -289,6 +308,8 @@ CREATE TABLE public.wishlists (
 --   feedback: feedback_insert_own (INSERT)
 --   feedback: feedback_select (SELECT)
 --   feedback: feedback_update (UPDATE)
+--   image_reject_reasons: admins write reasons (ALL)
+--   image_reject_reasons: read reject reasons (SELECT)
 --   notifications: Admin read notifications (SELECT)
 --   push_subscriptions: Delete own subscription (DELETE)
 --   push_subscriptions: Insert own subscription (INSERT)
