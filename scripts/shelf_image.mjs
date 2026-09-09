@@ -50,6 +50,58 @@ export function unflatten(url) {
     .concat(url.includes("output=") ? "" : "&output=png");
 }
 
+/**
+ * Fetch -> verify it is a real cut-out -> trim to the glass -> shelf derivative -> upload.
+ * Exported so the batch runner reuses this exact path rather than a second copy of it.
+ * Returns null when the image is not a cut-out; that is a legitimate outcome, not an error.
+ */
+export async function prepareAndUpload(variantId, srcUrlRaw) {
+  const srcUrl = unflatten(srcUrlRaw);
+  const res = await fetch(srcUrl, { headers: { "user-agent": "Mozilla/5.0" } });
+  if (!res.ok) throw new Error(`source fetch failed: HTTP ${res.status}`);
+  const input = Buffer.from(await res.arrayBuffer());
+
+  const { data, info } = await sharp(input).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let clear = 0;
+  let minX = info.width, minY = info.height, maxX = -1, maxY = -1;
+  for (let y = 0; y < info.height; y++) {
+    for (let x = 0; x < info.width; x++) {
+      const a = data[(y * info.width + x) * 4 + 3];
+      if (a < 16) { clear++; continue; }
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  const clearPct = clear / (info.width * info.height);
+  if (clearPct < ALPHA_MIN_CLEAR || maxX < 0) return { ok: false, clearPct };
+
+  const w = maxX - minX + 1, h = maxY - minY + 1;
+  const out = await sharp(input).ensureAlpha()
+    .extract({ left: minX, top: minY, width: w, height: h })
+    .resize({ height: MAX_EDGE, width: MAX_EDGE, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 90, alphaQuality: 100 })
+    .toBuffer();
+
+  const base = env("NEXT_PUBLIC_SUPABASE_URL").replace(/\/$/, "");
+  const key = env("SUPABASE_SERVICE_ROLE");
+  const objectPath = `variants/${variantId}/shelf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}.webp`;
+  const up = await fetch(`${base}/storage/v1/object/${BUCKET}/${objectPath}`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}`, "content-type": "image/webp",
+               "cache-control": "public, max-age=31536000, immutable" },
+    body: out,
+  });
+  if (!up.ok) throw new Error(`upload failed: HTTP ${up.status} ${await up.text()}`);
+
+  return {
+    ok: true, clearPct, unflattened: srcUrl !== srcUrlRaw,
+    aspect: w / h, trimmed: `${w}x${h}`, bytes: out.length,
+    url: `${base}/storage/v1/object/public/${BUCKET}/${objectPath}`,
+  };
+}
+
 async function main() {
   const [variantId, srcUrlRaw] = process.argv.slice(2);
   const heightArg = process.argv.indexOf("--height-mm");
@@ -144,7 +196,10 @@ async function main() {
   );
 }
 
-main().catch((e) => {
-  console.error(String(e.message || e));
-  process.exit(1);
-});
+// Only run as a CLI. Importing this module (the batch runner does) must not execute anything.
+if (process.argv[1] && process.argv[1].endsWith("shelf_image.mjs")) {
+  main().catch((e) => {
+    console.error(String(e.message || e));
+    process.exit(1);
+  });
+}
