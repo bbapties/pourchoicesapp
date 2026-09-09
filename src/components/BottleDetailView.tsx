@@ -65,6 +65,10 @@ interface BottleDetailViewProps {
   /** Set when this bottle was opened by a barcode scan — enables the "wrong bottle"
    *  report, which only makes sense in the context of a specific scanned code. */
   scannedBarcode?: string | null;
+  /** Open straight into the pour sheet. Home's "Have a drink" (#90) delegates here rather than
+   *  running its own pour flow, so the pour, the star prompt and the blind hand-off stay in one
+   *  place. */
+  autoOpenPour?: boolean;
 }
 
 function variantLabel(v: { releaseYear?: string; batch?: string; storePickName?: string }): string {
@@ -90,6 +94,7 @@ export default function BottleDetailView({
   onEditSaved,
   onActivityLogged,
   scannedBarcode,
+  autoOpenPour = false,
 }: BottleDetailViewProps) {
   const router = useRouter();
   const [imageSide, setImageSide] = useState<'front' | 'back'>('front');
@@ -118,7 +123,10 @@ export default function BottleDetailView({
   const [hasPending, setHasPending] = useState(false);
   const [showVariantSelect, setShowVariantSelect] = useState(false);
   const [showAddVariant, setShowAddVariant] = useState(false);
-  const [showPourSheet, setShowPourSheet] = useState(false);
+  // Home hands a picked-up bottle straight here with the pour sheet open (#90), so that flow is
+  // never reimplemented on another screen. Initial state, not an effect: opening it after the
+  // first paint would show the detail view for a frame before the sheet slid up.
+  const [showPourSheet, setShowPourSheet] = useState(autoOpenPour);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   // B.5 wishlist: variant ids the viewer has wishlisted (fetched on open) + toggle guard.
