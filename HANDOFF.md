@@ -9,90 +9,75 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `858e73e` + this doc commit. All on origin/MVP-v3 and live on prod.
-- **Current phase:** Phase 10 waves are done. **Now building the Home screen ("The Cabinet").**
-- **NO CODE WAS WRITTEN ON 2026-09-09.** It was a design session. It produced a finished design,
-  an interactive prototype, and **twelve board cards in Top Priority.** Build starts next.
+- **Tip:** `6153071` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Current phase:** **The Home screen ("The Cabinet") is BUILT AND LIVE.** Designed and shipped
+  on 2026-09-09 in one session: #82 and all eight tasks, plus #83's admin tool.
+- **THE NAV CHANGED FOR EVERY USER.** It is now Search / Social / **Home** / My Bar / Profile
+  (+ Admin). **Drink lost its tab**; `/taste` is still a route and every link into it still works.
+  **Login lands on `/home`.** Verified on prod in Brian's own session.
 
-### THE CURRENT WORK: the Home screen, "The Cabinet" - #82
+### THE HOME SCREEN IS BUILT - #82, and what still needs Brian
 
-Home is a new tab: a lit built-in cabinet of shelves, each shelf a horizontal run of bottles.
-**It replaces Drink in the nav**, so the nav stays at 5 icons. The design is SETTLED - do not
-re-open it, read it. Everything is in **[#82](https://github.com/bbapties/pourchoicesapp/issues/82)**,
-passes 1-5 in the comments, with the build order in the last one.
+Home is a cabinet of shelves, one shelf per tab, ~2.5 visible, each scrolling sideways and paging
+in twelve at a time. Tap a bottle and it comes up with a sheet of actions. **The design record is
+#82 (passes 1-5 in the comments); the interactive prototype is an Artifact - ask Brian for the
+link.** Do not re-open settled design; read it.
 
 **The governing definition, in Brian's words:** *Home is a **zoomed-out view of the other tabs**.*
 Every shelf is one tab seen from across the room and its label plate is the door into it. Not a
-strict one-to-one rule, but the question to ask in both directions: new feature - does it want a
+hard one-to-one rule, but the question to ask in both directions: new feature - does it want a
 shelf? New shelf - where does its plate go?
 
-**Build at `/home`, reachable by URL but NOT in the bottom nav, until the very last task (#91).**
-Brian approved this. Every step then ships to prod and is testable on a real phone without changing
-anything for any user. The nav switch becomes one small final commit instead of a big bang.
+**Shipped (all on prod):** #85 registry + queries + `shelf_ready` column · #86 the shelf box ·
+#87 bottles and ghosts · #88 the horizontal run · #89 the 2.5 peek · #83 both halves (the flag,
+the ghost, and **Admin > Images**) · #90 pick a bottle up · #92 coach + telemetry · #91 the nav
+switch. #84 (user-arranged cabinets) is North Star and explicitly NOT built.
 
-**Brian approved the one schema change** (2026-09-09): add `shelf_ready` boolean, default false,
-additive. Snapshot first, then `node scripts/dump_schema.mjs` after.
+**WAITING ON BRIAN - three things, none of them code:**
+1. **Curate the images.** Admin > Images. **133 variants, 0 approved.** Every bottle on Home is a
+   ghost until he approves it. Looking at them, **most images are already fine** - the flag simply
+   defaults false - so this is mostly tapping Approve. Use the **Checker backdrop** first: the
+   shelf is ivory and so is a bad background, so a white box is invisible against it.
+2. **#93 - approve one RLS line.** `bottle_variants` has admin policies for UPDATE and DELETE but
+   **none for SELECT**, so 2 of 133 variants are invisible to the admin and can never be reviewed.
+   Additive; not applied because RLS needs his explicit go.
+3. **A fine-tuning pass on the cabinet.** Agreed rule: report anything STRUCTURAL immediately;
+   save anything about LOOK for a dedicated session, because Phase 5 restyles every screen at once.
 
-**The order is on #82 and it is not arbitrary.** Ten steps: #85 registry -> #83 half A (ghost) ->
-#86 shelf box -> #87 bottles -> #88 the horizontal run (M, the risky one) -> #89 stack ->
-**#83 half B (the admin image-verify window - PULLED FORWARD, Brian wants it early)** -> #90 pick-up
--> #92 coach + telemetry -> #91 nav switch LAST. Four principles: registry before markup; ghosts
-early so image curation leaves the critical path; scroll mechanics before polish; nav switch last.
+**STYLING RULE, learned the hard way this session.** The first cut of the cabinet was a dark, lit
+mancave against an app that is a light greyscale wireframe everywhere else. Brian rejected it:
+**everything stays in the app's existing palette until Phase 5, when it is all styled together.**
+The cabinet is line art on ivory with charcoal strokes, and the only colours are the two the bottle
+cards already use - `#22c55e` had-it, `#FFD700` unverified.
 
-**Two things that break silently - both are on their cards, do not lose them:**
-- **The pick-up sheet must be an overlay, never a route** (#90). Putting a bottle back has to leave
-  you standing in the same place on the shelf. A route change bounces you to the top-left of every
-  shelf, and nothing errors.
-- **Never put a `touch-action` axis lock on the vertical scroller** (#88). `pan-y` on the cabinet
-  applies to every descendant and makes the browser refuse every horizontal drag on a shelf. Silent.
+**THREE SILENT TRAPS, ALL HIT THIS SESSION. Do not reintroduce them.**
+- **`touch-action` axis locks break the OTHER axis, in both directions.** `pan-y` on the cabinet
+  makes the browser refuse horizontal drags on a shelf; `pan-x` on a shelf makes it refuse vertical
+  drags on the cabinet, so only the frame scrolls. **Neither element sets `touch-action` at all** -
+  left at the default the browser picks the dominant axis and chains the other to the ancestor.
+- **`overflow-x:auto` with `overflow-y:visible` computes to `auto` on BOTH axes**, turning every
+  shelf into a vertical scroller too.
+- **The picked-up bottle must stay an OVERLAY, never a route** (`PickedUpBottle`). Putting a bottle
+  back has to leave you where you were on the shelf; a route change resets every run, silently.
 
-**A third trap, same card:** `overflow-x:auto` with `overflow-y:visible` computes to `auto` on BOTH
-axes, so each shelf silently becomes a vertical scroller too and the two axes eat each other's drags.
-Give the bottle reflection a fixed-height container so nothing needs to overflow vertically.
+**Reuse decisions worth keeping:** the empty-bar scan button links to `/search?scan=1` rather than
+mounting a second scanner; "Have a drink" opens `BottleDetailView` with `autoOpenPour` rather than
+running its own pour flow; `lib/bottleDetails` reads the same view Search reads. Home is an
+entrance to a bottle, never a second copy of one.
 
-**Brian is curating bottle images in parallel.** He does not want Home blocked on it and it is not:
-#83's ghost bottle renders whenever `shelf_ready` is false, so the cabinet can be built and judged
-honestly with zero curated images. #56 (background removal) is a **hard dependency of Home looking
-good**, not of Home working.
-
-### Read this before anything else - the queue lives on the board
-
-**THE BOARD HAS A LANE THAT IS EASY TO MISS.** Columns are, left to right:
-`To be reviewed | North Star | Backlog | Coming Soon | Top Priority | Next Items per Brian |
-In Progress | Done`. **Priority runs RIGHT to LEFT** - the rightmost non-Done lane is next. An agent
-that reads "Top Priority" and stops will skip the lane Brian actually fills in, which happened on
-2026-09-07.
-
-**"Next Items per Brian" is a proposal lane, not an order.** Its own description: *"if you logically
-think it's better to be skipped for another priority or wait for it to be joined with another, or
-needs more details, then move it appropriately and add comments."* Judge each card, then either work
-it or move it **with a comment explaining why**. **Re-read the column list and their descriptions
-every session** - the set has changed once already, and the descriptions carry instructions.
-
-**https://github.com/users/bbapties/projects/1** is the single source of truth for what is open and
-in what order. `ROADMAP/BUGS/BACKLOG/PHASE8-10` are in **`docs/archive/`** and **frozen** - read them
-for specs and history, never for status, and never tick a box in them.
-
-How the board is shaped and the `gh` commands: **[docs/BOARD.md](docs/BOARD.md)**.
-The CLI is at **`.tools\gh\bin\gh.exe`** (gitignored, inside the repo - see the sandbox landmine below).
-
-**Closing an issue moves its card to Done automatically** - that workflow is enabled, so do not also
-drag cards. But note **`Closes #N` in a commit does NOT auto-close**: GitHub only honours that on the
-default branch, and we ship from `MVP-v3`. Close issues explicitly with `gh issue close`.
-
-**#70 IS BUILT AND SO IS EVERYTHING AROUND IT.** The whole variant model shipped on 2026-09-07
-(#70-#76), plus the delete pair (#67 block + purge, #68 merge), the Elo ordering fix (#79), an RLS
-hole found on the way (#77), the three bugs Brian staged that morning (#66, #65, #62), #4, and #80.
-**In Progress is empty and Top Priority holds two items.**
+**An agent cannot type a password** (a hard rule, even when Brian offers credentials - he did, and
+it was declined). Signed-in screens were verified through the **Claude-in-Chrome tools driving
+Brian's own already-signed-in browser**. That is the way to see a signed-in screen; use it.
 
 ### The single next step
-**Start #85** - create the `/home` route (not in nav), build the shelf registry, and write the three
-shelf queries. No UI at all; verify with SQL. It carries the approved `shelf_ready` migration.
+**Ask Brian what he saw on Home**, then work whatever he raises. The build is finished and every
+task issue is closed; what is left is his three items above (curate images, approve #93, tuning
+pass) and they are all decisions, not code.
 
-Then follow the order on #82 exactly. **Read the board RIGHT TO LEFT** as always - *Top Priority* now
-holds the whole Home build (#82 epic, #83, #85-#92) plus the two items that predate it: **#8**
-(verify the search `.or()` injection is closed, XS) and **#75** (the variant triage - BRIAN'S work,
-not an agent's). *Next Items per Brian* still holds only **#13**.
+If he has nothing: **read the board RIGHT TO LEFT.** *In Progress* is empty. *Top Priority* holds
+**#93** (the one-line RLS fix, blocked on his approval), **#8** (verify the search `.or()`
+injection is closed, XS) and **#75** (the variant triage - BRIAN'S work, not an agent's).
+*Next Items per Brian* still holds only **#13**.
 
 **#13** (CoachHost `seen_coach_ids` last-write-wins across tabs) was deliberately LEFT in Brian's
 lane rather than worked: it is two tabs racing over one coach mark and the loser sees a tour again -
@@ -463,6 +448,36 @@ means rewriting Home when Brian wants to arrange his own cabinet.
 **Not changed yet, on purpose:** AGENTS.md still describes the nav as Search / Social / My Bar /
 Drink / Profile with login landing on `/mybar`. That is still true today. **Update it as part of
 #91**, not before, or the doc will be wrong for the whole build.
+
+**THEN THE WHOLE THING WAS BUILT, SAME DAY.** The design session ran in the morning; Brian said
+"carry on with dev" and every task shipped to prod by the end of it. Commits: `57a927d` +
+`2e29945` (#85), `3c410c6` (#86), `71223f0` (#87 + #88), `787bc4d` (#89), `8f66f64` (touch fix),
+`8e4d843` + `53899b1` (#83), `32607a5` (#90), `035f4ca` (#92), `6153071` (#91).
+
+**The build strategy is the reusable part: everything shipped to `/home`, reachable by URL but NOT
+in the nav, until the very last commit.** Every step went to prod and was tested live without
+changing anything for any user, and the nav switch was then one small change instead of a big bang.
+Do this again for any screen that replaces an existing one.
+
+**Three corrections from Brian mid-build, all of them right:**
+1. **Styling had drifted into a dark lit cabinet** while the rest of the app is a light wireframe.
+   Rebuilt in the app's palette. Phase 5 styles everything at once; do not style one screen early.
+2. **Vertical scrolling only worked on the frame** - a `touch-action: pan-x` on the run. See the
+   traps above.
+3. **Ghosts and the 3D "were not delivered"** - they were simply the next two tasks, shipped
+   separately. Lesson: a shelf cannot be judged without its bottles and its end walls, so those
+   three tasks should have gone out together. Sequence work by what can actually be evaluated.
+
+**Two things found by finally LOOKING at prod** (through Brian's signed-in Chrome, since an agent
+cannot type a password):
+- **The catalogue is in far better shape than the flag implied.** `shelf_ready` defaults false, so
+  everything reads as unreviewed; the images themselves are mostly clean already.
+- **A white review shelf hid the exact fault the tool exists to catch** - an image with a white box
+  behind it looked identical to a clean cut-out. Fixed with checker / shelf / dark backdrops.
+
+**#93 filed and NOT fixed:** `bottle_variants` has admin UPDATE and DELETE policies but no admin
+SELECT, so 2 of 133 variants are unreachable in the review tool. One additive policy; needs Brian.
+
 
 ### 2026-09-07 (latest) - Claude (23 commits: three bugs, the variant model end to end, the Elo rewrite, delete + merge)
 
