@@ -100,69 +100,88 @@ body {
 }
 
 /* ============================================================================
-   Home — "The Cabinet" (#82). One shelf is a shallow box, about one bottle deep.
-   Greyscale per the wireframe rule; the only colour on this screen is the status
-   light under a bottle (#87), because there it is information.
+   Home — "The Cabinet" (#82).
 
-   FIXED IN THE VIEWPORT: top panel, back wall, deck, front lip. A long box runs
-   left and right indefinitely, so its front and back edges are parallel to the
-   viewer and MUST STAY HORIZONTAL. Mitring the deck leaves wedges of void at
-   both sides whenever you are mid-run. Only the END walls recede, and they live
-   inside the horizontal scroller (#88) so they are seen only at the first and
-   last bottle.
+   WIREFRAME, in the SAME palette as every other screen: ivory ground, charcoal
+   line work, and the two colours the app already uses for earmarks (#22c55e
+   "had it", #FFD700 "unverified"). No gradients, no lighting, no dark ground.
+   The lit mancave cabinet is a Phase 5 job -- doing it here would mean styling
+   this screen twice and having it disagree with the rest of the app in between.
 
-   Geometry on a 276px block: top panel 0-12, back wall 12-226, deck 226-250,
-   lip 250-276. Bottles stand at 44px from the bottom, leaving the front 44px of
-   deck for their reflection.
+   The BOX is line art. Fixed in the viewport: top panel, back wall, deck, and
+   the front lip that carries the label. A long box runs left and right
+   indefinitely, so its front and back edges are parallel to the viewer and STAY
+   HORIZONTAL -- mitring them leaves wedges of void at both sides mid-run. Only
+   the two END walls recede, and they live inside the scroller so you see them
+   at the first and last bottle and nowhere else.
+
+   Geometry on a 276px block: top 0-12, back 12-226, deck 226-250, lip 250-276.
    ============================================================================ */
-.pc-shelf { position: relative; height: 276px; border-bottom: 1px solid #060607; }
+.pc-shelf { position: relative; height: 276px; background: var(--color-ivory);
+            border-bottom: 1px solid var(--color-charcoal); }
 .pc-face  { position: absolute; left: 0; right: 0; }
 
-.pc-back {
-  top: 12px; bottom: 50px;
-  background: linear-gradient(180deg, #26262b 0%, #1a1a1e 34%, #141417 100%);
-  box-shadow: inset 0 0 34px rgba(0, 0, 0, .8);
-}
-.pc-top   { top: 0; height: 12px; background: linear-gradient(180deg, #0b0b0d, #202024); }
-.pc-deck  { top: 226px; height: 24px;
-            background: linear-gradient(180deg, #25252a 0%, #33333a 45%, #43434b 100%); }
-/* the thickness of the shelf board — the label is fixed to this face */
-.pc-lip   { top: auto; bottom: 0; height: 26px;
-            background: linear-gradient(180deg, #50505a, #2c2c32);
-            border-top: 1px solid #63636e; box-shadow: 0 6px 14px rgba(0, 0, 0, .8); }
+.pc-top   { top: 0; height: 12px; border-bottom: 1px solid var(--color-charcoal);
+            background: #F2F2F2; }
+.pc-back  { top: 12px; bottom: 50px; background: var(--color-ivory); }
+.pc-deck  { top: 226px; height: 24px; background: #F7F7F7;
+            border-top: 1px solid var(--color-charcoal); }
+/* the thickness of the shelf board -- the label is fixed to this face */
+.pc-lip   { top: auto; bottom: 0; height: 26px; background: #EDEDED;
+            border-top: 1px solid var(--color-charcoal); }
 
-/* accent strip tucked under the lip of the shelf above */
-.pc-led {
-  position: absolute; left: 5%; right: 5%; top: 1px; height: 2px; border-radius: 2px; z-index: 5;
-  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.85), rgba(255,255,255,0));
-  box-shadow: 0 0 14px 3px rgba(255, 255, 255, .22);
+/* the horizontal run. Its own axis, and NOTHING above it may lock the axis:
+   `touch-action` on the vertical scroller applies to every descendant and makes
+   the browser refuse these drags outright. `overflow-y: hidden` (not visible)
+   because `visible` alongside `overflow-x: auto` computes to `auto` on BOTH
+   axes, which turns every shelf into a vertical scroller too and lets the two
+   axes eat each other's drags. */
+.pc-run {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 26px; z-index: 3;
+  display: flex; align-items: flex-end; gap: 14px; padding-bottom: 12px;
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x;
+  -webkit-overflow-scrolling: touch; cursor: grab;
 }
+.pc-run::-webkit-scrollbar { display: none; }
+.pc-run.is-dragging { cursor: grabbing; }
+
+/* the two ends of the run -- these scroll WITH the bottles.
+   `margin-left: auto` on the right one absorbs slack ONLY when there is slack,
+   so a short or empty run keeps its right wall pinned to the frame and reads as
+   a closed box, while a long run leaves it exactly where the last bottle ends. */
+.pc-endwall { flex: none; align-self: stretch; display: block; }
+.pc-endwall-r { margin-left: auto; }
+
+.pc-slot { position: relative; flex: none; background: none; border: 0; padding: 0;
+           cursor: pointer; -webkit-tap-highlight-color: transparent; display: block; }
+.pc-slot:focus-visible { outline: 2px solid var(--color-charcoal); outline-offset: 3px; }
+/* status, in the app's own earmark colours: green = had it, yellow = unverified */
+.pc-mark { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+           width: 9px; height: 9px; border-radius: 50%;
+           border: 1px solid var(--color-charcoal); }
 
 /* engraved into the board's face, and the door to that shelf's tab */
 .pc-plate {
-  position: absolute; left: 16px; bottom: 5px; z-index: 6; height: 16px; padding: 0 8px 0 10px;
-  display: flex; align-items: center; gap: 7px; border-radius: 1px;
-  background: linear-gradient(180deg, #63636e, #3d3d45); border: 1px solid #74747f;
-  font-size: 8px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
-  color: #eef; text-shadow: 0 1px 0 rgba(0, 0, 0, .85);
-  transition: background .15s, box-shadow .15s, transform .08s;
+  position: absolute; left: 12px; bottom: 4px; z-index: 6; height: 18px; padding: 0 7px 0 9px;
+  display: flex; align-items: center; gap: 6px; border-radius: 2px;
+  background: var(--color-ivory); border: 1px solid var(--color-charcoal);
+  font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--color-charcoal);
 }
-.pc-plate:hover { background: linear-gradient(180deg, #75757f, #4a4a54); box-shadow: 0 0 0 1px #8c8c97; }
-.pc-plate:active { transform: translateY(1px); }
-.pc-plate-count { color: #adadb7; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
-.pc-plate-go { font-size: 9px; letter-spacing: 0; color: #c9c9d2; line-height: 1; }
+.pc-plate:active { background: #E4E4E4; }
+.pc-plate-count { opacity: .65; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 
 /* a bare shelf says what is true and nothing more */
 .pc-empty {
-  position: absolute; left: 0; right: 0; top: 74px; z-index: 4; text-align: center;
-  font-size: 12px; line-height: 1.7; color: #6a6a73; pointer-events: none;
+  position: absolute; left: 0; right: 0; top: 84px; z-index: 4; text-align: center;
+  font-size: 12px; line-height: 1.7; color: var(--color-charcoal); opacity: .7;
+  pointer-events: none;
 }
-.pc-empty strong { display: block; font-weight: 600; color: #b6b6c0; font-size: 13px; }
+.pc-empty strong { display: block; font-weight: 600; font-size: 13px; opacity: 1; }
 .pc-empty a {
-  pointer-events: auto; margin: 11px auto 0; display: inline-flex; align-items: center; gap: 8px;
-  padding: 9px 15px; border-radius: 8px; border: 1px solid #5c5c66;
-  background: rgba(255, 255, 255, .05); color: #e9e9ec; font-size: 12.5px; font-weight: 600;
+  pointer-events: auto; margin-top: 11px; display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 15px; border-radius: 8px; border: 1px solid var(--color-charcoal);
+  background: var(--color-ivory); color: var(--color-charcoal);
+  font-size: 12.5px; font-weight: 600; opacity: 1;
 }
-.pc-empty a:hover { background: rgba(255, 255, 255, .1); }
-
-@media (prefers-reduced-motion: reduce) { .pc-plate { transition: none; } }

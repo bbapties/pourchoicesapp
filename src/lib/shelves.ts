@@ -47,6 +47,8 @@ export type ShelfBottle = {
   imageUrl: string | null;
   imageState: ImageState;
   status: BottleStatus;
+  /** Not verified yet. Drives the same yellow mark the bottle cards already use. */
+  provisional: boolean;
 };
 
 export type ShelfPage = {
@@ -143,18 +145,19 @@ function imageState(v?: VariantImage): ImageState {
   return v.shelfReady ? "ready" : "unready"; // photographed, but not cut out yet
 }
 
-/** Names and houses for a page of bottle ids. */
+/** Names, houses and verification state for a page of bottle ids. */
 async function resolveNames(bottleIds: string[]) {
-  const map = new Map<string, { name: string; distillery: string | null }>();
+  const map = new Map<string, { name: string; distillery: string | null; verified: boolean }>();
   if (!bottleIds.length) return map;
   const { data } = await supabase
     .from("bottles")
-    .select("id, name, distillery")
+    .select("id, name, distillery, verified")
     .in("id", bottleIds);
   for (const b of data || []) {
     map.set(b.id as string, {
       name: (b.name as string) ?? "Unknown bottle",
       distillery: (b.distillery as string | null) ?? null,
+      verified: Boolean(b.verified),
     });
   }
   return map;
@@ -221,6 +224,7 @@ async function buildPage(
       imageUrl: img?.imageUrl ?? null,
       imageState: imageState(img),
       status: statuses.get(s.bottleId) ?? fallbackStatus,
+      provisional: nm ? !nm.verified : false,
     };
   });
 
