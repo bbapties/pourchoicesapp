@@ -21,8 +21,11 @@ import { SHELF_PAGE_SIZE, type ShelfBottle, type ShelfDef } from "@/lib/shelves"
  *   1. `overflow-x: auto` with `overflow-y: visible` computes to `auto` on BOTH axes. Every shelf
  *      becomes a vertical scroller too and the two axes eat each other's drags. Hence
  *      `overflow-y: hidden` in the CSS, and nothing inside is allowed to need vertical overflow.
- *   2. A `touch-action` axis lock on an ANCESTOR applies to every descendant. `pan-y` on the
- *      cabinet would make the browser refuse every drag here, with no error.
+ *   2. A `touch-action` axis lock breaks the OTHER axis, in both directions. `pan-y` on the
+ *      cabinet makes the browser refuse every horizontal drag here; `pan-x` on this run forbids
+ *      vertical panning, and since the run covers nearly the whole shelf, that leaves the cabinet
+ *      scrollable only by touching its frame. Neither element sets `touch-action` at all: left at
+ *      the default the browser picks the dominant axis and chains the other to the ancestor.
  *   3. A mouse has no horizontal wheel, so on desktop there is no gesture at all without
  *      click-and-drag — and that drag must not fire a bottle tap on release.
  */

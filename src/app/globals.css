@@ -160,8 +160,15 @@ body {
   position: absolute; left: 0; right: 0; top: 0; bottom: var(--pc-lip-h); z-index: 3;
   display: flex; align-items: flex-end; gap: 14px; padding-bottom: 12px;
   overflow-x: auto; overflow-y: hidden;
-  scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x;
+  scrollbar-width: none; overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch; cursor: grab;
+  /* NO `touch-action` HERE. `pan-x` looks right -- this is a horizontal scroller -- but it
+     FORBIDS vertical panning, and the run covers nearly the whole shelf, so a finger anywhere
+     except the frame could no longer scroll the cabinet up and down. Left at the default, the
+     browser picks the dominant axis of the gesture and chains the other one to the ancestor,
+     which is exactly the behaviour wanted: drag sideways and the run moves, drag up and the
+     cabinet moves, from anywhere on the screen. Same trap as an axis lock on the ancestor, one
+     level down. */
 }
 .pc-run::-webkit-scrollbar { display: none; }
 .pc-run.is-dragging { cursor: grabbing; }
