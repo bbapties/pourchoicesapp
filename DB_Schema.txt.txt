@@ -1,6 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
--- Regenerated from the live prod DB on 2026-09-07 via scripts/_psql.mjs against information_schema/pg_catalog.
+-- Regenerated from the live prod DB on 2026-09-09 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
 
 CREATE TABLE public.activities (
@@ -45,7 +45,8 @@ CREATE TABLE public.bottle_variants (
   finish text,
   is_default boolean NOT NULL DEFAULT false,
   is_catchall boolean NOT NULL DEFAULT false,
-  store_pick_of_variant_id uuid);
+  store_pick_of_variant_id uuid,
+  shelf_ready boolean NOT NULL DEFAULT false);
 
 CREATE TABLE public.bottles (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
