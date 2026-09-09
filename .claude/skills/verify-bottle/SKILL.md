@@ -121,9 +121,23 @@ Report the `submission_group` id and a summary of every suggested change (field,
 - **Single-barrel and store picks must NOT get brand-level tasting notes.** Every barrel genuinely
   differs, so notes copied from the product line are a fabrication dressed as data. Leaving
   nose/palate/finish empty is the honest outcome for a private barrel.
-- **Store picks have no official packshot.** Standing in the brand's standard bottle is usually
-  right (correct shape, wrong label text, invisible at shelf scale) — but SAY SO in the hand-off so
-  Brian can reject it; do not present a substitution as the real thing.
+- **Store picks have no official packshot**, because the label is unique to the pick. The rule:
+
+  | image | use it for | why |
+  |---|---|---|
+  | brand's standard packshot | `frontimage_url` — the shelf | correct bottle, stands properly; wrong label text is invisible at shelf scale |
+  | the owner's own photo, rembg'd | `backimage_url` — the detail page | the only place the real barrel details exist |
+
+  A close phone photo usually crops the neck and base off, so it CANNOT be the shelf image — a
+  bottle with no base does not stand. But rembg cuts it out cleanly and the label is legible, which
+  is exactly what the detail page wants.
+
+  **Do NOT composite the photographed label onto the stock bottle.** It fabricates a product photo
+  that never existed, and it looks wrong regardless: the label is curved around the glass and lit
+  from a different direction than the studio shot. Two honest images beat one synthetic one.
+
+  Either way, SAY in the hand-off that the shelf image is a stand-in, so Brian can reject it. Never
+  present a substitution as the real thing.
 
 ## Definition of done (per bottle)
 One pending `submission_group` covering: corrected identity (name/category/style/volume) · clean split nose/palate/finish · proof/age · enriched extras · validated barcode · self-hosted image URL · **`bottle_height` + `bottle_height_source` (both, always)** · any needed merge/delete — all as reviewable old→new rows. Brian's approval + `verified` flip completes it.
