@@ -49,6 +49,9 @@ export type ShelfBottle = {
   status: BottleStatus;
   /** Not verified yet. Drives the same yellow mark the bottle cards already use. */
   provisional: boolean;
+  /** Real-world bottle height in MILLIMETRES, when known. This is what makes a squat Blanton's
+   *  read as squat beside a tall bourbon — a cut-out's pixel height only describes its crop. */
+  heightMm: number | null;
 };
 
 export type ShelfPage = {
@@ -91,7 +94,7 @@ type Seed = {
   variantId: string | null;
 };
 
-type VariantImage = { variantId: string; imageUrl: string | null; shelfReady: boolean };
+type VariantImage = { variantId: string; imageUrl: string | null; shelfReady: boolean; heightMm: number | null };
 
 /**
  * Resolve one image per seed: the variant it names, or the SKU's default variant.
@@ -109,13 +112,14 @@ async function resolveImages(seeds: Seed[]): Promise<Map<string, VariantImage>> 
   if (named.length) {
     const { data } = await supabase
       .from("bottle_variants")
-      .select("id, bottles_id, frontimage_url, shelf_ready")
+      .select("id, bottles_id, frontimage_url, shelf_ready, bottle_height")
       .in("id", named);
     for (const v of data || []) {
       byBottle.set(v.bottles_id as string, {
         variantId: v.id as string,
         imageUrl: (v.frontimage_url as string | null) ?? null,
         shelfReady: Boolean(v.shelf_ready),
+        heightMm: v.bottle_height == null ? null : Number(v.bottle_height),
       });
     }
   }
@@ -123,7 +127,7 @@ async function resolveImages(seeds: Seed[]): Promise<Map<string, VariantImage>> 
   if (needDefault.length) {
     const { data } = await supabase
       .from("bottle_variants")
-      .select("id, bottles_id, frontimage_url, shelf_ready")
+      .select("id, bottles_id, frontimage_url, shelf_ready, bottle_height")
       .in("bottles_id", needDefault)
       .eq("is_default", true);
     for (const v of data || []) {
@@ -133,6 +137,7 @@ async function resolveImages(seeds: Seed[]): Promise<Map<string, VariantImage>> 
         variantId: v.id as string,
         imageUrl: (v.frontimage_url as string | null) ?? null,
         shelfReady: Boolean(v.shelf_ready),
+        heightMm: v.bottle_height == null ? null : Number(v.bottle_height),
       });
     }
   }
@@ -225,6 +230,7 @@ async function buildPage(
       imageState: imageState(img),
       status: statuses.get(s.bottleId) ?? fallbackStatus,
       provisional: nm ? !nm.verified : false,
+      heightMm: img?.heightMm ?? null,
     };
   });
 

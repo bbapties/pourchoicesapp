@@ -16,17 +16,34 @@ import type { ShelfBottle } from "@/lib/shelves";
  */
 
 /**
- * Bottle heights vary a little so a run doesn't read as a picket fence, and they are a FRACTION
- * OF THE RUN rather than a pixel count — a shelf sizes itself so 2.5 fit the viewport (#89), so a
- * fixed height would clip on a short screen and float on a tall one. Deterministic per bottle id,
- * so a bottle is the same height every time you see it.
+ * How tall a bottle stands, as a percentage of the run.
+ *
+ * A percentage rather than a pixel count because a shelf sizes itself so 2.5 fit the viewport
+ * (#89) — a fixed height would clip on a short screen and float on a tall one.
+ *
+ * WHEN THE REAL HEIGHT IS KNOWN, IT WINS. A cut-out's pixel height only describes how it was
+ * cropped, so scaling by the image would make a squat Blanton's and a tall bourbon the same size
+ * on the shelf — which is exactly the thing that would give the illusion away. `bottle_height` is
+ * millimetres of actual glass, measured against a tall-bottle reference so the tallest spirits
+ * fill the shelf and everything else is honestly shorter.
+ *
+ * Without it we fall back to a deterministic pseudo-height, so a run of un-measured bottles still
+ * has some variety instead of reading as a picket fence, and any given bottle is the same height
+ * every time you see it.
  */
-const HEIGHT_PCT = [78, 82, 86, 90, 80, 88];
+const TALL_REFERENCE_MM = 340;  // about the tallest a 750ml spirits bottle gets
+const MAX_PCT = 94;             // the reference bottle nearly fills the run
+const MIN_PCT = 45;             // a miniature still has to be visible and tappable
+const FALLBACK_PCT = [78, 82, 86, 90, 80, 88];
 
-function heightFor(id: string): number {
+function heightFor(id: string, heightMm: number | null): number {
+  if (heightMm && heightMm > 0) {
+    const pct = (heightMm / TALL_REFERENCE_MM) * MAX_PCT;
+    return Math.max(MIN_PCT, Math.min(MAX_PCT, Math.round(pct)));
+  }
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return HEIGHT_PCT[h % HEIGHT_PCT.length];
+  return FALLBACK_PCT[h % FALLBACK_PCT.length];
 }
 
 /** Two or three short lines, so a ghost still tells you which bottle it is. */
@@ -66,7 +83,7 @@ export default function BottleOnShelf({
   bottle: ShelfBottle;
   onPick?: (b: ShelfBottle) => void;
 }) {
-  const heightPct = heightFor(bottle.bottleId);
+  const heightPct = heightFor(bottle.bottleId, bottle.heightMm);
   const isGhost = bottle.imageState !== "ready";
   const mark = markColor(bottle);
   const lines = isGhost ? shortName(bottle.name) : [];
