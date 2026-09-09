@@ -31,14 +31,26 @@ import type { ShelfBottle } from "@/lib/shelves";
  * has some variety instead of reading as a picket fence, and any given bottle is the same height
  * every time you see it.
  */
-const TALL_REFERENCE_MM = 340;  // about the tallest a 750ml spirits bottle gets
-const MAX_PCT = 94;             // the reference bottle nearly fills the run
-const MIN_PCT = 45;             // a miniature still has to be visible and tappable
+/**
+ * TWELVE INCHES IS RATIO 1 (Brian's baseline). A 12in bottle fills REFERENCE_PCT of the shelf and
+ * everything else is a straight proportion of that: an 8in bottle draws at two thirds the height,
+ * leaving the top third of its slot empty, which is exactly what a short bottle looks like on a
+ * real shelf.
+ *
+ * The ratio lives in the NUMBER, not in transparent padding baked into the image. Both look
+ * identical, but most of these heights are estimates -- per-bottle dimensions are mostly
+ * unpublished -- and a stored number can be corrected with one UPDATE, where baked padding means
+ * re-rendering that bottle's image, or every image if the baseline itself ever moves.
+ */
+const REFERENCE_MM = 305;   // 12 inches
+const REFERENCE_PCT = 86;   // what a 12in bottle occupies of the run
+const MAX_PCT = 96;         // a 13in+ bottle may exceed the reference, but not overflow the shelf
+const MIN_PCT = 40;         // a miniature still has to be visible and tappable
 const FALLBACK_PCT = [78, 82, 86, 90, 80, 88];
 
 function heightFor(id: string, heightMm: number | null): number {
   if (heightMm && heightMm > 0) {
-    const pct = (heightMm / TALL_REFERENCE_MM) * MAX_PCT;
+    const pct = (heightMm / REFERENCE_MM) * REFERENCE_PCT;
     return Math.max(MIN_PCT, Math.min(MAX_PCT, Math.round(pct)));
   }
   let h = 0;
