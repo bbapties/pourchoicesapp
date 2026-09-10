@@ -1,6 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
--- Regenerated from the live prod DB on 2026-09-09 via scripts/_psql.mjs against information_schema/pg_catalog.
+-- Regenerated from the live prod DB on 2026-09-10 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
 
 CREATE TABLE public.activities (
@@ -294,6 +294,7 @@ CREATE TABLE public.wishlists (
 --   bottle_variants: admins delete variants (DELETE)
 --   bottle_variants: Auth insert variants (INSERT)
 --   bottle_variants: Public read (SELECT)
+--   bottle_variants: admins read variants (SELECT)
 --   bottle_variants: Own unverified update variants (UPDATE)
 --   bottle_variants: admins can update variants (UPDATE)
 --   bottle_variants: admins update variants (UPDATE)
