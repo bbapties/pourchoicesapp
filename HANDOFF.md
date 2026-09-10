@@ -137,17 +137,16 @@ is one job. **#13 was folded into #98** (two tabs can forget a seen tutorial tip
 new persist to merge). Do not touch auth without Brian's go.
 
 *Top Priority* holds **#97** (the 48 rejected images - real work, one fresh source at a time, start
-with bottles people own), **#8** (verify the search `.or()` injection is closed, XS) and **#75**
-(the variant triage - BRIAN'S work, not an agent's). **#95 and #96 are Done.**
+with bottles people own) and **#8** (verify the search `.or()` injection is closed, XS).
+**#75 is Done** -- Brian walked the catalog (0 untriaged). New versions go to Admin > Bottles,
+not back onto the Variants triage list. **#95 and #96 are Done.**
 
 **#13 is closed.** Folded into #98 as a design bullet: two tabs can forget a seen tutorial tip.
 Not a one-off fix.
 
-**#75 - the triage pass, and it is BRIAN'S work, not an agent's.** Every tool it needs now exists:
-Admin > Variants lists all 109 bottles, sorted by how likely each is to need a decision, with three
-outcomes per bottle (split with a declared axis / single bottling / needs merge) and a merge flow
-beside them. Nothing about it can be automated - there are no duplicate barcodes and no duplicate
-bottle names, so every call is a judgement. Do not "help" by guessing.
+**#75 is Done.** Brian walked every bottle (90 single, 13 split, 5 needs_merge, 0 untriaged).
+New contributed versions do **not** re-enter the Variants triage list; they land in Admin >
+Bottles as unverified. Verify on a still-single parent is where the axis question fires.
 
 **#8** (confirm the search `.or()` filter injection is really closed by B-13) is the other Top
 Priority item and is unrelated to this thread - an XS verification job.
@@ -314,7 +313,7 @@ password.
   one doc nobody has claimed; fix or delete it rather than half-trusting it.
 
 ### Still owed by Brian
-- **#75, the triage pass.** Judgement work per bottle; the tooling is all built.
+- **#75, the triage pass.** Done -- Brian walked the catalog. New versions: Admin > Bottles.
 - **Eyes on every admin screen shipped 2026-09-07** — Variants (triage + merge), the axis modal on
   the verify queue, and the delete/purge dialog. **None of them has ever been seen signed in**: an
   agent cannot type a password, and the QA account was demoted from admin in B-22. Also the #66
@@ -465,6 +464,8 @@ activity, 0 tastings). Replay of 11 sessions / 84 pairs moved 0 other scores. Re
 
 **#13 folded into #98.** Two tabs overwriting "already seen" tips is a bullet on the tutorial
 revamp, not its own card. *Next Items per Brian* is empty.
+
+**#75 closed.** Catalog triage pass is done (0 untriaged). New versions land in Admin > Bottles.
 
 No `announcements` row. Do not publish one.
 
