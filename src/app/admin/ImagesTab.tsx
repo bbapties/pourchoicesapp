@@ -55,7 +55,7 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     const [rows, c] = await Promise.all([
-      fetchReviewShelf({ states, reasonId: reasonFilter, ownedOnly, limit: 12 }),
+      fetchReviewShelf({ states, reasonId: reasonFilter, ownedOnly }),
       fetchReviewCounts(),
     ]);
     setShelf(rows);
@@ -211,7 +211,8 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
 
       <p className="text-xs text-gray-500">
         Tap a bottle to approve it or say what is wrong with it. A green dot means someone has it in
-        their bar; yellow means a user flagged the image.
+        their bar; yellow means a user flagged the image. The shelf holds <strong>everything</strong>
+        in the current filter — drag it sideways.
       </p>
 
       {open ? (

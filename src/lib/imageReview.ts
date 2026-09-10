@@ -145,13 +145,13 @@ export async function fetchReviewShelf(opts: {
   reasonId?: string | null;
   /** Only bottles at least one person has in their bar. */
   ownedOnly?: boolean;
+  /** Omit to return EVERYTHING in the filter — the shelf scrolls, so a cap only hides work. */
   limit?: number;
 }): Promise<ReviewBottle[]> {
-  const limit = opts.limit ?? 12;
 
-  // Filtering on derived state cannot be pushed into PostgREST without a view, so this reads a
-  // generous window ordered by the queue index and reduces it here. Bounded by the catalogue
-  // (133 variants today); revisit if the catalogue reaches thousands.
+  // Filtering on derived state cannot be pushed into PostgREST without a view, so this reads the
+  // catalogue and reduces it here. Bounded by the catalogue (133 variants today); revisit if it
+  // ever reaches thousands, at which point the derived states want a view.
   const [{ data, error }, ownership, activity] = await Promise.all([
     supabase
       .from("bottle_variants")
@@ -159,7 +159,7 @@ export async function fetchReviewShelf(opts: {
         "id, bottles_id, frontimage_url, shelf_ready, image_reject_reason_ids, image_review_note, " +
           "image_reviewed_at, image_flagged_at, image_flag_note, updated_at, bottles(name, distillery)"
       )
-      .limit(400),
+      .limit(2000),
     fetchOwnership(),
     fetchLastActivity(),
   ]);
@@ -216,7 +216,9 @@ export async function fetchReviewShelf(opts: {
     return b.ownerCount - a.ownerCount;
   });
 
-  return out.slice(0, limit);
+  // No cap by default. The run scrolls sideways, so limiting it does not save the eye any work --
+  // it just hides bottles that are in the filter and need doing.
+  return opts.limit ? out.slice(0, opts.limit) : out;
 }
 
 /** Counts for the slicer, so the tab can show how much work is left without loading it. */
