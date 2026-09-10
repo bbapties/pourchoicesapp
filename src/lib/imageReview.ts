@@ -30,7 +30,8 @@ export type ReviewBottle = {
   /** How many people have this on their shelf right now. A bottle somebody owns is one somebody
    *  will actually see on Home, so it is worth reviewing before one nobody has. */
   ownerCount: number;
-  /** Most recent activity anywhere on this bottle, for the ordering. Null if never touched. */
+  /** What puts this bottle's place in the queue: the later of its most recent activity and the
+   *  last time the row itself was edited. Null only if neither has ever happened. */
   lastActivityAt: string | null;
 };
 
@@ -44,6 +45,7 @@ type VariantRow = {
   image_reviewed_at: string | null;
   image_flagged_at: string | null;
   image_flag_note: string | null;
+  updated_at: string | null;
   bottles: { name: string; distillery: string | null } | { name: string; distillery: string | null }[] | null;
 };
 
@@ -125,11 +127,15 @@ export async function fetchRejectReasons(): Promise<RejectReason[]> {
 }
 
 /**
- * The review queue, **always ordered by most recent activity, newest on the left.**
+ * The review queue, **always ordered by most recently touched, newest on the left.**
  *
- * That ordering is the point: the bottles people are drinking, rating and adding are the ones
- * whose images actually get looked at, so fixing those first puts the work where it shows.
- * Bottles nobody has touched sort to the end rather than being hidden.
+ * "Touched" is the later of two things: the bottle's most recent ACTIVITY (drinks, adds, ratings --
+ * the bottles whose images actually get looked at) and the last time the variant row itself was
+ * EDITED. Both belong: activity says whose image matters, and an edit says what you just changed
+ * and want to look at. Ordering on activity alone meant a bottle you had just re-imaged did not
+ * move at all, which is the opposite of what a review queue should do.
+ *
+ * Bottles neither drunk nor edited sort to the end rather than being hidden.
  *
  * The state list and `ownedOnly` are the slicers. Owning is a strong signal for the same reason —
  * a bottle on somebody's shelf is one somebody will meet on their own Home.
@@ -151,7 +157,7 @@ export async function fetchReviewShelf(opts: {
       .from("bottle_variants")
       .select(
         "id, bottles_id, frontimage_url, shelf_ready, image_reject_reason_ids, image_review_note, " +
-          "image_reviewed_at, image_flagged_at, image_flag_note, bottles(name, distillery)"
+          "image_reviewed_at, image_flagged_at, image_flag_note, updated_at, bottles(name, distillery)"
       )
       .limit(400),
     fetchOwnership(),
@@ -187,8 +193,14 @@ export async function fetchReviewShelf(opts: {
       note: r.image_review_note,
       flagNote: r.image_flag_note,
       ownerCount,
-      // A variant's own activity is more specific than the SKU's, so prefer it.
-      lastActivityAt: activity.byVariant.get(r.id) ?? activity.byBottle.get(r.bottles_id) ?? null,
+      // A variant's own activity is more specific than the SKU's, so prefer it -- but a row that
+      // was just EDITED outranks both. Re-imaging a bottle is not "activity" in the drinking sense,
+      // so without this the thing you just worked on does not move, which is the opposite of what
+      // you want in a review queue.
+      lastActivityAt: [
+        activity.byVariant.get(r.id) ?? activity.byBottle.get(r.bottles_id) ?? null,
+        r.updated_at,
+      ].filter(Boolean).sort().pop() ?? null,
     });
   }
 
