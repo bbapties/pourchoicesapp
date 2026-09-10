@@ -84,9 +84,8 @@ Worse, it was a LOOP: Admin > Images can only show rows it can read, so an unver
 variant - every store pick and every batch before its first review - could never be curated, so
 never became verified, so stayed invisible. Admin-visible variants went 129 -> 131.
 
-**UNJUDGED CARD:** **#6** appeared in *Next Items per Brian* during the 2026-09-09 session and was
-never assessed - that lane is a proposal lane, so the next agent must either work it or move it
-with a comment saying why. #13 is still sitting there from before, deliberately left.
+**#6 IS JUDGED.** Merged into #5 and moved to Coming Soon (2026-09-10). #13 is still sitting in
+*Next Items per Brian* from before, deliberately left.
 
 **STYLING RULE, learned the hard way this session.** The first cut of the cabinet was a dark, lit
 mancave against an app that is a light greyscale wireframe everywhere else. Brian rejected it:
@@ -133,9 +132,9 @@ Brian's own already-signed-in browser**. That is the way to see a signed-in scre
 `update_elo_for_session(uuid)` overload). Brian said leave the function until this loose-end pass
 is done, then it is first: snapshot, then DROP. Do not drop it mid-session.
 
-Then *Next Items per Brian*, which holds TWO cards: #13 and #6. #6 arrived on 2026-09-09 and was
-never judged - that lane is a proposal lane, so work it or move it **with a comment saying why**.
-Do not leave it sitting.
+Then *Next Items per Brian*, which holds **#13**. **#6 was merged into #5** (Coming Soon):
+login-cookie refresh is one job -- which URLs the bouncer visits, and what happens on a URL it
+skips. Do not touch auth without Brian's go.
 
 *Top Priority* holds **#97** (the 48 rejected images - real work, one fresh source at a time, start
 with bottles people own), **#8** (verify the search `.or()` injection is closed, XS) and **#75**
@@ -462,6 +461,8 @@ the digest). **#13 commented as related**, left in *Next Items per Brian*.
 **#96 purged.** `QA Sunday Unobtainium Rye 2099` is gone (1 variant, 1 hidden verified
 activity, 0 tastings). Replay of 11 sessions / 84 pairs moved 0 other scores. Restore:
 `sql/qa-sunday-unobtainium-purge-snapshot.sql`.
+
+**#6 merged into #5.** Login-cookie refresh is one Coming Soon card. #6 closed as duplicate.
 
 No `announcements` row. Do not publish one.
 
