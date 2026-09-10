@@ -265,7 +265,6 @@ CREATE TABLE public.wishlists (
 --   stamp_tasted_for_pour()
 --   update_elo_after_result()
 --   update_elo_for_session()
---   update_elo_for_session(p_session_id uuid)
 --   update_timestamp()  SECURITY DEFINER
 --   variant_delete_impact(p_variant uuid)  SECURITY DEFINER
 --   variant_guess_avg(variant_ids uuid[])  SECURITY DEFINER

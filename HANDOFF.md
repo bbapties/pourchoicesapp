@@ -128,9 +128,9 @@ it was declined). Signed-in screens were verified through the **Claude-in-Chrome
 Brian's own already-signed-in browser**. That is the way to see a signed-in screen; use it.
 
 ### The single next step
-**Read the board RIGHT TO LEFT.** *In Progress* holds **#64** (drop the dead
-`update_elo_for_session(uuid)` overload). Brian said leave the function until this loose-end pass
-is done, then it is first: snapshot, then DROP. Do not drop it mid-session.
+**Read the board RIGHT TO LEFT.** *In Progress* is empty. **#64 is Done** -- the dead
+`update_elo_for_session(uuid)` overload was dropped on prod (snapshot first). Only the
+no-arg trigger function remains.
 
 *Next Items per Brian* is empty. **#6 was merged into #5** (Coming Soon): login-cookie refresh
 is one job. **#13 was folded into #98** (two tabs can forget a seen tutorial tip; design the
@@ -151,9 +151,8 @@ Bottles as unverified. Verify on a still-single parent is where the axis questio
 **#8** (confirm the search `.or()` filter injection is really closed by B-13) is the other Top
 Priority item and is unrelated to this thread - an XS verification job.
 
-**#64 is decided and parked in *In Progress*.** Do not DROP the function during this loose-end
-pass. After it: snapshot, then `DROP FUNCTION public.update_elo_for_session(uuid);`. It is two
-engine generations stale (the #3 multiplier AND the #79 pair-by-pair scoring).
+**#64 is Done.** `DROP FUNCTION public.update_elo_for_session(uuid)` applied. Trigger still
+fires `update_elo_for_session()`. Restore: `sql/drop-dead-elo-overload-snapshot.sql`.
 
 **#78** (versions table on bottle detail) is in Backlog and is worth nothing until bottles are split.
 
@@ -310,7 +309,7 @@ password.
 
 ### Still owed by Brian
 - **Keep curating images (#97).** 48 rejected, one fresh source at a time. Not a code job.
-- **#64** — decided: drop it after this loose-end pass. Card is *In Progress*.
+- **#64** — Done. Dead uuid overload dropped.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
 - Minor: the QA account password is **6 characters**, on an account that can write prod data.
 
@@ -464,6 +463,8 @@ revamp, not its own card. *Next Items per Brian* is empty.
 
 **Admin / iPhone eyeballs confirmed.** Variants, axis modal, delete dialog, #62, #65, #66 --
 Brian looked; considered done. New problems get a new card.
+
+**#64 dropped.** Dead `update_elo_for_session(uuid)` is gone. Trigger function untouched.
 
 No `announcements` row. Do not publish one.
 
