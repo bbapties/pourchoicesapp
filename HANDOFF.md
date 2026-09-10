@@ -157,14 +157,10 @@ engine generations stale (the #3 multiplier AND the #79 pair-by-pair scoring).
 
 **#78** (versions table on bottle detail) is in Backlog and is worth nothing until bottles are split.
 
-**Nothing in the admin screens has been seen signed in.** An agent cannot type a password, and the
-QA account was demoted from admin in B-22. The Variants tab, the axis modal on the verify queue and
-the new delete dialog are all unverified visually.
-
-Also unverified rather than unfinished: **#66's slider fix can only be proven on an iPhone**, and
-the sticky search bar (#62) and the admin bells (#65) were shipped without a signed-in look, because
-the QA account is no longer admin and an agent cannot type a password into a login form. Ask Brian
-what he saw before assuming they are good.
+**Admin screens and the iPhone slider are confirmed.** Brian looked at Variants (triage + merge),
+the axis modal on the verify queue, the delete/purge dialog, Admin bells (#65), the sticky search
+bar (#62), and #66 on a real iPhone. All considered done. If something breaks, he will file a new
+card -- do not keep asking him to re-eyeball these.
 
 **#20** (ranked tasting-results view, L) is the big one still sitting in *Coming Soon*, and it is now
 better supported than it was: `tasting_details` carries `rank`, `glass_letter` and `pour_index`
@@ -313,14 +309,13 @@ password.
   one doc nobody has claimed; fix or delete it rather than half-trusting it.
 
 ### Still owed by Brian
-- **#75, the triage pass.** Done -- Brian walked the catalog. New versions: Admin > Bottles.
-- **Eyes on every admin screen shipped 2026-09-07** — Variants (triage + merge), the axis modal on
-  the verify queue, and the delete/purge dialog. **None of them has ever been seen signed in**: an
-  agent cannot type a password, and the QA account was demoted from admin in B-22. Also the #66
-  slider on his iPhone, and the sticky bottle-search bar.
-- **#64** — decided: drop it, but not until this loose-end pass is done. Card is *In Progress*.
+- **Keep curating images (#97).** 48 rejected, one fresh source at a time. Not a code job.
+- **#64** — decided: drop it after this loose-end pass. Card is *In Progress*.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
 - Minor: the QA account password is **6 characters**, on an account that can write prod data.
+
+Triage pass (#75), admin-screen eyeballs, #66 on iPhone, #62 sticky search, and #65 bells are
+**done**. New bugs get a new card.
 
 ### Open decisions
 - **Elo: the win-rate multiplier is gone, replaced by the 32/24/16/8 K schedule, and all history has
@@ -466,6 +461,9 @@ activity, 0 tastings). Replay of 11 sessions / 84 pairs moved 0 other scores. Re
 revamp, not its own card. *Next Items per Brian* is empty.
 
 **#75 closed.** Catalog triage pass is done (0 untriaged). New versions land in Admin > Bottles.
+
+**Admin / iPhone eyeballs confirmed.** Variants, axis modal, delete dialog, #62, #65, #66 --
+Brian looked; considered done. New problems get a new card.
 
 No `announcements` row. Do not publish one.
 
