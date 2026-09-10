@@ -66,19 +66,16 @@ widened the box around it.
 because of it, and then found two more including one he had already approved. Assume a bulk pass
 needs his eyes, and always tell him what to look for.
 
-**WAITING ON BRIAN - three things, none of them code:**
-1. **#95 - publish the What's New.** THE ONE GENUINELY UNFINISHED PIECE. #92 delivered the coach
-   entry and the telemetry; the What's New half was missed and the card was closed anyway.
-   `announcements` is EMPTY. **Drink's tab vanished for every existing user on 2026-09-09** and
-   nobody has been told - someone who used it to start a tasting will find it gone with no way to
-   learn that picking a bottle up off a shelf is now how you do that. It is Brian's to write
-   (Admin > Notify): the digest reads admin-published rows on purpose, so a flag in the codebase
-   cannot decide what counts as news. He said he would do it later.
-2. **Keep curating images.** Admin > Images. **81 approved, 48 rejected, 0 queued.** Everything an
+**#95 IS CLOSED — do not publish a Home/nav What's New.** Brian already told testers via push,
+in person, and text. The in-app digest composer is the wrong shape; replacement is **#98**
+(Backlog, do not build yet): admin-configurable tutorials + What's New as a dedicated published
+page you link to. #31 closed as superseded. #26 (tour/whatsnew telemetry) parked under #98.
+
+**WAITING ON BRIAN - none of them code:**
+1. **Keep curating images.** Admin > Images. **81 approved, 48 rejected, 0 queued.** Everything an
    agent could fix automatically has been fixed; the rest is #97. Use the **Checker backdrop**
-   first - the shelf is ivory and so is a bad background. Use the **Checker backdrop** first - the shelf is ivory and so
-   is a bad background, so a white box is invisible against it.
-3. **A fine-tuning pass on the cabinet.** Agreed rule: report anything STRUCTURAL immediately;
+   first - the shelf is ivory and so is a bad background, so a white box is invisible against it.
+2. **A fine-tuning pass on the cabinet.** Agreed rule: report anything STRUCTURAL immediately;
    save anything about LOOK for a dedicated session, because Phase 5 restyles every screen at once.
 
 **#93 IS FIXED** (it was parked, then it started blocking him). `bottle_variants` had admin UPDATE
@@ -137,9 +134,8 @@ and #6.** #6 arrived on 2026-09-09 and was never judged - that lane is a proposa
 or move it **with a comment saying why**. Do not leave it sitting.
 
 *In Progress* is empty. *Top Priority* holds **#97** (the 48 rejected images - real work, one fresh
-source at a time, start with bottles people own), **#95** (Brian's to write, not an agent's),
-**#8** (verify the search `.or()` injection is closed, XS) and **#75** (the variant triage -
-BRIAN'S work, not an agent's).
+source at a time, start with bottles people own), **#8** (verify the search `.or()` injection is
+closed, XS) and **#75** (the variant triage - BRIAN'S work, not an agent's). **#95 is Done.**
 
 **Nothing is waiting on code.** The Home screen is finished and live; the remaining work is
 curation, and the tooling for it is built and documented.
@@ -448,6 +444,19 @@ this holds. **Re-check it before wiring anything else to a replay.**
   was driven this way on 2026-09-06.
 
 ---
+
+### 2026-09-10 - Grok (board only: #95 closed, #98 filed, no code)
+
+Brian does not want an in-app What's New for Home / the nav change — testers already heard via
+push, face to face, and text. **#95 closed.** The digest composer is parked as a product.
+
+**#98 filed in Backlog (XL, Admin), not to be built yet:** tutorials become admin-configurable
+(subjects + how they display); What's New becomes a dedicated published page you link to, not a
+400-char modal. **#31 closed** (superseded — "also send as push" was an add-on to the old
+composer). **#26 moved to Backlog and parented under #98** (telemetry against the new system, not
+the digest). **#13 commented as related**, left in *Next Items per Brian*.
+
+No code. No `announcements` row. Do not publish one.
 
 ### 2026-09-09 into 09-10 - Claude (the image pipeline: 81 images approved, tooling, barcodes)
 
