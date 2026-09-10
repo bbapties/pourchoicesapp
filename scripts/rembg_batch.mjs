@@ -18,12 +18,14 @@
  */
 
 import { execFileSync } from "node:child_process";
+import sharp from "sharp";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 const APPLY = process.argv.includes("--apply");
 const ALL_BG = process.argv.includes("--rejected-bg");
+const ALL_REJ = process.argv.includes("--all-rejected");
 const idArg = process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : null;
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "rembg-"));
@@ -36,7 +38,9 @@ function rows(out) {
     .filter((c) => c[0] && c[0].length === 36);
 }
 
-const WHERE = ALL_BG
+const WHERE = ALL_REJ
+  ? `cardinality(v.image_reject_reason_ids) > 0 AND NOT v.shelf_ready`
+  : ALL_BG
   ? `EXISTS (SELECT 1 FROM public.image_reject_reasons r
               WHERE r.id = ANY(v.image_reject_reason_ids) AND r.slug='background_not_removed')`
   : `v.id IN (${idArg.split(",").map((s) => `'${s.trim()}'`).join(",")})`;
@@ -50,7 +54,7 @@ const list = rows(sql(`
 console.log(`${list.length} to process`);
 console.log(APPLY ? "APPLYING\n" : "DRY RUN — nothing written. Add --apply.\n");
 
-let ok = 0, bad = 0;
+let ok = 0, bad = 0, rejected = 0;
 for (const [id, url, name] of list) {
   const label = (name || id).slice(0, 42).padEnd(44);
   const raw = path.join(TMP, `${id}.bin`);
@@ -68,13 +72,28 @@ for (const [id, url, name] of list) {
     execFileSync("python", [".claude/skills/verify-bottle/scripts/clean_image.py", raw, out],
       { encoding: "utf8", stdio: "pipe" });
 
+    // GATE: reject rembg's own failures before they reach Brian's queue. A bottle is a narrow
+    // column; a cut-out that comes out wide, or wide and solidly filled, means rembg kept a slab
+    // of background and the tight trim widened the box around it. Applying those would just move
+    // the work rather than do it.
+    const { data: px, info } = await sharp(out).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let opaque = 0;
+    for (let i = 3; i < px.length; i += 4) if (px[i] > 32) opaque++;
+    const ratio = info.width / info.height;
+    const fill = opaque / (info.width * info.height);
+    if (ratio > 0.70 || (ratio > 0.55 && fill > 0.62)) {
+      rejected++;
+      console.log(`${label} BAD  ${info.width}x${info.height} r=${ratio.toFixed(2)} fill=${(fill*100)|0}% — rembg kept background, needs a better source`);
+      continue;
+    }
+
     const kb = (fs.statSync(out).size / 1024) | 0;
     const publicUrl = execFileSync("node",
       [".claude/skills/verify-bottle/scripts/upload_image.mjs", out, "bottle-images",
        `variants/${id}/front.webp`], { encoding: "utf8" }).trim().split("\n").pop();
 
     ok++;
-    console.log(`${label} OK   ${kb}KB`);
+    console.log(`${label} OK   ${kb}KB r=${ratio.toFixed(2)}`);
 
     if (APPLY) {
       sql(`UPDATE public.bottle_variants SET
