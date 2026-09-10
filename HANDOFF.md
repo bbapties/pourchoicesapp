@@ -129,16 +129,17 @@ it was declined). Signed-in screens were verified through the **Claude-in-Chrome
 Brian's own already-signed-in browser**. That is the way to see a signed-in screen; use it.
 
 ### The single next step
-**Read the board RIGHT TO LEFT and start with *Next Items per Brian*, which holds TWO cards: #13
-and #6.** #6 arrived on 2026-09-09 and was never judged - that lane is a proposal lane, so work it
-or move it **with a comment saying why**. Do not leave it sitting.
+**Read the board RIGHT TO LEFT.** *In Progress* holds **#64** (drop the dead
+`update_elo_for_session(uuid)` overload). Brian said leave the function until this loose-end pass
+is done, then it is first: snapshot, then DROP. Do not drop it mid-session.
 
-*In Progress* is empty. *Top Priority* holds **#97** (the 48 rejected images - real work, one fresh
-source at a time, start with bottles people own), **#8** (verify the search `.or()` injection is
-closed, XS) and **#75** (the variant triage - BRIAN'S work, not an agent's). **#95 is Done.**
+Then *Next Items per Brian*, which holds TWO cards: #13 and #6. #6 arrived on 2026-09-09 and was
+never judged - that lane is a proposal lane, so work it or move it **with a comment saying why**.
+Do not leave it sitting.
 
-**Nothing is waiting on code.** The Home screen is finished and live; the remaining work is
-curation, and the tooling for it is built and documented.
+*Top Priority* holds **#97** (the 48 rejected images - real work, one fresh source at a time, start
+with bottles people own), **#8** (verify the search `.or()` injection is closed, XS) and **#75**
+(the variant triage - BRIAN'S work, not an agent's). **#95 is Done.**
 
 **#13** (CoachHost `seen_coach_ids` last-write-wins across tabs) was deliberately LEFT in Brian's
 lane rather than worked: it is two tabs racing over one coach mark and the loser sees a tour again -
@@ -153,10 +154,9 @@ bottle names, so every call is a judgement. Do not "help" by guessing.
 **#8** (confirm the search `.or()` filter injection is really closed by B-13) is the other Top
 Priority item and is unrelated to this thread - an XS verification job.
 
-**#64** is the one piece of tidy-up waiting on a decision: the dead
-`update_elo_for_session(p_session_id uuid)` overload is now TWO engine generations stale - it has
-the `win_rate` multiplier removed in #3 AND the pair-by-pair scoring removed in #79 - and dropping a
-function is destructive, so it needs Brian's go.
+**#64 is decided and parked in *In Progress*.** Do not DROP the function during this loose-end
+pass. After it: snapshot, then `DROP FUNCTION public.update_elo_for_session(uuid);`. It is two
+engine generations stale (the #3 multiplier AND the #79 pair-by-pair scoring).
 
 **#78** (versions table on bottle detail) is in Backlog and is worth nothing until bottles are split.
 
@@ -321,7 +321,7 @@ password.
   the verify queue, and the delete/purge dialog. **None of them has ever been seen signed in**: an
   agent cannot type a password, and the QA account was demoted from admin in B-22. Also the #66
   slider on his iPhone, and the sticky bottle-search bar.
-- **#64** — permission to drop the dead `update_elo_for_session(uuid)` overload.
+- **#64** — decided: drop it, but not until this loose-end pass is done. Card is *In Progress*.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
 - Minor: the QA account password is **6 characters**, on an account that can write prod data.
 
@@ -455,6 +455,9 @@ push, face to face, and text. **#95 closed.** The digest composer is parked as a
 400-char modal. **#31 closed** (superseded — "also send as push" was an add-on to the old
 composer). **#26 moved to Backlog and parented under #98** (telemetry against the new system, not
 the digest). **#13 commented as related**, left in *Next Items per Brian*.
+
+**#64 left in the database**, moved to *In Progress* so it is first after this loose-end pass
+(snapshot + DROP). Do not drop it now.
 
 No code. No `announcements` row. Do not publish one.
 
