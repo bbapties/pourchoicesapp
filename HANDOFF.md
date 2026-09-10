@@ -84,8 +84,8 @@ Worse, it was a LOOP: Admin > Images can only show rows it can read, so an unver
 variant - every store pick and every batch before its first review - could never be curated, so
 never became verified, so stayed invisible. Admin-visible variants went 129 -> 131.
 
-**#6 IS JUDGED.** Merged into #5 and moved to Coming Soon (2026-09-10). #13 is still sitting in
-*Next Items per Brian* from before, deliberately left.
+**#6 IS JUDGED.** Merged into #5 and moved to Coming Soon (2026-09-10). **#13 folded into #98**
+(not a second card). *Next Items per Brian* is empty.
 
 **STYLING RULE, learned the hard way this session.** The first cut of the cabinet was a dark, lit
 mancave against an app that is a light greyscale wireframe everywhere else. Brian rejected it:
@@ -132,17 +132,16 @@ Brian's own already-signed-in browser**. That is the way to see a signed-in scre
 `update_elo_for_session(uuid)` overload). Brian said leave the function until this loose-end pass
 is done, then it is first: snapshot, then DROP. Do not drop it mid-session.
 
-Then *Next Items per Brian*, which holds **#13**. **#6 was merged into #5** (Coming Soon):
-login-cookie refresh is one job -- which URLs the bouncer visits, and what happens on a URL it
-skips. Do not touch auth without Brian's go.
+*Next Items per Brian* is empty. **#6 was merged into #5** (Coming Soon): login-cookie refresh
+is one job. **#13 was folded into #98** (two tabs can forget a seen tutorial tip; design the
+new persist to merge). Do not touch auth without Brian's go.
 
 *Top Priority* holds **#97** (the 48 rejected images - real work, one fresh source at a time, start
 with bottles people own), **#8** (verify the search `.or()` injection is closed, XS) and **#75**
 (the variant triage - BRIAN'S work, not an agent's). **#95 and #96 are Done.**
 
-**#13** (CoachHost `seen_coach_ids` last-write-wins across tabs) was deliberately LEFT in Brian's
-lane rather than worked: it is two tabs racing over one coach mark and the loser sees a tour again -
-the smallest possible harm, nowhere near the main loop. Work it or move it, but say which.
+**#13 is closed.** Folded into #98 as a design bullet: two tabs can forget a seen tutorial tip.
+Not a one-off fix.
 
 **#75 - the triage pass, and it is BRIAN'S work, not an agent's.** Every tool it needs now exists:
 Admin > Variants lists all 109 bottles, sorted by how likely each is to need a decision, with three
@@ -463,6 +462,9 @@ activity, 0 tastings). Replay of 11 sessions / 84 pairs moved 0 other scores. Re
 `sql/qa-sunday-unobtainium-purge-snapshot.sql`.
 
 **#6 merged into #5.** Login-cookie refresh is one Coming Soon card. #6 closed as duplicate.
+
+**#13 folded into #98.** Two tabs overwriting "already seen" tips is a bullet on the tutorial
+revamp, not its own card. *Next Items per Brian* is empty.
 
 No `announcements` row. Do not publish one.
 
