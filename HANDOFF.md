@@ -139,7 +139,7 @@ Do not leave it sitting.
 
 *Top Priority* holds **#97** (the 48 rejected images - real work, one fresh source at a time, start
 with bottles people own), **#8** (verify the search `.or()` injection is closed, XS) and **#75**
-(the variant triage - BRIAN'S work, not an agent's). **#95 is Done.**
+(the variant triage - BRIAN'S work, not an agent's). **#95 and #96 are Done.**
 
 **#13** (CoachHost `seen_coach_ids` last-write-wins across tabs) was deliberately LEFT in Brian's
 lane rather than worked: it is two tabs racing over one coach mark and the loser sees a tour again -
@@ -459,7 +459,11 @@ the digest). **#13 commented as related**, left in *Next Items per Brian*.
 **#64 left in the database**, moved to *In Progress* so it is first after this loose-end pass
 (snapshot + DROP). Do not drop it now.
 
-No code. No `announcements` row. Do not publish one.
+**#96 purged.** `QA Sunday Unobtainium Rye 2099` is gone (1 variant, 1 hidden verified
+activity, 0 tastings). Replay of 11 sessions / 84 pairs moved 0 other scores. Restore:
+`sql/qa-sunday-unobtainium-purge-snapshot.sql`.
+
+No `announcements` row. Do not publish one.
 
 ### 2026-09-09 into 09-10 - Claude (the image pipeline: 81 images approved, tooling, barcodes)
 
