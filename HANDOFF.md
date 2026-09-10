@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `430ebba` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `e541b57` + this doc commit. All on origin/MVP-v3 and live on prod.
 - **Current phase:** **The Home screen ("The Cabinet") is BUILT AND LIVE.** Designed and shipped
   on 2026-09-09 in one session: #82 and all eight tasks, plus #83's admin tool.
 - **THE NAV CHANGED FOR EVERY USER.** It is now Search / Social / **Home** / My Bar / Profile
@@ -33,6 +33,39 @@ shelf? New shelf - where does its plate go?
 the ghost, and **Admin > Images**) · #90 pick a bottle up · #92 coach + telemetry · #91 the nav
 switch. #84 (user-arranged cabinets) is North Star and explicitly NOT built.
 
+### THE IMAGE PIPELINE IS THE ACTIVE LANE NOW - read docs/IMAGE_PIPELINE.md FIRST
+
+Home shipped; the work since has been filling it with real bottles. **Numbers at the end of
+2026-09-09/10:** 129 variants - **81 images approved, 0 queued, 48 still rejected**. Bottles: 109
+total, **71 verified**, 4 without a barcode. **67 of the 71 verified bottles have an approved shelf
+image**; the four that do not are Early Times, Holladay Soft Red Wheat, Willett Family Estate Rye
+(all three need a fresh source) and one in flight.
+
+**The 48 rejected images are #97 and they are NOT a batch job.** A full
+`rembg_batch --all-rejected` pass was already run: 42 fixed, 17 gated because rembg kept
+background, 20 failed because the source URL is dead. Re-running produces the same split. Each of
+the 48 needs a human to find the real brand asset - about 2-4 minutes each, not batchable. Start
+with the ones people own or have poured; the rest are catalogue filler nobody sees.
+
+**Tooling built for this lane, all committed:**
+| script | does |
+|---|---|
+| `scripts/shelf_image.mjs` | one image that is ALREADY a cut-out: trim, shelf derivative, upload. REFUSES opaque images on purpose. |
+| `scripts/shelf_image_batch.mjs` | bulk fix for URLs that only flatten a PNG onto white (the wsrv.nl `bg=white` trap) |
+| `scripts/rembg_batch.mjs` | rembg for images that genuinely have a background. `--all-rejected`, `--apply`. **Gated on the audit** so rembg's own failures never reach the queue. |
+| `scripts/audit_shelf_images.mjs` | finds leftover background in stored cut-outs |
+
+**THE AUDIT'S FIRST VERSION WAS WRONG AND THE MISTAKE IS INSTRUCTIVE.** It checked whether the
+frame's border was empty. Useless: these images are trimmed to the alpha bounding box, so the
+bottle touches all four edges BY DEFINITION. It flagged 26 of 30 good images. The real signature is
+the ASPECT RATIO - a bottle is a narrow column, roughly 0.25-0.55 wide-to-tall. The bad Bulleit was
+454x478, nearly square, because rembg had kept a slab of background INSIDE the frame and the trim
+widened the box around it.
+
+**Brian catches what the tools miss.** He spotted the Bulleit background by eye; the audit exists
+because of it, and then found two more including one he had already approved. Assume a bulk pass
+needs his eyes, and always tell him what to look for.
+
 **WAITING ON BRIAN - three things, none of them code:**
 1. **#95 - publish the What's New.** THE ONE GENUINELY UNFINISHED PIECE. #92 delivered the coach
    entry and the telemetry; the What's New half was missed and the card was closed anyway.
@@ -41,15 +74,18 @@ switch. #84 (user-arranged cabinets) is North Star and explicitly NOT built.
    learn that picking a bottle up off a shelf is now how you do that. It is Brian's to write
    (Admin > Notify): the digest reads admin-published rows on purpose, so a flag in the codebase
    cannot decide what counts as news. He said he would do it later.
-2. **Keep curating images.** Admin > Images. As of session end: **10 approved, 39 rejected, 2
-   flagged, 84 unreviewed of 133** - Brian was curating live while this shipped. Use the **Checker backdrop** first - the shelf is ivory and so
+2. **Keep curating images.** Admin > Images. **81 approved, 48 rejected, 0 queued.** Everything an
+   agent could fix automatically has been fixed; the rest is #97. Use the **Checker backdrop**
+   first - the shelf is ivory and so is a bad background. Use the **Checker backdrop** first - the shelf is ivory and so
    is a bad background, so a white box is invisible against it.
 3. **A fine-tuning pass on the cabinet.** Agreed rule: report anything STRUCTURAL immediately;
    save anything about LOOK for a dedicated session, because Phase 5 restyles every screen at once.
 
-**PARKED BY BRIAN:** **#93** (no admin SELECT policy on `bottle_variants`, so 2 of 133 variants are
-unreachable in the review tool and will stay ghosts). His words: *"leave those 2 variants alone for
-now... we can circle back."* Do not apply it without asking again.
+**#93 IS FIXED** (it was parked, then it started blocking him). `bottle_variants` had admin UPDATE
+and DELETE policies but none for SELECT, so an admin could edit and delete rows they could not see.
+Worse, it was a LOOP: Admin > Images can only show rows it can read, so an unverified non-default
+variant - every store pick and every batch before its first review - could never be curated, so
+never became verified, so stayed invisible. Admin-visible variants went 129 -> 131.
 
 **UNJUDGED CARD:** **#6** appeared in *Next Items per Brian* during the 2026-09-09 session and was
 never assessed - that lane is a proposal lane, so the next agent must either work it or move it
@@ -96,15 +132,17 @@ it was declined). Signed-in screens were verified through the **Claude-in-Chrome
 Brian's own already-signed-in browser**. That is the way to see a signed-in screen; use it.
 
 ### The single next step
-**Read the board RIGHT TO LEFT and start with *Next Items per Brian*, which now holds TWO cards:
-#13 and #6.** #6 arrived during the 2026-09-09 session and was never judged - that lane is a
-proposal lane, so work it or move it with a comment saying why. Do not leave it sitting.
+**Read the board RIGHT TO LEFT and start with *Next Items per Brian*, which holds TWO cards: #13
+and #6.** #6 arrived on 2026-09-09 and was never judged - that lane is a proposal lane, so work it
+or move it **with a comment saying why**. Do not leave it sitting.
 
-*In Progress* is empty. *Top Priority* holds **#95** (Brian's to write, not an agent's), **#93**
-(PARKED by Brian - do not apply), **#8** (verify the search `.or()` injection is closed, XS) and
-**#75** (the variant triage - BRIAN'S work, not an agent's).
+*In Progress* is empty. *Top Priority* holds **#97** (the 48 rejected images - real work, one fresh
+source at a time, start with bottles people own), **#95** (Brian's to write, not an agent's),
+**#8** (verify the search `.or()` injection is closed, XS) and **#75** (the variant triage -
+BRIAN'S work, not an agent's).
 
-The Home screen is finished and live; nothing on it is waiting on code.
+**Nothing is waiting on code.** The Home screen is finished and live; the remaining work is
+curation, and the tooling for it is built and documented.
 
 **#13** (CoachHost `seen_coach_ids` last-write-wins across tabs) was deliberately LEFT in Brian's
 lane rather than worked: it is two tabs racing over one coach mark and the loser sees a tour again -
@@ -410,6 +448,59 @@ this holds. **Re-check it before wiring anything else to a replay.**
   was driven this way on 2026-09-06.
 
 ---
+
+### 2026-09-09 into 09-10 - Claude (the image pipeline: 81 images approved, tooling, barcodes)
+
+Same session as the Home build below, continued. Home was finished; this half was **filling it
+with real bottles**, driven entirely by what Brian hit while curating.
+
+**Result: shelf images went 0 -> 81 approved of 129 variants.** Bottles: 71 of 109 verified, 4
+without a barcode, 67 of the 71 verified ones carrying an approved shelf image.
+
+**Commits:** `7aa818b` review ordering + owned slicer · `a87d08f` bottle_height + shelf_image.mjs ·
+`75d0ad5` aspect-ratio bug · `05c36bb` 12in baseline · `2710fac` bottle_height_source +
+docs/IMAGE_PIPELINE.md · `430ebba` image-load fallback · `79e8f98` the unflatten batch ·
+`84a0ae5` rembg batch · `49a7197` image audit · `37490fc` store-pick rule · `fa05f00` queue
+ordering · `3584ff3` uncapped review shelf · `0e78b0d` #93 RLS · `e541b57` gated bulk pass.
+
+**THE FINDING THAT DID THE MOST WORK.** Many stored URLs run through the wsrv.nl proxy with
+`&bg=white&output=jpg`, which FLATTENS a transparent PNG source onto white. Dropping two URL
+parameters brings the cut-out back. That alone fixed 19 bottles with no AI and no re-shoot, and it
+means a chunk of "background not removed" rejections were never bad images at all. **Always try it
+first** - `unflatten()` in shelf_image.mjs, `scripts/shelf_image_batch.mjs` in bulk.
+
+**Four times a check or a guess was WRONG, and each is worth not repeating:**
+1. **The audit's border check.** Asked whether the frame's border was empty; these images are
+   trimmed to the bounding box so the bottle touches all four edges by definition. Flagged 26 of 30
+   good images. Aspect ratio is the real signal.
+2. **Height from aspect ratio.** A first cut estimated bottle height from the trimmed aspect. Knob
+   Creek came out 230mm because it is wide - it is wide AND 11.5in. Aspect cannot separate a short
+   wide bottle from a tall wide one. Reverted before it wrote to 19 rows; form-factor defaults by
+   bottle CLASS instead, always recorded `estimated`.
+3. **A fixed slot aspect ratio in the shelf renderer** silently cancelled the height scaling: a
+   wide bottle placed in a tall thin box gets fitted by width, so Blanton's rendered a third
+   shorter than its measured height asked for.
+4. **The review queue ordered on `activities` alone**, so a bottle Brian had just re-imaged did not
+   move. Now the later of activity and the row's own `updated_at`.
+
+**Brian's own contributions were the good ones, again:** rejections carrying REASONS (so curation
+doubles as the cleanup queue), 12 inches as ratio 1 for scaling, the owned-only slicer, and
+photographing the H. Deringer barcode off the bottle - which beat every database, and settled a
+mashbill dispute and a wrong distillery in the same photo.
+
+**Store picks got a standing rule** (in the skill): brand packshot as the SHELF image, the owner's
+own rembg'd photo as the BACK image. Composites were argued against and then BUILT ANYWAY at
+Brian's explicit instruction for the Elijah Craig Private Barrel - stock bottle with the
+photographed PRIVATE BARREL sticker composited onto the label plate. It is the one image in the
+catalogue that is neither a brand asset nor a photograph; **it is not marked as a composite
+anywhere durable** once approved, which is worth fixing if more get made.
+
+**verify-bottle skill updated**: bottle_height + provenance as a first-class step, the wsrv.nl
+trap, the store-pick rule, and "single-barrel picks get NO brand tasting notes" (every barrel
+differs, so copied notes are fabrication).
+
+**Filed and not done:** #96 (the QA Sunday test bottle needs deleting, not a barcode), #97 (the 48
+rejected images, one fresh source at a time). #95 (What's New) still unwritten - Brian said later.
 
 ### 2026-09-09 - Claude (design session, NO CODE: the Home screen, "The Cabinet")
 
