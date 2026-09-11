@@ -48,11 +48,15 @@ const host = colonH >= 0 ? hostport.slice(0, colonH) : hostport.split("?")[0];
 const port = colonH >= 0 ? hostport.slice(colonH + 1).split("?")[0] : "5432";
 const db = (slash >= 0 ? rest.slice(slash + 1).split("?")[0] : "postgres") || "postgres";
 
+// -c runs the whole text as one implicit transaction, so a migration cannot half-apply. But
+// Windows caps a command line at ~32K, and a 100KB data load passed through argv fails with
+// NO output at all (spawn returns status null). Above that size, file mode uses -f with -1
+// (single transaction), which is the same guarantee without the argv limit.
+const bigFile = fileFlag >= 0 && sql.length > 30000;
 const r = spawnSync(
   "psql",
-  ["-h", host, "-p", port, "-U", user, "-d", db, "-v", "ON_ERROR_STOP=1", "-c", sql],
-  // NOTE: -c (not -f) even in file mode, so psql runs the whole file as one implicit
-  // transaction -- a migration must not half-apply.
+  ["-h", host, "-p", port, "-U", user, "-d", db, "-v", "ON_ERROR_STOP=1",
+   ...(bigFile ? ["-1", "-f", args[fileFlag + 1]] : ["-c", sql])],
   {
     encoding: "utf8",
     timeout: 30000,
