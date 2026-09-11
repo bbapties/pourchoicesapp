@@ -136,8 +136,8 @@ no-arg trigger function remains.
 is one job. **#13 was folded into #98** (two tabs can forget a seen tutorial tip; design the
 new persist to merge). Do not touch auth without Brian's go.
 
-*Top Priority* holds **#97** (the 48 rejected images - real work, one fresh source at a time, start
-with bottles people own) and **#8** (verify the search `.or()` injection is closed, XS).
+*Top Priority* holds **#97** (rejected images - 47 left, one fresh source at a time, start
+with bottles people have poured). **#8 is Done** -- B-13 quoting still holds on prod.
 **#75 is Done** -- Brian walked the catalog (0 untriaged). New versions go to Admin > Bottles,
 not back onto the Variants triage list. **#95 and #96 are Done.**
 
@@ -148,8 +148,8 @@ Not a one-off fix.
 New contributed versions do **not** re-enter the Variants triage list; they land in Admin >
 Bottles as unverified. Verify on a still-single parent is where the axis question fires.
 
-**#8** (confirm the search `.or()` filter injection is really closed by B-13) is the other Top
-Priority item and is unrelated to this thread - an XS verification job.
+**#8 is Done.** Replayed the original breakers against prod: escaped `.or()` is fine;
+unescaped `batch 1, 2` still PGRST100s. No code change.
 
 **#64 is Done.** `DROP FUNCTION public.update_elo_for_session(uuid)` applied. Trigger still
 fires `update_elo_for_session()`. Restore: `sql/drop-dead-elo-overload-snapshot.sql`.
@@ -465,6 +465,8 @@ revamp, not its own card. *Next Items per Brian* is empty.
 Brian looked; considered done. New problems get a new card.
 
 **#64 dropped.** Dead `update_elo_for_session(uuid)` is gone. Trigger function untouched.
+
+**#8 verified closed.** Escaped search `.or()` holds on prod; unescaped comma still parse-errors.
 
 No `announcements` row. Do not publish one.
 
