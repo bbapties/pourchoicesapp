@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `37765c4` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `e782ce3` + this doc commit. All on origin/MVP-v3 and live on prod.
 - **Current phase:** **The Home screen ("The Cabinet") is BUILT AND LIVE.** Designed and shipped
   on 2026-09-09 in one session: #82 and all eight tasks, plus #83's admin tool.
 - **THE NAV CHANGED FOR EVERY USER.** It is now Search / Social / **Home** / My Bar / Profile
@@ -35,8 +35,11 @@ switch. #84 (user-arranged cabinets) is North Star and explicitly NOT built.
 
 ### THE IMAGE PIPELINE IS THE ACTIVE LANE NOW - read docs/IMAGE_PIPELINE.md FIRST
 
-Home shipped; the work since has been filling it with real bottles. **Numbers now:** **117 approved, 10 queued for Checker, 0 still rejected.** Brian walked
-the last hard ten with Grok: all ten are back in Checker for in-app assess. Do not auto-approve.
+Home shipped; the work since has been filling it with real bottles. **Numbers now:** **119 approved, 1 queued for Checker, 7 still rejected.** Julius James
+and Tesla Tequila approved. **CACHE BUG:** upserting to `variants/<id>/front.webp` with a 1-year
+cache meant Checker kept showing the OLD file for bottles that already had a front.webp.
+`shelf_image.mjs` already uses a unique `shelf-<timestamp>.webp` path -- always do that.
+Old St Pete is the one-bottle end-to-end redo (TW 151193750, unique URL). Do not auto-approve.
 
 **#97 is now a Checker pass, not a hunt.** A full
 `rembg_batch --all-rejected` pass was already run: 42 fixed, 17 gated because rembg kept
@@ -69,14 +72,12 @@ in person, and text. The in-app digest composer is the wrong shape; replacement 
 page you link to. #31 closed as superseded. #26 (tour/whatsnew telemetry) parked under #98.
 
 **WAITING ON BRIAN - none of them code:**
-1. **Keep curating images.** Admin > Images. **117 approved, 10 queued, 0 rejected.** All ten
-   remaining hard bottles are in Checker for Brian's eye (Checker backdrop first). **Shelf
-   image is the bottle only -- never the box/tube.** Tesla is the one special case: the
-   lightning bolt has no flat base, so the metal stand is treated as the base (Brian's call).
-   Squat flasks can trip the rembg aspect-ratio gate even when the cut-out is clean; override
-   the gate after a visual check. Store-pick / rickhouse variants may use the brand packshot
-   as a shelf stand-in (say so in the flag note). A bottle with no base cannot stand -- do
-   not crop the footer off to hide a sticker.
+1. **Keep curating images.** Admin > Images. **119 approved, 1 queued, 7 rejected.** Old St
+   Pete is in Checker on a **new unique URL** (previous `front.webp` upserts were year-cached).
+   After Brian assesses that one, redo the remaining seven the same way -- never overwrite
+   `front.webp`. **Shelf image is the bottle only -- never the box/tube.** Tesla stand is the
+   one special case (Brian's call). Squat flasks can trip the rembg aspect-ratio gate; override
+   after a visual check. Store-pick variants may use the brand packshot as a shelf stand-in.
 2. **A fine-tuning pass on the cabinet.** Agreed rule: report anything STRUCTURAL immediately;
    save anything about LOOK for a dedicated session, because Phase 5 restyles every screen at once.
 
@@ -138,7 +139,7 @@ no-arg trigger function remains.
 is one job. **#13 was folded into #98** (two tabs can forget a seen tutorial tip; design the
 new persist to merge). Do not touch auth without Brian's go.
 
-*Top Priority* holds **#97** (0 rejected, 10 in Checker). Brian is assessing the last ten in-app.
+*Top Priority* holds **#97** (7 rejected, 1 in Checker -- Old St Pete unique-URL redo).
 Always bottle-only. E.H. Taylor still rejected (tube). **#8 is Done** -- B-13 quoting still holds on prod.
 **#75 is Done** -- Brian walked the catalog (0 untriaged). New versions go to Admin > Bottles,
 not back onto the Variants triage list. **#95 and #96 are Done.**
@@ -310,7 +311,7 @@ password.
   one doc nobody has claimed; fix or delete it rather than half-trusting it.
 
 ### Still owed by Brian
-- **Keep curating images (#97).** 117 approved / 10 queued / 0 rejected. Not a code job.
+- **Keep curating images (#97).** 119 approved / 1 queued / 7 rejected. Not a code job. Always unique `shelf-<ts>.webp` paths -- `front.webp` upserts are year-cached.
 - **#64** — Done. Dead uuid overload dropped.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
 - Minor: the QA account password is **6 characters**, on an account that can write prod data.
