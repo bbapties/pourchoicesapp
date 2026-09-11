@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `dd21f49` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `590e59f` + this doc commit. All on origin/MVP-v3 and live on prod.
 - **Current phase:** **The Home screen ("The Cabinet") is BUILT AND LIVE.** Designed and shipped
   on 2026-09-09 in one session: #82 and all eight tasks, plus #83's admin tool.
 - **THE NAV CHANGED FOR EVERY USER.** It is now Search / Social / **Home** / My Bar / Profile
@@ -35,10 +35,11 @@ switch. #84 (user-arranged cabinets) is North Star and explicitly NOT built.
 
 ### THE IMAGE PIPELINE IS THE ACTIVE LANE NOW - read docs/IMAGE_PIPELINE.md FIRST
 
-Home shipped; the work since has been filling it with real bottles. **Numbers now:** **111 approved, 6 queued for Checker, 10 still rejected.** Brian already
-approved the previous in-app Checker rounds (Woodford BSR both rows, Spirit of York, RD One Amburana).
+Home shipped; the work since has been filling it with real bottles. **Numbers now:** **115 approved, 5 queued for Checker, 7 still rejected.** Brian already
+approved Southern Star, Red Eye Louie's, and High West Cabernet (both rows) from the last round;
+he rejected Chattanooga Batch 030 Honey Infused (both rows) for leftover non-bottle stuff.
 
-**The 10 rejected images are #97 and they are NOT a batch job.** A full
+**The 7 rejected images are #97 and they are NOT a batch job.** A full
 `rembg_batch --all-rejected` pass was already run: 42 fixed, 17 gated because rembg kept
 background, 20 failed because the source URL is dead. Re-running produces the same split. Each of
 the 48 needs a human to find the real brand asset - about 2-4 minutes each, not batchable. Start
@@ -69,7 +70,7 @@ in person, and text. The in-app digest composer is the wrong shape; replacement 
 page you link to. #31 closed as superseded. #26 (tour/whatsnew telemetry) parked under #98.
 
 **WAITING ON BRIAN - none of them code:**
-1. **Keep curating images.** Admin > Images. **111 approved, 6 queued, 10 rejected.** The six
+1. **Keep curating images.** Admin > Images. **115 approved, 5 queued, 7 rejected.** The five
    in Checker are bottle-only cuts waiting for Brian's eye (Checker backdrop first). The rest
    of #97 is still one fresh source at a time. **Shelf image is the bottle only -- never the
    box/tube.** Squat flasks can trip the rembg aspect-ratio gate even when the cut-out is
@@ -137,7 +138,7 @@ no-arg trigger function remains.
 is one job. **#13 was folded into #98** (two tabs can forget a seen tutorial tip; design the
 new persist to merge). Do not touch auth without Brian's go.
 
-*Top Priority* holds **#97** (10 rejected left, 6 in Checker). One fresh source at a time.
+*Top Priority* holds **#97** (7 rejected left, 5 in Checker). One fresh source at a time.
 Always bottle-only. E.H. Taylor still rejected (tube). **#8 is Done** -- B-13 quoting still holds on prod.
 **#75 is Done** -- Brian walked the catalog (0 untriaged). New versions go to Admin > Bottles,
 not back onto the Variants triage list. **#95 and #96 are Done.**
@@ -309,7 +310,7 @@ password.
   one doc nobody has claimed; fix or delete it rather than half-trusting it.
 
 ### Still owed by Brian
-- **Keep curating images (#97).** 111 approved / 6 queued / 10 rejected. Not a code job.
+- **Keep curating images (#97).** 115 approved / 5 queued / 7 rejected. Not a code job.
 - **#64** — Done. Dead uuid overload dropped.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
 - Minor: the QA account password is **6 characters**, on an account that can write prod data.
@@ -469,17 +470,15 @@ Brian looked; considered done. New problems get a new card.
 
 **#8 verified closed.** Escaped search `.or()` holds on prod; unescaped comma still parse-errors.
 
-**#97 in progress.** 111 approved, 6 queued, 10 rejected. Rule from Brian: **shelf image is the
+**#97 in progress.** 115 approved, 5 queued, 7 rejected. Rule from Brian: **shelf image is the
 bottle only, never the box/tube.** E.H. Taylor still rejected for the tube. Latest Checker batch
-(do not auto-approve): Southern Star Double Rye (Flaviar bottle-only PNG; official PNG dead),
-Chattanooga Experimental Batch 030 Honey Infused (both rows; official packshot, gold bar
-flattened then rembg), Red Eye Louie's Whisquila (TW 227286750 rembg; squat flask 250mm),
-High West Cask Collection Cabernet (both rows including Gaspar's -- brand packshot with no
-sticker as a shelf stand-in). Skipped this round: EHT (tube still in every packshot), Gramling
-Checkerboard (official lifestyle on wood; rembg kept wall ghost), Big Storm (bottle+glass;
-cropping the glass left a tiny low-res cut), Chattanooga Experimental Single Barrel (reddit
-multi-bottle), Julius James (manila-wine Cloudflare 403), Old St Pete (glare/watermark), Tesla
-(bolt+stand). Always bottle-only going forward.
+(do not auto-approve): Old St Pete Sunshine Premium (Dunn and Co lineup, whiskey cropped,
+rembg; no watermark), Chattanooga Experimental Single Barrel both rows (official CW_EXP_SB_2023
+packshot rembg -- shelf stand-in, label is barrel 172 not 283), Big Storm Convergence both
+rows (glass cropped off the existing packshot; SOURCE IS SMALL, reject if too soft). Brian
+rejected the last Chattanooga 030 Honey Infused cut (gold marketing bar leftover). Still
+rejected: EHT (tube), Gramling Checkerboard (lifestyle/wall ghost), Julius James (Cloudflare
+403; wsrv returned clipart), Tesla (bolt+stand), Chattanooga 030. Always bottle-only going forward.
 
 No `announcements` row. Do not publish one.
 
