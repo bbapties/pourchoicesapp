@@ -468,6 +468,12 @@ Brian looked; considered done. New problems get a new card.
 
 **#8 verified closed.** Escaped search `.or()` holds on prod; unescaped comma still parse-errors.
 
+**#97 started.** Three bottles flagged for re-review in Admin > Images (Checker backdrop,
+do not approve from the table): Early Times Kentucky's Finest and Willett 4yr rye (Total Wine
+transparent packshots), Holladay Soft Red Wheat catch-all (rembg of an opaque TW shot -- check
+edges). Woodford Double Oaked rembg was gated (kept background). Fusion #9 and EC Barrel Proof
+batches still need sources.
+
 No `announcements` row. Do not publish one.
 
 ### 2026-09-09 into 09-10 - Claude (the image pipeline: 81 images approved, tooling, barcodes)
