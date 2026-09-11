@@ -35,11 +35,11 @@ switch. #84 (user-arranged cabinets) is North Star and explicitly NOT built.
 
 ### THE IMAGE PIPELINE IS THE ACTIVE LANE NOW - read docs/IMAGE_PIPELINE.md FIRST
 
-Home shipped; the work since has been filling it with real bottles. **Numbers now:** **93 approved, 7 queued for Checker, 27 still rejected.** Brian already
-approved the previous in-app batches (Early Times, Willett, Holladay catch-all, Seagrass, OF86,
-Four Roses SB, Booker's, EC Small Batch, EC Barrel Proof C919+B520, Woodford standard, Russell's 10).
+Home shipped; the work since has been filling it with real bottles. **Numbers now:** **100 approved, 7 queued for Checker, 20 still rejected.** Brian already
+approved the previous in-app batches through the last Checker round (Calumet, Crown Blackberry,
+JD Bonded, Dickel 15, Frey Batch 11, Fusion #9, 1792).
 
-**The 27 rejected images are #97 and they are NOT a batch job.** A full
+**The 20 rejected images are #97 and they are NOT a batch job.** A full
 `rembg_batch --all-rejected` pass was already run: 42 fixed, 17 gated because rembg kept
 background, 20 failed because the source URL is dead. Re-running produces the same split. Each of
 the 48 needs a human to find the real brand asset - about 2-4 minutes each, not batchable. Start
@@ -70,11 +70,12 @@ in person, and text. The in-app digest composer is the wrong shape; replacement 
 page you link to. #31 closed as superseded. #26 (tour/whatsnew telemetry) parked under #98.
 
 **WAITING ON BRIAN - none of them code:**
-1. **Keep curating images.** Admin > Images. **93 approved, 7 queued, 27 rejected.** The seven
+1. **Keep curating images.** Admin > Images. **100 approved, 7 queued, 20 rejected.** The seven
    in Checker are bottle-only cuts waiting for Brian's eye (Checker backdrop first). The rest
    of #97 is still one fresh source at a time. **Shelf image is the bottle only — never the
-   box/tube.** Squat flasks (Crown, Dickel, 1792) can trip the rembg aspect-ratio gate even when
-   the cut-out is clean; override the gate after a visual check, don't skip the bottle.
+   box/tube.** Squat flasks can trip the rembg aspect-ratio gate even when the cut-out is
+   clean; override the gate after a visual check. Store-pick / rickhouse variants may use the
+   brand packshot as a shelf stand-in (say so in the flag note).
 2. **A fine-tuning pass on the cabinet.** Agreed rule: report anything STRUCTURAL immediately;
    save anything about LOOK for a dedicated session, because Phase 5 restyles every screen at once.
 
@@ -136,7 +137,7 @@ no-arg trigger function remains.
 is one job. **#13 was folded into #98** (two tabs can forget a seen tutorial tip; design the
 new persist to merge). Do not touch auth without Brian's go.
 
-*Top Priority* holds **#97** (27 rejected left, 7 in Checker). One fresh source at a time.
+*Top Priority* holds **#97** (20 rejected left, 7 in Checker). One fresh source at a time.
 Always bottle-only. E.H. Taylor still rejected (tube). **#8 is Done** -- B-13 quoting still holds on prod.
 **#75 is Done** -- Brian walked the catalog (0 untriaged). New versions go to Admin > Bottles,
 not back onto the Variants triage list. **#95 and #96 are Done.**
@@ -308,7 +309,7 @@ password.
   one doc nobody has claimed; fix or delete it rather than half-trusting it.
 
 ### Still owed by Brian
-- **Keep curating images (#97).** 93 approved / 7 queued / 27 rejected. Not a code job.
+- **Keep curating images (#97).** 100 approved / 7 queued / 20 rejected. Not a code job.
 - **#64** — Done. Dead uuid overload dropped.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
 - Minor: the QA account password is **6 characters**, on an account that can write prod data.
@@ -468,14 +469,14 @@ Brian looked; considered done. New problems get a new card.
 
 **#8 verified closed.** Escaped search `.or()` holds on prod; unescaped comma still parse-errors.
 
-**#97 in progress.** 93 approved, 7 queued, 27 rejected. Rule from Brian: **shelf image is the
+**#97 in progress.** 100 approved, 7 queued, 20 rejected. Rule from Brian: **shelf image is the
 bottle only, never the box/tube.** E.H. Taylor still rejected for the tube. Latest Checker batch
-(do not auto-approve): Calumet Farm 8 (TW 232032750, already transparent), Crown Royal Blackberry
-(official bottle-only PNG, no gift box; squat so height 250mm estimated), Jack Daniel's Bonded
-(TW 245570010 rembg; 1L packshot, same shape), George Dickel 15 (TW 234633750 rembg; squat flask
-230mm estimated), Frey Ranch Batch 11 (standard Frey packshot as a shelf stand-in), Bardstown
-Fusion #9 rembg, 1792 Small Batch (TW 99630750 rembg; wide flask 250mm estimated). Squat/wide
-flasks trip the rembg aspect gate; visual bottle-only check wins. Always bottle-only going forward.
+(do not auto-approve): Sweetens Cove Kennessee (TW 346873750 rembg), Thirteenth Colony Southern
+Bourbon (TW 141516750 rembg; squat flask 230mm), Woodford Double Oaked Gaspar's pick (standard DO
+packshot TW 120640750 as a shelf stand-in; squat 250mm), Holladay Soft Red Wheat Rickhouse C
+(approved catch-all packshot as a shelf stand-in — replaces a crooked phone crop), Origin Series
+Bourbon (TW 2126217739 rembg), Elvis Midnight Snack (TW 2126223909 rembg), OCD #5 (TW 172052750,
+already transparent). Always bottle-only going forward.
 
 No `announcements` row. Do not publish one.
 
