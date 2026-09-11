@@ -14,3 +14,18 @@ DO $$ DECLARE n int; BEGIN
   IF n <> 1 THEN RAISE EXCEPTION 'expected 1 default, got %', n; END IF;
 END $$;
 COMMIT;
+
+-- Batch 1 (added by Brian in-app 2026-09-11) came in with no image/height/shelf state, because the
+-- add-variant flow inserts only batch/proof/year (#102). Inherit the parent's approved cut-out by
+-- POINTING at the same stored object -- no second copy -- and carry the height with it. Same bytes
+-- Brian already approved, so shelf_ready carries over with a note saying so.
+UPDATE bottle_variants c SET
+  frontimage_url = p.frontimage_url, bottle_height = p.bottle_height, bottle_height_source = p.bottle_height_source,
+  shelf_ready = true, image_reviewed_at = now(), image_reviewed_by = '7878be89-18a5-4043-a2da-be308b93ab05',
+  image_review_note = 'Inherits the parent''s approved shelf image (same stored file as the Unknown variant).',
+  updated_by = '7878be89-18a5-4043-a2da-be308b93ab05', updated_at = now()
+FROM bottle_variants p
+WHERE c.bottles_id = '634ab52d-b913-49e0-b471-6d43de445b74' AND c.batch = 'Batch 1' AND p.bottles_id = c.bottles_id AND p.is_default;
+-- Parent fallback image was still the distillery's external JPG; point it at our own approved file.
+UPDATE bottles SET frontimage_url = (SELECT frontimage_url FROM bottle_variants WHERE bottles_id = bottles.id AND is_default), updated_at = now()
+WHERE id = '634ab52d-b913-49e0-b471-6d43de445b74';
