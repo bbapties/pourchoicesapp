@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `cd6b53f` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `0c23b99` + this doc commit. All on origin/MVP-v3 and live on prod.
 - **Current phase:** **The Home screen ("The Cabinet") is BUILT AND LIVE.** Designed and shipped
   on 2026-09-09 in one session: #82 and all eight tasks, plus #83's admin tool.
 - **THE NAV CHANGED FOR EVERY USER.** It is now Search / Social / **Home** / My Bar / Profile
@@ -35,9 +35,7 @@ switch. #84 (user-arranged cabinets) is North Star and explicitly NOT built.
 
 ### THE IMAGE PIPELINE IS THE ACTIVE LANE NOW - read docs/IMAGE_PIPELINE.md FIRST
 
-Home shipped; the work since has been filling it with real bottles. **Numbers now:** **120 approved, 7 queued for Checker, 0 still rejected.** Old St Pete
-approved on a unique URL. The remaining seven are back in Checker on **new `shelf-<ts>.webp`
-paths** so they are not year-cached. **Never upsert `front.webp`.** Do not auto-approve.
+Home shipped; the work since has been filling it with real bottles. **Numbers now:** **122 approved, 5 queued for Checker, 0 still rejected.** Brian approved Chat 030 (both rows), Julius, Tesla, and Old St Pete. The remaining five were over-crops (too much taken off the bottle); they are back in Checker on **new `shelf-<ts>.webp` paths** with looser cuts. **Never upsert `front.webp`.** Do not auto-approve.
 
 **#97 is now a Checker pass, not a hunt.** A full
 `rembg_batch --all-rejected` pass was already run: 42 fixed, 17 gated because rembg kept
@@ -70,10 +68,11 @@ in person, and text. The in-app digest composer is the wrong shape; replacement 
 page you link to. #31 closed as superseded. #26 (tour/whatsnew telemetry) parked under #98.
 
 **WAITING ON BRIAN - none of them code:**
-1. **Keep curating images.** Admin > Images. **120 approved, 7 queued, 0 rejected.** The seven
-   in Checker are unique-URL redos of Chat 030, EHT, Gramling Checkerboard, and Big Storm.
-   Checker backdrop first. **Never overwrite `front.webp`.** Shelf image is the bottle only --
-   never the box/tube. Tesla stand is the one special case (Brian's call).
+1. **Keep curating images.** Admin > Images. **122 approved, 5 queued, 0 rejected.** The five
+   in Checker are looser recrops of Big Storm (2), E.H. Taylor Small Batch (1), and Gramling
+   Checkerboard (2). Previous cuts took too much off the bottle (flask shoulder / label side /
+   base). Checker backdrop first. **Never overwrite `front.webp`.** Shelf image is the bottle
+   only -- never the box/tube. Tesla stand is the one special case (Brian's call).
 2. **A fine-tuning pass on the cabinet.** Agreed rule: report anything STRUCTURAL immediately;
    save anything about LOOK for a dedicated session, because Phase 5 restyles every screen at once.
 
@@ -135,8 +134,8 @@ no-arg trigger function remains.
 is one job. **#13 was folded into #98** (two tabs can forget a seen tutorial tip; design the
 new persist to merge). Do not touch auth without Brian's go.
 
-*Top Priority* holds **#97** (0 rejected, 7 in Checker -- unique-URL redos).
-Always bottle-only. E.H. Taylor still rejected (tube). **#8 is Done** -- B-13 quoting still holds on prod.
+*Top Priority* holds **#97** (0 rejected, 5 in Checker -- looser recrops of the last over-crops).
+Always bottle-only. **#8 is Done** -- B-13 quoting still holds on prod.
 **#75 is Done** -- Brian walked the catalog (0 untriaged). New versions go to Admin > Bottles,
 not back onto the Variants triage list. **#95 and #96 are Done.**
 
@@ -307,7 +306,7 @@ password.
   one doc nobody has claimed; fix or delete it rather than half-trusting it.
 
 ### Still owed by Brian
-- **Keep curating images (#97).** 120 approved / 7 queued / 0 rejected. Not a code job. Always unique `shelf-<ts>.webp` paths -- `front.webp` upserts are year-cached.
+- **Keep curating images (#97).** 122 approved / 5 queued / 0 rejected. Not a code job. Always unique `shelf-<ts>.webp` paths -- `front.webp` upserts are year-cached.
 - **#64** — Done. Dead uuid overload dropped.
 - **Board hygiene:** Size values on the imported issues are Claude's first-pass estimates, not his.
 - Minor: the QA account password is **6 characters**, on an account that can write prod data.
@@ -467,14 +466,14 @@ Brian looked; considered done. New problems get a new card.
 
 **#8 verified closed.** Escaped search `.or()` holds on prod; unescaped comma still parse-errors.
 
-**#97 in progress.** 117 approved, 10 queued, 0 rejected. Rule from Brian: **shelf image is the
+**#97 in progress.** 122 approved, 5 queued, 0 rejected. Rule from Brian: **shelf image is the
 bottle only, never the box/tube** except Tesla, where the stand is the base. Latest Checker
-batch (do not auto-approve): Chattanooga 030 official packshot (no hand -- old photo was the
-hand; gold bar painted out), EHT best-effort TW crop (tube remnant remains behind the neck),
-Gramling Checkerboard official 2025/07/bourbon.png rembg, Julius James Manila Wine
-julius-james.jpg (same as Brian's desktop copy), Old St Pete TW 151193750, Big Storm glass
-fully cropped (tiny source), Tesla official shop packshot on its stand. Always bottle-only
-going forward except the Tesla stand special case.
+batch (do not auto-approve): looser recrops of the five remaining over-crops -- Big Storm
+Convergence (2; previous cut took the flask's right shoulder; glass still fully out), E.H.
+Taylor Small Batch (looser TW crop then rembg; previous cut sliced the label; no tube),
+Gramling Woods Checkerboard (2; official 2025/07/bourbon.png trimmed to full alpha box;
+previous crop cut the base). Always unique `shelf-<ts>.webp`. Always bottle-only going
+forward except the Tesla stand special case.
 
 No `announcements` row. Do not publish one.
 
