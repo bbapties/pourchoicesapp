@@ -468,10 +468,10 @@ Brian looked; considered done. New problems get a new card.
 
 **#8 verified closed.** Escaped search `.or()` holds on prod; unescaped comma still parse-errors.
 
-**#97 in progress.** 84 approved after Brian signed off Early Times / Willett 4yr rye / Holladay
-catch-all. Five more flagged for Checker review (not approved): Barrell Seagrass, Old Forester 86,
-Four Roses Small Batch, Booker's (bottle only, crate dropped), E.H. Taylor Small Batch. 1792 rembg
-gated. Still hunting Woodford Double Oaked, Fusion #9, EC Barrel Proof batches.
+**#97 in progress.** 88 approved. Rule from Brian: **shelf image is the bottle only, never the
+box/tube.** E.H. Taylor rejected for the tube; rembg could not drop it cleanly. Five more flagged:
+EC Small Batch, EC Barrel Proof C919+B520 (generic BP packshot, label reads C922 at zoom), Woodford
+standard, Russell's 10. Always bottle-only going forward.
 
 No `announcements` row. Do not publish one.
 
