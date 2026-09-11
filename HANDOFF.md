@@ -468,11 +468,10 @@ Brian looked; considered done. New problems get a new card.
 
 **#8 verified closed.** Escaped search `.or()` holds on prod; unescaped comma still parse-errors.
 
-**#97 started.** Three bottles flagged for re-review in Admin > Images (Checker backdrop,
-do not approve from the table): Early Times Kentucky's Finest and Willett 4yr rye (Total Wine
-transparent packshots), Holladay Soft Red Wheat catch-all (rembg of an opaque TW shot -- check
-edges). Woodford Double Oaked rembg was gated (kept background). Fusion #9 and EC Barrel Proof
-batches still need sources.
+**#97 in progress.** 84 approved after Brian signed off Early Times / Willett 4yr rye / Holladay
+catch-all. Five more flagged for Checker review (not approved): Barrell Seagrass, Old Forester 86,
+Four Roses Small Batch, Booker's (bottle only, crate dropped), E.H. Taylor Small Batch. 1792 rembg
+gated. Still hunting Woodford Double Oaked, Fusion #9, EC Barrel Proof batches.
 
 No `announcements` row. Do not publish one.
 
