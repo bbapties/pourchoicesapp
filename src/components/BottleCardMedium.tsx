@@ -1,4 +1,5 @@
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
+import { EarmarkCorner } from "@/components/BottleCard";
 
 export interface BottleCardMediumData {
   id: string;
@@ -62,24 +63,12 @@ interface BottleCardMediumProps {
 
 export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
   const provisional = bottle.provisional ?? false;
-  const owned = bottle.currentlyOwned ?? true; // default true for backwards compat
-  const tasted = bottle.tasted ?? false;
-  const checkColor = provisional ? '#FFD700' : '#ffffff';
-  const earmarkColor = owned ? '#22c55e' : '#9ca3af'; // green if owned, gray if empty
-
   return (
     <div className="relative flex flex-col border-b border-gray-300 hover:bg-gray-100 transition-colors pb-6">
-      {/* Earmark — owned/empty only. Tasted-only bottles were never in the bar. */}
-      {!tasted && (
-      <div style={{ position: 'absolute', top: 0, right: 0, width: 28, height: 28 }}>
-        <div style={{ position: 'absolute', inset: 0, background: earmarkColor, clipPath: 'polygon(100% 0, 100% 100%, 0 0)' }} />
-        <span style={{
-          position: 'absolute', top: 3, right: 4, fontSize: 11, lineHeight: 1,
-          color: checkColor, fontWeight: 'bold',
-          textShadow: provisional ? '0 0 2px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4)' : 'none',
-        }}>✓</span>
-      </div>
-      )}
+      {/* #103: the same earmark as Search (B-31). Every card in My Bar has been had by definition
+          (owned, emptied, or blind-tasted), so every card gets the green check; the tab already
+          says which. The old owned-green / empty-grey / tasted-none split disagreed with Search. */}
+      <EarmarkCorner hadIt provisional={provisional} />
 
       {/* Main row: image + attributes */}
       <div className="flex items-center p-3 gap-3">

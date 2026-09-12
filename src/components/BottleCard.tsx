@@ -50,7 +50,7 @@ function StarRating({ value }: { value: number }) {
 //   verified   + had it      → green triangle + white ✓
 //   unverified + had it      → green triangle + yellow ✓
 // "Had it" spans ownership (now or past), a pour, or a blind tasting — no owned-vs-past split.
-function EarmarkCorner({
+export function EarmarkCorner({
   hadIt,
   provisional,
 }: {
