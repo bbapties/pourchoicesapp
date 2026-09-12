@@ -232,13 +232,21 @@ export const FEED_SELECT = `
 export async function fetchActivityFeed(opts: {
   offset: number;
   limit: number;
+  /** #111 Following scope: only these posters. An empty list is an empty feed, not everyone. */
+  userIds?: string[] | null;
+  /** #111 mute: never these posters. */
+  excludeUserIds?: string[] | null;
 }): Promise<{ rows: ActivityRow[]; error?: string }> {
+  if (opts.userIds && opts.userIds.length === 0) return { rows: [] };
   const to = opts.offset + opts.limit - 1;
-  const { data, error } = await supabase
+  let q = supabase
     .from("activities")
     .select(FEED_SELECT)
     .eq("users.account_type", "human")
-    .not("action", "in", FEED_HIDDEN_FILTER)
+    .not("action", "in", FEED_HIDDEN_FILTER);
+  if (opts.userIds) q = q.in("user_id", opts.userIds);
+  if (opts.excludeUserIds && opts.excludeUserIds.length) q = q.not("user_id", "in", `(${opts.excludeUserIds.join(",")})`);
+  const { data, error } = await q
     .order("created_at", { ascending: false })
     .range(opts.offset, to);
 

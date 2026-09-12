@@ -25,6 +25,7 @@ export default function Shelf({
   isEmpty,
   onPlateOpen,
   onScanFromEmpty,
+  lipRight,
   children,
 }: {
   shelf: ShelfDef;
@@ -36,6 +37,8 @@ export default function Shelf({
   onPlateOpen?: () => void;
   /** Taken from the empty-bar prompt — the one measure of whether that prompt works. */
   onScanFromEmpty?: () => void;
+  /** #111: a control engraved on the lip opposite the plate (the Social shelf's Following switch). */
+  lipRight?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   return (
@@ -66,6 +69,7 @@ export default function Shelf({
       )}
 
       <div className="pc-face pc-lip" />
+      {lipRight ? <div className="pc-lip-right">{lipRight}</div> : null}
 
       {/* The plate names the shelf AND opens it: Home is a zoomed-out view of the other tabs. */}
       {shelf.href ? (

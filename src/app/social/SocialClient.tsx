@@ -8,6 +8,8 @@ import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
 import ActivityCard from "@/components/social/ActivityCard";
 import { fetchFeedPage, toggleCheer, type FeedItem } from "@/lib/social";
+import PeopleSheet from "@/components/user/PeopleSheet";
+import { fetchFeedDefault, fetchMyGraph, saveFeedDefault, type FeedScope } from "@/lib/relationships";
 import BottleDetailView from "@/components/BottleDetailView";
 import { type BottleDetails } from "@/lib/types";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -69,6 +71,11 @@ export default function SocialClient() {
   const router = useRouter();
   const { publicUserId } = useCurrentUser();
   const [rows, setRows] = useState<FeedItem[]>([]);
+  // #111: Following | Everyone. The scope is remembered on the user; the graph (who I follow,
+  // who I muted) is read once per load and shapes both scopes - muted people never show.
+  const [scope, setScope] = useState<FeedScope | null>(null);
+  const [graph, setGraph] = useState<{ following: string[]; muted: string[] } | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   // Raw rows fetched so far - the offset for the next page. Cards collapse runs, so rows.length lies.
   const [fetched, setFetched] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,12 +88,21 @@ export default function SocialClient() {
   });
   const [selectedRow, setSelectedRow] = useState<UserBottleRow | null>(null);
 
-  const load = useCallback(async (reset: boolean) => {
+  const load = useCallback(async (reset: boolean, opts?: { scope?: FeedScope; graph?: { following: string[]; muted: string[] } }) => {
+    const sc = opts?.scope ?? scope;
+    const g = opts?.graph ?? graph;
+    if (!sc) return;
     if (reset) setIsLoading(true);
     else setIsLoadingMore(true);
 
     const offset = reset ? 0 : fetched;
-    const { items, error, rawCount } = await fetchFeedPage({ offset, limit: PAGE_SIZE, viewerId: publicUserId ?? null });
+    const { items, error, rawCount } = await fetchFeedPage({
+      offset,
+      limit: PAGE_SIZE,
+      viewerId: publicUserId ?? null,
+      userIds: sc === "following" ? (g?.following ?? []) : null,
+      excludeUserIds: g?.muted ?? null,
+    });
     if (error) {
       toast.error("Couldn't load activity");
     } else {
@@ -97,7 +113,26 @@ export default function SocialClient() {
 
     setIsLoading(false);
     setIsLoadingMore(false);
-  }, [fetched, publicUserId]);
+  }, [fetched, publicUserId, scope, graph]);
+
+  const switchScope = (next: FeedScope) => {
+    if (next === scope) return;
+    setScope(next);
+    logClick("feed_tab_changed", { userId: publicUserId, surface: "/social", metadata: { tab: next, surface: "social" } });
+    if (publicUserId) saveFeedDefault(publicUserId, next);
+    load(true, { scope: next });
+  };
+
+  // The graph and the remembered scope arrive together, then the first page.
+  const boot = useCallback(async () => {
+    const [g, sc] = publicUserId
+      ? await Promise.all([fetchMyGraph(publicUserId), fetchFeedDefault(publicUserId)])
+      : [{ following: [], muted: [] }, "everyone" as FeedScope];
+    setGraph(g);
+    setScope(sc);
+    load(true, { scope: sc, graph: g });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicUserId]);
 
   // Cheers are optimistic: flip the card now, write behind it, roll back on a real error.
   const handleCheer = async (item: FeedItem) => {
@@ -115,10 +150,8 @@ export default function SocialClient() {
   };
 
   useEffect(() => {
-    load(true);
-    // initial load only
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    boot();
+  }, [boot]);
 
   const openBottle = async (bottleId: string) => {
     const { data, error } = await supabase
@@ -227,11 +260,54 @@ export default function SocialClient() {
     <>
       <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 flex items-center justify-center" style={{ top: "env(safe-area-inset-top)" }}>
         <h1 className="text-base font-semibold text-charcoal">Social</h1>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center"
+          aria-label="Find people"
+          data-coach="social.find"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2F2F2F" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+        </button>
       </header>
 
       <div className="max-w-md mx-auto" data-coach="social.feed">
+        <div className="flex mx-4 border-b border-gray-300" role="tablist" data-coach="social.tabs">
+          {(["following", "everyone"] as FeedScope[]).map((t) => {
+            const on = scope === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => switchScope(t)}
+                className={`flex-1 pt-3 pb-2.5 text-[13px] ${on ? "font-semibold text-black border-b-2 border-black" : "font-medium text-gray-400 border-b-2 border-transparent"}`}
+              >
+                {t === "following" ? "Following" : "Everyone"}
+              </button>
+            );
+          })}
+        </div>
+
         {isLoading && rows.length === 0 ? (
           <p className="text-center text-sm text-gray-400 py-12">Loading activity...</p>
+        ) : rows.length === 0 && scope === "following" ? (
+          <div className="px-7 pt-14 text-center flex flex-col items-center gap-3.5">
+            <div className="text-base font-semibold text-charcoal">
+              {graph && graph.following.length > 0 ? "Nothing from the people you follow yet" : "You’re not following anyone yet"}
+            </div>
+            <p className="text-[13px] text-gray-500 leading-relaxed">Find people by username, or tap a name in Everyone.</p>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="w-full h-11 border border-charcoal rounded-lg flex items-center gap-2.5 px-3 text-sm text-gray-400 bg-white mt-2"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+              Search usernames
+            </button>
+            <button type="button" onClick={() => switchScope("everyone")} className="text-xs text-gray-600 underline underline-offset-2 mt-1">See everyone</button>
+          </div>
         ) : rows.length === 0 ? (
           <p className="text-center text-sm text-gray-500 px-6 py-12">
             No activity yet. Have a drink or add a bottle to get the feed started.
@@ -265,6 +341,14 @@ export default function SocialClient() {
       </div>
 
       <Toaster position="top-center" style={{ top: "calc(56px + env(safe-area-inset-top))" }} />
+
+      <PeopleSheet
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        mode="search"
+        viewerId={publicUserId ?? null}
+        onChanged={() => { if (publicUserId) fetchMyGraph(publicUserId).then((g) => { setGraph(g); if (scope === "following") load(true, { graph: g }); }); }}
+      />
 
       {selectedBottle && (
         <BottleDetailView

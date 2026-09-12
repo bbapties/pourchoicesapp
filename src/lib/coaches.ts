@@ -372,6 +372,28 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // #111: follow, the bell, mute. Core - the feed now has a Following view that is empty until
+    // you follow someone, so a new user has to learn this one.
+    id: "user.follow",
+    title: "Follow people",
+    body: "Follow someone from their page and their pours show under Social › Following. The bell picks which of their moments buzz your phone. Mute anyone from the bell.",
+    route: "/social",
+    core: true,
+    announce: true,
+    tour: [
+      {
+        route: "/social",
+        anchor: "social.tabs",
+        caption: "Following shows only the people you follow. Everyone is the whole app. Home's Social shelf has the same switch.",
+      },
+      {
+        route: "/social",
+        anchor: "social.find",
+        caption: "Find people by username here, or tap any name on a card.",
+      },
+    ],
+  },
+  {
     id: "profile.feedback",
     title: "Send feedback",
     body: "Have an idea, or hit a bug? Tell us right from Profile.",
@@ -445,6 +467,7 @@ const CORE_ORDER = [
   "taste.blind",
   "mybar.collection",
   "profile.page",
+  "user.follow",
   "profile.feedback",
 ];
 

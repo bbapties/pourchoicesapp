@@ -73,6 +73,10 @@ export type ShelfFetchOpts = {
   viewerId: string | null;
   cursor: string | null;
   limit?: number;
+  /** #111: the Social shelf in Following mode - only these posters. Empty = an empty shelf. */
+  onlyUserIds?: string[] | null;
+  /** #111: muted posters, never shown. */
+  excludeUserIds?: string[] | null;
 };
 
 export type ShelfDef = {
@@ -286,8 +290,9 @@ async function fetchMyBar({ viewerId, cursor, limit = SHELF_PAGE_SIZE }: ShelfFe
  * Over-fetches because deduplication happens after the read — a busy bottle can hold many
  * consecutive rows, and a page of activities is not a page of bottles.
  */
-async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE }: ShelfFetchOpts): Promise<ShelfPage> {
+async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE, onlyUserIds, excludeUserIds }: ShelfFetchOpts): Promise<ShelfPage> {
   const window = limit * 4;
+  if (onlyUserIds && onlyUserIds.length === 0) return { bottles: [], nextCursor: null };
 
   let q = supabase
     .from("activities")
@@ -299,6 +304,8 @@ async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE }: ShelfF
     .order("created_at", { ascending: false })
     .limit(window);
   if (cursor) q = q.lt("created_at", cursor);
+  if (onlyUserIds) q = q.in("user_id", onlyUserIds);
+  if (excludeUserIds && excludeUserIds.length) q = q.not("user_id", "in", `(${excludeUserIds.join(",")})`);
 
   const { data, error } = await q;
   if (error) {

@@ -7,6 +7,7 @@ import PickedUpBottle from "@/components/home/PickedUpBottle";
 import { Toaster } from "@/components/ui/sonner";
 import { logClick, logEvent } from "@/lib/events";
 import { SHELVES, type ShelfBottle } from "@/lib/shelves";
+import { fetchFeedDefault, fetchMyGraph, saveFeedDefault, type FeedScope } from "@/lib/relationships";
 
 /**
  * The Home screen — "The Cabinet" (#82).
@@ -29,6 +30,26 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
   // Bumped only when a bottle's ownership actually changed. Re-mounting the runs is a blunt
   // refresh, but it is rare and it is the honest one: a new bottle belongs at the front of My Bar.
   const [reloadKey, setReloadKey] = useState(0);
+
+  // #111: the Social shelf is the Social tab seen from across the room, so it has the same
+  // Following | Everyone switch, remembered on the same users.feed_default.
+  const [scope, setScope] = useState<FeedScope | null>(null);
+  const [graph, setGraph] = useState<{ following: string[]; muted: string[] } | null>(null);
+  useEffect(() => {
+    let live = true;
+    Promise.all([fetchMyGraph(viewerId), fetchFeedDefault(viewerId)]).then(([g, sc]) => {
+      if (!live) return;
+      setGraph(g);
+      setScope(sc);
+    });
+    return () => { live = false; };
+  }, [viewerId]);
+  const flipScope = () => {
+    const next: FeedScope = scope === "following" ? "everyone" : "following";
+    setScope(next);
+    saveFeedDefault(viewerId, next);
+    logClick("feed_tab_changed", { userId: viewerId, surface: "/home", metadata: { tab: next, surface: "home" } });
+  };
 
   const [state, setState] = useState<Record<string, ShelfState>>({
     mybar: INITIAL,
@@ -62,13 +83,27 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
         const s = state[shelf.id];
         // Empty only once we KNOW it is empty. Saying "your bar is empty" while the count is
         // still in flight tells a new user something false about their own collection.
-        const isEmpty = !s.loading && (s.count ?? 0) === 0;
+        const social = shelf.id === "social";
+        // In Following mode the plate count is the whole feed's, not the filtered run's, so it
+        // comes off rather than lie; empty is decided by the run itself (an empty Following run
+        // still shows the shelf, with the switch on it, so you can flip back).
+        const isEmpty = !s.loading && (s.count ?? 0) === 0 && !(social && scope === "following");
+        const socialOpts = social && scope === "following"
+          ? { onlyUserIds: graph?.following ?? [], excludeUserIds: graph?.muted ?? [] }
+          : social ? { excludeUserIds: graph?.muted ?? [] } : undefined;
         return (
           <Shelf
             key={shelf.id}
             shelf={shelf}
-            count={s.count}
+            count={social && scope === "following" ? null : s.count}
             isEmpty={isEmpty}
+            lipRight={social && scope ? (
+              <button type="button" className="pc-feed-switch" data-scope={scope} onClick={flipScope} aria-label={`Showing ${scope}. Tap to switch.`} data-coach="home.feed_switch">
+                <span className={scope === "following" ? "" : "off"}>Following</span>
+                <span className="knob" aria-hidden="true" />
+                <span className={scope === "everyone" ? "" : "off"}>Everyone</span>
+              </button>
+            ) : null}
             onPlateOpen={() =>
               logClick("home_plate", {
                 userId: viewerId,
@@ -81,11 +116,12 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
                 metadata: { shelf: shelf.id } })
             }
           >
-            {s.loading ? null : (
+            {s.loading || (social && (!scope || !graph)) ? null : (
               <ShelfRun
-                key={`${shelf.id}:${reloadKey}`}
+                key={`${shelf.id}:${reloadKey}:${social ? scope : ""}`}
                 shelf={shelf}
                 viewerId={viewerId}
+                fetchOpts={socialOpts}
                 onPick={(b) => {
                   // Ghost-vs-real on every pick-up: the share of what people actually touch that
                   // is still a placeholder is the number that says when Home stops being a

@@ -148,6 +148,14 @@ silent), but a spike on one platform means subscriptions are being dropped faste
 the app, and the reachable count in Admin will sag behind the opt-in count.
 
 
+### Follows, mutes, bells (#111, 2026-09-12)
+
+`user_relationships` is the record (follow rows with `notify_kinds[]`, mute rows). Clicks:
+`user_followed` / `user_unfollowed` (`metadata.from` = list mode when done from a people sheet),
+`user_muted` / `user_unmuted`, `notify_kinds_changed {kinds, from?}`, `feed_tab_changed
+{tab, surface: social|home}`, `user_search {length, results}`. Scope memory is
+`users.feed_default`, not an event.
+
 ### User page (#110, 2026-09-12)
 
 `/u/[username]` and `/profile` (own). `page_view` with `targetType: 'user_page'`, `targetId` =

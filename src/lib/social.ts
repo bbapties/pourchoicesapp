@@ -100,8 +100,11 @@ export async function fetchFeedPage(opts: {
   offset: number;
   limit: number;
   viewerId: string | null;
+  /** Following scope (#111): only these posters. Null/undefined = everyone. */
+  userIds?: string[] | null;
+  excludeUserIds?: string[] | null;
 }): Promise<{ items: FeedItem[]; error?: string; rawCount: number }> {
-  const { rows, error } = await fetchActivityFeed({ offset: opts.offset, limit: opts.limit });
+  const { rows, error } = await fetchActivityFeed({ offset: opts.offset, limit: opts.limit, userIds: opts.userIds, excludeUserIds: opts.excludeUserIds });
   if (error) return { items: [], error, rawCount: 0 };
   const items = await enrichRows(rows, opts.viewerId);
   return { items: collapseRuns(items), rawCount: rows.length };

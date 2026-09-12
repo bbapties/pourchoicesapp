@@ -11,6 +11,10 @@ import PickedUpBottle from "@/components/home/PickedUpBottle";
 import ActivityCard from "@/components/social/ActivityCard";
 import { Stars, Chip } from "@/components/social/ActivityCard";
 import ProfileSettingsSheet from "@/components/ProfileSettingsSheet";
+import PeopleSheet, { type PeopleMode } from "@/components/user/PeopleSheet";
+import BellSheet from "@/components/user/BellSheet";
+import InstallSheet from "@/components/InstallSheet";
+import { ALL_KINDS, fetchRelationship, follow, unfollow, unmute, type Relationship } from "@/lib/relationships";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { logClick, logEvent } from "@/lib/events";
 import { fetchUserFeed, toggleCheer, type FeedItem } from "@/lib/social";
@@ -51,6 +55,14 @@ export default function UserPage({ own = false, username }: Props) {
   const [reloadKey, setReloadKey] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  // #111 relationship state, from the viewer's side.
+  const [rel, setRel] = useState<Relationship | null>(null);
+  const [relBusy, setRelBusy] = useState(false);
+  const [askPush, setAskPush] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
+  const [people, setPeople] = useState<PeopleMode | null>(null);
+  const [statsKey, setStatsKey] = useState(0);
 
   // Resolve who this page is about.
   useEffect(() => {
@@ -85,6 +97,7 @@ export default function UserPage({ own = false, username }: Props) {
     });
     fetchUserStats(user.id).then((s) => live && setStats(s));
     fetchTop3(user.id).then((t) => live && setTop3(t));
+    if (publicUserId && !own) fetchRelationship(publicUserId, user.id).then((r) => live && setRel(r));
     fetchUserFeed({ userId: user.id, offset: 0, limit: ACTIVITY_PAGE, viewerId: publicUserId ?? null }).then((r) => {
       if (!live) return;
       setFeed(r.items);
@@ -93,6 +106,50 @@ export default function UserPage({ own = false, username }: Props) {
     });
     return () => { live = false; };
   }, [user, own, publicUserId, reloadKey]);
+
+  // Counts alone, after a follow / unfollow / unmute somewhere on this page.
+  useEffect(() => {
+    if (!user || statsKey === 0) return;
+    fetchUserStats(user.id).then(setStats);
+  }, [user, statsKey]);
+
+  const handleFollow = async () => {
+    if (!publicUserId || !user || relBusy) return;
+    setRelBusy(true);
+    if (rel?.following) {
+      const res = await unfollow(publicUserId, user.id);
+      setRelBusy(false);
+      if (res.error) { toast.error("Couldn't unfollow"); return; }
+      logClick("user_unfollowed", { userId: publicUserId, targetId: user.id, surface });
+      setRel({ following: false, notifyKinds: [], muted: false });
+    } else {
+      const res = await follow(publicUserId, user.id, []);
+      setRelBusy(false);
+      if (res.error) { toast.error("Couldn't follow"); return; }
+      logClick("user_followed", { userId: publicUserId, targetId: user.id, surface });
+      setRel({ following: true, notifyKinds: [], muted: false });
+      setAskPush(true);
+    }
+    setStatsKey((k) => k + 1);
+  };
+
+  const answerPush = async (yes: boolean) => {
+    setAskPush(false);
+    if (!publicUserId || !user) return;
+    if (yes) {
+      await follow(publicUserId, user.id, ALL_KINDS);
+      setRel((r) => (r ? { ...r, notifyKinds: ALL_KINDS } : r));
+      logClick("notify_kinds_changed", { userId: publicUserId, targetId: user.id, surface, metadata: { kinds: ALL_KINDS, from: "follow_prompt" } });
+    }
+  };
+
+  const handleUnmute = async () => {
+    if (!publicUserId || !user) return;
+    const res = await unmute(publicUserId, user.id);
+    if (res.error) { toast.error("Couldn't unmute"); return; }
+    logClick("user_unmuted", { userId: publicUserId, targetId: user.id, surface });
+    setRel({ following: false, notifyKinds: [], muted: false });
+  };
 
   const loadMore = async () => {
     if (!user) return;
@@ -164,28 +221,42 @@ export default function UserPage({ own = false, username }: Props) {
             </button>
           ) : (
             <div className="flex items-center gap-2.5">
-              {/* Follow + bell are wired in step 6 (#111); the shape is here so the page reads right. */}
-              <button
-                type="button"
-                onClick={() => toast("Following comes in the next update.")}
-                className="h-10 px-[30px] rounded-full text-sm font-semibold text-white"
-                style={{ backgroundColor: "#111" }}
-                data-coach="user.follow"
-              >
-                Follow
-              </button>
-              <button
-                type="button"
-                onClick={() => toast("Per-person notifications come with following.")}
-                className="w-10 h-10 rounded-full border border-charcoal bg-white flex items-center justify-center"
-                aria-label="Notification settings for this person"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F2F2F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
-              </button>
+              {rel?.muted ? (
+                <button type="button" onClick={handleUnmute} className="h-10 px-[24px] rounded-full border border-gray-400 text-sm font-semibold text-gray-600 bg-white">
+                  Muted · Unmute
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={!publicUserId || relBusy}
+                    onClick={handleFollow}
+                    className={`h-10 px-[30px] rounded-full text-sm font-semibold disabled:opacity-50 ${rel?.following ? "border border-charcoal text-charcoal bg-white" : "text-white"}`}
+                    style={rel?.following ? undefined : { backgroundColor: "#111" }}
+                    data-coach="user.follow"
+                  >
+                    {rel?.following ? "Following" : "Follow"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!publicUserId}
+                    onClick={() => setBellOpen(true)}
+                    className="w-10 h-10 rounded-full border border-charcoal bg-white flex items-center justify-center disabled:opacity-50"
+                    aria-label="Notification settings for this person"
+                    data-coach="user.bell"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill={rel?.notifyKinds.length ? "#2F2F2F" : "none"} stroke="#2F2F2F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
+                  </button>
+                </>
+              )}
             </div>
           )}
           <div className="text-[13px] text-gray-600 text-center leading-relaxed">
-            <div><b className="font-semibold text-charcoal">{stats?.followers ?? "–"}</b> followers · <b className="font-semibold text-charcoal">{stats?.following ?? "–"}</b> following</div>
+            <div>
+              <button type="button" onClick={() => setPeople("followers")} className="underline-offset-2 hover:underline"><b className="font-semibold text-charcoal">{stats?.followers ?? "–"}</b> followers</button>
+              {" · "}
+              <button type="button" onClick={() => setPeople("following")} className="underline-offset-2 hover:underline"><b className="font-semibold text-charcoal">{stats?.following ?? "–"}</b> following</button>
+            </div>
             <div><b className="font-semibold text-charcoal">{stats?.tried ?? "–"}</b> tried · <b className="font-semibold text-charcoal">{stats?.blinds ?? "–"}</b> blinds</div>
           </div>
         </div>
@@ -284,6 +355,46 @@ export default function UserPage({ own = false, username }: Props) {
           onOpenChange={setSettingsOpen}
           onUsernameChanged={(u) => setUser((prev) => (prev ? { ...prev, username: u } : prev))}
         />
+      )}
+
+      {user && (
+        <PeopleSheet
+          open={people !== null}
+          onOpenChange={(o) => { if (!o) setPeople(null); }}
+          mode={people ?? "followers"}
+          userId={user.id}
+          viewerId={publicUserId ?? null}
+          onChanged={() => setStatsKey((k) => k + 1)}
+        />
+      )}
+
+      {user && publicUserId && !own && (
+        <BellSheet
+          open={bellOpen}
+          onOpenChange={setBellOpen}
+          viewerId={publicUserId}
+          target={{ id: user.id, username: user.username }}
+          initialKinds={rel?.notifyKinds ?? []}
+          onSaved={(kinds) => { setRel({ following: true, notifyKinds: kinds, muted: false }); setStatsKey((k) => k + 1); }}
+          onMuted={() => { setRel({ following: false, notifyKinds: [], muted: true }); setStatsKey((k) => k + 1); toast.success(`Muted @${user.username}`); }}
+          onInstall={() => { setBellOpen(false); setInstallOpen(true); }}
+        />
+      )}
+      <InstallSheet open={installOpen} onOpenChange={setInstallOpen} surface="/u" />
+
+      {askPush && user && (
+        <div className="fixed inset-0 z-40 flex items-end" onClick={() => answerPush(false)}>
+          <div className="absolute inset-0 bg-black/35" />
+          <div className="relative w-full bg-white border-t border-charcoal rounded-t-2xl px-5 pt-3 pb-8" onClick={(e) => e.stopPropagation()}>
+            <div className="w-9 h-1 rounded bg-gray-300 mx-auto mb-4" />
+            <div className="text-base font-semibold text-charcoal mb-1">Get a push when @{user.username} pours?</div>
+            <p className="text-sm text-gray-600 mb-4">You can fine-tune which events from the bell on their page.</p>
+            <div className="flex gap-2.5">
+              <button type="button" onClick={() => answerPush(true)} className="flex-1 h-11 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: "#111" }}>Yes</button>
+              <button type="button" onClick={() => answerPush(false)} className="flex-1 h-11 rounded-full text-sm font-semibold border border-charcoal text-charcoal bg-white">Not now</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {manualOpen && (

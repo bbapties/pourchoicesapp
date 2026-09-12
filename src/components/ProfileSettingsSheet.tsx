@@ -12,6 +12,7 @@ import { FORCE_REPLAY_KEY } from "@/lib/coaches";
 import InstallSheet from "@/components/InstallSheet";
 import NotificationSheet from "@/components/NotificationSheet";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import PeopleSheet from "@/components/user/PeopleSheet";
 import { checkPushSupport, disablePush, hasDeviceSubscription, permissionState, syncPushSubscription } from "@/lib/pushNotifications";
 import { logClick, logEvent } from "@/lib/events";
 
@@ -29,6 +30,7 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
   const { publicUserId, username, loading } = useCurrentUser();
 
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [mutedOpen, setMutedOpen] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
 
   const [displayName, setDisplayName] = useState<string>("");
@@ -228,14 +230,16 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
 
       {/* Actions */}
       <div className="space-y-2">
-        <div
-          className="w-full py-3 text-sm font-medium rounded border border-gray-300 bg-white text-gray-500 flex items-center justify-between px-4"
+        <button
+          type="button"
+          onClick={() => setMutedOpen(true)}
+          className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900 flex items-center justify-between px-4"
           style={{ minHeight: "44px" }}
-          aria-disabled="true"
+          data-coach="profile.muted"
         >
           <span>Muted users</span>
-          <span className="text-xs text-gray-400">Coming with follows</span>
-        </div>
+          <span className="text-xs text-gray-600">Manage</span>
+        </button>
 
         <button
           type="button"
@@ -304,6 +308,8 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
       <NotificationSheet open={notifyOpen} onOpenChange={(o) => { setNotifyOpen(o); if (!o) setNotifyOn(permissionState() === "granted"); }} publicUserId={publicUserId} surface="/profile" showNeverAsk={false} />
 
       <InstallSheet open={installOpen} onOpenChange={setInstallOpen} surface="/profile" />
+
+      <PeopleSheet open={mutedOpen} onOpenChange={setMutedOpen} mode="muted" viewerId={publicUserId} />
 
       <FeedbackSheet
         open={feedbackOpen}

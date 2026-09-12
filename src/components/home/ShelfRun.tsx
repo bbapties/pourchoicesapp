@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import BottleOnShelf from "@/components/home/BottleOnShelf";
-import { SHELF_PAGE_SIZE, type ShelfBottle, type ShelfDef } from "@/lib/shelves";
+import { SHELF_PAGE_SIZE, type ShelfBottle, type ShelfDef, type ShelfFetchOpts } from "@/lib/shelves";
 
 /**
  * The horizontal run of one shelf (#88, part of #82) — the riskiest piece of the cabinet.
@@ -37,10 +37,13 @@ export default function ShelfRun({
   shelf,
   viewerId,
   onPick,
+  fetchOpts,
 }: {
   shelf: ShelfDef;
   viewerId: string;
   onPick?: (b: ShelfBottle) => void;
+  /** #111: extra scope for the fetch (Following / muted). Remount the run when it changes. */
+  fetchOpts?: Partial<ShelfFetchOpts>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [bottles, setBottles] = useState<ShelfBottle[]>([]);
@@ -56,6 +59,7 @@ export default function ShelfRun({
     if (loading.current || doneRef.current) return;
     loading.current = true;
     const page = await shelf.fetchPage({
+      ...fetchOpts,
       viewerId,
       cursor: cursorRef.current,
       limit: SHELF_PAGE_SIZE,
