@@ -148,6 +148,13 @@ silent), but a spike on one platform means subscriptions are being dropped faste
 the app, and the reachable count in Admin will sag behind the opt-in count.
 
 
+### User page (#110, 2026-09-12)
+
+`/u/[username]` and `/profile` (own). `page_view` with `targetType: 'user_page'`, `targetId` =
+the page owner's `users.id`, `metadata.own`. Clicks: `profile_settings_opened`,
+`top3_manual_explained`, `user_shelf_bottle {shelf: user_bar|user_wishlist|user_suggested}`.
+Cheers from the page carry `surface: '/u'` or `'/profile'`.
+
 ### Social layer — cards, cheers, comments (#109, 2026-09-12)
 
 The feed is cards (`ActivityCard`) and every card opens `/post/[activityId]`. Reactions live in

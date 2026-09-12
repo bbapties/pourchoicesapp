@@ -68,19 +68,27 @@ export default function Shelf({
       <div className="pc-face pc-lip" />
 
       {/* The plate names the shelf AND opens it: Home is a zoomed-out view of the other tabs. */}
-      <Link
-        href={shelf.href}
-        className="pc-plate"
-        data-coach="home.plate"
-        aria-label={`Open ${shelf.label}`}
-        onClick={onPlateOpen}
-      >
-        {shelf.label}
-        {count !== null ? <span className="pc-plate-count">{count}</span> : null}
-        <span className="pc-plate-go" aria-hidden="true">
-          ›
+      {shelf.href ? (
+        <Link
+          href={shelf.href}
+          className="pc-plate"
+          data-coach="home.plate"
+          aria-label={`Open ${shelf.label}`}
+          onClick={onPlateOpen}
+        >
+          {shelf.label}
+          {count !== null ? <span className="pc-plate-count">{count}</span> : null}
+          <span className="pc-plate-go" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+      ) : (
+        // A user-page shelf (#110) has no tab behind it yet: the plate is a label, not a door.
+        <span className="pc-plate" aria-label={shelf.label}>
+          {shelf.label}
+          {count !== null ? <span className="pc-plate-count">{count}</span> : null}
         </span>
-      </Link>
+      )}
     </section>
   );
 }

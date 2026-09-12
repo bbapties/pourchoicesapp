@@ -76,7 +76,8 @@ export type ShelfFetchOpts = {
 };
 
 export type ShelfDef = {
-  id: ShelfId;
+  /** Home shelves use ShelfId; user-page shelves (#110) build their own ids. */
+  id: ShelfId | string;
   /** Engraved on the front lip of the shelf. */
   label: string;
   /** Where the label plate goes. */
@@ -89,7 +90,7 @@ export type ShelfDef = {
 
 /* ------------------------------------------------------------------ helpers */
 
-type Seed = {
+export type Seed = {
   bottleId: string;
   /** The variant the row actually names, when it names one. Null falls back to the default. */
   variantId: string | null;
@@ -205,7 +206,7 @@ async function resolveStatus(
 }
 
 /** Assemble a page from its seeds. One place, so every shelf renders the same shape. */
-async function buildPage(
+export async function buildPage(
   seeds: Seed[],
   nextCursor: string | null,
   viewerId: string | null,

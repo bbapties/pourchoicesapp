@@ -156,7 +156,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
         ) : (
           <>
             <div className="pt-3">
-              <ActivityCard item={item} viewerId={publicUserId ?? null} onCheer={handleCheer} detail onComment={() => inputRef.current?.focus()} />
+              <ActivityCard item={item} viewerId={publicUserId ?? null} onCheer={handleCheer} detail onComment={() => inputRef.current?.focus()} onOpenUser={(_, username) => router.push(`/u/${encodeURIComponent(username)}`)} />
             </div>
 
             {rank && (

@@ -6,7 +6,7 @@ import ShelfRun from "@/components/home/ShelfRun";
 import PickedUpBottle from "@/components/home/PickedUpBottle";
 import { Toaster } from "@/components/ui/sonner";
 import { logClick, logEvent } from "@/lib/events";
-import { SHELVES, type ShelfBottle, type ShelfId } from "@/lib/shelves";
+import { SHELVES, type ShelfBottle } from "@/lib/shelves";
 
 /**
  * The Home screen — "The Cabinet" (#82).
@@ -30,7 +30,7 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
   // refresh, but it is rare and it is the honest one: a new bottle belongs at the front of My Bar.
   const [reloadKey, setReloadKey] = useState(0);
 
-  const [state, setState] = useState<Record<ShelfId, ShelfState>>({
+  const [state, setState] = useState<Record<string, ShelfState>>({
     mybar: INITIAL,
     social: INITIAL,
     verified: INITIAL,

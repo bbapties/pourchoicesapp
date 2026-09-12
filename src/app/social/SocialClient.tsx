@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
@@ -65,6 +66,7 @@ function mapDetail(result: any, row?: UserBottleRow | null, viewerPublicId?: str
 }
 
 export default function SocialClient() {
+  const router = useRouter();
   const { publicUserId } = useCurrentUser();
   const [rows, setRows] = useState<FeedItem[]>([]);
   // Raw rows fetched so far - the offset for the next page. Cards collapse runs, so rows.length lies.
@@ -243,6 +245,7 @@ export default function SocialClient() {
                 viewerId={publicUserId ?? null}
                 onCheer={handleCheer}
                 onOpenBottle={(bottleId) => openBottle(bottleId)}
+                onOpenUser={(_, username) => router.push(`/u/${encodeURIComponent(username)}`)}
               />
             ))}
             {hasMore && (

@@ -171,6 +171,10 @@ body {
      level down. */
 }
 .pc-run::-webkit-scrollbar { display: none; }
+/* The user page's five suggestions (#110): a short run spread edge to edge, no gaps, no scroll. */
+.pc-spread .pc-run { justify-content: space-between; gap: 0; padding-left: 16px; padding-right: 16px; overflow-x: hidden; }
+.pc-spread .pc-endwall { display: none; }
+.pc-spread .pc-slot { max-height: 58%; }
 .pc-run.is-dragging { cursor: grabbing; }
 
 /* the two ends of the run -- these scroll WITH the bottles.

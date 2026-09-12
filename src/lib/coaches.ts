@@ -330,6 +330,48 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // #110: the Profile tab IS your user page now. Core - the main loop changed: Profile stopped
+    // being a settings list, and every name in Social opens a page like it.
+    id: "profile.page",
+    title: "Profile is your page",
+    body: "Profile now shows your bar, your Top 3, your wishlist and your recent pours — the same page other people see. Settings moved behind the gear.",
+    route: "/profile",
+    core: true,
+    announce: true,
+    tour: [
+      {
+        route: "/profile",
+        anchor: "user.header",
+        caption: "Your page: how many bottles you have tried, how many blinds you have done, and who follows you.",
+      },
+      {
+        route: "/profile",
+        anchor: "user.top3",
+        caption: "Your Top 3 by personal ranking. 'Manual rated' means it came from a star rating — blind-taste it to earn a real rank.",
+      },
+      {
+        route: "/profile",
+        anchor: "profile.settings",
+        caption: "Username, email, notifications, install, feedback and sign out all live under the gear now.",
+      },
+    ],
+  },
+  {
+    id: "user.page",
+    title: "Everyone has a page",
+    body: "Tap any name in Social to see their bar, their Top 3 and what they might like next — a handy gift list.",
+    route: "/social",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/social",
+        anchor: "social.card",
+        caption: "Tap the name or the avatar on any card to open that person's page.",
+      },
+    ],
+  },
+  {
     id: "profile.feedback",
     title: "Send feedback",
     body: "Have an idea, or hit a bug? Tell us right from Profile.",
@@ -339,8 +381,8 @@ export const COACH_CATALOG: CoachItem[] = [
     tour: [
       {
         route: "/profile",
-        anchor: "profile.feedback",
-        caption: "Tap here any time to suggest a feature or report a bug. You can type it, speak it, or attach a screenshot — it goes straight to the team.",
+        anchor: "profile.settings",
+        caption: "Open the gear, then Send Feedback: suggest a feature or report a bug any time. Type it, speak it, or attach a screenshot — it goes straight to the team.",
       },
     ],
   },
@@ -356,8 +398,8 @@ export const COACH_CATALOG: CoachItem[] = [
     tour: [
       {
         route: "/profile",
-        anchor: "profile.notifications",
-        caption: "Turn notifications on or off here. On iPhone they only work once Pour Choices is installed to your home screen - Apple does not allow them in a Safari tab.",
+        anchor: "profile.settings",
+        caption: "Notifications live under the gear. Turn them on or off there. On iPhone they only work once Pour Choices is installed to your home screen - Apple does not allow them in a Safari tab.",
       },
     ],
   },
@@ -374,8 +416,8 @@ export const COACH_CATALOG: CoachItem[] = [
     tour: [
       {
         route: "/profile",
-        anchor: "profile.install",
-        caption: "Chose to stay in the browser? Install it here any time - it opens full screen and sits on your home screen like any other app.",
+        anchor: "profile.settings",
+        caption: "Chose to stay in the browser? Install it from the gear any time - it opens full screen and sits on your home screen like any other app.",
       },
     ],
   },
@@ -402,6 +444,7 @@ const CORE_ORDER = [
   "bottle.have_a_drink",
   "taste.blind",
   "mybar.collection",
+  "profile.page",
   "profile.feedback",
 ];
 
