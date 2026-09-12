@@ -12,6 +12,8 @@ export const dynamic = "force-dynamic";
 //   follow                   -> the followed person, gated by notify_reactions
 //   activity                 -> the poster's followers whose follow row's notify_kinds names
 //                               this action (the bell), never the poster
+//   activity (added_to_db)   -> every admin, when the adder is a data account (account_type =
+//                               'data'); Brian wants to see each bottle those accounts put in.
 // Every recipient still passes the master switch (users.notify_push) inside sendPushTo, and a
 // muted person can never reach the muter: muting deleted the follow row, so there is no bell.
 // Fail-open end to end: the caller's action already happened; this only decides whether phones buzz.
@@ -48,7 +50,7 @@ export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  const { data: caller } = await supabase.from("users").select("id, username").eq("auth_id", user.id).maybeSingle();
+  const { data: caller } = await supabase.from("users").select("id, username, account_type").eq("auth_id", user.id).maybeSingle();
   if (!caller) return NextResponse.json({ error: "No profile" }, { status: 403 });
 
   let body: Body;
@@ -112,16 +114,25 @@ export async function POST(request: Request) {
       .eq("id", body.activityId)
       .eq("user_id", caller.id)
       .maybeSingle();
-    if (!act || !NOTIFY_ACTIONS.has(act.action)) return NextResponse.json({ sent: 0 });
+    if (!act) return NextResponse.json({ sent: 0 });
     const bottle = (Array.isArray(act.bottles) ? act.bottles[0] : act.bottles)?.name ?? "a bottle";
-    const { data: followers } = await admin
-      .from("user_relationships")
-      .select("from_user_id")
-      .eq("to_user_id", caller.id)
-      .eq("kind", "follow")
-      .contains("notify_kinds", [act.action]);
-    recipients = (followers || []).map((f: { from_user_id: string }) => f.from_user_id);
-    msg = { title: `${me} ${verb(act.action, act.pour_type, bottle)}`, body: act.action === "tasted" ? "See who won" : "Open the post", url: `/post/${act.id}` };
+    if (act.action === "added_to_db") {
+      // Feed-hidden, but the admins hear it when a data account did the adding.
+      if (caller.account_type !== "data") return NextResponse.json({ sent: 0 });
+      const { data: admins } = await admin.from("users").select("id").eq("role", "admin");
+      recipients = (admins || []).map((a: { id: string }) => a.id).filter((id) => id !== caller.id);
+      msg = { title: `${me} added ${bottle} to the database`, body: "Open Admin to review it", url: "/admin" };
+    } else {
+      if (!NOTIFY_ACTIONS.has(act.action)) return NextResponse.json({ sent: 0 });
+      const { data: followers } = await admin
+        .from("user_relationships")
+        .select("from_user_id")
+        .eq("to_user_id", caller.id)
+        .eq("kind", "follow")
+        .contains("notify_kinds", [act.action]);
+      recipients = (followers || []).map((f: { from_user_id: string }) => f.from_user_id);
+      msg = { title: `${me} ${verb(act.action, act.pour_type, bottle)}`, body: act.action === "tasted" ? "See who won" : "Open the post", url: `/post/${act.id}` };
+    }
   } else {
     return NextResponse.json({ error: "Unknown kind" }, { status: 400 });
   }

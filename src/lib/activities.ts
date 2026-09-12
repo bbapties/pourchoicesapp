@@ -173,7 +173,8 @@ export async function logActivity(opts: {
 }
 
 /** Actions a follower can ask to be pushed about (the bell's list, minus badges which have no row yet). */
-const NOTIFIED_ACTIONS = new Set<ActivityAction>(["drank", "tasted", "added_to_collection", "wishlisted"]);
+// `added_to_db` is feed-hidden, but the server still hears it: a data account adding a bottle pushes the admins.
+const NOTIFIED_ACTIONS = new Set<ActivityAction>(["drank", "tasted", "added_to_collection", "wishlisted", "added_to_db"]);
 
 /**
  * B.4: delete one of the viewer's own hand-logged activities (a pour / add / finished), which
