@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `912214b` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `31830ec` + this doc commit. All on origin/MVP-v3 and live on prod.
 - **Current phase:** **THE SOCIAL LAYER + USER PAGE SHIPPED, 2026-09-12, in one session** -
   epic **#105**, all nine steps (#106-#114), plus #103 and #104. Designed with Brian in the same
   session; the design record is the #105 body and the mockup canvas (ask Brian for the link).
@@ -180,12 +180,16 @@ it was declined). Signed-in screens were verified through the **Claude-in-Chrome
 Brian's own already-signed-in browser**. That is the way to see a signed-in screen; use it.
 
 ### The single next step
-**Read the board RIGHT TO LEFT.** *In Progress* holds only **#105** (the epic) - it stays open
-until Brian has run the four prod tests above; close it with a comment when he has. *Next Items
-per Brian* is empty. *Top Priority* still holds **#97** (image Checker pass, needs Brian's eyes).
+**Read the board RIGHT TO LEFT.** *In Progress* holds **#115 - the Phase 5 planning session
+(CSS, theme, colours)** - Brian filed it at the end of 2026-09-12 and it is what he wants next.
+It is a PLANNING session: probing questions one at a time, mockups from the app's real markup on
+a design canvas, 2-4 directions before committing, then cards. **No code until the design is
+settled.** *In Progress* also holds **#105** (the social epic) - it stays open until Brian has run
+the four prod tests above; close it with a comment when he has. *Next Items per Brian* is empty.
+*Top Priority* still holds **#97** (image Checker pass, needs Brian's eyes).
 
-Then the natural follow-on is **#21 badges**: the surface (Profile plate) and the push kind
-("Earns a badge") are already waiting for it, and `activities` + `events` have the history.
+After Phase 5 the natural follow-on is **#21 badges**: the surface (Profile plate) and the push
+kind ("Earns a badge") are already waiting for it, and `activities` + `events` have the history.
 
 ### THE ELO ENGINE WAS REWRITTEN AND ALL HISTORY REPLAYED (2026-09-06)
 
@@ -1434,7 +1438,7 @@ the browser against the live DB before pushing.
 | #112 | `118b7db` | avatar upload with circle crop; admin Reset avatar route |
 | #113 | `459565c` | Home Social shelf overlays (closes #104) |
 | #114 | `acf3678` | social pushes (`/api/social/notify`, `push-server.ts`, `notify.ts`); "Reactions to my posts" switch |
-| status | `d04d076` | earmark = count on hand, on cards and the detail tray; shelf LEDs (4 states); `130b495` avatar preview fix |
+| status | `d04d076` `31830ec` | earmark = count on hand (digits from 1), on cards, the detail tray AND social cards, on cards and the detail tray; shelf LEDs (4 states); `130b495` avatar preview fix |
 | #103 | `912214b` | My Bar card uses the shared B-31 earmark |
 
 **Decisions Brian made that are not obvious from the code:**
