@@ -290,7 +290,7 @@ async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE }: ShelfF
 
   let q = supabase
     .from("activities")
-    .select("bottle_id, variant_id, created_at, users!inner(account_type)")
+    .select("bottle_id, variant_id, created_at, users!activities_user_id_fkey!inner(account_type)")
     .eq("users.account_type", "human")
     // Same exclusion as the Social tab -- the shelf is that tab seen from across the room, so a
     // bottle that only ever got verified must not appear on it either.
@@ -387,7 +387,7 @@ async function countSocial() {
     "social",
     await supabase
       .from("activities")
-      .select("bottle_id, users!inner(account_type)")
+      .select("bottle_id, users!activities_user_id_fkey!inner(account_type)")
       .eq("users.account_type", "human")
       .not("action", "in", FEED_HIDDEN_FILTER)
   );

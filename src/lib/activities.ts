@@ -46,6 +46,7 @@ export type ActivityRow = {
   bottleId: string;
   userId: string;
   username: string;
+  avatarUrl?: string | null;
   bottleName: string;
   bottleDistillery?: string | null;
   bottleImageUrl?: string | null;
@@ -188,7 +189,9 @@ export async function fetchLastActivityForBottle(
   });
 }
 
-// `users!inner` is deliberate: the feed is filtered to real people
+// `users!activities_user_id_fkey!inner`: the FK name is spelled out because post_reactions is a
+// junction between activities and users, so PostgREST sees two paths and refuses a bare `users`.
+// `!inner` is deliberate: the feed is filtered to real people
 // (`account_type = 'human'`), and a plain embedded filter would null the embed
 // instead of dropping the row. Seeded ranking accounts (`data`) and QA accounts
 // (`test`) still move personal + global Elo -- they just never post here.
@@ -210,7 +213,7 @@ export async function fetchLastActivityForBottle(
  */
 const FEED_SELECT = `
   id, action, pour_type, created_at, bottle_id, variant_id, user_id,
-  users!inner ( username ),
+  users!activities_user_id_fkey!inner ( username, avatar_url ),
   bottles ( name, distillery ),
   bottle_variants ( frontimage_url )
 `;
@@ -264,6 +267,7 @@ export async function fetchActivityFeed(opts: {
       bottleId: raw.bottle_id,
       userId: raw.user_id,
       username: user?.username ?? "Someone",
+      avatarUrl: user?.avatar_url ?? null,
       bottleName: bottle?.name ?? "Unknown bottle",
       bottleDistillery: bottle?.distillery ?? null,
       // The version the post was actually about, when it names one -- a store pick or a specific
