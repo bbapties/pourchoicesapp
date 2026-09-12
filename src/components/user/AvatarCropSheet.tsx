@@ -28,16 +28,25 @@ export default function AvatarCropSheet({ open, onOpenChange, userId, onSaved }:
   const fileRef = useRef<HTMLInputElement | null>(null);
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
 
+  // The preview <img> reads the same blob URL the decoder used, so the URL must live until the
+  // picture is replaced or the sheet closes - revoking it on decode (the first version) left a
+  // blank preview on a real phone photo, where nothing was cached.
+  const urlRef = useRef<string | null>(null);
+  const dropUrl = () => { if (urlRef.current) { URL.revokeObjectURL(urlRef.current); urlRef.current = null; } };
+
   useEffect(() => {
-    if (!open) { setImg(null); setZoom(1); setPos({ x: 0, y: 0 }); }
+    if (!open) { setImg(null); setZoom(1); setPos({ x: 0, y: 0 }); dropUrl(); }
   }, [open]);
+  useEffect(() => () => dropUrl(), []);
 
   const pick = (f: File | null) => {
     if (!f) return;
+    dropUrl();
     const url = URL.createObjectURL(f);
+    urlRef.current = url;
     const el = new Image();
-    el.onload = () => { setImg(el); setZoom(1); setPos({ x: 0, y: 0 }); URL.revokeObjectURL(url); };
-    el.onerror = () => { toast.error("Couldn't read that image"); URL.revokeObjectURL(url); };
+    el.onload = () => { setImg(el); setZoom(1); setPos({ x: 0, y: 0 }); };
+    el.onerror = () => { toast.error("Couldn't read that image - try a JPG or PNG"); dropUrl(); };
     el.src = url;
   };
 
@@ -105,7 +114,7 @@ export default function AvatarCropSheet({ open, onOpenChange, userId, onSaved }:
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="border-t border-charcoal" style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}>
+      <SheetContent side="bottom" className="border-t border-charcoal max-h-[92vh] overflow-y-auto" style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}>
         <SheetHeader className="mb-2">
           <SheetTitle className="text-charcoal text-left">Profile photo</SheetTitle>
           <SheetDescription className="text-charcoal opacity-70 text-left">Drag to position, slide to zoom. It shows as a circle everywhere.</SheetDescription>
