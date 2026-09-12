@@ -37,13 +37,13 @@ export default function RouteError({
   return (
     <div className="flex flex-col items-center justify-center gap-4 p-8 text-center" style={{ minHeight: "60dvh" }}>
       <div className="text-4xl">🥃</div>
-      <h1 className="text-lg font-semibold text-charcoal">This screen hit a snag</h1>
-      <p className="text-sm text-gray-600 max-w-sm">
+      <h1 className="text-lg font-semibold text-cream">This screen hit a snag</h1>
+      <p className="text-sm text-cream-mute max-w-sm">
         Something went wrong loading this page. We&apos;ve been told about it.
       </p>
       <button
         onClick={reset}
-        className="rounded-xl bg-gray-900 px-6 py-3 text-sm font-semibold text-white"
+        className="rounded-xl bg-brass px-6 py-3 text-sm font-semibold text-engrave"
         style={{ minHeight: 44 }}
       >
         Try again

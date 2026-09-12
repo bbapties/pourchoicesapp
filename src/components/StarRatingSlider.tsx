@@ -72,13 +72,13 @@ export default function StarRatingSlider({
       <div className="flex items-center justify-between mb-2">
         {/* Star fill visualization (outline row + clipped filled row) */}
         <div className="relative inline-flex">
-          <div className="flex gap-1 text-gray-300">
+          <div className="flex gap-1 text-cream-faint">
             {[0, 1, 2, 3, 4].map((i) => (
               <Star key={i} size={22} fill="currentColor" strokeWidth={0} />
             ))}
           </div>
           <div
-            className="absolute inset-0 overflow-hidden flex gap-1 text-charcoal"
+            className="absolute inset-0 overflow-hidden flex gap-1 text-cream"
             style={{ width: `${pct}%` }}
           >
             {[0, 1, 2, 3, 4].map((i) => (
@@ -86,7 +86,7 @@ export default function StarRatingSlider({
             ))}
           </div>
         </div>
-        <span className="text-base font-semibold tabular-nums text-charcoal">{value.toFixed(1)}</span>
+        <span className="text-base font-semibold tabular-nums text-cream">{value.toFixed(1)}</span>
       </div>
 
       {/* The padding is the touch target: the visible track is 6px, the grabbable band is 40px. */}
@@ -100,7 +100,7 @@ export default function StarRatingSlider({
         aria-valuetext={`${value.toFixed(1)} of 5 stars`}
         aria-disabled={disabled || undefined}
         tabIndex={disabled ? -1 : 0}
-        className={`relative w-full py-4 select-none outline-none focus-visible:ring-2 focus-visible:ring-charcoal rounded ${
+        className={`relative w-full py-4 select-none outline-none focus-visible:ring-2 focus-visible:ring-brass rounded ${
           disabled ? "opacity-50" : "cursor-pointer"
         }`}
         style={{ touchAction: "none" }}
@@ -140,11 +140,11 @@ export default function StarRatingSlider({
           handler();
         }}
       >
-        <div className="h-1.5 w-full rounded-full bg-gray-300">
-          <div className="h-full rounded-full bg-charcoal" style={{ width: `${pct}%` }} />
+        <div className="h-1.5 w-full rounded-full bg-panel-3">
+          <div className="h-full rounded-full bg-brass" style={{ width: `${pct}%` }} />
         </div>
         <div
-          className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-gray-500 bg-charcoal"
+          className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-edge bg-brass"
           style={{ left: `${pct}%` }}
         />
       </div>

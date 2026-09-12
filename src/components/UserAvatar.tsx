@@ -19,13 +19,13 @@ export default function UserAvatar({ username, avatarUrl, size = 36, className =
     width: size,
     height: size,
     fontSize: Math.round(size * 0.38),
-    background: avatarUrl ? "#EDEDED" : avatarTint(username),
+    background: avatarUrl ? "#241d17" : avatarTint(username),
   };
   const label = username ? `@${username}` : "user";
 
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full border border-charcoal font-semibold text-charcoal shrink-0 overflow-hidden select-none ${className}`}
+      className={`inline-flex items-center justify-center rounded-full font-semibold text-cream shadow-[0_0_0_2px_#9c7524,0_0_0_3px_rgba(0,0,0,.6)] shrink-0 overflow-hidden select-none ${className}`}
       style={style}
       role="img"
       aria-label={label}

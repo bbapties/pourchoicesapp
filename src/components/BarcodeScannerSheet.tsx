@@ -136,7 +136,7 @@ export default function BarcodeScannerSheet({ open, onClose, onDetected }: Barco
 
   return (
     <div className="fixed inset-0 z-[60] bg-black flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 text-white">
+      <div className="flex items-center justify-between px-4 py-3 text-cream">
         <span className="text-sm font-medium">Scan a bottle barcode</span>
         <button onClick={onClose} aria-label="Close scanner" className="p-1">
           <X className="w-6 h-6" />
@@ -147,16 +147,16 @@ export default function BarcodeScannerSheet({ open, onClose, onDetected }: Barco
         <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" muted playsInline />
         {/* Aiming frame */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-72 h-40 rounded-lg border-2 border-white/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
+          <div className="w-72 h-40 rounded-lg border-2 border-cream/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
         </div>
         {error && (
-          <div className="absolute inset-x-0 bottom-0 p-6 bg-black/70 text-white text-sm text-center">
+          <div className="absolute inset-x-0 bottom-0 p-6 bg-black/70 text-cream text-sm text-center">
             {error}
           </div>
         )}
       </div>
 
-      <div className="px-4 py-3 text-center text-white/70 text-xs">
+      <div className="px-4 py-3 text-center text-cream/70 text-xs">
         Center the barcode in the frame
       </div>
     </div>

@@ -295,14 +295,13 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
           padding clears the phone's home indicator / browser chrome. */}
       <SheetContent
         side="bottom"
-        style={{ backgroundColor: '#FFFFFF' }}
-        className="h-full bg-white overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+2rem)]"
+        className="h-full bg-panel overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+2rem)]"
       >
         <SheetHeader>
-          <SheetTitle className="text-charcoal">
+          <SheetTitle className="text-cream">
             {initialBarcode ? "We don't have this one yet" : "Add New Bottle"}
           </SheetTitle>
-          <SheetDescription className="text-charcoal">
+          <SheetDescription className="text-cream">
             Just the name and a photo — we&apos;ll fill in the rest and review it before
             it goes live.
           </SheetDescription>
@@ -315,10 +314,10 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-charcoal">Bottle Name *</FormLabel>
+                  <FormLabel className="text-cream">Bottle Name *</FormLabel>
                   <FormControl>
                     <Input
-                      className="bg-ivory text-charcoal border-charcoal"
+                      className="bg-panel text-cream border-brass-line"
                       placeholder="e.g., Macallan 18"
                       {...field}
                     />
@@ -329,8 +328,8 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
             />
 
             <div className="relative space-y-2">
-              <label className="text-charcoal text-sm font-medium">Photo *</label>
-              <p className="text-xs text-charcoal opacity-70">
+              <label className="text-cream text-sm font-medium">Photo *</label>
+              <p className="text-xs text-cream opacity-70">
                 Get the front label in frame — it&apos;s what we use to fill in the details.
               </p>
 
@@ -340,14 +339,14 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
                   <img
                     src={imagePreview}
                     alt="Bottle photo to submit"
-                    className="h-28 w-28 rounded-md border border-charcoal object-contain bg-white"
+                    className="h-28 w-28 rounded-md border border-brass-line object-contain bg-panel"
                   />
                   <div className="min-w-0 flex-1 flex flex-wrap gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="border-charcoal text-charcoal"
+                      className="border-brass-line text-cream"
                       onClick={() => cameraInputRef.current?.click()}
                     >
                       <Camera className="mr-1.5 h-4 w-4" /> Retake
@@ -356,7 +355,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="border-charcoal text-charcoal"
+                      className="border-brass-line text-cream"
                       onClick={() => libraryInputRef.current?.click()}
                     >
                       <ImageIcon className="mr-1.5 h-4 w-4" /> Library
@@ -365,7 +364,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="text-charcoal"
+                      className="text-cream"
                       onClick={clearImage}
                     >
                       <X className="mr-1.5 h-4 w-4" /> Remove
@@ -377,7 +376,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1 border-charcoal text-charcoal"
+                    className="flex-1 border-brass-line text-cream"
                     onClick={() => cameraInputRef.current?.click()}
                   >
                     <Camera className="mr-2 h-4 w-4" /> Take photo
@@ -385,7 +384,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1 border-charcoal text-charcoal"
+                    className="flex-1 border-brass-line text-cream"
                     onClick={() => libraryInputRef.current?.click()}
                   >
                     <ImageIcon className="mr-2 h-4 w-4" /> Library
@@ -393,7 +392,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
                 </div>
               )}
 
-              {imageError && <p className="text-xs text-red-600">{imageError}</p>}
+              {imageError && <p className="text-xs text-red-400">{imageError}</p>}
 
               {/* `capture="environment"` opens the rear camera directly; the second input
                   is deliberately capture-less so the library stays reachable.
@@ -429,7 +428,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
               name="special"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-charcoal">Is this a special version?</FormLabel>
+                  <FormLabel className="text-cream">Is this a special version?</FormLabel>
                   <FormControl>
                     <div className="flex flex-wrap gap-2">
                       {specialOptions.map((opt) => (
@@ -446,8 +445,8 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
                           }}
                           className={`rounded-full border px-3 py-1.5 text-sm ${
                             field.value === opt.value
-                              ? "bg-charcoal text-white border-charcoal"
-                              : "bg-white text-charcoal border-gray-400"
+                              ? "pc-brass bg-brass text-engrave border-brass-line"
+                              : "bg-panel text-cream border-edge"
                           }`}
                         >
                           {opt.label}
@@ -465,12 +464,12 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
                 name="specialDetail"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-charcoal">
+                    <FormLabel className="text-cream">
                       {special === "store_pick" ? "Store name *" : "What makes it different? *"}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        className="bg-ivory text-charcoal border-charcoal"
+                        className="bg-panel text-cream border-brass-line"
                         placeholder={
                           special === "store_pick"
                             ? "e.g., Gaspar's Liquor Store"
@@ -479,7 +478,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
                         {...field}
                       />
                     </FormControl>
-                    <p className="text-xs text-charcoal opacity-70">
+                    <p className="text-xs text-cream opacity-70">
                       {special === "store_pick"
                         ? "Only you will see this version. Without the store name it can't be told apart from the standard bottle."
                         : "Everyone sees this version, so it needs something that identifies it."}
@@ -493,7 +492,7 @@ export default function ProvisionalSheet({ open, onOpenChange, onBottleAdded, in
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-gray-300 text-charcoal hover:bg-gray-400 border border-charcoal"
+              className="w-full bg-panel-3 text-cream hover:bg-cream-faint border border-brass-line"
             >
               {isSubmitting ? "Adding Bottle..." : "Add Bottle"}
             </Button>

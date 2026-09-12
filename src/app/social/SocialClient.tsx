@@ -260,8 +260,8 @@ export default function SocialClient() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 flex items-center justify-center" style={{ top: "env(safe-area-inset-top)" }}>
-        <h1 className="text-base font-semibold text-charcoal">Social</h1>
+      <header className="fixed top-0 left-0 right-0 h-14 pc-wood pc-rail-bottom z-20 shadow-[0_6px_14px_rgba(0,0,0,.55)] flex items-center justify-center" style={{ top: "env(safe-area-inset-top)" }}>
+        <h1 className="font-display text-[22px] font-bold tracking-wide pc-brass-text">Social</h1>
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
@@ -269,12 +269,12 @@ export default function SocialClient() {
           aria-label="Find people"
           data-coach="social.find"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2F2F2F" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f6ecd9" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
         </button>
       </header>
 
       <div className="max-w-md mx-auto" data-coach="social.feed">
-        <div className="flex mx-4 border-b border-gray-300" role="tablist" data-coach="social.tabs">
+        <div className="flex mx-4 border-b border-edge" role="tablist" data-coach="social.tabs">
           {(["following", "everyone"] as FeedScope[]).map((t) => {
             const on = scope === t;
             return (
@@ -284,7 +284,7 @@ export default function SocialClient() {
                 role="tab"
                 aria-selected={on}
                 onClick={() => switchScope(t)}
-                className={`flex-1 pt-3 pb-2.5 text-[13px] ${on ? "font-semibold text-black border-b-2 border-black" : "font-medium text-gray-400 border-b-2 border-transparent"}`}
+                className={`flex-1 pt-3 pb-2.5 text-[13px] ${on ? "font-semibold text-cream border-b-2 border-brass" : "font-medium text-cream-faint border-b-2 border-transparent"}`}
               >
                 {t === "following" ? "Following" : "Everyone"}
               </button>
@@ -293,25 +293,25 @@ export default function SocialClient() {
         </div>
 
         {isLoading && rows.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 py-12">Loading activity...</p>
+          <p className="text-center text-sm text-cream-faint py-12">Loading activity...</p>
         ) : rows.length === 0 && scope === "following" ? (
           <div className="px-7 pt-14 text-center flex flex-col items-center gap-3.5">
-            <div className="text-base font-semibold text-charcoal">
+            <div className="text-base font-semibold text-cream">
               {graph && graph.following.length > 0 ? "Nothing from the people you follow yet" : "You’re not following anyone yet"}
             </div>
-            <p className="text-[13px] text-gray-500 leading-relaxed">Find people by username, or tap a name in Everyone.</p>
+            <p className="text-[13px] text-cream-mute leading-relaxed">Find people by username, or tap a name in Everyone.</p>
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="w-full h-11 border border-charcoal rounded-lg flex items-center gap-2.5 px-3 text-sm text-gray-400 bg-white mt-2"
+              className="w-full h-11 border border-brass-line rounded-lg flex items-center gap-2.5 px-3 text-sm text-cream-faint bg-panel mt-2"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
               Search usernames
             </button>
-            <button type="button" onClick={() => switchScope("everyone")} className="text-xs text-gray-600 underline underline-offset-2 mt-1">See everyone</button>
+            <button type="button" onClick={() => switchScope("everyone")} className="text-xs text-cream-mute underline underline-offset-2 mt-1">See everyone</button>
           </div>
         ) : rows.length === 0 ? (
-          <p className="text-center text-sm text-gray-500 px-6 py-12">
+          <p className="text-center text-sm text-cream-mute px-6 py-12">
             No activity yet. Have a drink or add a bottle to get the feed started.
           </p>
         ) : (
@@ -332,7 +332,7 @@ export default function SocialClient() {
                   type="button"
                   onClick={() => load(false)}
                   disabled={isLoadingMore}
-                  className="text-sm text-gray-600 underline disabled:opacity-50"
+                  className="text-sm text-cream-mute underline disabled:opacity-50"
                 >
                   {isLoadingMore ? "Loading..." : "Load more"}
                 </button>

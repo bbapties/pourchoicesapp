@@ -42,12 +42,11 @@ export default function RatePromptSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="border-t border-charcoal"
-        style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}
+        className="border-t border-brass-line"
       >
         <SheetHeader>
-          <SheetTitle className="text-charcoal">Rate {bottleName}</SheetTitle>
-          <SheetDescription className="text-charcoal opacity-70">
+          <SheetTitle className="text-cream">Rate {bottleName}</SheetTitle>
+          <SheetDescription className="text-cream opacity-70">
             Your gut rating until you blind-taste it. You can change it anytime.
           </SheetDescription>
         </SheetHeader>
@@ -61,7 +60,7 @@ export default function RatePromptSheet({
             type="button"
             onClick={onSkip}
             disabled={isSaving}
-            className="flex-1 rounded-lg border border-charcoal py-2.5 text-sm font-medium text-charcoal disabled:opacity-50"
+            className="flex-1 rounded-lg border border-brass-line py-2.5 text-sm font-medium text-cream disabled:opacity-50"
           >
             Skip
           </button>
@@ -69,8 +68,8 @@ export default function RatePromptSheet({
             type="button"
             onClick={() => onSave(stars)}
             disabled={isSaving}
-            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ backgroundColor: "#2F2F2F" }}
+            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-cream disabled:opacity-50"
+            style={{ backgroundColor: "#bd9436" }}
           >
             {isSaving ? "Saving..." : "Save rating"}
           </button>

@@ -116,7 +116,7 @@ export default function PickedUpBottle({
                aria-hidden="true">
             <path
               d="M23 7h12v27c0 8 13 12 13 27v102c0 7-4 10-10 10H20c-6 0-10-3-10-10V61c0-15 13-19 13-27z"
-              fill="#F7F7F7" stroke="#2F2F2F" strokeWidth="1.4" strokeDasharray="5 3"
+              fill="#241d17" stroke="#8a6a2a" strokeWidth="1.4" strokeDasharray="5 3"
             />
           </svg>
         ) : (
@@ -126,9 +126,9 @@ export default function PickedUpBottle({
         )}
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 bg-ivory rounded-t-2xl border-t border-charcoal p-4">
-        <h2 className="text-lg font-semibold text-charcoal">{bottle.name}</h2>
-        {bottle.distillery ? <p className="text-xs text-gray-500">{bottle.distillery}</p> : null}
+      <div className="absolute inset-x-0 bottom-0 pc-leather rounded-t-2xl p-4">
+        <h2 className="text-lg font-semibold text-cream">{bottle.name}</h2>
+        {bottle.distillery ? <p className="text-xs text-cream-mute">{bottle.distillery}</p> : null}
 
         <div className="flex flex-wrap gap-1.5 mt-2">
           {owned ? <Tag>In your bar</Tag> : null}
@@ -141,27 +141,27 @@ export default function PickedUpBottle({
           <button
             disabled={!details}
             onClick={() => setOpenDetail("pour")}
-            className="col-span-2 py-3 rounded-lg bg-charcoal text-ivory font-semibold text-sm disabled:opacity-50"
+            className="col-span-2 py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm disabled:opacity-50"
           >
             Have a drink
           </button>
           <button
             disabled={!details}
             onClick={() => setOpenDetail("plain")}
-            className="py-3 rounded-lg border border-charcoal text-charcoal font-semibold text-sm disabled:opacity-50"
+            className="py-3 rounded-lg border border-brass-line text-cream font-semibold text-sm disabled:opacity-50"
           >
             Bottle details
           </button>
           <button
             disabled={busy || owned}
             onClick={addToBar}
-            className="py-3 rounded-lg border border-charcoal text-charcoal font-semibold text-sm disabled:opacity-40"
+            className="py-3 rounded-lg border border-brass-line text-cream font-semibold text-sm disabled:opacity-40"
           >
             {owned ? "In My Bar" : "Add to My Bar"}
           </button>
         </div>
 
-        <button onClick={onClose} className="w-full mt-3 py-2 text-sm text-gray-500">
+        <button onClick={onClose} className="w-full mt-3 py-2 text-sm text-cream-mute">
           Put it back
         </button>
       </div>
@@ -171,7 +171,7 @@ export default function PickedUpBottle({
 
 function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] uppercase tracking-wide font-semibold text-charcoal border border-gray-300 rounded px-2 py-0.5">
+    <span className="text-[10px] uppercase tracking-wide font-semibold text-cream border border-edge rounded px-2 py-0.5">
       {children}
     </span>
   );

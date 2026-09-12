@@ -130,7 +130,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
   };
 
   if (loading) {
-    return <div className="text-sm text-gray-500">Loading users…</div>;
+    return <div className="text-sm text-cream-mute">Loading users…</div>;
   }
 
   return (
@@ -140,28 +140,28 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
         placeholder="Search username or email"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full border border-charcoal rounded px-3 py-2 text-sm bg-white"
+        className="w-full border border-brass-line rounded px-3 py-2 text-sm bg-panel"
       />
 
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-cream-mute">
         {filtered.length} of {users.length} users
       </div>
 
-      <ul className="divide-y divide-gray-200 border border-gray-200 rounded bg-white">
+      <ul className="divide-y divide-edge border border-edge rounded bg-panel">
         {filtered.map((u) => {
           const isSelf = u.id === currentPublicUserId;
           return (
             <li key={u.id} className="px-3 py-3 flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-charcoal truncate">{u.username}</span>
+                  <span className="font-semibold text-sm text-cream truncate">{u.username}</span>
                   {u.role === "admin" && (
-                    <span className="text-[10px] uppercase tracking-wide bg-charcoal text-white px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] uppercase tracking-wide pc-brass bg-brass text-engrave px-1.5 py-0.5 rounded">
                       admin
                     </span>
                   )}
                   {isSelf && (
-                    <span className="text-[10px] uppercase tracking-wide bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] uppercase tracking-wide bg-panel-3 text-cream px-1.5 py-0.5 rounded">
                       you
                     </span>
                   )}
@@ -175,7 +175,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
                   {u.pushDevices !== null &&
                     (u.pushDevices > 0 ? (
                       <span
-                        className="flex items-center gap-0.5 text-charcoal"
+                        className="flex items-center gap-0.5 text-cream"
                         title={`Notifications on — ${u.pushDevices} device${u.pushDevices === 1 ? "" : "s"}`}
                         aria-label={`Notifications on, ${u.pushDevices} device${u.pushDevices === 1 ? "" : "s"}`}
                       >
@@ -186,7 +186,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
                       </span>
                     ) : (
                       <span
-                        className="text-gray-400"
+                        className="text-cream-faint"
                         title="Notifications enabled, but no registered device — they cannot receive one"
                         aria-label="Notifications enabled but unreachable"
                       >
@@ -194,8 +194,8 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
                       </span>
                     ))}
                 </div>
-                <div className="text-xs text-gray-500 truncate">{u.email}</div>
-                <div className="text-xs text-gray-400 mt-1">
+                <div className="text-xs text-cream-mute truncate">{u.email}</div>
+                <div className="text-xs text-cream-faint mt-1">
                   {u.bottleCount} bottles · {u.sessionCount} sessions · joined{" "}
                   {new Date(u.created_at).toLocaleDateString()}
                 </div>
@@ -208,7 +208,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
                     toast.success(`Avatar reset for ${u.username}`);
                     setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, avatar_url: null } : x)));
                   }}
-                  className="text-xs px-3 py-1.5 border border-gray-400 text-gray-700 rounded mr-2"
+                  className="text-xs px-3 py-1.5 border border-edge text-cream rounded mr-2"
                   title="Clear their photo; the initials disc takes over"
                 >
                   Reset avatar
@@ -217,7 +217,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
               <button
                 disabled={isSelf}
                 onClick={() => openConfirm(u)}
-                className="text-xs px-3 py-1.5 border border-red-600 text-red-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                className="text-xs px-3 py-1.5 border border-red-600 text-red-400 rounded disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Delete
               </button>
@@ -225,7 +225,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
           );
         })}
         {filtered.length === 0 && (
-          <li className="px-3 py-6 text-center text-sm text-gray-400">No users match.</li>
+          <li className="px-3 py-6 text-center text-sm text-cream-faint">No users match.</li>
         )}
       </ul>
 
@@ -235,12 +235,12 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
           onClick={closeConfirm}
         >
           <div
-            className="bg-white rounded-lg w-full max-w-sm p-5 space-y-4"
+            className="bg-panel rounded-lg w-full max-w-sm p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div>
-              <h2 className="font-semibold text-charcoal">Delete user</h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <h2 className="font-semibold text-cream">Delete user</h2>
+              <p className="text-sm text-cream-mute mt-1">
                 This will permanently remove <span className="font-semibold">{confirmFor.username}</span>,
                 their {confirmFor.bottleCount} bottles in My Bar, {confirmFor.sessionCount} tasting sessions,
                 and their auth record. This cannot be undone.
@@ -248,7 +248,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
             </div>
 
             <div>
-              <label className="text-xs text-gray-600">
+              <label className="text-xs text-cream-mute">
                 Type <span className="font-mono">{confirmFor.username}</span> to confirm
               </label>
               <input
@@ -256,7 +256,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
                 type="text"
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
-                className="w-full border border-charcoal rounded px-3 py-2 text-sm mt-1"
+                className="w-full border border-brass-line rounded px-3 py-2 text-sm mt-1"
               />
             </div>
 
@@ -264,14 +264,14 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
               <button
                 onClick={closeConfirm}
                 disabled={deleting}
-                className="px-3 py-2 text-sm text-gray-600"
+                className="px-3 py-2 text-sm text-cream-mute"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={!confirmMatches || deleting}
-                className="px-3 py-2 text-sm bg-red-600 text-white rounded disabled:opacity-40"
+                className="px-3 py-2 text-sm bg-red-600 text-cream rounded disabled:opacity-40"
               >
                 {deleting ? "Deleting…" : "Delete permanently"}
               </button>

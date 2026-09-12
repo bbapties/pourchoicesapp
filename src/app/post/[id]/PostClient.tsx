@@ -142,20 +142,20 @@ export default function PostClient({ activityId }: { activityId: string }) {
   return (
     <div className="min-h-full flex flex-col">
       <header
-        className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 flex items-center justify-center"
+        className="fixed top-0 left-0 right-0 h-14 pc-wood pc-rail-bottom z-20 shadow-[0_6px_14px_rgba(0,0,0,.55)] flex items-center justify-center"
         style={{ top: "env(safe-area-inset-top)" }}
       >
         <button type="button" onClick={() => router.back()} className="absolute left-3 w-10 h-10 flex items-center justify-center" aria-label="Back">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2F2F2F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f6ecd9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
-        <h1 className="text-base font-semibold text-charcoal">{title}</h1>
+        <h1 className="font-display text-lg font-bold tracking-wide pc-brass-text">{title}</h1>
       </header>
 
       <div className="max-w-md w-full mx-auto pt-[calc(56px+env(safe-area-inset-top))] pb-28 flex-1">
         {missing ? (
-          <p className="text-center text-sm text-gray-500 px-6 py-12">This post is gone.</p>
+          <p className="text-center text-sm text-cream-mute px-6 py-12">This post is gone.</p>
         ) : !item ? (
-          <p className="text-center text-sm text-gray-400 py-12">Loading…</p>
+          <p className="text-center text-sm text-cream-faint py-12">Loading…</p>
         ) : (
           <>
             <div className="pt-3">
@@ -163,27 +163,27 @@ export default function PostClient({ activityId }: { activityId: string }) {
             </div>
 
             {rank && (
-              <p className="px-4 -mt-1 mb-2 text-xs text-gray-500">
+              <p className="px-4 -mt-1 mb-2 text-xs text-cream-mute">
                 #{rank.rank} of @{item.username}&apos;s {rank.of}
               </p>
             )}
 
             {publicUserId && publicUserId !== item.userId && item.action !== "tasted" && (
               <div className="flex gap-2.5 px-4 py-2">
-                <button type="button" onClick={addToBar} className="flex-1 h-11 rounded-lg border border-gray-400 bg-white text-sm font-semibold text-charcoal">Add to my bar</button>
-                <button type="button" onClick={wishlist} className="flex-1 h-11 rounded-lg border border-gray-400 bg-white text-sm font-semibold text-charcoal">Wishlist</button>
+                <button type="button" onClick={addToBar} className="flex-1 h-11 rounded-lg border border-edge bg-panel text-sm font-semibold text-cream">Add to my bar</button>
+                <button type="button" onClick={wishlist} className="flex-1 h-11 rounded-lg border border-edge bg-panel text-sm font-semibold text-cream">Wishlist</button>
               </div>
             )}
 
             {item.cheers > 0 && (
               <div className="px-4 py-2">
-                <button type="button" onClick={showCheerers} className="text-xs text-gray-600 underline underline-offset-2">
+                <button type="button" onClick={showCheerers} className="text-xs text-cream-mute underline underline-offset-2">
                   {item.cheers} cheer{item.cheers === 1 ? "" : "s"}
                 </button>
                 {cheerers && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {cheerers.map((u) => (
-                      <span key={u.userId} className="inline-flex items-center gap-1.5 text-xs text-charcoal">
+                      <span key={u.userId} className="inline-flex items-center gap-1.5 text-xs text-cream">
                         <UserAvatar username={u.username} avatarUrl={u.avatarUrl} size={20} />@{u.username}
                       </span>
                     ))}
@@ -192,9 +192,9 @@ export default function PostClient({ activityId }: { activityId: string }) {
               </div>
             )}
 
-            <div className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[.14em] text-charcoal">Comments</div>
+            <div className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[.14em] text-cream">Comments</div>
             {roots.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-gray-500">No comments yet.</p>
+              <p className="px-4 py-3 text-sm text-cream-mute">No comments yet.</p>
             ) : (
               <div className="pb-2">
                 {roots.map((c) => (
@@ -213,11 +213,11 @@ export default function PostClient({ activityId }: { activityId: string }) {
 
       {item && publicUserId && (
         <div
-          className="fixed left-0 right-0 bg-white border-t border-gray-300 px-3 py-2 z-20"
+          className="fixed left-0 right-0 bg-panel border-t border-edge px-3 py-2 z-20"
           style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}
         >
           {replyTo && (
-            <div className="flex items-center justify-between text-xs text-gray-600 px-1 pb-1">
+            <div className="flex items-center justify-between text-xs text-cream-mute px-1 pb-1">
               <span>Replying to @{replyTo.username}</span>
               <button type="button" onClick={() => setReplyTo(null)} className="underline underline-offset-2">Cancel</button>
             </div>
@@ -230,7 +230,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
               rows={1}
               maxLength={2000}
               placeholder="Add a comment"
-              className="flex-1 border border-gray-400 rounded-2xl px-3.5 py-2 text-sm text-black bg-white resize-none"
+              className="flex-1 border border-edge rounded-2xl px-3.5 py-2 text-sm text-cream bg-panel resize-none"
               style={{ minHeight: 40 }}
               data-coach="social.comment"
             />
@@ -238,8 +238,8 @@ export default function PostClient({ activityId }: { activityId: string }) {
               type="button"
               onClick={submit}
               disabled={busy || !draft.trim()}
-              className="h-10 px-4 rounded-full text-sm font-semibold text-white disabled:opacity-40"
-              style={{ backgroundColor: "#2F2F2F" }}
+              className="h-10 px-4 rounded-full text-sm font-semibold text-cream disabled:opacity-40"
+              style={{ backgroundColor: "#bd9436" }}
             >
               Post
             </button>
@@ -258,16 +258,16 @@ function CommentRow({ c, indent = false, canDelete, onReply, onDelete }: { c: Co
       <UserAvatar username={c.username} avatarUrl={c.avatarUrl} size={28} />
       <div className="flex-1 min-w-0">
         <div className="text-xs">
-          <span className="font-semibold text-charcoal">@{c.username}</span>
-          <span className="text-gray-400"> · {formatFeedTime(c.createdAt)}</span>
+          <span className="font-semibold text-cream">@{c.username}</span>
+          <span className="text-cream-faint"> · {formatFeedTime(c.createdAt)}</span>
         </div>
         {c.deleted ? (
-          <p className="text-[13px] text-gray-400 italic mt-0.5">Comment removed</p>
+          <p className="text-[13px] text-cream-faint italic mt-0.5">Comment removed</p>
         ) : (
-          <p className="text-[13px] leading-snug text-gray-800 mt-0.5 whitespace-pre-wrap">{c.body}</p>
+          <p className="text-[13px] leading-snug text-cream mt-0.5 whitespace-pre-wrap">{c.body}</p>
         )}
         {!c.deleted && (
-          <div className="flex gap-3 mt-1 text-[11px] text-gray-500">
+          <div className="flex gap-3 mt-1 text-[11px] text-cream-mute">
             <button type="button" onClick={onReply} className="underline-offset-2 hover:underline">Reply</button>
             {canDelete && <button type="button" onClick={onDelete} className="underline-offset-2 hover:underline">Delete</button>}
           </div>

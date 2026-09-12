@@ -77,11 +77,11 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold text-charcoal">Shelf images</h2>
-        <p className="text-xs text-gray-500 mt-0.5">
+        <h2 className="text-base font-semibold text-cream">Shelf images</h2>
+        <p className="text-xs text-cream-mute mt-0.5">
           Judge each image as it will appear on Home. Approve puts it on the shelf; rejecting tags
           what is wrong with it, which becomes the work queue for cleanup.
-          <strong className="text-charcoal"> Most recently active on the left.</strong>
+          <strong className="text-cream"> Most recently active on the left.</strong>
         </p>
       </div>
 
@@ -94,7 +94,7 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
               key={s}
               onClick={() => toggleState(s)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                on ? "bg-charcoal text-ivory border-charcoal" : "bg-ivory text-charcoal border-gray-300"
+                on ? "pc-brass bg-brass text-engrave border-brass-line" : "bg-panel text-cream border-edge"
               }`}
             >
               {STATE_LABEL[s]}
@@ -107,7 +107,7 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
       <button
         onClick={() => setOwnedOnly((v) => !v)}
         className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-          ownedOnly ? "bg-charcoal text-ivory border-charcoal" : "bg-ivory text-charcoal border-gray-300"
+          ownedOnly ? "pc-brass bg-brass text-engrave border-brass-line" : "bg-panel text-cream border-edge"
         }`}
       >
         Only bottles someone owns
@@ -119,20 +119,20 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
             key={id}
             onClick={() => setBackdrop(id)}
             className={`px-3 py-1.5 rounded-lg text-xs border ${
-              backdrop === id ? "bg-charcoal text-ivory border-charcoal" : "bg-ivory text-charcoal border-gray-300"
+              backdrop === id ? "pc-brass bg-brass text-engrave border-brass-line" : "bg-panel text-cream border-edge"
             }`}
           >
             {label}
           </button>
         ))}
-        <span className="text-xs text-gray-500 self-center ml-1">backdrop</span>
+        <span className="text-xs text-cream-mute self-center ml-1">backdrop</span>
       </div>
 
       {states.includes("rejected") && reasons.length > 0 ? (
         <select
           value={reasonFilter ?? ""}
           onChange={(e) => setReasonFilter(e.target.value || null)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-ivory text-charcoal"
+          className="w-full border border-edge rounded-lg px-3 py-2 text-sm bg-panel text-cream"
         >
           <option value="">Rejected for any reason</option>
           {reasons.map((r) => (
@@ -144,7 +144,7 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
       ) : null}
 
       {/* the shelf itself — the same box Home uses, so a decision here is the decision there */}
-      <div className="border border-charcoal rounded-lg overflow-hidden">
+      <div className="border border-brass-line rounded-lg overflow-hidden">
         <div
           className={`pc-shelf ${backdrop === "checker" ? "pc-bg-checker" : backdrop === "dark" ? "pc-bg-dark" : ""}`}
           style={{ borderBottom: "none" }}
@@ -182,9 +182,9 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
                     <svg viewBox="0 0 58 180" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
                       <path
                         d="M23 7h12v27c0 8 13 12 13 27v102c0 7-4 10-10 10H20c-6 0-10-3-10-10V61c0-15 13-19 13-27z"
-                        fill="#F7F7F7" stroke="#2F2F2F" strokeWidth="1.4" strokeDasharray="5 3"
+                        fill="#241d17" stroke="#8a6a2a" strokeWidth="1.4" strokeDasharray="5 3"
                       />
-                      <text x="29" y="104" textAnchor="middle" fontSize="9" fill="#2F2F2F">
+                      <text x="29" y="104" textAnchor="middle" fontSize="9" fill="#d8bf9c">
                         no image
                       </text>
                     </svg>
@@ -209,7 +209,7 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
         </div>
       </div>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-cream-mute">
         Tap a bottle to approve it or say what is wrong with it. A green dot means someone has it in
         their bar; yellow means a user flagged the image. The shelf holds <strong>everything</strong>
         in the current filter — drag it sideways.
@@ -271,22 +271,22 @@ function DecisionSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={onClose}>
       <div
-        className="w-full bg-ivory rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto"
+        className="w-full pc-leather rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-charcoal">{bottle.name}</h3>
+            <h3 className="font-semibold text-cream">{bottle.name}</h3>
             {bottle.distillery ? (
-              <p className="text-xs text-gray-500">{bottle.distillery}</p>
+              <p className="text-xs text-cream-mute">{bottle.distillery}</p>
             ) : null}
           </div>
-          <button onClick={onClose} className="text-gray-500 text-sm px-2">
+          <button onClick={onClose} className="text-cream-mute text-sm px-2">
             Close
           </button>
         </div>
 
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-cream-mute">
           {bottle.ownerCount > 0
             ? `${bottle.ownerCount} ${bottle.ownerCount === 1 ? "person has" : "people have"} this in their bar`
             : "Nobody owns this yet"}
@@ -298,7 +298,7 @@ function DecisionSheet({
         </p>
 
         {bottle.state === "needs_rereview" ? (
-          <p className="mt-2 text-xs text-charcoal bg-yellow-100 border border-yellow-300 rounded p-2">
+          <p className="mt-2 text-xs text-cream bg-yellow-950/40 border border-yellow-700 rounded p-2">
             A user flagged this image
             {bottle.flagNote ? `: “${bottle.flagNote}”` : "."}
           </p>
@@ -313,13 +313,13 @@ function DecisionSheet({
             if (error) return alert(`Could not approve: ${error}`);
             onDone();
           }}
-          className="mt-4 w-full py-3 rounded-lg bg-charcoal text-ivory font-semibold text-sm disabled:opacity-50"
+          className="mt-4 w-full py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm disabled:opacity-50"
         >
           Approve — put it on the shelf
         </button>
 
         <div className="mt-5">
-          <p className="text-xs font-semibold text-charcoal uppercase tracking-wide">
+          <p className="text-xs font-semibold text-cream uppercase tracking-wide">
             Or say what is wrong
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -330,7 +330,7 @@ function DecisionSheet({
                   key={r.id}
                   onClick={() => toggle(r.id)}
                   className={`px-3 py-1.5 rounded-full text-xs border ${
-                    on ? "bg-charcoal text-ivory border-charcoal" : "bg-ivory text-charcoal border-gray-300"
+                    on ? "pc-brass bg-brass text-engrave border-brass-line" : "bg-panel text-cream border-edge"
                   }`}
                 >
                   {r.label}
@@ -344,12 +344,12 @@ function DecisionSheet({
               value={newReason}
               onChange={(e) => setNewReason(e.target.value)}
               placeholder="Another reason — it joins the list"
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-ivory text-charcoal"
+              className="flex-1 border border-edge rounded-lg px-3 py-2 text-sm bg-panel text-cream"
             />
             <button
               onClick={addReason}
               disabled={!newReason.trim()}
-              className="px-3 rounded-lg border border-charcoal text-sm text-charcoal disabled:opacity-40"
+              className="px-3 rounded-lg border border-brass-line text-sm text-cream disabled:opacity-40"
             >
               Add
             </button>
@@ -360,7 +360,7 @@ function DecisionSheet({
             onChange={(e) => setNote(e.target.value)}
             placeholder="Anything specific about this one (optional)"
             rows={2}
-            className="mt-3 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-ivory text-charcoal"
+            className="mt-3 w-full border border-edge rounded-lg px-3 py-2 text-sm bg-panel text-cream"
           />
 
           <button
@@ -372,7 +372,7 @@ function DecisionSheet({
               if (error) return alert(`Could not save: ${error}`);
               onDone();
             }}
-            className="mt-3 w-full py-3 rounded-lg border border-charcoal text-charcoal font-semibold text-sm disabled:opacity-40"
+            className="mt-3 w-full py-3 rounded-lg border border-brass-line text-cream font-semibold text-sm disabled:opacity-40"
           >
             {picked.length === 0
               ? "Pick at least one reason"

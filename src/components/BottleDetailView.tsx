@@ -299,19 +299,19 @@ export default function BottleDetailView({
 
   // Compact read-only 0-5 star display (Elo numbers stay hidden).
   const starBar = (value: number | null) => {
-    if (value == null) return <span className="text-gray-400">—</span>;
+    if (value == null) return <span className="text-cream-faint">—</span>;
     const pct = (Math.min(5, Math.max(0, value)) / 5) * 100;
     return (
       <span className="inline-flex items-center gap-1">
         <span className="relative inline-flex">
-          <span className="flex gap-0.5 text-gray-300">
+          <span className="flex gap-0.5 text-cream-faint">
             {[0, 1, 2, 3, 4].map((i) => <Star key={i} size={15} fill="currentColor" strokeWidth={0} />)}
           </span>
-          <span className="absolute inset-0 overflow-hidden flex gap-0.5 text-charcoal" style={{ width: `${pct}%` }}>
+          <span className="absolute inset-0 overflow-hidden flex gap-0.5 text-cream" style={{ width: `${pct}%` }}>
             {[0, 1, 2, 3, 4].map((i) => <Star key={i} size={15} fill="currentColor" strokeWidth={0} className="flex-shrink-0" />)}
           </span>
         </span>
-        <span className="text-xs tabular-nums text-gray-500">{value.toFixed(1)}</span>
+        <span className="text-xs tabular-nums text-cream-mute">{value.toFixed(1)}</span>
       </span>
     );
   };
@@ -324,7 +324,7 @@ export default function BottleDetailView({
       : 'empty';
 
   // 7.8: inline edit-mode input styling + the image shown while editing (draft override).
-  const editInput = "w-full border border-gray-400 rounded px-2 py-1 text-sm bg-white text-black";
+  const editInput = "w-full border border-edge rounded px-2 py-1 text-sm bg-panel text-cream";
   const editImageUrl = imageSide === 'front' ? draft.frontimage_url : draft.backimage_url;
   const shownImageUrl = isEditing ? (editImageUrl || imageUrl) : imageUrl;
   const showShownImage = !!shownImageUrl && (isEditing || !imgError);
@@ -724,11 +724,11 @@ export default function BottleDetailView({
 
   return (
     <div
-      className="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto p-4"
+      className="fixed inset-0 bg-wall/90 z-50 overflow-y-auto p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-white text-black border border-gray-500 rounded-lg p-4 w-full max-w-[375px] mx-auto my-4 relative overflow-hidden"
+        className="pc-leather rounded-lg p-4 w-full max-w-[375px] mx-auto my-4 relative overflow-hidden"
         onPointerDown={onCardPointerDown}
         onPointerUp={onCardPointerUp}
         onPointerCancel={() => { swipeX.current = null; }}
@@ -746,13 +746,13 @@ export default function BottleDetailView({
           <button
             onClick={isEditing ? cancelEdit : onClose}
             aria-label={isEditing ? 'Cancel edit' : 'Close'}
-            className="w-10 h-10 flex items-center justify-center border border-gray-500 bg-white hover:bg-gray-200 rounded"
+            className="w-10 h-10 flex items-center justify-center border border-edge bg-panel hover:bg-panel-3 rounded"
           >
             <X className="w-5 h-5" />
           </button>
           {publicUserId ? (
             isEditing ? (
-              <span className="text-sm text-gray-500 px-2 py-1">Editing…</span>
+              <span className="text-sm text-cream-mute px-2 py-1">Editing…</span>
             ) : (
               <div className="flex items-center gap-1">
                 {!onAddSlide && currentVariantId && (
@@ -760,7 +760,7 @@ export default function BottleDetailView({
                     onClick={toggleWishlist}
                     disabled={wishlistBusy}
                     className="flex items-center gap-1 text-sm px-2 py-1 disabled:opacity-50"
-                    style={{ color: isWishlisted ? '#2F2F2F' : '#9ca3af' }}
+                    style={{ color: isWishlisted ? '#f6ecd9' : '#9c8262' }}
                     title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                     aria-pressed={isWishlisted}
                   >
@@ -770,7 +770,7 @@ export default function BottleDetailView({
                 )}
                 <button
                   onClick={enterEdit}
-                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-black px-2 py-1"
+                  className="flex items-center gap-1.5 text-sm text-cream-mute hover:text-cream px-2 py-1"
                   title="Suggest an edit to this bottle"
                   data-coach="bottle.suggest_edit"
                 >
@@ -796,14 +796,14 @@ export default function BottleDetailView({
             <h1 className="text-xl font-bold leading-tight">{localBottle.name}</h1>
           )}
           <div className="flex items-center justify-between gap-2 mt-0.5">
-            {!isEditing && <span className="text-sm text-gray-600 truncate">{subtitle}</span>}
+            {!isEditing && <span className="text-sm text-cream-mute truncate">{subtitle}</span>}
             {showPager && !isEditing && (
               <span className="flex items-center gap-1 flex-shrink-0" data-coach="bottle.variant.pager">
-                <button type="button" onClick={() => goVariant(-1)} aria-label="Previous variant" className="text-gray-600 hover:text-black">
+                <button type="button" onClick={() => goVariant(-1)} aria-label="Previous variant" className="text-cream-mute hover:text-cream">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-xs text-gray-500">{onAddSlide ? 'Add a version' : `Version ${variantIndex + 1} of ${vlist.length}`}</span>
-                <button type="button" onClick={() => goVariant(1)} aria-label="Next variant" className="text-gray-600 hover:text-black">
+                <span className="text-xs text-cream-mute">{onAddSlide ? 'Add a version' : `Version ${variantIndex + 1} of ${vlist.length}`}</span>
+                <button type="button" onClick={() => goVariant(1)} aria-label="Next variant" className="text-cream-mute hover:text-cream">
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </span>
@@ -816,19 +816,19 @@ export default function BottleDetailView({
               <input value={draft.style ?? ''} onChange={(e) => setField('style', e.target.value)} placeholder="Style" className={editInput} />
             </div>
           ) : (
-            identity && <div className="text-xs text-gray-400 mt-1">{identity}</div>
+            identity && <div className="text-xs text-cream-faint mt-1">{identity}</div>
           )}
           {/* 7.9: swipe hint when there's more than one slide; add-a-version stays
               available even if the variant list hasn't loaded yet (vlist empty). */}
           {!isEditing && publicUserId && !onAddSlide && (
             <div className="flex items-center justify-between mt-1.5">
-              <span className="text-[11px] text-gray-400">
+              <span className="text-[11px] text-cream-faint">
                 {showPager ? 'Swipe or tap ‹ › to see versions' : ''}
               </span>
               <button
                 type="button"
                 onClick={openAddVariant}
-                className="text-[11px] text-gray-600 hover:text-black underline flex-shrink-0"
+                className="text-[11px] text-cream-mute hover:text-cream underline flex-shrink-0"
                 data-coach="bottle.add_variant"
               >
                 + Add a version
@@ -837,22 +837,22 @@ export default function BottleDetailView({
           )}
           {!isEditing && showPager && onAddSlide && (
             <div className="flex items-center justify-between mt-1.5">
-              <span className="text-[11px] text-gray-400">Swipe back to the versions ‹</span>
+              <span className="text-[11px] text-cream-faint">Swipe back to the versions ‹</span>
             </div>
           )}
         </div>
 
         {onAddSlide ? (
-          <div className="border-2 border-dashed border-gray-400 rounded-lg p-6 text-center my-4">
-            <div className="text-4xl text-gray-400 mb-2 leading-none">+</div>
+          <div className="border-2 border-dashed border-edge rounded-lg p-6 text-center my-4">
+            <div className="text-4xl text-cream-faint mb-2 leading-none">+</div>
             <div className="font-medium mb-1">Add a version</div>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-cream-mute mb-4">
               A new batch or release everyone can see, or your own store pick (private to you).
             </p>
             <Button
               type="button"
               onClick={openAddVariant}
-              className="bg-gray-800 text-white hover:bg-gray-900 w-full"
+              className="pc-brass bg-brass text-engrave hover:bg-brass w-full"
               style={{ minHeight: '44px' }}
             >
               Add a version
@@ -860,7 +860,7 @@ export default function BottleDetailView({
             <button
               type="button"
               onClick={() => goVariant(-1)}
-              className="block mx-auto mt-3 text-xs text-gray-500 underline"
+              className="block mx-auto mt-3 text-xs text-cream-mute underline"
             >
               Back to versions
             </button>
@@ -875,7 +875,7 @@ export default function BottleDetailView({
                 if (isEditing) fileInputRef.current?.click();
                 else if (showImage) setShowZoom(true);
               }}
-              className="relative w-full h-44 flex items-center justify-center bg-gray-100 border border-gray-500 rounded overflow-hidden"
+              className="relative w-full h-44 flex items-center justify-center bg-panel-2 border border-edge rounded overflow-hidden"
               style={{ cursor: isEditing ? 'pointer' : (showImage ? 'zoom-in' : 'default') }}
               aria-label={isEditing ? 'Replace image' : 'Zoom image'}
             >
@@ -893,7 +893,7 @@ export default function BottleDetailView({
                 <BottlePlaceholderImage />
               )}
               {isEditing && (
-                <span className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[10px] text-center py-1">
+                <span className="absolute inset-x-0 bottom-0 bg-black/60 text-cream text-[10px] text-center py-1">
                   {uploadingSide === imageSide ? 'Uploading…' : `Tap to replace ${imageSide}`}
                 </span>
               )}
@@ -910,17 +910,17 @@ export default function BottleDetailView({
 
             {/* Front/Back toggle beneath the image */}
             <div className="flex justify-center mt-2">
-              <div className="inline-flex border border-gray-500 rounded-full overflow-hidden">
+              <div className="inline-flex border border-edge rounded-full overflow-hidden">
                 <button
                   onClick={() => setImageSide('front')}
-                  className={`px-3.5 py-1 text-xs ${imageSide === 'front' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600'}`}
+                  className={`px-3.5 py-1 text-xs ${imageSide === 'front' ? 'pc-brass bg-brass text-engrave' : 'bg-panel text-cream-mute'}`}
                 >
                   Front
                 </button>
                 <button
                   onClick={() => hasBackImage && setImageSide('back')}
                   disabled={!hasBackImage}
-                  className={`px-3.5 py-1 text-xs ${imageSide === 'back' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600'} disabled:opacity-40`}
+                  className={`px-3.5 py-1 text-xs ${imageSide === 'back' ? 'pc-brass bg-brass text-engrave' : 'bg-panel text-cream-mute'} disabled:opacity-40`}
                 >
                   Back
                 </button>
@@ -935,7 +935,7 @@ export default function BottleDetailView({
                     type="button"
                     onClick={() => { setVariantIndex(idx); setImageSide("front"); setImgError(false); }}
                     aria-label={`Variant ${idx + 1}`}
-                    className={`w-2 h-2 rounded-full ${idx === variantIndex ? 'bg-gray-800' : 'bg-gray-300'}`}
+                    className={`w-2 h-2 rounded-full ${idx === variantIndex ? 'bg-brass' : 'bg-panel-3'}`}
                   />
                 ))}
                 {addSlideEnabled && (
@@ -943,7 +943,7 @@ export default function BottleDetailView({
                     type="button"
                     onClick={() => { setVariantIndex(vlist.length); setImageSide("front"); setImgError(false); }}
                     aria-label="Add a version"
-                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[10px] leading-none border ${onAddSlide ? 'bg-gray-800 text-white border-gray-800' : 'text-gray-500 border-gray-400'}`}
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[10px] leading-none border ${onAddSlide ? 'pc-brass bg-brass text-engrave border-brass' : 'text-cream-mute border-edge'}`}
                   >
                     +
                   </button>
@@ -956,24 +956,24 @@ export default function BottleDetailView({
             {isEditing ? (
               <div className="space-y-2">
                 <div>
-                  <label className="text-[11px] text-gray-500">Age</label>
+                  <label className="text-[11px] text-cream-mute">Age</label>
                   <input value={draft.age ?? ''} onChange={(e) => setField('age', e.target.value)} placeholder="e.g. 12 Year" className={editInput} />
                 </div>
                 <div>
-                  <label className="text-[11px] text-gray-500">Proof</label>
+                  <label className="text-[11px] text-cream-mute">Proof</label>
                   <input type="number" step="0.1" value={draft.proof ?? ''} onChange={(e) => setField('proof', e.target.value)} placeholder="e.g. 90" className={editInput} />
                 </div>
                 <div>
-                  <label className="text-[11px] text-gray-500">Size</label>
+                  <label className="text-[11px] text-cream-mute">Size</label>
                   <input value={draft.volume ?? ''} onChange={(e) => setField('volume', e.target.value)} placeholder="e.g. 750ml" className={editInput} />
                 </div>
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <label className="text-[11px] text-gray-500">Batch</label>
+                    <label className="text-[11px] text-cream-mute">Batch</label>
                     <input value={draft.batch ?? ''} onChange={(e) => setField('batch', e.target.value)} placeholder="Batch" className={editInput} />
                   </div>
                   <div className="flex-1">
-                    <label className="text-[11px] text-gray-500">Release year</label>
+                    <label className="text-[11px] text-cream-mute">Release year</label>
                     <input type="number" value={draft.release_year ?? ''} onChange={(e) => setField('release_year', e.target.value)} placeholder="Year" className={editInput} />
                   </div>
                 </div>
@@ -985,21 +985,21 @@ export default function BottleDetailView({
                     <div key={line}>{line}</div>
                   ))}
                 </div>
-                <div className="border-t border-gray-200 mt-2 pt-2 text-sm space-y-1.5">
+                <div className="border-t border-edge mt-2 pt-2 text-sm space-y-1.5">
                   <div>
                     {/* Brian, 2026-09-07: say which is which. This star is everyone's; "My rating"
                         further down is the viewer's own, and they were previously two unlabelled
                         star rows separated by other content. */}
-                    <div className="text-[11px] text-gray-500">
-                      Global rating{globalEvidence ? <span className="text-gray-400"> · {globalEvidence}</span> : null}
+                    <div className="text-[11px] text-cream-mute">
+                      Global rating{globalEvidence ? <span className="text-cream-faint"> · {globalEvidence}</span> : null}
                     </div>
                     <div>{starBar(globalStar)}</div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-gray-500">Verified</div>
+                    <div className="text-[11px] text-cream-mute">Verified</div>
                     <div className="flex items-center gap-1.5">
                       {shown.verified ? (
-                        <><span className="text-green-600">✓</span> Verified</>
+                        <><span className="text-green-400">✓</span> Verified</>
                       ) : (
                         <><span className="inline-block w-2 h-2 rounded-full" style={{ background: '#EF9F27' }} /> Unverified</>
                       )}
@@ -1014,7 +1014,7 @@ export default function BottleDetailView({
         {/* My last activity (+ history modal when the viewer has interacted with this version) */}
         {!isEditing && (
           <div className="flex items-center justify-between text-sm mb-3">
-            <span className="text-gray-500">My last activity</span>
+            <span className="text-cream-mute">My last activity</span>
             <span className="inline-flex items-center gap-2">
               <span>{lastActivityLabel || 'None'}</span>
               {publicUserId && !onAddSlide && currentVariantId && (hasTasted || inCollectionLocally || !!lastActivityLabel || wishlistedIds.has(currentVariantId)) && (
@@ -1022,7 +1022,7 @@ export default function BottleDetailView({
                   type="button"
                   onClick={() => setShowHistory(true)}
                   aria-label="View your history with this version"
-                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500"
+                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-panel-2 text-cream-mute"
                 >
                   <History className="w-4 h-4" />
                 </button>
@@ -1034,76 +1034,76 @@ export default function BottleDetailView({
         {/* 3.1: My rating — manual guess while untasted, locked Elo star once tasted */}
         {!isEditing && !onAddSlide && publicUserId && (
           <div className="flex items-center justify-between text-sm mb-3 -mt-1">
-            <span className="text-gray-500">My rating <span className="text-gray-400">· only you see this</span></span>
+            <span className="text-cream-mute">My rating <span className="text-cream-faint">· only you see this</span></span>
             {hasTasted ? (
               <button type="button" onClick={handleLockedRatingTap} className="inline-flex items-center gap-1.5">
                 {starBar(myStar)}
-                <span className="text-[10px] text-gray-400">(from tastings)</span>
+                <span className="text-[10px] text-cream-faint">(from tastings)</span>
               </button>
             ) : canEditGuess ? (
               <button type="button" onClick={() => setShowRatePrompt(true)} className="inline-flex items-center gap-1 underline decoration-dotted underline-offset-2">
-                {ratingStars != null ? starBar(ratingStars) : <span className="text-gray-500">Tap to rate</span>}
+                {ratingStars != null ? starBar(ratingStars) : <span className="text-cream-mute">Tap to rate</span>}
               </button>
             ) : ratingStars != null ? (
               starBar(ratingStars)
             ) : (
-              <span className="text-gray-400">None</span>
+              <span className="text-cream-faint">None</span>
             )}
           </div>
         )}
         {!isEditing && localBottle.timesHad != null && localBottle.timesHad > 0 && (
           <div className="flex items-center justify-between text-sm mb-3 -mt-1">
-            <span className="text-gray-500">Times had</span>
+            <span className="text-cream-mute">Times had</span>
             <span>{localBottle.timesHad}</span>
           </div>
         )}
 
         {/* 7.8: under-review banner */}
         {!isEditing && hasPending && (
-          <div className="text-xs text-center border border-gray-400 bg-gray-100 rounded px-3 py-2 mb-3 text-gray-600">
+          <div className="text-xs text-center border border-edge bg-panel-2 rounded px-3 py-2 mb-3 text-cream-mute">
             You have changes under review
           </div>
         )}
 
         {/* Variant note (if present) */}
         {shown.notes && (
-          <p className="text-sm text-gray-600 italic border-t border-gray-200 pt-2 mb-3">{shown.notes}</p>
+          <p className="text-sm text-cream-mute italic border-t border-edge pt-2 mb-3">{shown.notes}</p>
         )}
 
         {/* Characteristics and tasting notes */}
-        <div className="border border-gray-500 rounded mb-4">
+        <div className="border border-edge rounded mb-4">
           <button
             onClick={() => setNotesOpen((o) => !o)}
-            className="w-full text-left p-3 bg-white hover:bg-gray-100 font-medium flex items-center justify-between"
+            className="w-full text-left p-3 bg-black/25 hover:bg-black/35 font-medium flex items-center justify-between"
           >
             Characteristics and tasting notes
-            <span className="text-gray-500">{notesOpen ? '▲' : '▼'}</span>
+            <span className="text-cream-mute">{notesOpen ? '▲' : '▼'}</span>
           </button>
           {notesOpen && (
-            <div className="p-3 pt-1 bg-white text-sm">
+            <div className="p-3 pt-1 bg-panel text-sm">
               {isEditing ? (
                 <div className="space-y-2">
                   <div>
-                    <label className="text-[11px] text-gray-500">Nose</label>
+                    <label className="text-[11px] text-cream-mute">Nose</label>
                     <textarea rows={2} value={draft.nose ?? ''} onChange={(e) => setField('nose', e.target.value)} className={`${editInput} resize-none`} />
                   </div>
                   <div>
-                    <label className="text-[11px] text-gray-500">Palate</label>
+                    <label className="text-[11px] text-cream-mute">Palate</label>
                     <textarea rows={2} value={draft.palate ?? ''} onChange={(e) => setField('palate', e.target.value)} className={`${editInput} resize-none`} />
                   </div>
                   <div>
-                    <label className="text-[11px] text-gray-500">Finish</label>
+                    <label className="text-[11px] text-cream-mute">Finish</label>
                     <textarea rows={2} value={draft.finish ?? ''} onChange={(e) => setField('finish', e.target.value)} className={`${editInput} resize-none`} />
                   </div>
                 </div>
               ) : hasNotes ? (
                 <div className="space-y-2">
-                  {shown.nose && <p><span className="font-medium">Nose</span> — <span className="text-gray-700 whitespace-pre-wrap">{shown.nose}</span></p>}
-                  {shown.palate && <p><span className="font-medium">Palate</span> — <span className="text-gray-700 whitespace-pre-wrap">{shown.palate}</span></p>}
-                  {shown.finish && <p><span className="font-medium">Finish</span> — <span className="text-gray-700 whitespace-pre-wrap">{shown.finish}</span></p>}
+                  {shown.nose && <p><span className="font-medium">Nose</span> — <span className="text-cream whitespace-pre-wrap">{shown.nose}</span></p>}
+                  {shown.palate && <p><span className="font-medium">Palate</span> — <span className="text-cream whitespace-pre-wrap">{shown.palate}</span></p>}
+                  {shown.finish && <p><span className="font-medium">Finish</span> — <span className="text-cream whitespace-pre-wrap">{shown.finish}</span></p>}
                 </div>
               ) : (
-                <p className="text-gray-500">No tasting notes yet.</p>
+                <p className="text-cream-mute">No tasting notes yet.</p>
               )}
             </div>
           )}
@@ -1117,7 +1117,7 @@ export default function BottleDetailView({
               variant="outline"
               onClick={cancelEdit}
               disabled={isSubmittingEdit || !!uploadingSide}
-              className="border-gray-400 text-gray-600 hover:bg-gray-100 flex-1"
+              className="border-edge text-cream-mute hover:bg-panel-2 flex-1"
               style={{ minHeight: '44px' }}
             >
               Cancel
@@ -1126,7 +1126,7 @@ export default function BottleDetailView({
               type="button"
               onClick={handleSubmitEdit}
               disabled={isSubmittingEdit || !!uploadingSide}
-              className="flex-1 bg-gray-800 text-white hover:bg-gray-900"
+              className="flex-1 pc-brass bg-brass text-engrave hover:bg-brass"
               style={{ minHeight: '44px' }}
             >
               {isSubmittingEdit ? 'Submitting…' : 'Submit changes'}
@@ -1136,7 +1136,7 @@ export default function BottleDetailView({
 
         {/* 7.6: ownership status + one state-dependent primary action + More sheet */}
         {!isEditing && inCollectionLocally && (
-          <div className="text-center text-xs text-gray-500 mb-2">
+          <div className="text-center text-xs text-cream-mute mb-2">
             {collectionState === 'owned'
               ? `✓ In My Bar${ownedCount > 1 ? ` · you own ${ownedCount}` : ''}`
               : 'Empty — kept in your history'}
@@ -1151,8 +1151,8 @@ export default function BottleDetailView({
               type="button"
               onClick={() => setShowPourSheet(true)}
               disabled={isPouring}
-              variant="outline"
-              className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
+              variant="brass"
+              className="pc-brass font-semibold disabled:opacity-60 w-full"
               style={{ minHeight: '44px' }}
               data-coach="bottle.have_a_drink"
             >
@@ -1163,8 +1163,8 @@ export default function BottleDetailView({
               type="button"
               onClick={handleMainButton}
               disabled={isSaving || !onAddToBar}
-              variant="outline"
-              className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
+              variant="brass"
+              className="pc-brass font-semibold disabled:opacity-60 w-full"
               style={{ minHeight: '44px' }}
             >
               {isSaving ? 'Adding...' : 'Add Back'}
@@ -1173,8 +1173,8 @@ export default function BottleDetailView({
             <Button
               onClick={handleMainButton}
               disabled={isSaving || !onAddToBar}
-              variant="outline"
-              className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
+              variant="brass"
+              className="pc-brass font-semibold disabled:opacity-60 w-full"
               style={{ minHeight: '44px' }}
             >
               {isSaving ? 'Adding...' : 'Add to My Bar'}
@@ -1190,7 +1190,7 @@ export default function BottleDetailView({
               variant="outline"
               disabled={isPouring}
               onClick={() => setShowPourSheet(true)}
-              className="border-gray-500 text-black hover:bg-gray-100 disabled:opacity-60 w-full"
+              className="border-brass-line text-cream bg-transparent hover:bg-panel-2 disabled:opacity-60 w-full"
               style={{ minHeight: '44px' }}
               data-coach="bottle.have_a_drink"
             >
@@ -1207,7 +1207,7 @@ export default function BottleDetailView({
               variant="outline"
               disabled={isSaving}
               onClick={() => setShowMoreSheet(true)}
-              className="border-gray-400 text-gray-600 hover:bg-gray-100 disabled:opacity-60 w-full"
+              className="border-brass-line text-cream-mute bg-transparent hover:bg-panel-2 disabled:opacity-60 w-full"
               style={{ minHeight: '44px' }}
               data-coach="bottle.more"
             >
@@ -1217,8 +1217,8 @@ export default function BottleDetailView({
         )}
 
         {inCollectionLocally && showDeleteConfirm && (
-          <div className="mt-2 border border-red-300 rounded p-2 bg-red-50 text-xs">
-            <p className="text-gray-700 mb-2">
+          <div className="mt-2 border border-red-800 rounded p-2 bg-red-950/40 text-xs">
+            <p className="text-cream mb-2">
               {hasTasted
                 ? "This takes it off your shelf but keeps your rating — it'll move to your Tasted list. A completed blind tasting is never deleted."
                 : "This removes it from your bar. Only use if you added it by mistake."}
@@ -1227,13 +1227,13 @@ export default function BottleDetailView({
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="text-red-600 font-semibold hover:text-red-800 disabled:opacity-50"
+                className="text-red-400 font-semibold hover:text-red-400 disabled:opacity-50"
               >
                 {isDeleting ? 'Removing...' : hasTasted ? 'Remove from bar' : 'Yes, delete'}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-cream-mute hover:text-cream"
               >
                 Cancel
               </button>
@@ -1251,25 +1251,25 @@ export default function BottleDetailView({
             user's say-so, and with no unique index on bottles.barcode the admin is
             the one who decides which bottle owns the code. */}
         {scannedBarcode && publicUserId && (
-          <div className="mt-6 border-t border-gray-200 pt-4">
+          <div className="mt-6 border-t border-edge pt-4">
             {mismatchSent ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-cream-mute">
                 Thanks — we&apos;ll check which bottle this barcode belongs to.
               </p>
             ) : !showMismatch ? (
               <button
                 type="button"
                 onClick={() => setShowMismatch(true)}
-                className="text-sm text-gray-500 underline"
+                className="text-sm text-cream-mute underline"
               >
                 Not this bottle?
               </button>
             ) : (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-cream">
                   This isn&apos;t the bottle you scanned?
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-cream-mute">
                   Only if it&apos;s a completely different product. A store pick or a
                   special release of this bottle isn&apos;t a mismatch — add it as a
                   version instead.
@@ -1279,7 +1279,7 @@ export default function BottleDetailView({
                   onChange={(e) => setMismatchNote(e.target.value)}
                   rows={2}
                   placeholder="What is it actually? (optional)"
-                  className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                  className="w-full rounded border border-edge px-2 py-1 text-sm"
                 />
                 <div className="flex gap-2">
                   <button
@@ -1300,14 +1300,14 @@ export default function BottleDetailView({
                       setShowMismatch(false);
                       toast.success("Reported — thanks.");
                     }}
-                    className="text-sm px-3 py-1.5 border border-charcoal text-charcoal rounded disabled:opacity-40"
+                    className="text-sm px-3 py-1.5 border border-brass-line text-cream rounded disabled:opacity-40"
                   >
                     {mismatchSending ? "Sending…" : "Report wrong bottle"}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setShowMismatch(false); setMismatchNote(""); }}
-                    className="text-sm px-3 py-1.5 text-gray-500"
+                    className="text-sm px-3 py-1.5 text-cream-mute"
                   >
                     Cancel
                   </button>
@@ -1331,7 +1331,7 @@ export default function BottleDetailView({
               setShowZoom(false);
             }}
             aria-label="Close zoom"
-            className="absolute top-4 right-4 z-[70] w-10 h-10 flex items-center justify-center bg-white rounded-full text-black"
+            className="absolute top-4 right-4 z-[70] w-10 h-10 flex items-center justify-center bg-panel rounded-full text-cream"
           >
             <X className="w-6 h-6 pointer-events-none" />
           </button>

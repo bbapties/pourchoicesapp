@@ -275,18 +275,18 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
     load();
   };
 
-  if (loading) return <div className="text-sm text-gray-500">Loading bottles…</div>;
+  if (loading) return <div className="text-sm text-cream-mute">Loading bottles…</div>;
 
   return (
     <div className="space-y-3">
-      <div className="border border-gray-400 rounded p-3 bg-white space-y-2">
+      <div className="border border-edge rounded p-3 bg-panel space-y-2">
         <h2 className="font-semibold text-sm">Variant triage</h2>
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-cream-mute">
           One decision per bottle: is it a single bottling, a family with real variations, or the
           same whiskey entered twice? Nothing is guessed — the order below is just a reading order,
           bottles most likely to need a decision first.
         </p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-cream-mute">
           <span className="font-semibold">{pending}</span> of {bottles.length} bottles still to look
           at.
         </p>
@@ -297,10 +297,10 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
         placeholder="Search bottle name"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full border border-charcoal rounded px-3 py-2 text-sm bg-white"
+        className="w-full border border-brass-line rounded px-3 py-2 text-sm bg-panel"
       />
 
-      <label className="flex items-center gap-2 text-xs text-gray-600">
+      <label className="flex items-center gap-2 text-xs text-cream-mute">
         <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
         Show bottles already decided
       </label>
@@ -311,30 +311,30 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
           const picks = b.variants.filter((v) => v.storePickName);
           const busy = busyId === b.id;
           return (
-            <li key={b.id} className="border border-gray-300 rounded bg-white p-3 space-y-2">
+            <li key={b.id} className="border border-edge rounded bg-panel p-3 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-charcoal">{b.name}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-sm font-semibold text-cream">{b.name}</div>
+                  <div className="text-xs text-cream-mute">
                     {realVariants.length} version{realVariants.length === 1 ? "" : "s"}
                     {picks.length > 0 && ` · ${picks.length} store pick${picks.length === 1 ? "" : "s"}`}
                     {b.interactions > 0 && ` · ${b.interactions} interactions`}
                   </div>
                 </div>
                 {b.triage && (
-                  <span className="text-[10px] uppercase tracking-wide bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  <span className="text-[10px] uppercase tracking-wide bg-panel-3 text-cream px-1.5 py-0.5 rounded whitespace-nowrap">
                     {b.triage === "split" ? `split · ${b.axis}` : b.triage === "single" ? "single" : "needs merge"}
                   </span>
                 )}
               </div>
 
-              <ul className="text-xs text-gray-600 space-y-0.5">
+              <ul className="text-xs text-cream-mute space-y-0.5">
                 {b.variants.map((v) => (
                   <li key={v.id} className="flex items-center gap-1.5">
-                    <span className="text-gray-400">•</span>
+                    <span className="text-cream-faint">•</span>
                     <span>{variantLabel(v)}</span>
-                    {v.isCatchall && <span className="text-[10px] text-gray-500">(catch-all)</span>}
-                    {v.isDefault && !v.isCatchall && <span className="text-[10px] text-gray-500">(main)</span>}
+                    {v.isCatchall && <span className="text-[10px] text-cream-mute">(catch-all)</span>}
+                    {v.isDefault && !v.isCatchall && <span className="text-[10px] text-cream-mute">(main)</span>}
                   </li>
                 ))}
               </ul>
@@ -346,7 +346,7 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
                     onChange={(e) =>
                       setAxisDraft((d) => ({ ...d, [b.id]: e.target.value as Axis }))
                     }
-                    className="border border-gray-400 rounded px-2 py-1.5 text-xs"
+                    className="border border-edge rounded px-2 py-1.5 text-xs"
                   >
                     <option value="">Varies by…</option>
                     {(Object.keys(AXIS_LABEL) as Axis[]).map((a) => (
@@ -357,7 +357,7 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
                     type="button"
                     disabled={busy || !axisDraft[b.id]}
                     onClick={() => setConfirming({ bottle: b, axis: axisDraft[b.id] })}
-                    className="text-xs px-3 py-1.5 rounded bg-gray-900 text-white disabled:opacity-30"
+                    className="text-xs px-3 py-1.5 rounded pc-brass bg-brass text-engrave disabled:opacity-30"
                   >
                     Split
                   </button>
@@ -365,7 +365,7 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
                     type="button"
                     disabled={busy}
                     onClick={() => markTriage(b, "single")}
-                    className="text-xs px-3 py-1.5 rounded border border-gray-400 disabled:opacity-30"
+                    className="text-xs px-3 py-1.5 rounded border border-edge disabled:opacity-30"
                   >
                     Single bottling
                   </button>
@@ -373,7 +373,7 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
                     type="button"
                     disabled={busy}
                     onClick={() => markTriage(b, "needs_merge")}
-                    className="text-xs px-3 py-1.5 rounded border border-amber-600 text-amber-700 disabled:opacity-30"
+                    className="text-xs px-3 py-1.5 rounded border border-amber-600 text-amber-300 disabled:opacity-30"
                   >
                     Needs merge
                   </button>
@@ -386,7 +386,7 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
                 <button
                   type="button"
                   onClick={() => { setMergeFor(b); setMergeConfirm(""); }}
-                  className="text-xs underline decoration-dotted underline-offset-2 text-amber-700"
+                  className="text-xs underline decoration-dotted underline-offset-2 text-amber-300"
                 >
                   Merge this into another bottle…
                 </button>
@@ -395,7 +395,7 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
           );
         })}
         {visible.length === 0 && (
-          <li className="text-center text-sm text-gray-400 py-8">
+          <li className="text-center text-sm text-cream-faint py-8">
             {showDone ? "No bottles match." : "Nothing left to triage."}
           </li>
         )}
@@ -404,10 +404,10 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
       {mergeFor && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
              onClick={closeMerge}>
-          <div className="bg-white rounded-lg w-full max-w-md p-5 space-y-4 my-8" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-panel rounded-lg w-full max-w-md p-5 space-y-4 my-8" onClick={(e) => e.stopPropagation()}>
             <div>
-              <h2 className="font-semibold text-charcoal">Merge {mergeFor.name}</h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <h2 className="font-semibold text-cream">Merge {mergeFor.name}</h2>
+              <p className="text-sm text-cream-mute mt-1">
                 Everything attached to it moves to the bottle you pick — bar entries add up, the
                 most recent star rating wins, tastings are repointed rather than deleted — and every
                 score is rebuilt afterwards. This bottle then stops existing.
@@ -415,12 +415,12 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
             </div>
 
             <div>
-              <label className="text-xs text-gray-600">Merge into</label>
+              <label className="text-xs text-cream-mute">Merge into</label>
               {mergeTarget ? (
-                <div className="flex items-center justify-between border border-charcoal rounded px-3 py-2 mt-1">
+                <div className="flex items-center justify-between border border-brass-line rounded px-3 py-2 mt-1">
                   <span className="text-sm font-medium">{mergeTarget.name}</span>
                   <button type="button" onClick={() => { setMergeTarget(null); setMergeMap({}); }}
-                          className="text-xs text-gray-500 underline">change</button>
+                          className="text-xs text-cream-mute underline">change</button>
                 </div>
               ) : (
                 <>
@@ -429,15 +429,15 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
                     value={mergeQuery}
                     onChange={(e) => setMergeQuery(e.target.value)}
                     placeholder="Search for the bottle to keep"
-                    className="mt-1 w-full border border-gray-400 rounded px-2 py-2 text-sm"
+                    className="mt-1 w-full border border-edge rounded px-2 py-2 text-sm"
                   />
                   <ul className="mt-1 space-y-1">
                     {mergeCandidates.map((c) => (
                       <li key={c.id}>
                         <button type="button" onClick={() => setMergeTarget(c)}
-                                className="w-full text-left text-sm border border-gray-200 rounded px-2 py-1.5 hover:bg-gray-50">
+                                className="w-full text-left text-sm border border-edge rounded px-2 py-1.5 hover:bg-panel-2">
                           {c.name}
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-cream-mute">
                             {" "}· {c.variants.filter((v) => !v.storePickName).length} version(s)
                           </span>
                         </button>
@@ -450,17 +450,17 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
 
             {mergeTarget && (
               <div className="space-y-2">
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-cream-mute">
                   Where does each version go? Nothing is guessed — leave one as &ldquo;bring it
                   across&rdquo; if the survivor has no equivalent.
                 </p>
                 {mergeFor.variants.map((v) => (
                   <div key={v.id} className="text-xs">
-                    <div className="text-charcoal">{variantLabel(v)}</div>
+                    <div className="text-cream">{variantLabel(v)}</div>
                     <select
                       value={mergeMap[v.id] ?? ""}
                       onChange={(e) => setMergeMap((m) => ({ ...m, [v.id]: e.target.value }))}
-                      className="mt-1 w-full border border-gray-400 rounded px-2 py-1.5"
+                      className="mt-1 w-full border border-edge rounded px-2 py-1.5"
                     >
                       <option value="">Bring it across as its own version</option>
                       {mergeTarget.variants.map((tv) => (
@@ -473,24 +473,24 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
             )}
 
             {mergeTarget && (
-              <label className="block text-xs text-gray-600">
+              <label className="block text-xs text-cream-mute">
                 Type <span className="font-mono font-semibold">{mergeFor.name}</span> to confirm
                 <input
                   value={mergeConfirm}
                   onChange={(e) => setMergeConfirm(e.target.value)}
-                  className="mt-1 w-full border border-charcoal rounded px-2 py-1.5 text-sm"
+                  className="mt-1 w-full border border-brass-line rounded px-2 py-1.5 text-sm"
                 />
               </label>
             )}
 
             <div className="flex justify-end gap-2">
-              <button onClick={closeMerge} disabled={merging} className="px-3 py-2 text-sm text-gray-600">
+              <button onClick={closeMerge} disabled={merging} className="px-3 py-2 text-sm text-cream-mute">
                 Cancel
               </button>
               <button
                 onClick={runMerge}
                 disabled={merging || !mergeTarget || mergeConfirm !== mergeFor.name}
-                className="px-3 py-2 text-sm bg-gray-900 text-white rounded disabled:opacity-40"
+                className="px-3 py-2 text-sm pc-brass bg-brass text-engrave rounded disabled:opacity-40"
               >
                 {merging ? "Merging…" : "Merge and rebuild scores"}
               </button>
@@ -504,22 +504,22 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
           onClick={() => { if (!busyId) setConfirming(null); }}
         >
-          <div className="bg-white rounded-lg w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-panel rounded-lg w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div>
-              <h2 className="font-semibold text-charcoal">
+              <h2 className="font-semibold text-cream">
                 Split {confirming.bottle.name}
               </h2>
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm text-cream-mute mt-2">
                 It varies by <span className="font-semibold">{AXIS_LABEL[confirming.axis].toLowerCase()}</span>,
                 so anyone adding a version will be asked{" "}
                 <span className="italic">&ldquo;{AXIS_QUESTION[confirming.axis]}&rdquo;</span>.
               </p>
-              <ul className="text-sm text-gray-600 mt-3 space-y-1 list-disc pl-5">
+              <ul className="text-sm text-cream-mute mt-3 space-y-1 list-disc pl-5">
                 <li>Its existing history becomes the <strong>{confirming.axis} unknown</strong> version. Nothing moves.</li>
                 <li>The bottle itself stops being something people interact with — it becomes a rollup of its versions.</li>
                 <li>Any store pick on it becomes a pick of that unknown version.</li>
               </ul>
-              <p className="text-xs text-gray-500 mt-3">
+              <p className="text-xs text-cream-mute mt-3">
                 The axis is declared once. Choose a different one and it has to be undone by hand.
               </p>
             </div>
@@ -527,14 +527,14 @@ export default function VariantsTab({ publicUserId }: { publicUserId: string }) 
               <button
                 onClick={() => setConfirming(null)}
                 disabled={!!busyId}
-                className="px-3 py-2 text-sm text-gray-600"
+                className="px-3 py-2 text-sm text-cream-mute"
               >
                 Cancel
               </button>
               <button
                 onClick={doSplit}
                 disabled={!!busyId}
-                className="px-3 py-2 text-sm bg-gray-900 text-white rounded disabled:opacity-40"
+                className="px-3 py-2 text-sm pc-brass bg-brass text-engrave rounded disabled:opacity-40"
               >
                 {busyId ? "Splitting…" : "Split it"}
               </button>

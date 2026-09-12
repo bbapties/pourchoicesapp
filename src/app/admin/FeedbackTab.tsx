@@ -66,7 +66,7 @@ export default function FeedbackTab({ publicUserId }: { publicUserId: string }) 
     toast.success("Note saved.");
   };
 
-  if (loading) return <p className="text-sm text-gray-500">Loading feedback…</p>;
+  if (loading) return <p className="text-sm text-cream-mute">Loading feedback…</p>;
 
   return (
     <div className="space-y-4">
@@ -82,7 +82,7 @@ export default function FeedbackTab({ publicUserId }: { publicUserId: string }) 
               key={f}
               onClick={() => setFilter(f)}
               className={`text-xs px-2.5 py-1 rounded border ${
-                active ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-700 border-gray-400"
+                active ? "pc-brass bg-brass text-engrave border-brass" : "bg-panel text-cream border-edge"
               }`}
             >
               {f === "open" ? "Open" : f === "all" ? "All" : statusLabel(f)} ({count})
@@ -92,32 +92,32 @@ export default function FeedbackTab({ publicUserId }: { publicUserId: string }) 
       </div>
 
       {visible.length === 0 && (
-        <p className="text-sm text-gray-500">No reports in this view.</p>
+        <p className="text-sm text-cream-mute">No reports in this view.</p>
       )}
 
       <div className="space-y-3">
         {visible.map((row) => (
-          <div key={row.id} className="border border-gray-300 rounded p-3 bg-white">
+          <div key={row.id} className="border border-edge rounded p-3 bg-panel">
             <div className="flex items-center justify-between gap-2 mb-1">
               <span
                 className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                  row.type === "bug" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                  row.type === "bug" ? "bg-red-950/40 text-red-400" : "bg-blue-950/40 text-blue-300"
                 }`}
               >
                 {row.type === "bug" ? "Bug" : "Feature"}
               </span>
-              <span className="text-xs text-gray-400">{fmt(row.createdAt)}</span>
+              <span className="text-xs text-cream-faint">{fmt(row.createdAt)}</span>
             </div>
 
-            <p className="text-sm text-black whitespace-pre-wrap">{row.message}</p>
+            <p className="text-sm text-cream whitespace-pre-wrap">{row.message}</p>
 
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-cream-mute mt-1">
               by {row.submittedByName}
               {row.route ? ` · ${row.route}` : ""}
               {row.viewport ? ` · ${row.viewport}` : ""}
             </p>
             {row.userAgent && (
-              <p className="text-[10px] text-gray-400 mt-0.5 break-words">{row.userAgent}</p>
+              <p className="text-[10px] text-cream-faint mt-0.5 break-words">{row.userAgent}</p>
             )}
 
             {row.screenshotUrl && (
@@ -126,7 +126,7 @@ export default function FeedbackTab({ publicUserId }: { publicUserId: string }) 
                 <img
                   src={row.screenshotUrl}
                   alt="attachment"
-                  className="max-h-40 rounded border border-gray-300"
+                  className="max-h-40 rounded border border-edge"
                 />
               </a>
             )}
@@ -141,7 +141,7 @@ export default function FeedbackTab({ publicUserId }: { publicUserId: string }) 
                     disabled={busyId === row.id || active}
                     onClick={() => changeStatus(row, s)}
                     className={`text-xs px-2 py-1 rounded border disabled:opacity-60 ${
-                      active ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-700 border-gray-400"
+                      active ? "pc-brass bg-brass text-engrave border-brass" : "bg-panel text-cream border-edge"
                     }`}
                   >
                     {statusLabel(s)}
@@ -157,12 +157,12 @@ export default function FeedbackTab({ publicUserId }: { publicUserId: string }) 
                 onChange={(e) => setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))}
                 rows={2}
                 placeholder="Triage note (internal)…"
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs text-black"
+                className="w-full border border-edge rounded px-2 py-1 text-xs text-cream"
               />
               <button
                 disabled={busyId === row.id}
                 onClick={() => saveNote(row)}
-                className="mt-1 text-xs px-2 py-1 rounded border border-gray-400 bg-white text-gray-700 disabled:opacity-60"
+                className="mt-1 text-xs px-2 py-1 rounded border border-edge bg-panel text-cream disabled:opacity-60"
               >
                 Save note
               </button>

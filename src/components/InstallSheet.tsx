@@ -80,7 +80,7 @@ export default function InstallSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) handleDismiss(); }}>
-      <SheetContent side="bottom" className="bg-white text-gray-900 rounded-t-2xl">
+      <SheetContent side="bottom" className="text-cream">
         <SheetHeader>
           <SheetTitle className="text-left text-lg">
             {installed ? "You already have it" : "Install Pour Choices"}
@@ -99,8 +99,8 @@ export default function InstallSheet({
               installed, so showing "tap the menu, add to home screen" here is advice that cannot
               work. The one thing people actually want in this state is the icon fixed. */}
           {installed && (
-            <div className="text-sm text-gray-700 space-y-3">
-              <p className="font-medium text-gray-900">Icon looking wrong or out of date?</p>
+            <div className="text-sm text-cream space-y-3">
+              <p className="font-medium text-cream">Icon looking wrong or out of date?</p>
               <p>
                 Android copies the app icon when you install, and doesn&apos;t always pick up a new
                 one. To refresh it, remove the old copy and install again:
@@ -116,7 +116,7 @@ export default function InstallSheet({
           {canPromptDirectly && (
             <button
               onClick={handleInstall}
-              className="w-full py-3 bg-gray-900 text-white font-semibold rounded-xl"
+              className="w-full py-3 pc-brass bg-brass text-engrave font-semibold rounded-xl"
               style={{ minHeight: "44px" }}
             >
               Install now
@@ -126,7 +126,7 @@ export default function InstallSheet({
           {!installed && platform === "ios" && iosOffSafari && (
             // Chrome/Firefox/Edge on iOS are WebKit but put Share elsewhere, and older versions hide
             // Add to Home Screen entirely. Safari is the one reliable route.
-            <div className="text-sm text-gray-700 space-y-2">
+            <div className="text-sm text-cream space-y-2">
               <p>
                 Adding to the home screen only works properly from{" "}
                 <span className="font-semibold">Safari</span> on iPhone.
@@ -142,10 +142,10 @@ export default function InstallSheet({
           )}
 
           {!installed && platform === "ios" && !iosOffSafari && (
-            <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+            <ol className="text-sm text-cream space-y-2 list-decimal list-inside">
               <li>
                 Tap the <span className="font-semibold">Share</span> button at the bottom of Safari
-                <span className="text-gray-500"> (the square with an arrow)</span>.
+                <span className="text-cream-mute"> (the square with an arrow)</span>.
               </li>
               <li>Scroll down and tap <span className="font-semibold">Add to Home Screen</span>.</li>
               <li>Tap <span className="font-semibold">Add</span>.</li>
@@ -153,7 +153,7 @@ export default function InstallSheet({
           )}
 
           {!installed && platform === "in-app-browser" && (
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-cream">
               You are in an app&apos;s built-in browser, which can&apos;t install apps. Tap the menu
               and choose <span className="font-semibold">Open in browser</span>, then try again.
             </p>
@@ -162,7 +162,7 @@ export default function InstallSheet({
           {/* Android/desktop with no live prompt. Chrome only offers one when it decides the app is
               installable, so this is the honest fallback rather than a button that does nothing. */}
           {!installed && !canPromptDirectly && (platform === "android" || platform === "desktop") && (
-            <div className="text-sm text-gray-700 space-y-2">
+            <div className="text-sm text-cream space-y-2">
               <p>
                 {platform === "android"
                   ? "Chrome hasn't offered a one-tap install yet. You can add it from the menu:"
@@ -183,14 +183,14 @@ export default function InstallSheet({
 
           <button
             onClick={handleDismiss}
-            className="w-full py-3 text-gray-600 font-medium rounded-xl border border-gray-300"
+            className="w-full py-3 text-cream-mute font-medium rounded-xl border border-edge"
             style={{ minHeight: "44px" }}
           >
             {installed ? "Got it" : canPromptDirectly ? "Continue in browser" : "Not now"}
           </button>
 
           {!installed && surface !== "/profile" && (
-            <p className="text-xs text-gray-500 text-center">You can install later from Profile.</p>
+            <p className="text-xs text-cream-mute text-center">You can install later from Profile.</p>
           )}
         </div>
       </SheetContent>

@@ -101,9 +101,11 @@
 .slide-in-right { animation: slideInFromRight 280ms ease-out; }
 .slide-in-left  { animation: slideInFromLeft  280ms ease-out; }
 
-* {
-  border-color: var(--border);
-  outline-color: color-mix(in srgb, var(--ring), transparent 50%);
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in srgb, var(--ring), transparent 50%);
+  }
 }
 
 /* ============================================================================
@@ -182,12 +184,20 @@
 body {
   background-color: var(--color-wall);
   background-image:
-    linear-gradient(90deg, rgba(0,0,0,.25), rgba(255,255,255,.04) 35%, rgba(0,0,0,.05) 60%, rgba(0,0,0,.3)),
+    linear-gradient(90deg, rgba(0,0,0,.18), rgba(255,255,255,.025) 35%, rgba(0,0,0,.03) 60%, rgba(0,0,0,.2)),
     var(--pc-grain);
   color: var(--color-cream);
 }
-/* Native controls (date pickers, selects, scrollbars) pick the dark UI. */
-input, select, textarea { color-scheme: dark; }
+/* Every text field is an inset in the wood: dark well, brass hairline, cream type. Unlayered on
+   purpose so it beats the per-field utilities without touching forty call sites. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select {
+  color-scheme: dark;
+  background-color: var(--color-wall);
+  border-color: var(--color-brass-line);
+  color: var(--color-cream);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.05);
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--color-brass); outline-offset: 1px; }
 ::placeholder { color: var(--color-cream-faint); }
 
 /* ============================================================================
@@ -306,19 +316,25 @@ input, select, textarea { color-scheme: dark; }
 .pc-ov-who img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pc-ov-what { right: -8px; background: var(--color-wall); color: var(--color-brass-hi); }
 
-/* THE GLOW BEHIND THE BOTTLE (Brian, Phase 5) - the viewer's own relationship, as a halo on the
-   brick behind the glass rather than a pool on the deck. Solid = on hand. A soft glowing RING
-   = had it, none on hand. Yellow ring = unverified. Sits between the wall and the bottle
-   (z-index 0, the image is 1). Sized off the slot so a tall bottle gets a taller halo. The four
-   states are the contract; only the rendering changed. */
-.pc-led { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); z-index: 0; pointer-events: none;
-          width: 150%; height: 70%; min-width: 68px; border-radius: 50%; }
-.pc-led-own  { background: radial-gradient(ellipse at 50% 60%, rgba(94,234,143,.55) 0%, rgba(34,197,94,.32) 30%, rgba(34,197,94,.10) 55%, rgba(34,197,94,0) 72%); }
-.pc-led-had  { background: radial-gradient(ellipse at 50% 60%, rgba(34,197,94,0) 0%, rgba(34,197,94,0) 44%, rgba(63,217,122,.28) 52%, rgba(63,217,122,.42) 56%, rgba(63,217,122,.20) 62%, rgba(34,197,94,0) 74%); }
-.pc-led-prov { background: radial-gradient(ellipse at 50% 60%, rgba(255,215,0,0) 0%, rgba(255,215,0,0) 44%, rgba(255,215,0,.26) 52%, rgba(255,215,0,.40) 56%, rgba(255,215,0,.18) 62%, rgba(255,215,0,0) 74%); }
-/* unverified AND had: the yellow ring sits outside the green */
-.pc-led-prov.pc-led-own  { background: radial-gradient(ellipse at 50% 60%, rgba(94,234,143,.55) 0%, rgba(34,197,94,.32) 30%, rgba(34,197,94,.08) 52%, rgba(255,215,0,.35) 60%, rgba(255,215,0,0) 74%); }
-.pc-led-prov.pc-led-had  { background: radial-gradient(ellipse at 50% 60%, rgba(34,197,94,0) 0%, rgba(34,197,94,0) 40%, rgba(63,217,122,.40) 48%, rgba(63,217,122,0) 54%, rgba(255,215,0,.35) 60%, rgba(255,215,0,0) 74%); }
+/* THE GLOW BEHIND THE BOTTLE (Brian, Phase 5) - the viewer's own relationship, as light coming
+   from behind the glass rather than a pool on the deck. It follows the bottle's own silhouette
+   (a drop-shadow on the cut-out), so it never bleeds onto the neighbour on a packed shelf.
+   Solid green = on hand: a full glow. Had it, none on hand = a thin glowing RIM. Yellow = unverified,
+   same two weights; unverified AND had wears the green inside a yellow rim. The four states are the
+   contract (HANDOFF, "the status language"); only the rendering changed. The `.pc-led` span the
+   markup still renders is the hook `:has()` keys off; it paints nothing itself. */
+.pc-led { display: none; }
+.pc-slot:has(.pc-led-own) > img, .pc-slot:has(.pc-led-own) > svg {
+  filter: drop-shadow(0 6px 5px rgba(0,0,0,.65)) drop-shadow(0 0 5px rgba(74,222,128,.95)) drop-shadow(0 0 16px rgba(34,197,94,.55)); }
+.pc-slot:has(.pc-led-had) > img, .pc-slot:has(.pc-led-had) > svg {
+  filter: drop-shadow(0 6px 5px rgba(0,0,0,.65)) drop-shadow(0 0 2px rgba(74,222,128,.85)) drop-shadow(0 0 7px rgba(34,197,94,.30)); }
+.pc-slot:has(.pc-led-prov):not(:has(.pc-led-own)):not(:has(.pc-led-had)) > img,
+.pc-slot:has(.pc-led-prov):not(:has(.pc-led-own)):not(:has(.pc-led-had)) > svg {
+  filter: drop-shadow(0 6px 5px rgba(0,0,0,.65)) drop-shadow(0 0 2px rgba(255,215,0,.85)) drop-shadow(0 0 7px rgba(255,215,0,.30)); }
+.pc-slot:has(.pc-led-prov.pc-led-own) > img, .pc-slot:has(.pc-led-prov.pc-led-own) > svg {
+  filter: drop-shadow(0 6px 5px rgba(0,0,0,.65)) drop-shadow(0 0 5px rgba(74,222,128,.95)) drop-shadow(0 0 14px rgba(255,215,0,.55)); }
+.pc-slot:has(.pc-led-prov.pc-led-had) > img, .pc-slot:has(.pc-led-prov.pc-led-had) > svg {
+  filter: drop-shadow(0 6px 5px rgba(0,0,0,.65)) drop-shadow(0 0 2px rgba(74,222,128,.85)) drop-shadow(0 0 8px rgba(255,215,0,.45)); }
 
 /* engraved into the board's face, and the door to that shelf's tab */
 .pc-plate {

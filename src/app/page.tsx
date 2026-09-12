@@ -288,7 +288,7 @@ export default function Home() {
           <div className="absolute inset-0 flex flex-col items-center justify-end p-8 pb-16">
             <button
               onClick={() => setShowWizard(true)}
-              className="w-full max-w-sm py-4 bg-white text-gray-900 font-semibold text-lg rounded-xl shadow-lg"
+              className="w-full max-w-sm py-4 bg-panel text-cream font-semibold text-lg rounded-xl shadow-lg"
             >
               Get Started
             </button>
@@ -305,12 +305,12 @@ export default function Home() {
       <div className="fixed inset-0">
         <img src="/cellar-bg.png" alt="Pour Choices" className="w-full h-full object-cover object-top" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden">
+          <div className="w-full max-w-sm pc-leather rounded-2xl overflow-hidden">
 
             {/* Progress bar */}
-            <div className="h-1 bg-gray-200">
+            <div className="h-1 bg-panel-3">
               <div
-                className="h-1 bg-gray-800 transition-all duration-300"
+                className="h-1 bg-brass transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -318,13 +318,13 @@ export default function Home() {
             {/* Header row: back button + step counter */}
             <div className="flex items-center justify-between px-5 pt-4 pb-1 min-h-[40px]">
               {currentStep !== "email" ? (
-                <button onClick={handleBack} className="text-sm text-gray-500">
+                <button onClick={handleBack} className="text-sm text-cream-mute">
                   ← Back
                 </button>
               ) : (
                 <div />
               )}
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-cream-faint">
                 Step {getStepNumber()} of {getTotalSteps()}
               </span>
             </div>
@@ -335,8 +335,8 @@ export default function Home() {
               {currentStep === "email" && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">What&apos;s your email?</h2>
-                    <p className="text-sm text-gray-500 mt-1">We&apos;ll check if you have an account</p>
+                    <h2 className="text-xl font-bold text-cream">What&apos;s your email?</h2>
+                    <p className="text-sm text-cream-mute mt-1">We&apos;ll check if you have an account</p>
                   </div>
                   <input
                     autoFocus
@@ -345,13 +345,13 @@ export default function Home() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => onKey(e, handleEmailSubmit)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base outline-none focus:border-gray-600"
+                    className="w-full border border-edge rounded-lg px-4 py-3 text-base outline-none focus:border-edge"
                   />
-                  {error && <p className="text-red-600 text-sm">{error}</p>}
+                  {error && <p className="text-red-400 text-sm">{error}</p>}
                   <button
                     onClick={handleEmailSubmit}
                     disabled={!email || isLoading}
-                    className="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold disabled:opacity-40"
+                    className="w-full py-3 pc-brass bg-brass text-engrave rounded-xl font-semibold disabled:opacity-40"
                   >
                     {isLoading ? "Checking..." : "Continue"}
                   </button>
@@ -361,8 +361,8 @@ export default function Home() {
               {currentStep === "username" && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Choose a username</h2>
-                    <p className="text-sm text-gray-500 mt-1">This is how others will see you</p>
+                    <h2 className="text-xl font-bold text-cream">Choose a username</h2>
+                    <p className="text-sm text-cream-mute mt-1">This is how others will see you</p>
                   </div>
                   <input
                     autoFocus
@@ -371,13 +371,13 @@ export default function Home() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     onKeyDown={(e) => onKey(e, handleUsernameSubmit)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base outline-none focus:border-gray-600"
+                    className="w-full border border-edge rounded-lg px-4 py-3 text-base outline-none focus:border-edge"
                   />
-                  {error && <p className="text-red-600 text-sm">{error}</p>}
+                  {error && <p className="text-red-400 text-sm">{error}</p>}
                   <button
                     onClick={handleUsernameSubmit}
                     disabled={!username || isLoading}
-                    className="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold disabled:opacity-40"
+                    className="w-full py-3 pc-brass bg-brass text-engrave rounded-xl font-semibold disabled:opacity-40"
                   >
                     Continue
                   </button>
@@ -387,10 +387,10 @@ export default function Home() {
               {currentStep === "password" && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">
+                    <h2 className="text-xl font-bold text-cream">
                       {path === "login" ? "Welcome back!" : "Create a password"}
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-cream-mute mt-1">
                       {path === "login" ? email : "Choose something secure"}
                     </p>
                   </div>
@@ -401,17 +401,17 @@ export default function Home() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onKeyDown={(e) => onKey(e, handlePasswordSubmit)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base outline-none focus:border-gray-600"
+                    className="w-full border border-edge rounded-lg px-4 py-3 text-base outline-none focus:border-edge"
                   />
                   {path === "signup" && !error && (
-                    <p className="text-xs text-gray-400">At least {PASSWORD_MIN} characters.</p>
+                    <p className="text-xs text-cream-faint">At least {PASSWORD_MIN} characters.</p>
                   )}
-                  {error && <p className="text-red-600 text-sm">{error}</p>}
-                  {notice && <p className="text-green-700 text-sm">{notice}</p>}
+                  {error && <p className="text-red-400 text-sm">{error}</p>}
+                  {notice && <p className="text-green-400 text-sm">{notice}</p>}
                   <button
                     onClick={handlePasswordSubmit}
                     disabled={!password || isLoading}
-                    className="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold disabled:opacity-40"
+                    className="w-full py-3 pc-brass bg-brass text-engrave rounded-xl font-semibold disabled:opacity-40"
                   >
                     {isLoading
                       ? "Just a moment..."
@@ -424,7 +424,7 @@ export default function Home() {
                       type="button"
                       onClick={handleForgotPassword}
                       disabled={isLoading}
-                      className="w-full text-sm text-gray-500 underline underline-offset-2 disabled:opacity-40"
+                      className="w-full text-sm text-cream-mute underline underline-offset-2 disabled:opacity-40"
                     >
                       Forgot password?
                     </button>

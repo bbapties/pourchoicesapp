@@ -2,7 +2,7 @@
 
 export default function ImportTab() {
   return (
-    <div className="text-sm text-gray-500">
+    <div className="text-sm text-cream-mute">
       CSV import — coming soon.
     </div>
   );

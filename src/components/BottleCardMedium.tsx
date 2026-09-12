@@ -29,25 +29,25 @@ function StarRating({ value }: { value: number }) {
   return (
     <div className="flex items-center gap-0">
       {Array.from({ length: full }).map((_, i) => (
-        <span key={`f${i}`} className="text-gray-800 text-sm leading-none">★</span>
+        <span key={`f${i}`} className="text-cream text-sm leading-none">★</span>
       ))}
       {partial > 0 && (
         <span className="relative inline-block text-sm leading-none">
-          <span className="text-gray-300">★</span>
-          <span className="absolute inset-0 overflow-hidden text-gray-800" style={{ width: `${partial * 100}%` }}>★</span>
+          <span className="text-cream-faint">★</span>
+          <span className="absolute inset-0 overflow-hidden text-cream" style={{ width: `${partial * 100}%` }}>★</span>
         </span>
       )}
       {Array.from({ length: empty }).map((_, i) => (
-        <span key={`e${i}`} className="text-gray-300 text-sm leading-none">★</span>
+        <span key={`e${i}`} className="text-cream-faint text-sm leading-none">★</span>
       ))}
-      <span className="ml-1 text-xs text-gray-500">{clamped.toFixed(2)}</span>
+      <span className="ml-1 text-xs text-cream-mute">{clamped.toFixed(2)}</span>
     </div>
   );
 }
 
 function ChipTag({ label }: { label: string }) {
   return (
-    <span className="inline-block border border-gray-300 text-gray-500 text-xs px-2 py-0.5 rounded-full">
+    <span className="inline-block border border-edge text-cream-mute text-xs px-2 py-0.5 rounded-full">
       {label}
     </span>
   );
@@ -65,7 +65,7 @@ interface BottleCardMediumProps {
 export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
   const provisional = bottle.provisional ?? false;
   return (
-    <div className="relative flex flex-col border-b border-gray-300 hover:bg-gray-100 transition-colors pb-6">
+    <div className="relative flex flex-col border-b border-edge hover:bg-panel-2 transition-colors pb-6">
       {/* #103: the same earmark as Search (B-31). Every card in My Bar has been had by definition
           (owned, emptied, or blind-tasted), so every card gets the green check; the tab already
           says which. The old owned-green / empty-grey / tasted-none split disagreed with Search. */}
@@ -87,16 +87,16 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
         {/* Attribute grid */}
         <div className="flex-1 min-w-0 pr-6">
           {/* Name (+ quantity when you have more than one) */}
-          <h3 className="font-semibold text-gray-900 truncate mb-1">
+          <h3 className="font-semibold text-cream truncate mb-1">
             {bottle.name}
             {(bottle.quantity ?? 1) > 1 && (
-              <span className="ml-1.5 text-xs font-semibold text-gray-500 align-middle">×{bottle.quantity}</span>
+              <span className="ml-1.5 text-xs font-semibold text-cream-mute align-middle">×{bottle.quantity}</span>
             )}
           </h3>
           {/* Row 1: distillery (2/3) | category (1/3 right-aligned) */}
           <div className="flex gap-2 mb-1">
-            <span className="flex-[2] text-sm text-gray-600 truncate">{bottle.distillery || '—'}</span>
-            <span className="flex-[1] text-sm text-gray-600 truncate text-right">{bottle.category || '—'}</span>
+            <span className="flex-[2] text-sm text-cream-mute truncate">{bottle.distillery || '—'}</span>
+            <span className="flex-[1] text-sm text-cream-mute truncate text-right">{bottle.category || '—'}</span>
           </div>
           {/* Row 2: stars (2/3) | proof (1/3 right-aligned) */}
           <div className="flex gap-2 items-center">
@@ -106,15 +106,15 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
                   <StarRating value={bottle.stars} />
                   {/* #80: an unlabelled star was the bug -- My Bar shows YOUR rating where you have
                       one and the shared rollup otherwise, and they are different numbers. */}
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-[10px] text-cream-faint">
                     {bottle.starIsMine ? "yours" : "global"}
                   </span>
                 </span>
               ) : (
-                <span className="text-xs text-gray-400">No rating yet</span>
+                <span className="text-xs text-cream-faint">No rating yet</span>
               )}
             </span>
-            <span className="flex-[1] text-sm text-gray-500 text-right">
+            <span className="flex-[1] text-sm text-cream-mute text-right">
               {bottle.proof ? `${bottle.proof}% ABV` : ''}
             </span>
           </div>
@@ -130,7 +130,7 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
 
       {/* Added date — anchored bottom-right for visual balance */}
       {bottle.addedAt && (
-        <span className="absolute bottom-1.5 right-3 text-xs text-gray-400">
+        <span className="absolute bottom-1.5 right-3 text-xs text-cream-faint">
           {bottle.dateLabel || 'Added'} {formatDate(bottle.addedAt)}
         </span>
       )}

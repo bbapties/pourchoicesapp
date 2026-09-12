@@ -66,12 +66,11 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="border-t border-charcoal"
-        style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}
+        className="border-t border-brass-line"
       >
         <SheetHeader className="mb-4">
-          <SheetTitle className="text-charcoal text-left">Send feedback</SheetTitle>
-          <SheetDescription className="text-charcoal text-left">
+          <SheetTitle className="text-cream text-left">Send feedback</SheetTitle>
+          <SheetDescription className="text-cream text-left">
             Suggest a feature or report a bug. This goes straight to the team.
           </SheetDescription>
         </SheetHeader>
@@ -87,7 +86,7 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
                   type="button"
                   onClick={() => setType(t)}
                   className={`flex-1 py-2 text-sm rounded border ${
-                    active ? "bg-gray-800 text-white border-gray-800" : "bg-white text-black border-gray-400"
+                    active ? "pc-brass bg-brass text-engrave border-brass" : "bg-panel text-cream border-edge"
                   }`}
                   style={{ minHeight: "44px" }}
                 >
@@ -100,7 +99,7 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
           {/* Message + dictation */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs text-gray-500">
+              <label className="text-xs text-cream-mute">
                 {type === "bug" ? "What went wrong?" : "What would you like to see?"}
               </label>
               {speechSupported && (
@@ -108,7 +107,7 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
                   type="button"
                   onClick={dictation.toggle}
                   className={`text-xs px-2 py-1 rounded border ${
-                    listening ? "bg-red-600 text-white border-red-600" : "bg-white text-black border-gray-400"
+                    listening ? "bg-red-600 text-cream border-red-600" : "bg-panel text-cream border-edge"
                   }`}
                 >
                   {listening ? "● Listening… tap to stop" : "🎤 Speak instead"}
@@ -120,7 +119,7 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
               placeholder={speechSupported ? "Type here, or tap Speak instead." : "Type here."}
-              className="w-full border border-gray-400 rounded px-3 py-2 text-sm text-black"
+              className="w-full border border-edge rounded px-3 py-2 text-sm text-cream"
             />
           </div>
 
@@ -134,15 +133,15 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
               onChange={(e) => setScreenshot(e.target.files?.[0] ?? null)}
             />
             {screenshot ? (
-              <div className="flex items-center justify-between border border-gray-400 rounded px-3 py-2">
-                <span className="text-xs text-gray-700 truncate">{screenshot.name}</span>
+              <div className="flex items-center justify-between border border-edge rounded px-3 py-2">
+                <span className="text-xs text-cream truncate">{screenshot.name}</span>
                 <button
                   type="button"
                   onClick={() => {
                     setScreenshot(null);
                     if (fileRef.current) fileRef.current.value = "";
                   }}
-                  className="text-xs text-red-600 underline ml-2 shrink-0"
+                  className="text-xs text-red-400 underline ml-2 shrink-0"
                 >
                   Remove
                 </button>
@@ -151,7 +150,7 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="w-full text-left border border-dashed border-gray-400 rounded px-3 py-2 text-sm text-gray-600"
+                className="w-full text-left border border-dashed border-edge rounded px-3 py-2 text-sm text-cream-mute"
                 style={{ minHeight: "44px" }}
               >
                 📎 Attach a screenshot (optional)
@@ -163,7 +162,7 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
             type="button"
             disabled={busy}
             onClick={handleSubmit}
-            className="w-full py-3 text-sm font-semibold rounded bg-gray-900 text-white disabled:opacity-50"
+            className="w-full py-3 text-sm font-semibold rounded pc-brass bg-brass text-engrave disabled:opacity-50"
             style={{ minHeight: "44px" }}
           >
             {busy ? "Sending…" : "Send feedback"}

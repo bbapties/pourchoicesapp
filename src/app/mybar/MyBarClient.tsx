@@ -465,21 +465,21 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   return (
     <>
       {/* Row 1: Search bar (h-14) */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 p-2" style={{ top: "env(safe-area-inset-top)" }}>
+      <header className="fixed top-0 left-0 right-0 h-14 pc-wood pc-rail-bottom z-20 shadow-[0_6px_14px_rgba(0,0,0,.55)] p-2" style={{ top: "env(safe-area-inset-top)" }}>
         <div className="relative max-w-md mx-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cream w-4 h-4" />
           <Input
             type="text"
             placeholder="Search your collection..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="rounded-full pl-10 pr-11 h-10 text-base border-charcoal focus:border-charcoal bg-ivory text-charcoal placeholder:text-charcoal placeholder:opacity-60"
+            className="rounded-full pl-10 pr-11 h-10 text-base border-brass-line focus:border-brass-line bg-panel text-cream placeholder:text-cream placeholder:opacity-60"
           />
           <button
             type="button"
             onClick={() => setShowScanner(true)}
             aria-label="Scan barcode"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-charcoal rounded-full hover:bg-charcoal/10"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-cream rounded-full hover:bg-cream/10"
           >
             <ScanLine className="w-5 h-5" />
           </button>
@@ -487,14 +487,14 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       </header>
 
       {/* Row 2: Filter By + Sort By (h-9) — z-30 so dropdowns clear the z-20 tabs row */}
-      <div className="fixed top-14 left-0 right-0 h-9 bg-ivory border-b border-charcoal z-30 flex items-center justify-between px-4" style={{ top: "calc(56px + env(safe-area-inset-top))" }}>
+      <div className="fixed top-14 left-0 right-0 h-9 bg-panel border-b border-brass-line z-30 flex items-center justify-between px-4" style={{ top: "calc(56px + env(safe-area-inset-top))" }}>
 
         {/* Filter By */}
         <div className="relative">
           <button
             onClick={handleFilterButtonClick}
-            className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-charcoal transition-colors"
-            style={filterActive ? { backgroundColor: '#2F2F2F', color: '#FFFFFF', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
+            className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-brass-line transition-colors"
+            style={filterActive ? { backgroundColor: '#bd9436', color: '#1c1303', borderColor: '#bd9436' } : { color: '#f6ecd9' }}
           >
             {filterActive ? filter.value : 'Filter by'}
             {filterActive
@@ -506,13 +506,13 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           {filter.step !== 'closed' && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setFilter(f => ({ ...f, step: 'closed' }))} />
-              <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[160px] py-1">
+              <div className="absolute left-0 top-full mt-1 z-50 bg-panel border border-edge rounded-lg shadow-lg min-w-[160px] py-1">
                 {filter.step === 'field' && (
                   <>
                     {filterActive && (
                       <button
                         onClick={handleClearFilter}
-                        className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-400 hover:bg-gray-50 border-b border-gray-100"
+                        className="w-full flex items-center px-4 py-2 text-sm text-left text-cream-faint hover:bg-panel-2 border-b border-edge"
                       >
                         Clear filter
                       </button>
@@ -521,10 +521,10 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
                       <button
                         key={f}
                         onClick={() => handleFilterFieldSelect(f)}
-                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-gray-50"
+                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-panel-2"
                       >
                         <span>{f === 'category' ? 'Category' : 'Verified Status'}</span>
-                        <ChevronDown size={13} className="rotate-[-90deg] text-gray-400" />
+                        <ChevronDown size={13} className="rotate-[-90deg] text-cream-faint" />
                       </button>
                     ))}
                   </>
@@ -533,7 +533,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
                   <>
                     <button
                       onClick={() => setFilter(f => ({ ...f, step: 'field' }))}
-                      className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-400 hover:bg-gray-50 border-b border-gray-100 gap-1"
+                      className="w-full flex items-center px-4 py-2 text-sm text-left text-cream-faint hover:bg-panel-2 border-b border-edge gap-1"
                     >
                       <ChevronDown size={13} className="rotate-90" />
                       {filter.field === 'category' ? 'Category' : 'Verified Status'}
@@ -542,10 +542,10 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
                       <button
                         key={val}
                         onClick={() => handleFilterValueSelect(val)}
-                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-gray-50"
+                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-panel-2"
                       >
                         <span>{val}</span>
-                        {filter.value === val && <Check size={13} className="text-charcoal" />}
+                        {filter.value === val && <Check size={13} className="text-cream" />}
                       </button>
                     ))}
                   </>
@@ -559,8 +559,8 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
         <div className="relative">
           <button
             onClick={() => setShowSortMenu(v => !v)}
-            className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-charcoal transition-colors"
-            style={sortActive ? { backgroundColor: '#2F2F2F', color: '#FFFFFF', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
+            className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-brass-line transition-colors"
+            style={sortActive ? { backgroundColor: '#bd9436', color: '#1c1303', borderColor: '#bd9436' } : { color: '#f6ecd9' }}
           >
             {sortBy ? SORT_LABELS[sortBy] : 'Sort by'}
             <ChevronDown size={13} />
@@ -569,11 +569,11 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           {showSortMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[140px] py-1">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-panel border border-edge rounded-lg shadow-lg min-w-[140px] py-1">
                 {sortBy !== null && (
                   <button
                     onClick={() => { setSortBy(null); setShowSortMenu(false); }}
-                    className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-400 hover:bg-gray-50 border-b border-gray-100"
+                    className="w-full flex items-center px-4 py-2 text-sm text-left text-cream-faint hover:bg-panel-2 border-b border-edge"
                   >
                     Clear sort
                   </button>
@@ -582,10 +582,10 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
                   <button
                     key={option}
                     onClick={() => handleSortSelect(option)}
-                    className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-gray-50"
+                    className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-panel-2"
                   >
                     <span>{SORT_LABELS[option!]}</span>
-                    {sortBy === option && <Check size={13} className="text-charcoal" />}
+                    {sortBy === option && <Check size={13} className="text-cream" />}
                   </button>
                 ))}
               </div>
@@ -595,13 +595,13 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       </div>
 
       {/* Row 3: Tabs (h-10) */}
-      <div className="fixed top-[92px] left-0 right-0 h-10 bg-ivory border-b border-charcoal z-20 flex" style={{ top: "calc(92px + env(safe-area-inset-top))" }}>
+      <div className="fixed top-[92px] left-0 right-0 h-10 bg-panel border-b border-brass-line z-20 flex" style={{ top: "calc(92px + env(safe-area-inset-top))" }}>
         {(['owned', 'empty', 'tasted', 'wishlist'] as TabOption[]).map(tab => (
           <button
             key={tab}
             onClick={() => { setActiveTab(tab); setSearchQuery(''); }}
             className={`flex-1 text-xs px-1 py-2 border-b-2 transition-colors truncate
-              ${activeTab === tab ? 'border-charcoal font-semibold text-charcoal' : 'border-transparent text-gray-400'}`}
+              ${activeTab === tab ? 'border-brass-line font-semibold text-cream' : 'border-transparent text-cream-faint'}`}
           >
             {tab === 'owned'
               ? `My Bar (${tabCounts.owned})`
@@ -621,37 +621,37 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
             <div className="text-5xl mb-4">🥃</div>
             {activeTab === 'owned' ? (
               <>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                <h3 className="text-lg font-semibold text-cream mb-2">
                   {searchQuery || filterActive ? 'No bottles match' : 'Your bar is empty'}
                 </h3>
-                <p className="text-gray-500 text-sm">
+                <p className="text-cream-mute text-sm">
                   {searchQuery || filterActive ? 'Try adjusting your search or filters' : 'Head to Search to find your first bottle'}
                 </p>
               </>
             ) : activeTab === 'empty' ? (
               <>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                <h3 className="text-lg font-semibold text-cream mb-2">
                   {searchQuery || filterActive ? 'No bottles match' : 'No empty bottles yet'}
                 </h3>
-                <p className="text-gray-500 text-sm">
+                <p className="text-cream-mute text-sm">
                   {searchQuery || filterActive ? 'Try adjusting your search or filters' : 'Bottles you finish will appear here'}
                 </p>
               </>
             ) : activeTab === 'wishlist' ? (
               <>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                <h3 className="text-lg font-semibold text-cream mb-2">
                   {searchQuery || filterActive ? 'No bottles match' : 'No wishlist yet'}
                 </h3>
-                <p className="text-gray-500 text-sm">
+                <p className="text-cream-mute text-sm">
                   {searchQuery || filterActive ? 'Try adjusting your search or filters' : 'Tap the bookmark on a bottle to add it here.'}
                 </p>
               </>
             ) : (
               <>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                <h3 className="text-lg font-semibold text-cream mb-2">
                   {searchQuery || filterActive ? 'No bottles match' : 'No tastings yet'}
                 </h3>
-                <p className="text-gray-500 text-sm">
+                <p className="text-cream-mute text-sm">
                   {searchQuery || filterActive ? 'Try adjusting your search or filters' : 'Complete a blind tasting to see bottles here. Ones you own stay in My Bar.'}
                 </p>
               </>

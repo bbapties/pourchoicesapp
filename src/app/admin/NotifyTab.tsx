@@ -167,48 +167,48 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="border border-gray-400 rounded p-4 space-y-3 bg-white">
+      <div className="border border-edge rounded p-4 space-y-3 bg-panel">
         <h2 className="font-semibold">Send a notification</h2>
 
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-cream-mute">
           {reachable.length} of {recipients.length} user{recipients.length === 1 ? "" : "s"} can
           receive one right now.{" "}
           {reachable.length === 0 && "Nobody has granted permission on a device yet."}
         </p>
 
         <label className="block text-sm">
-          <span className="text-gray-700">Title</span>
+          <span className="text-cream">Title</span>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={80}
             placeholder="New bottles added"
-            className="mt-1 w-full border border-gray-400 rounded px-2 py-2 text-sm"
+            className="mt-1 w-full border border-edge rounded px-2 py-2 text-sm"
           />
         </label>
 
         <label className="block text-sm">
-          <span className="text-gray-700">Message</span>
+          <span className="text-cream">Message</span>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             maxLength={200}
             rows={3}
             placeholder="Twelve new bourbons are in the catalog — come rate them."
-            className="mt-1 w-full border border-gray-400 rounded px-2 py-2 text-sm"
+            className="mt-1 w-full border border-edge rounded px-2 py-2 text-sm"
           />
-          <span className="text-xs text-gray-500">{body.length}/200</span>
+          <span className="text-xs text-cream-mute">{body.length}/200</span>
         </label>
 
         <label className="block text-sm">
-          <span className="text-gray-700">Opens</span>
+          <span className="text-cream">Opens</span>
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="/mybar"
-            className="mt-1 w-full border border-gray-400 rounded px-2 py-2 text-sm font-mono"
+            className="mt-1 w-full border border-edge rounded px-2 py-2 text-sm font-mono"
           />
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-cream-mute">
             An in-app path, e.g. <code>/search</code> or <code>/social</code>. Must start with /.
           </span>
         </label>
@@ -217,14 +217,14 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
           <button
             type="button"
             onClick={() => setAudience("everyone")}
-            className={`flex-1 py-2 rounded border ${audience === "everyone" ? "bg-gray-900 text-white border-gray-900" : "border-gray-400"}`}
+            className={`flex-1 py-2 rounded border ${audience === "everyone" ? "pc-brass bg-brass text-engrave border-brass" : "border-edge"}`}
           >
             Everyone
           </button>
           <button
             type="button"
             onClick={() => setAudience("user")}
-            className={`flex-1 py-2 rounded border ${audience === "user" ? "bg-gray-900 text-white border-gray-900" : "border-gray-400"}`}
+            className={`flex-1 py-2 rounded border ${audience === "user" ? "pc-brass bg-brass text-engrave border-brass" : "border-edge"}`}
           >
             One user
           </button>
@@ -234,7 +234,7 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
           <select
             value={targetUserId}
             onChange={(e) => setTargetUserId(e.target.value)}
-            className="w-full border border-gray-400 rounded px-2 py-2 text-sm"
+            className="w-full border border-edge rounded px-2 py-2 text-sm"
           >
             <option value="">Pick a user…</option>
             {recipients.map((r) => (
@@ -249,15 +249,15 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
           type="button"
           disabled={sending}
           onClick={handleSend}
-          className="w-full py-3 rounded bg-gray-900 text-white font-semibold disabled:opacity-50"
+          className="w-full py-3 rounded pc-brass bg-brass text-engrave font-semibold disabled:opacity-50"
         >
           {sending ? "Sending…" : "Send"}
         </button>
       </div>
 
-      <div className="border border-gray-400 rounded p-4 space-y-3 bg-white">
+      <div className="border border-edge rounded p-4 space-y-3 bg-panel">
         <h2 className="font-semibold">What&apos;s new</h2>
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-cream-mute">
           Shown inside the app on a tester&apos;s next open. Nothing appears until you publish it,
           which is why the digest can no longer dump the whole changelog on a new user.
         </p>
@@ -267,7 +267,7 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
           onChange={(e) => setAnnTitle(e.target.value)}
           maxLength={120}
           placeholder="Blind tastings are live"
-          className="w-full border border-gray-400 rounded px-2 py-2 text-sm"
+          className="w-full border border-edge rounded px-2 py-2 text-sm"
         />
         <textarea
           value={annBody}
@@ -275,14 +275,14 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
           maxLength={400}
           rows={2}
           placeholder="Pick 2-6 bottles, rank them blind, and see how they really stack up."
-          className="w-full border border-gray-400 rounded px-2 py-2 text-sm"
+          className="w-full border border-edge rounded px-2 py-2 text-sm"
         />
 
         <div className="flex gap-2">
           <select
             value={annCoachId}
             onChange={(e) => setAnnCoachId(e.target.value)}
-            className="flex-1 border border-gray-400 rounded px-2 py-2 text-sm"
+            className="flex-1 border border-edge rounded px-2 py-2 text-sm"
           >
             <option value="">No walkthrough</option>
             {COACH_CATALOG.filter((c) => c.tour.length > 0).map((c) => (
@@ -292,7 +292,7 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
           <select
             value={annAudience}
             onChange={(e) => setAnnAudience(e.target.value as Announcement["audience"])}
-            className="flex-1 border border-gray-400 rounded px-2 py-2 text-sm"
+            className="flex-1 border border-edge rounded px-2 py-2 text-sm"
           >
             <option value="all">Everyone</option>
             <option value="new">New users only</option>
@@ -304,27 +304,27 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
           type="button"
           disabled={annBusy}
           onClick={handleCreateAnnouncement}
-          className="w-full py-2 rounded border border-gray-500 text-sm font-medium disabled:opacity-50"
+          className="w-full py-2 rounded border border-edge text-sm font-medium disabled:opacity-50"
         >
           {annBusy ? "Saving…" : "Save as draft"}
         </button>
 
         {anns.length === 0 ? (
-          <p className="text-sm text-gray-600">Nothing written yet.</p>
+          <p className="text-sm text-cream-mute">Nothing written yet.</p>
         ) : (
           <ul className="space-y-2 text-sm pt-1">
             {anns.map((a) => (
-              <li key={a.id} className="border-t border-gray-200 pt-2 first:border-0">
+              <li key={a.id} className="border-t border-edge pt-2 first:border-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-medium">
                       {a.title}{" "}
-                      <span className={a.published ? "text-xs text-green-700" : "text-xs text-gray-500"}>
+                      <span className={a.published ? "text-xs text-green-400" : "text-xs text-cream-mute"}>
                         {a.published ? "· published" : "· draft"}
                       </span>
                     </div>
-                    <div className="text-gray-600">{a.body}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-cream-mute">{a.body}</div>
+                    <div className="text-xs text-cream-mute">
                       {a.audience === "all" ? "everyone" : a.audience + " only"}
                       {a.coachId ? ` · walkthrough: ${a.coachId}` : ""}
                     </div>
@@ -333,14 +333,14 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
                     <button
                       type="button"
                       onClick={() => handleTogglePublish(a)}
-                      className="text-xs px-2 py-1 border border-gray-500 rounded"
+                      className="text-xs px-2 py-1 border border-edge rounded"
                     >
                       {a.published ? "Unpublish" : "Publish"}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDeleteAnnouncement(a)}
-                      className="text-xs px-2 py-1 border border-gray-400 rounded text-gray-600"
+                      className="text-xs px-2 py-1 border border-edge rounded text-cream-mute"
                     >
                       Delete
                     </button>
@@ -352,17 +352,17 @@ export default function NotifyTab({ publicUserId }: { publicUserId: string }) {
         )}
       </div>
 
-      <div className="border border-gray-400 rounded p-4 bg-white">
+      <div className="border border-edge rounded p-4 bg-panel">
         <h2 className="font-semibold mb-2">Recently sent</h2>
         {history.length === 0 ? (
-          <p className="text-sm text-gray-600">Nothing sent yet.</p>
+          <p className="text-sm text-cream-mute">Nothing sent yet.</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {history.map((n) => (
-              <li key={n.id} className="border-b border-gray-200 pb-2 last:border-0">
+              <li key={n.id} className="border-b border-edge pb-2 last:border-0">
                 <div className="font-medium">{n.title}</div>
-                <div className="text-gray-600">{n.body}</div>
-                <div className="text-xs text-gray-500">
+                <div className="text-cream-mute">{n.body}</div>
+                <div className="text-xs text-cream-mute">
                   {new Date(n.created_at).toLocaleString()} · {n.audience} · {n.sent_count} sent
                   {n.failed_count ? `, ${n.failed_count} failed` : ""}
                 </div>

@@ -955,22 +955,22 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   return (
     <>
       {/* Fixed Header with Search Bar */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 p-2" style={{ top: "env(safe-area-inset-top)" }}>
+      <header className="fixed top-0 left-0 right-0 h-14 pc-wood pc-rail-bottom z-20 shadow-[0_6px_14px_rgba(0,0,0,.55)] p-2" style={{ top: "env(safe-area-inset-top)" }}>
         <div className="relative max-w-md mx-auto" data-coach="search.input">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cream w-4 h-4" />
           <Input
             type="text"
             placeholder="Search bottles, distilleries, categories..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="rounded-full pl-10 pr-11 h-10 text-base border-charcoal focus:border-charcoal bg-ivory text-charcoal placeholder:text-charcoal placeholder:opacity-60"
+            className="rounded-full pl-10 pr-11 h-10 text-base border-brass-line focus:border-brass-line bg-panel text-cream placeholder:text-cream placeholder:opacity-60"
           />
           <button
             type="button"
             onClick={() => setShowScanner(true)}
             aria-label="Scan barcode"
             data-coach="search.scan"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-charcoal rounded-full hover:bg-charcoal/10"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-cream rounded-full hover:bg-cream/10"
           >
             <ScanLine className="w-5 h-5" />
           </button>
@@ -978,14 +978,14 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       </header>
 
       {/* Results banner: Filter By | Count | Sort By — z-30 so dropdowns clear lower fixed rows */}
-      <header className="fixed top-14 left-0 right-0 h-9 bg-ivory border-b border-charcoal z-30 flex items-center justify-between px-4 gap-2" style={{ top: "calc(56px + env(safe-area-inset-top))" }}>
+      <header className="fixed top-14 left-0 right-0 h-9 bg-panel border-b border-brass-line z-30 flex items-center justify-between px-4 gap-2" style={{ top: "calc(56px + env(safe-area-inset-top))" }}>
 
         {/* Filter By */}
         <div className="relative flex-shrink-0">
           <button
             onClick={handleFilterButtonClick}
-            className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-charcoal transition-colors"
-            style={filterActive ? { backgroundColor: '#2F2F2F', color: '#FFFFFF', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
+            className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-brass-line transition-colors"
+            style={filterActive ? { backgroundColor: '#bd9436', color: '#1c1303', borderColor: '#bd9436' } : { color: '#f6ecd9' }}
           >
             {filterActive ? filter.value : 'Filter by'}
             {filterActive
@@ -997,13 +997,13 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
           {filter.step !== 'closed' && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setFilter(f => ({ ...f, step: 'closed' }))} />
-              <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[160px] py-1">
+              <div className="absolute left-0 top-full mt-1 z-50 bg-panel border border-edge rounded-lg shadow-lg min-w-[160px] py-1">
                 {filter.step === 'field' && (
                   <>
                     {filterActive && (
                       <button
                         onClick={handleClearFilter}
-                        className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-400 hover:bg-gray-50 border-b border-gray-100"
+                        className="w-full flex items-center px-4 py-2 text-sm text-left text-cream-faint hover:bg-panel-2 border-b border-edge"
                       >
                         Clear filter
                       </button>
@@ -1012,10 +1012,10 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
                       <button
                         key={f}
                         onClick={() => handleFilterFieldSelect(f)}
-                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-gray-50"
+                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-panel-2"
                       >
                         <span>{FILTER_FIELD_LABELS[f]}</span>
-                        <ChevronDown size={13} className="rotate-[-90deg] text-gray-400" />
+                        <ChevronDown size={13} className="rotate-[-90deg] text-cream-faint" />
                       </button>
                     ))}
                   </>
@@ -1024,7 +1024,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
                   <>
                     <button
                       onClick={() => setFilter(f => ({ ...f, step: 'field' }))}
-                      className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-400 hover:bg-gray-50 border-b border-gray-100 gap-1"
+                      className="w-full flex items-center px-4 py-2 text-sm text-left text-cream-faint hover:bg-panel-2 border-b border-edge gap-1"
                     >
                       <ChevronDown size={13} className="rotate-90" />
                       {filter.field ? FILTER_FIELD_LABELS[filter.field] : ''}
@@ -1033,10 +1033,10 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
                       <button
                         key={val}
                         onClick={() => handleFilterValueSelect(val)}
-                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-gray-50"
+                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-panel-2"
                       >
                         <span>{val}</span>
-                        {filter.value === val && <Check size={13} className="text-charcoal" />}
+                        {filter.value === val && <Check size={13} className="text-cream" />}
                       </button>
                     ))}
                   </>
@@ -1047,7 +1047,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         </div>
 
         {/* Bottle count — center */}
-        <span className="flex-1 text-center text-sm text-charcoal font-medium tabular-nums">
+        <span className="flex-1 text-center text-sm text-cream font-medium tabular-nums">
           {displayCount.toLocaleString()} {viewMode === 'bottles' ? 'Bottles' : 'Variants'}
         </span>
 
@@ -1055,8 +1055,8 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         <div className="relative flex-shrink-0">
           <button
             onClick={() => setShowSortMenu(v => !v)}
-            className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-charcoal transition-colors"
-            style={sortActive ? { backgroundColor: '#2F2F2F', color: '#FFFFFF', borderColor: '#2F2F2F' } : { color: '#2F2F2F' }}
+            className="flex items-center gap-1 text-sm rounded-full px-3 py-0.5 border border-brass-line transition-colors"
+            style={sortActive ? { backgroundColor: '#bd9436', color: '#1c1303', borderColor: '#bd9436' } : { color: '#f6ecd9' }}
           >
             {sortBy ? SORT_LABELS[sortBy] : 'Sort by'}
             <ChevronDown size={13} />
@@ -1065,11 +1065,11 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
           {showSortMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[140px] py-1 overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-panel border border-edge rounded-lg shadow-lg min-w-[140px] py-1 overflow-hidden">
                 {sortBy !== null && (
                   <button
                     onClick={() => { setSortBy(null); setShowSortMenu(false); }}
-                    className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-400 hover:bg-gray-50 border-b border-gray-100"
+                    className="w-full flex items-center px-4 py-2 text-sm text-left text-cream-faint hover:bg-panel-2 border-b border-edge"
                   >
                     Clear sort
                   </button>
@@ -1078,10 +1078,10 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
                   <button
                     key={option}
                     onClick={() => handleSortSelect(option)}
-                    className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-gray-50"
+                    className="w-full flex items-center justify-between px-4 py-2 text-sm text-left hover:bg-panel-2"
                   >
                     <span>{SORT_LABELS[option!]}</span>
-                    {sortBy === option && <Check size={13} className="text-charcoal" />}
+                    {sortBy === option && <Check size={13} className="text-cream" />}
                   </button>
                 ))}
               </div>
@@ -1091,19 +1091,19 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       </header>
 
       {/* Bottles | All Variants toggle — own row beneath the filter/sort bar */}
-      <div className="fixed top-[92px] left-0 right-0 h-9 bg-ivory border-b border-charcoal z-20 flex items-center justify-center px-4" style={{ top: "calc(92px + env(safe-area-inset-top))" }}>
-        <div className="inline-flex border border-charcoal rounded-full overflow-hidden text-sm">
+      <div className="fixed top-[92px] left-0 right-0 h-9 bg-panel border-b border-brass-line z-20 flex items-center justify-center px-4" style={{ top: "calc(92px + env(safe-area-inset-top))" }}>
+        <div className="inline-flex border border-brass-line rounded-full overflow-hidden text-sm">
           <button
             onClick={() => handleModeChange('bottles')}
             className="px-4 py-0.5 transition-colors"
-            style={viewMode === 'bottles' ? { backgroundColor: '#2F2F2F', color: '#FFFFFF' } : { color: '#2F2F2F' }}
+            style={viewMode === 'bottles' ? { backgroundColor: '#bd9436', color: '#1c1303' } : { color: '#f6ecd9' }}
           >
             Bottles
           </button>
           <button
             onClick={() => handleModeChange('variants')}
-            className="px-4 py-0.5 border-l border-charcoal transition-colors"
-            style={viewMode === 'variants' ? { backgroundColor: '#2F2F2F', color: '#FFFFFF' } : { color: '#2F2F2F' }}
+            className="px-4 py-0.5 border-l border-brass-line transition-colors"
+            style={viewMode === 'variants' ? { backgroundColor: '#bd9436', color: '#1c1303' } : { color: '#f6ecd9' }}
           >
             All Variants
           </button>
@@ -1115,11 +1115,11 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center p-3 border-b border-gray-300">
-                <Skeleton className="w-8 h-16 rounded flex-shrink-0 bg-gray-300" />
+              <div key={i} className="flex items-center p-3 border-b border-edge">
+                <Skeleton className="w-8 h-16 rounded flex-shrink-0 bg-panel-3" />
                 <div className="ml-3 flex-1 space-y-1">
-                  <Skeleton className="h-4 w-3/4 bg-gray-300" />
-                  <Skeleton className="h-3 w-1/2 bg-gray-300" />
+                  <Skeleton className="h-4 w-3/4 bg-panel-3" />
+                  <Skeleton className="h-3 w-1/2 bg-panel-3" />
                 </div>
               </div>
             ))}
@@ -1127,7 +1127,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         ) : query.trim() && bottles.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🥃</div>
-            <h3 className="text-lg font-semibold mb-2 text-charcoal">
+            <h3 className="text-lg font-semibold mb-2 text-cream">
               Bottle not found? Add it!
             </h3>
           </div>
@@ -1146,7 +1146,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
               <div className="h-8 flex items-center justify-center">
                 <div className="flex gap-1">
                   {[0, 1, 2].map(i => (
-                    <div key={i} className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                    <div key={i} className="w-1.5 h-1.5 bg-cream-faint rounded-full animate-bounce"
                       style={{ animationDelay: `${i * 0.15}s` }} />
                   ))}
                 </div>
@@ -1166,25 +1166,25 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       {/* A.1 barcode two-zone chooser: standard bottle + the owned non-default versions */}
       {scanChoice && (
         <div className="fixed inset-0 z-[60] bg-black/40 flex items-end sm:items-center justify-center" onClick={() => setScanChoice(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-charcoal mb-0.5">In your bar</h3>
-            <p className="text-sm text-gray-500 mb-4 truncate">{scanChoice.name}</p>
+          <div className="pc-leather w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-cream mb-0.5">In your bar</h3>
+            <p className="text-sm text-cream-mute mb-4 truncate">{scanChoice.name}</p>
             <button
               type="button"
               onClick={() => { const id = scanChoice.bottleId; setScanChoice(null); openBottleById(id, null, scanChoice.barcode); }}
-              className="w-full rounded-lg border border-charcoal py-3 text-sm font-medium text-charcoal mb-4"
+              className="w-full rounded-lg border border-brass-line py-3 text-sm font-medium text-cream mb-4"
             >
               Open the standard bottle
             </button>
-            <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-2">Versions you own</p>
+            <p className="text-[11px] uppercase tracking-wide text-cream-faint mb-2">Versions you own</p>
             <div className="space-y-1">
               {scanChoice.versions.map((v) => (
                 <button
                   key={v.variantId}
                   type="button"
                   onClick={() => { const id = scanChoice.bottleId, vid = v.variantId; setScanChoice(null); openBottleById(id, vid, scanChoice.barcode); }}
-                  className="w-full text-left rounded-lg border p-3 text-sm text-charcoal"
-                  style={{ borderColor: "#D1D5DB" }}
+                  className="w-full text-left rounded-lg border p-3 text-sm text-cream"
+                  style={{ borderColor: "#3a2f26" }}
                 >
                   {v.label}
                 </button>
@@ -1206,8 +1206,8 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       {query.length > 0 && (
         <Button
           onClick={() => setShowAddSheet(true)}
-          style={{ backgroundColor: '#2F2F2F', color: '#FFFFFF' }}
-          className="!bg-charcoal !text-ivory !opacity-100 !hover:bg-gray-700 fixed bottom-20 left-1/2 -translate-x-1/2 rounded-full z-30 shadow-lg w-12 h-12 flex items-center justify-center"
+          style={{ backgroundColor: '#bd9436', color: '#1c1303' }}
+          className="!bg-brass !text-engrave !opacity-100 !hover:bg-brass-lo fixed bottom-20 left-1/2 -translate-x-1/2 rounded-full z-30 shadow-lg w-12 h-12 flex items-center justify-center"
           variant={null}
           aria-label="Add new bottle"
         >

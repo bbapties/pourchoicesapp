@@ -53,12 +53,11 @@ export default function MoreSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="border-t border-charcoal"
-        style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}
+        className="border-t border-brass-line"
       >
         <SheetHeader className="mb-4">
-          <SheetTitle className="text-charcoal text-left">More</SheetTitle>
-          <SheetDescription className="text-charcoal text-left">
+          <SheetTitle className="text-cream text-left">More</SheetTitle>
+          <SheetDescription className="text-cream text-left">
             {bottleName}
           </SheetDescription>
         </SheetHeader>
@@ -70,11 +69,11 @@ export default function MoreSheet({
               type="button"
               disabled={busy}
               onClick={row.onClick}
-              className="w-full text-left border border-gray-400 rounded px-4 py-3 bg-white hover:bg-gray-100 disabled:opacity-50"
+              className="w-full text-left border border-edge rounded px-4 py-3 bg-panel hover:bg-panel-2 disabled:opacity-50"
               style={{ minHeight: "44px" }}
             >
-              <div className={`text-sm font-medium ${row.danger ? "text-red-600" : "text-black"}`}>{row.label}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{row.hint}</div>
+              <div className={`text-sm font-medium ${row.danger ? "text-red-400" : "text-cream"}`}>{row.label}</div>
+              <div className="text-xs text-cream-mute mt-0.5">{row.hint}</div>
             </button>
           ))}
         </div>

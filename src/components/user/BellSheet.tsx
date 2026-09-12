@@ -61,10 +61,10 @@ export default function BellSheet({ open, onOpenChange, viewerId, target, initia
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="border-t border-charcoal" style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}>
+      <SheetContent side="bottom">
         <SheetHeader className="mb-1">
-          <SheetTitle className="text-charcoal text-left">Notify me when @{target.username}…</SheetTitle>
-          <SheetDescription className="text-charcoal opacity-70 text-left">Pushes go to your phone once the app is installed.</SheetDescription>
+          <SheetTitle className="text-cream text-left">Notify me when @{target.username}…</SheetTitle>
+          <SheetDescription className="text-cream opacity-70 text-left">Pushes go to your phone once the app is installed.</SheetDescription>
         </SheetHeader>
 
         <div className="px-4 pb-6">
@@ -72,9 +72,9 @@ export default function BellSheet({ open, onOpenChange, viewerId, target, initia
             type="button"
             disabled={busy}
             onClick={() => save(allOn ? new Set() : new Set(ALL_KINDS))}
-            className="w-full h-11 flex items-center justify-between text-xs text-gray-600 border-b border-charcoal"
+            className="w-full h-11 flex items-center justify-between text-xs text-cream-mute border-b border-brass-line"
           >
-            <span>All</span><span className="font-semibold text-charcoal">{allOn ? "on" : kinds.size ? "some" : "off"}</span>
+            <span>All</span><span className="font-semibold text-cream">{allOn ? "on" : kinds.size ? "some" : "off"}</span>
           </button>
 
           {NOTIFY_KINDS.map((k) => {
@@ -85,20 +85,20 @@ export default function BellSheet({ open, onOpenChange, viewerId, target, initia
                 type="button"
                 disabled={busy}
                 onClick={() => toggle(k.id)}
-                className="w-full h-12 flex items-center justify-between text-sm text-charcoal border-b border-gray-200"
+                className="w-full h-12 flex items-center justify-between text-sm text-cream border-b border-edge"
                 role="switch"
                 aria-checked={on}
               >
                 <span>{k.label}</span>
-                <span className="relative block w-10 h-6 rounded-full transition-colors" style={{ backgroundColor: on ? "#111" : "#D1D5DB" }}>
-                  <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all" style={{ left: on ? 18 : 2 }} />
+                <span className="relative block w-10 h-6 rounded-full transition-colors" style={{ backgroundColor: on ? "#bd9436" : "#3a2f26" }}>
+                  <span className="absolute top-0.5 w-5 h-5 rounded-full bg-panel transition-all" style={{ left: on ? 18 : 2 }} />
                 </span>
               </button>
             );
           })}
 
           {!reachable && kinds.size > 0 && (
-            <div className="mt-3.5 px-3 py-2.5 border border-gray-400 rounded-lg text-xs text-gray-700 leading-relaxed">
+            <div className="mt-3.5 px-3 py-2.5 border border-edge rounded-lg text-xs text-cream leading-relaxed">
               You won&apos;t get these until you install the app and allow notifications.{" "}
               {onInstall && (
                 <button type="button" onClick={onInstall} className="underline underline-offset-2">Install the app</button>
@@ -109,14 +109,14 @@ export default function BellSheet({ open, onOpenChange, viewerId, target, initia
           <div className="mt-4 text-center">
             {confirmMute ? (
               <div className="flex flex-col items-center gap-2">
-                <p className="text-xs text-gray-600">Their posts leave your feed and shelf. They won&apos;t be told. You can unmute from Profile › Settings.</p>
+                <p className="text-xs text-cream-mute">Their posts leave your feed and shelf. They won&apos;t be told. You can unmute from Profile › Settings.</p>
                 <div className="flex gap-2">
-                  <button type="button" disabled={busy} onClick={doMute} className="h-9 px-4 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: "#111" }}>Mute @{target.username}</button>
-                  <button type="button" onClick={() => setConfirmMute(false)} className="h-9 px-4 rounded-full text-xs font-semibold border border-gray-400 text-charcoal bg-white">Cancel</button>
+                  <button type="button" disabled={busy} onClick={doMute} className="h-9 px-4 rounded-full text-xs font-semibold text-cream" style={{ backgroundColor: "#bd9436" }}>Mute @{target.username}</button>
+                  <button type="button" onClick={() => setConfirmMute(false)} className="h-9 px-4 rounded-full text-xs font-semibold border border-edge text-cream bg-panel">Cancel</button>
                 </div>
               </div>
             ) : (
-              <button type="button" onClick={() => setConfirmMute(true)} className="text-[13px] text-gray-600 underline underline-offset-2">Mute @{target.username}</button>
+              <button type="button" onClick={() => setConfirmMute(true)} className="text-[13px] text-cream-mute underline underline-offset-2">Mute @{target.username}</button>
             )}
           </div>
         </div>

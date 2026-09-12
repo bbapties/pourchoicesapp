@@ -629,7 +629,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
   };
 
   if (loading) {
-    return <div className="text-sm text-gray-500">Loading queue…</div>;
+    return <div className="text-sm text-cream-mute">Loading queue…</div>;
   }
 
   return (
@@ -639,29 +639,29 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
         placeholder="Search bottle, distillery, or submitter"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full border border-charcoal rounded px-3 py-2 text-sm bg-white"
+        className="w-full border border-brass-line rounded px-3 py-2 text-sm bg-panel"
       />
 
       {/* 7.8: pending edit suggestions */}
       {suggestions.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <div className="text-xs font-semibold uppercase tracking-wide text-cream-mute">
             Pending edit suggestions ({suggestions.length})
           </div>
           {suggestionsByBottle.map((g) => (
-            <div key={g.bottleId} className="border border-gray-200 rounded bg-white">
-              <div className="px-3 py-2 border-b border-gray-100 font-semibold text-sm text-charcoal">
+            <div key={g.bottleId} className="border border-edge rounded bg-panel">
+              <div className="px-3 py-2 border-b border-edge font-semibold text-sm text-cream">
                 {[g.name, g.distillery].filter(Boolean).join(" · ")}
               </div>
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-edge">
                 {g.rows.map((r) => (
                   <li key={r.id} className="px-3 py-2 text-sm">
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-cream-faint">
                       {fieldLabel(r.field)} · by {r.submittedByName} · {new Date(r.createdAt).toLocaleDateString()}
                     </div>
                     <div className="mt-1">
                       {isStructuralField(r.field) ? (
-                        <span className="text-red-700">
+                        <span className="text-red-400">
                           {r.field === "__delete__"
                             ? "Remove this bottle from the catalog"
                             : `Merge — remove this duplicate${r.newValue ? ` (keep ${r.newValue})` : ""}`}
@@ -669,22 +669,22 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                       ) : isImageField(r.field) ? (
                         <div className="flex items-center gap-3">
                           <div className="text-center">
-                            <div className="text-[10px] text-gray-400">current</div>
+                            <div className="text-[10px] text-cream-faint">current</div>
                             {r.oldValue ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={r.oldValue} alt="current" className="h-16 w-12 object-contain border rounded" />
-                            ) : (<div className="h-16 w-12 border rounded flex items-center justify-center text-[10px] text-gray-300">none</div>)}
+                            ) : (<div className="h-16 w-12 border rounded flex items-center justify-center text-[10px] text-cream-faint">none</div>)}
                           </div>
-                          <span className="text-gray-400">→</span>
+                          <span className="text-cream-faint">→</span>
                           <div className="text-center">
-                            <div className="text-[10px] text-gray-400">proposed</div>
+                            <div className="text-[10px] text-cream-faint">proposed</div>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={r.newValue ?? ""} alt="proposed" className="h-16 w-12 object-contain border rounded" />
                           </div>
                         </div>
                       ) : (
-                        <span className="text-gray-700">
-                          <span className="line-through text-gray-400">{r.oldValue || "—"}</span>
+                        <span className="text-cream">
+                          <span className="line-through text-cream-faint">{r.oldValue || "—"}</span>
                           {" → "}
                           <span className="font-medium">{r.newValue || "—"}</span>
                         </span>
@@ -695,20 +695,20 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                       placeholder="Reason / comment (optional)"
                       value={sugNotes[r.id] ?? ""}
                       onChange={(e) => setSugNotes((n) => ({ ...n, [r.id]: e.target.value }))}
-                      className="mt-2 w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white"
+                      className="mt-2 w-full border border-edge rounded px-2 py-1 text-xs bg-panel"
                     />
                     <div className="flex gap-2 mt-1.5">
                       <button
                         disabled={sugBusy === r.id}
                         onClick={() => doApprove(r)}
-                        className="text-xs px-3 py-1.5 border border-green-700 text-green-700 rounded disabled:opacity-40"
+                        className="text-xs px-3 py-1.5 border border-green-500 text-green-400 rounded disabled:opacity-40"
                       >
                         Approve
                       </button>
                       <button
                         disabled={sugBusy === r.id}
                         onClick={() => doReject(r)}
-                        className="text-xs px-3 py-1.5 border border-red-600 text-red-600 rounded disabled:opacity-40"
+                        className="text-xs px-3 py-1.5 border border-red-600 text-red-400 rounded disabled:opacity-40"
                       >
                         Reject
                       </button>
@@ -721,13 +721,13 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
         </div>
       )}
 
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-cream-mute">
         {filtered.length} of {queue.length} items awaiting review
       </div>
 
       <ul className="space-y-3">
         {filtered.map((b) => (
-          <li key={b.id} className="border border-gray-200 rounded bg-white">
+          <li key={b.id} className="border border-edge rounded bg-panel">
             {/* Bottle header */}
             <div className="px-3 py-3 flex items-start justify-between gap-3">
               <button
@@ -737,27 +737,27 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                 title="View all details"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-charcoal truncate underline decoration-dotted underline-offset-2">{b.name}</span>
+                  <span className="font-semibold text-sm text-cream truncate underline decoration-dotted underline-offset-2">{b.name}</span>
                   {b.parentVerified ? (
-                    <span className="text-[10px] uppercase tracking-wide bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] uppercase tracking-wide bg-panel-3 text-cream px-1.5 py-0.5 rounded">
                       bottle verified
                     </span>
                   ) : (
-                    <span className="text-[10px] uppercase tracking-wide bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] uppercase tracking-wide bg-yellow-950/40 text-yellow-300 px-1.5 py-0.5 rounded">
                       unverified
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-gray-500 truncate">
+                <div className="text-xs text-cream-mute truncate">
                   {[b.distillery, b.category].filter(Boolean).join(" • ") || "—"}
                 </div>
-                <div className="text-xs text-gray-400 mt-1">
+                <div className="text-xs text-cream-faint mt-1">
                   Submitted by {b.submittedBy} · {new Date(b.created_at).toLocaleDateString()}
                   {/* The list is ordered by this, not by the submitted date. Without it
                       showing, a correctly sorted queue looks scrambled — an old bottle
                       edited today belongs at the top, and the card has to say why. */}
                   {b.lastTouched.slice(0, 10) !== b.created_at.slice(0, 10) && (
-                    <span className="text-charcoal"> · edited {new Date(b.lastTouched).toLocaleDateString()}</span>
+                    <span className="text-cream"> · edited {new Date(b.lastTouched).toLocaleDateString()}</span>
                   )}
                 </div>
               </button>
@@ -766,14 +766,14 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                   <button
                     disabled={busyId === b.id}
                     onClick={() => verify({ table: "bottles", id: b.id, bottleId: b.id, label: b.name })}
-                    className="text-xs px-3 py-1.5 border border-green-700 text-green-700 rounded disabled:opacity-40"
+                    className="text-xs px-3 py-1.5 border border-green-500 text-green-400 rounded disabled:opacity-40"
                   >
                     Verify
                   </button>
                   <button
                     disabled={busyId === b.id}
                     onClick={() => openDeleteBottle(b)}
-                    className="text-xs px-3 py-1.5 border border-red-600 text-red-600 rounded disabled:opacity-40"
+                    className="text-xs px-3 py-1.5 border border-red-600 text-red-400 rounded disabled:opacity-40"
                   >
                     Delete
                   </button>
@@ -783,12 +783,12 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
 
             {/* Nested unverified variants */}
             {b.variants.length > 0 && (
-              <ul className="border-t border-gray-100 divide-y divide-gray-100 bg-gray-50">
+              <ul className="border-t border-edge divide-y divide-edge bg-panel-2">
                 {b.variants.map((v) => (
                   <li key={v.id} className="px-3 py-2 pl-5 flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm text-charcoal truncate">{variantLabel(v)}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">
+                      <div className="text-sm text-cream truncate">{variantLabel(v)}</div>
+                      <div className="text-xs text-cream-faint mt-0.5">
                         Submitted by {v.submittedBy} · {new Date(v.created_at).toLocaleDateString()}
                       </div>
                     </div>
@@ -811,14 +811,14 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                             label: variantLabel(v),
                           });
                         }}
-                        className="text-xs px-3 py-1.5 border border-green-700 text-green-700 rounded disabled:opacity-40"
+                        className="text-xs px-3 py-1.5 border border-green-500 text-green-400 rounded disabled:opacity-40"
                       >
                         Verify
                       </button>
                       <button
                         disabled={busyId === v.id}
                         onClick={() => openDeleteVariant(b, v)}
-                        className="text-xs px-3 py-1.5 border border-red-600 text-red-600 rounded disabled:opacity-40"
+                        className="text-xs px-3 py-1.5 border border-red-600 text-red-400 rounded disabled:opacity-40"
                       >
                         Delete
                       </button>
@@ -830,7 +830,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
           </li>
         ))}
         {filtered.length === 0 && (
-          <li className="px-3 py-6 text-center text-sm text-gray-400 border border-gray-200 rounded bg-white">
+          <li className="px-3 py-6 text-center text-sm text-cream-faint border border-edge rounded bg-panel">
             Nothing awaiting review.
           </li>
         )}
@@ -839,14 +839,14 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
       {/* Read-only detail — review every field before verifying */}
       {detail && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
-          <div className="bg-white rounded-lg w-full max-w-md p-5 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-panel rounded-lg w-full max-w-md p-5 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3 mb-3">
-              <h2 className="font-semibold text-charcoal">{detail.name}</h2>
-              <button onClick={() => setDetail(null)} className="text-gray-400 text-lg leading-none">×</button>
+              <h2 className="font-semibold text-cream">{detail.name}</h2>
+              <button onClick={() => setDetail(null)} className="text-cream-faint text-lg leading-none">×</button>
             </div>
 
             {detailLoading ? (
-              <div className="text-sm text-gray-500">Loading…</div>
+              <div className="text-sm text-cream-mute">Loading…</div>
             ) : (
               <div className="space-y-3">
                 {detail.frontimage_url && (
@@ -872,10 +872,10 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                         return { ...d, [field]: next };
                       });
                     return (
-                      <div key={field} className="flex gap-2 py-1.5 border-b border-gray-100 items-start">
+                      <div key={field} className="flex gap-2 py-1.5 border-b border-edge items-start">
                         <label
                           htmlFor={`adm-${field}`}
-                          className="w-24 shrink-0 text-gray-400 pt-1.5"
+                          className="w-24 shrink-0 text-cream-faint pt-1.5"
                         >
                           {label}
                         </label>
@@ -887,8 +887,8 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                               rows={2}
                               onChange={(e) => onChange(e.target.value)}
                               placeholder="— missing —"
-                              className={`w-full rounded border px-2 py-1 text-sm bg-white placeholder:text-red-400 placeholder:italic ${
-                                changed ? "border-amber-500 bg-amber-50" : "border-gray-200"
+                              className={`w-full rounded border px-2 py-1 text-sm bg-panel placeholder:text-red-400 placeholder:italic ${
+                                changed ? "border-amber-500 bg-amber-950/40" : "border-edge"
                               }`}
                             />
                           ) : (
@@ -898,8 +898,8 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                               inputMode={numeric ? "decimal" : undefined}
                               onChange={(e) => onChange(e.target.value)}
                               placeholder="— missing —"
-                              className={`w-full rounded border px-2 py-1 text-sm bg-white placeholder:text-red-400 placeholder:italic ${
-                                changed ? "border-amber-500 bg-amber-50" : "border-gray-200"
+                              className={`w-full rounded border px-2 py-1 text-sm bg-panel placeholder:text-red-400 placeholder:italic ${
+                                changed ? "border-amber-500 bg-amber-950/40" : "border-edge"
                               }`}
                             />
                           )}
@@ -910,7 +910,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                 </div>
 
                 {dirty && (
-                  <p className="text-xs text-amber-700">
+                  <p className="text-xs text-amber-300">
                     {Object.keys(draft).length} unsaved change
                     {Object.keys(draft).length === 1 ? "" : "s"}.
                   </p>
@@ -919,14 +919,14 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                 <div className="flex flex-wrap justify-end gap-2 pt-1">
                   <button
                     onClick={() => { setDraft({}); setDetail(null); }}
-                    className="px-3 py-2 text-sm text-gray-600"
+                    className="px-3 py-2 text-sm text-cream-mute"
                   >
                     {dirty ? "Discard" : "Close"}
                   </button>
                   <button
                     onClick={saveDetail}
                     disabled={!dirty || savingDetail}
-                    className="px-3 py-2 text-sm border border-charcoal text-charcoal rounded disabled:opacity-40"
+                    className="px-3 py-2 text-sm border border-brass-line text-cream rounded disabled:opacity-40"
                   >
                     {savingDetail ? "Saving…" : "Save"}
                   </button>
@@ -940,7 +940,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                         setDetail(null);
                       }}
                       disabled={savingDetail}
-                      className="px-3 py-2 text-sm bg-green-700 text-white rounded disabled:opacity-40"
+                      className="px-3 py-2 text-sm bg-green-700 text-cream rounded disabled:opacity-40"
                     >
                       {dirty ? "Save & Verify" : "Verify"}
                     </button>
@@ -955,18 +955,18 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
       {/* Delete confirm with impact preview */}
       {target && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={closeDelete}>
-          <div className="bg-white rounded-lg w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-panel rounded-lg w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div>
-              <h2 className="font-semibold text-charcoal">
+              <h2 className="font-semibold text-cream">
                 Delete {target.kind === "bottle" ? "bottle" : "variant"}
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-cream-mute mt-1">
                 <span className="font-semibold">{target.label}</span>
               </p>
             </div>
 
             {impactTotal(target.impact) > 0 ? (
-              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3 space-y-2">
+              <div className="text-sm text-red-400 bg-red-950/40 border border-red-800 rounded p-3 space-y-2">
                 <p className="font-semibold">This would destroy real history:</p>
                 <ul className="text-xs list-disc pl-4 space-y-0.5">
                   {IMPACT_ROWS.filter((r) => Number(target.impact?.[r.key]) > 0).map((r) => (
@@ -977,13 +977,13 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                   <p className="text-xs">Affects: {target.impact!.usernames.join(", ")}</p>
                 )}
                 {Number(target.impact?.head_to_head_pairs) > 0 && (
-                  <p className="text-xs text-red-600">
+                  <p className="text-xs text-red-400">
                     Those head-to-head results are what every other bottle&apos;s Elo was built from.
                     Deleting them leaves the other bottles holding points won against something that
                     no longer exists.
                   </p>
                 )}
-                <p className="text-xs text-red-600">
+                <p className="text-xs text-red-400">
                   Blocked. If this is the same whiskey twice, move these onto the right bottle first
                   — the merge tool is #68; until it lands, flag it as{" "}
                   <span className="font-semibold">Needs merge</span> in Variants.
@@ -994,14 +994,14 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                   <button
                     type="button"
                     onClick={() => setPurgeMode(true)}
-                    className="text-xs underline decoration-dotted underline-offset-2 text-red-700"
+                    className="text-xs underline decoration-dotted underline-offset-2 text-red-400"
                   >
                     This is junk or test data — purge it and its history
                   </button>
                 )}
 
                 {target.kind === "bottle" && purgeMode && (
-                  <div className="border-t border-red-200 pt-2 space-y-2">
+                  <div className="border-t border-red-800 pt-2 space-y-2">
                     <p className="text-xs">
                       Purging deletes the bottle and everything above it, then rebuilds every score
                       from the tastings that survive. Other people&apos;s rankings can move. They are
@@ -1013,14 +1013,14 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                         autoFocus
                         value={purgeText}
                         onChange={(e) => setPurgeText(e.target.value)}
-                        className="mt-1 w-full border border-red-300 rounded px-2 py-1.5 text-xs"
+                        className="mt-1 w-full border border-red-800 rounded px-2 py-1.5 text-xs"
                       />
                     </label>
                     <button
                       type="button"
                       onClick={confirmPurge}
                       disabled={deleting || purgeText !== target.label}
-                      className="text-xs px-3 py-1.5 rounded bg-red-700 text-white disabled:opacity-40"
+                      className="text-xs px-3 py-1.5 rounded bg-red-700 text-cream disabled:opacity-40"
                     >
                       {deleting ? "Purging…" : "Purge and rebuild scores"}
                     </button>
@@ -1028,7 +1028,7 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                 )}
               </div>
             ) : (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-cream-mute">
                 Nobody has interacted with this — no bar entries, tastings, pours, ratings or
                 wishlists
                 {target.kind === "bottle" && target.variantCount > 0
@@ -1039,13 +1039,13 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
             )}
 
             <div className="flex justify-end gap-2">
-              <button onClick={closeDelete} disabled={deleting} className="px-3 py-2 text-sm text-gray-600">
+              <button onClick={closeDelete} disabled={deleting} className="px-3 py-2 text-sm text-cream-mute">
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={deleting || impactTotal(target.impact) > 0}
-                className="px-3 py-2 text-sm bg-red-600 text-white rounded disabled:opacity-40"
+                className="px-3 py-2 text-sm bg-red-600 text-cream rounded disabled:opacity-40"
               >
                 {deleting ? "Deleting…" : "Delete permanently"}
               </button>
@@ -1060,10 +1060,10 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
           onClick={() => { if (!busyId) setAxisPrompt(null); }}
         >
-          <div className="bg-white rounded-lg w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-panel rounded-lg w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div>
-              <h2 className="font-semibold text-charcoal">What does this bottle vary by?</h2>
-              <p className="text-sm text-gray-600 mt-2">
+              <h2 className="font-semibold text-cream">What does this bottle vary by?</h2>
+              <p className="text-sm text-cream-mute mt-2">
                 Verifying <span className="font-semibold">{variantLabel(axisPrompt.variant)}</span> makes{" "}
                 <span className="font-semibold">{axisPrompt.bottle.name}</span> a bottle with versions.
                 Pick the one thing that tells them apart — it becomes the question every future
@@ -1078,16 +1078,16 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
                   type="button"
                   onClick={() => setAxisPrompt((p) => (p ? { ...p, axis: o.value } : p))}
                   className={`w-full text-left rounded border px-3 py-2 text-sm ${
-                    axisPrompt.axis === o.value ? "border-charcoal bg-gray-100" : "border-gray-300"
+                    axisPrompt.axis === o.value ? "border-brass-line bg-panel-2" : "border-edge"
                   }`}
                 >
-                  <div className="font-medium text-charcoal">{o.label}</div>
-                  <div className="text-xs text-gray-500">&ldquo;{o.question}&rdquo;</div>
+                  <div className="font-medium text-cream">{o.label}</div>
+                  <div className="text-xs text-cream-mute">&ldquo;{o.question}&rdquo;</div>
                 </button>
               ))}
             </div>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-cream-mute">
               Its existing history becomes the &ldquo;unknown&rdquo; version — nothing moves — and the
               bottle itself becomes a rollup of its versions. The axis is declared once.
             </p>
@@ -1096,14 +1096,14 @@ export default function BottlesTab({ publicUserId }: { publicUserId: string }) {
               <button
                 onClick={() => setAxisPrompt(null)}
                 disabled={!!busyId}
-                className="px-3 py-2 text-sm text-gray-600"
+                className="px-3 py-2 text-sm text-cream-mute"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmAxisAndVerify}
                 disabled={!axisPrompt.axis || !!busyId}
-                className="px-3 py-2 text-sm bg-gray-900 text-white rounded disabled:opacity-40"
+                className="px-3 py-2 text-sm pc-brass bg-brass text-engrave rounded disabled:opacity-40"
               >
                 {busyId ? "Working…" : "Declare & verify"}
               </button>

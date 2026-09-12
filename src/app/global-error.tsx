@@ -59,7 +59,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#fff", color: "#2F2F2F" }}>
+      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#1a1511", color: "#f6ecd9" }}>
         <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", textAlign: "center", gap: "1rem" }}>
           <div style={{ fontSize: "2.5rem" }}>🥃</div>
           <h1 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0 }}>Something went wrong</h1>
@@ -68,7 +68,7 @@ export default function GlobalError({
           </p>
           <button
             onClick={reset}
-            style={{ minHeight: 44, padding: "0.75rem 1.5rem", background: "#2F2F2F", color: "#fff", border: "none", borderRadius: "0.75rem", fontSize: "0.95rem", fontWeight: 600 }}
+            style={{ minHeight: 44, padding: "0.75rem 1.5rem", background: "#bd9436", color: "#1c1303", border: "none", borderRadius: "0.75rem", fontSize: "0.95rem", fontWeight: 600 }}
           >
             Try again
           </button>

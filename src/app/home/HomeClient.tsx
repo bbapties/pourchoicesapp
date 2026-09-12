@@ -80,7 +80,7 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
   }, []);
 
   return (
-    <div className="bg-ivory min-h-full">
+    <div className="bg-panel min-h-full">
       {SHELVES.map((shelf) => {
         const s = state[shelf.id];
         // Empty only once we KNOW it is empty. Saying "your bar is empty" while the count is

@@ -58,7 +58,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
       </main>
 
       {!isAuthPage && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-ivory border-t border-charcoal z-20 flex flex-col text-charcoal"
+        <nav className="fixed bottom-0 left-0 right-0 pc-wood pc-rail-top z-20 flex flex-col text-cream shadow-[0_-8px_18px_rgba(0,0,0,.6)]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="h-16 flex items-center justify-around">
           {navItems.map(({ href, icon, label }) => {
@@ -77,14 +77,15 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 key={href}
                 href={href}
                 data-coach={coachId}
-                className={`relative flex flex-col items-center gap-0.5 px-3 py-1 ${active ? "text-black" : "text-gray-400"}`}
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-1 ${active ? "text-brass-hi" : "text-cream-faint"}`}
               >
-                {active && <span className="absolute -top-px left-0 right-0 h-0.5 bg-black rounded-b" />}
+                {/* the lamp over the lit tab */}
+                {active && <span className="absolute -top-1 left-1 right-1 h-7 rounded-full pointer-events-none" style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(255,205,130,.35), rgba(255,205,130,0) 70%)" }} />}
                 {icon}
                 {showDot && (
-                  <span className="absolute top-0 right-2 w-1.5 h-1.5 rounded-full bg-black" />
+                  <span className="absolute top-0 right-2 w-1.5 h-1.5 rounded-full bg-brass" />
                 )}
-                <span className={`text-xs ${active ? "font-semibold" : ""}`}>{label}</span>
+                <span className={`text-xs tracking-wide ${active ? "font-bold text-cream" : ""}`}>{label}</span>
               </Link>
             );
           })}

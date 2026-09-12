@@ -137,8 +137,8 @@ export default function BottleOnShelf({
              style={{ aspectRatio: "58 / 180" }}>
           <path
             d="M23 7h12v27c0 8 13 12 13 27v102c0 7-4 10-10 10H20c-6 0-10-3-10-10V61c0-15 13-19 13-27z"
-            fill="#F7F7F7"
-            stroke="#2F2F2F"
+            fill="#241d17"
+            stroke="#8a6a2a"
             strokeWidth="1.4"
             strokeDasharray="5 3"
           />
@@ -150,7 +150,7 @@ export default function BottleOnShelf({
               textAnchor="middle"
               fontSize="9"
               fontWeight="600"
-              fill="#2F2F2F"
+              fill="#d8bf9c"
               opacity="0.75"
             >
               {l}
@@ -202,7 +202,7 @@ export default function BottleOnShelf({
 
 /** The four glyphs: glass = poured, crossed eye = blind, plus = added, bookmark = wishlisted. */
 function ActionGlyph({ action }: { action: string }) {
-  const common = { width: 11, height: 11, viewBox: "0 0 24 24", fill: "none", stroke: "#fff", strokeWidth: 2.4, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const common = { width: 11, height: 11, viewBox: "0 0 24 24", fill: "none", stroke: "#f6ecd9", strokeWidth: 2.4, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (action) {
     case "drank":
     case "finished":

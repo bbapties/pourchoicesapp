@@ -184,7 +184,7 @@ function EndWall({ side, height }: { side: "left" | "right"; height: number }) {
       viewBox={`0 0 ${w} ${height}`}
       aria-hidden="true"
     >
-      <polygon points={points} fill="#F2F2F2" stroke="#2F2F2F" strokeWidth="1" />
+      <polygon points={points} fill="#1e1813" stroke="#0b0907" strokeWidth="1" />
     </svg>
   );
 }

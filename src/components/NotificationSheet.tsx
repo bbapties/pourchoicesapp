@@ -94,7 +94,7 @@ export default function NotificationSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) handleDismiss(); }}>
-      <SheetContent side="bottom" className="bg-white text-gray-900 rounded-t-2xl">
+      <SheetContent side="bottom" className="text-cream">
         <SheetHeader>
           <SheetTitle className="text-left text-lg">
             {blocked ? "Notifications are blocked" : "Turn on notifications"}
@@ -110,7 +110,7 @@ export default function NotificationSheet({
           {/* iPhone outside an installed app: the push APIs genuinely do not exist, so an
               "allow" button would do nothing. Apple only supports push for installed PWAs. */}
           {iosNeedsInstall && !blocked && (
-            <div className="text-sm text-gray-700 space-y-2">
+            <div className="text-sm text-cream space-y-2">
               <p>
                 On iPhone, notifications only work once Pour Choices is on your{" "}
                 <span className="font-semibold">home screen</span>.
@@ -124,7 +124,7 @@ export default function NotificationSheet({
           )}
 
           {blocked && (
-            <div className="text-sm text-gray-700 space-y-2">
+            <div className="text-sm text-cream space-y-2">
               <p>To switch them back on:</p>
               <ol className="space-y-1 list-decimal list-inside">
                 <li>Tap the padlock or <span className="font-semibold">&#8942;</span> menu next to the address bar.</li>
@@ -138,7 +138,7 @@ export default function NotificationSheet({
             <button
               onClick={handleEnable}
               disabled={busy || !publicUserId}
-              className="w-full py-3 bg-gray-900 text-white font-semibold rounded-xl disabled:opacity-50"
+              className="w-full py-3 pc-brass bg-brass text-engrave font-semibold rounded-xl disabled:opacity-50"
               style={{ minHeight: "44px" }}
             >
               {busy ? "Turning on…" : "Turn them on"}
@@ -147,7 +147,7 @@ export default function NotificationSheet({
 
           <button
             onClick={handleDismiss}
-            className="w-full py-3 text-gray-600 font-medium rounded-xl border border-gray-300"
+            className="w-full py-3 text-cream-mute font-medium rounded-xl border border-edge"
             style={{ minHeight: "44px" }}
           >
             {blocked ? "Got it" : "Not now"}
@@ -156,7 +156,7 @@ export default function NotificationSheet({
           {showNeverAsk && !blocked && (
             <button
               onClick={handleNeverAsk}
-              className="w-full text-xs text-gray-500 underline underline-offset-2 py-2"
+              className="w-full text-xs text-cream-mute underline underline-offset-2 py-2"
             >
               Don&apos;t ask me again
             </button>

@@ -371,7 +371,7 @@ export default function DrinkClient({
     }
   };
 
-  const primaryBtn = "w-full rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-40";
+  const primaryBtn = "w-full rounded-lg py-3 text-sm font-semibold text-cream disabled:opacity-40";
   /*
    * #62: the search field stays put while the results scroll under it. Picking bottles for a blind
    * is a search-scroll-search loop -- you type "buffalo", scroll, then want to try "eagle" -- and
@@ -382,19 +382,19 @@ export default function DrinkClient({
    * so top-0 pins this directly beneath it. The negative margins let the ivory background span the
    * full width and hide rows passing underneath, which the parent's p-4 would otherwise expose.
    */
-  const stickySearch = "sticky top-0 z-10 bg-ivory -mx-4 px-4 pt-2 pb-3 mb-1";
-  const secondaryBtn = "w-full rounded-lg border border-charcoal py-3 text-sm font-medium text-charcoal";
+  const stickySearch = "sticky top-0 z-10 bg-panel -mx-4 px-4 pt-2 pb-3 mb-1";
+  const secondaryBtn = "w-full rounded-lg border border-brass-line py-3 text-sm font-medium text-cream";
   const helperSecretStep = step === "helperSetup" || step === "handback";
   const showBack = step !== "home" && step !== "done" && !helperSecretStep;
   const headerTitle = step === "home" || step === "pourPick" ? "Drink" : "Blind Tasting";
 
   return (
     <div className="max-w-md mx-auto">
-      <header className="fixed top-0 left-0 right-0 h-14 bg-ivory border-b border-charcoal z-20 flex items-center px-3" style={{ top: "env(safe-area-inset-top)" }}>
+      <header className="fixed top-0 left-0 right-0 h-14 pc-wood pc-rail-bottom z-20 shadow-[0_6px_14px_rgba(0,0,0,.55)] flex items-center px-3" style={{ top: "env(safe-area-inset-top)" }}>
         {showBack && (
-          <button type="button" aria-label="Back" onClick={back} className="p-1 text-charcoal"><ChevronLeft size={22} /></button>
+          <button type="button" aria-label="Back" onClick={back} className="p-1 text-cream"><ChevronLeft size={22} /></button>
         )}
-        <h1 className="flex-1 text-center text-base font-semibold text-charcoal">{headerTitle}</h1>
+        <h1 className="flex-1 text-center font-display text-lg font-bold tracking-wide pc-brass-text">{headerTitle}</h1>
         {showBack && <span className="w-6" />}
       </header>
 
@@ -402,11 +402,11 @@ export default function DrinkClient({
         {/* HOME */}
         {step === "home" && (
           <div className="flex flex-col items-center text-center pt-10 gap-4">
-            <Wine size={48} className="text-charcoal" />
-            <h2 className="text-lg font-semibold text-charcoal">Drink</h2>
-            <p className="text-sm text-gray-500 max-w-xs">Log a pour, or rank {MIN_PICKS}–{MAX_PICKS} bottles blind. Blind rankings update your personal and the global scores.</p>
+            <Wine size={48} className="text-cream" />
+            <h2 className="text-lg font-semibold text-cream">Drink</h2>
+            <p className="text-sm text-cream-mute max-w-xs">Log a pour, or rank {MIN_PICKS}–{MAX_PICKS} bottles blind. Blind rankings update your personal and the global scores.</p>
             <div className="w-full mt-2 space-y-2">
-              <button type="button" data-coach="taste.pour" onClick={() => { setQuery(""); setStep("pourPick"); }} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>Have a drink</button>
+              <button type="button" data-coach="taste.pour" onClick={() => { setQuery(""); setStep("pourPick"); }} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>Have a drink</button>
               <button type="button" data-coach="taste.start" onClick={() => setStep("mode")} className={secondaryBtn}>Start a blind tasting</button>
               <button type="button" onClick={() => toast("Joining someone's tasting is coming soon")} className={secondaryBtn}>Join a blind (enter code)</button>
             </div>
@@ -418,23 +418,23 @@ export default function DrinkClient({
           <div className="pt-2">
             <div className={stickySearch}>
               <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search for a bottle..."
-                className="w-full rounded-full border border-charcoal px-4 h-10 text-base bg-ivory text-charcoal" />
-              <p className="text-xs text-gray-500 mt-2">Pick a bottle to log a pour or start a blind tasting</p>
+                className="w-full rounded-full border border-brass-line px-4 h-10 text-base bg-panel text-cream" />
+              <p className="text-xs text-cream-mute mt-2">Pick a bottle to log a pour or start a blind tasting</p>
             </div>
             <div className="space-y-1 mb-8">
               {filtered.map((b) => (
                 <button key={b.variantId} type="button" onClick={() => openPourFor(b)}
                   className="w-full flex items-center justify-between rounded-lg border p-3 text-left"
-                  style={{ borderColor: "#D1D5DB" }}>
+                  style={{ borderColor: "#3a2f26" }}>
                   <span>
-                    <span className="block text-sm font-medium text-charcoal">{b.name}</span>
-                    <span className="block text-xs text-gray-500">{[b.distillery, b.label].filter(Boolean).join(" · ")}</span>
+                    <span className="block text-sm font-medium text-cream">{b.name}</span>
+                    <span className="block text-xs text-cream-mute">{[b.distillery, b.label].filter(Boolean).join(" · ")}</span>
                   </span>
                 </button>
               ))}
-              {searching && filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">Searching...</p>}
-              {!searching && searchError && <p className="text-center text-sm text-red-500 py-8">Couldn&apos;t load bottles. Check your connection and try again.</p>}
-              {!searching && !searchError && filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">No bottles found</p>}
+              {searching && filtered.length === 0 && <p className="text-center text-sm text-cream-faint py-8">Searching...</p>}
+              {!searching && searchError && <p className="text-center text-sm text-red-400 py-8">Couldn&apos;t load bottles. Check your connection and try again.</p>}
+              {!searching && !searchError && filtered.length === 0 && <p className="text-center text-sm text-cream-faint py-8">No bottles found</p>}
             </div>
           </div>
         )}
@@ -442,17 +442,17 @@ export default function DrinkClient({
         {/* MODE */}
         {step === "mode" && (
           <div className="pt-4 space-y-3">
-            <h2 className="text-base font-semibold text-charcoal mb-1">How are you tasting?</h2>
+            <h2 className="text-base font-semibold text-cream mb-1">How are you tasting?</h2>
             {picks.length === 1 && (
-              <p className="text-sm text-gray-500">Starting with {picks[0].name}. Pick 1–{MAX_PICKS - 1} more after this.</p>
+              <p className="text-sm text-cream-mute">Starting with {picks[0].name}. Pick 1–{MAX_PICKS - 1} more after this.</p>
             )}
-            <button type="button" onClick={() => startMode("self")} className="w-full text-left rounded-lg border border-charcoal p-4">
-              <div className="font-semibold text-charcoal">I&apos;ll set it up myself</div>
-              <div className="text-sm text-gray-500">Pour into lettered glasses, hide the letters, shuffle, then rank.</div>
+            <button type="button" onClick={() => startMode("self")} className="w-full text-left rounded-lg border border-brass-line p-4">
+              <div className="font-semibold text-cream">I&apos;ll set it up myself</div>
+              <div className="text-sm text-cream-mute">Pour into lettered glasses, hide the letters, shuffle, then rank.</div>
             </button>
-            <button type="button" onClick={() => startMode("helper")} className="w-full text-left rounded-lg border border-charcoal p-4">
-              <div className="font-semibold text-charcoal">Someone&apos;s helping me pour</div>
-              <div className="text-sm text-gray-500">A helper secretly pours into lettered glasses; you rank blind and the app reveals.</div>
+            <button type="button" onClick={() => startMode("helper")} className="w-full text-left rounded-lg border border-brass-line p-4">
+              <div className="font-semibold text-cream">Someone&apos;s helping me pour</div>
+              <div className="text-sm text-cream-mute">A helper secretly pours into lettered glasses; you rank blind and the app reveals.</div>
             </button>
           </div>
         )}
@@ -462,8 +462,8 @@ export default function DrinkClient({
           <div className="pt-2">
             <div className={stickySearch}>
               <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search bottles to add..."
-                className="w-full rounded-full border border-charcoal px-4 h-10 text-base bg-ivory text-charcoal" />
-              <p className="text-xs text-gray-500 mt-2">Selected {picks.length}/{MAX_PICKS} · pick {MIN_PICKS}–{MAX_PICKS}</p>
+                className="w-full rounded-full border border-brass-line px-4 h-10 text-base bg-panel text-cream" />
+              <p className="text-xs text-cream-mute mt-2">Selected {picks.length}/{MAX_PICKS} · pick {MIN_PICKS}–{MAX_PICKS}</p>
             </div>
             <div className="space-y-1 mb-24">
               {filtered.map((b) => {
@@ -471,7 +471,7 @@ export default function DrinkClient({
                 return (
                   <button key={b.variantId} type="button" onClick={() => togglePick(b)}
                     className="w-full flex items-center justify-between rounded-lg border p-3 text-left"
-                    style={picked ? { backgroundColor: "#2F2F2F", color: "#FFFFFF", borderColor: "#2F2F2F" } : { borderColor: "#D1D5DB" }}>
+                    style={picked ? { backgroundColor: "#bd9436", color: "#1c1303", borderColor: "#bd9436" } : { borderColor: "#3a2f26" }}>
                     <span>
                       <span className="block text-sm font-medium">{b.name}</span>
                       <span className="block text-xs opacity-70">{[b.distillery, b.label].filter(Boolean).join(" · ")}</span>
@@ -480,13 +480,13 @@ export default function DrinkClient({
                   </button>
                 );
               })}
-              {searching && filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">Searching...</p>}
-              {!searching && searchError && <p className="text-center text-sm text-red-500 py-8">Couldn&apos;t load bottles. Check your connection and try again.</p>}
-              {!searching && !searchError && filtered.length === 0 && <p className="text-center text-sm text-gray-400 py-8">No bottles found</p>}
+              {searching && filtered.length === 0 && <p className="text-center text-sm text-cream-faint py-8">Searching...</p>}
+              {!searching && searchError && <p className="text-center text-sm text-red-400 py-8">Couldn&apos;t load bottles. Check your connection and try again.</p>}
+              {!searching && !searchError && filtered.length === 0 && <p className="text-center text-sm text-cream-faint py-8">No bottles found</p>}
             </div>
-            <div className="fixed bottom-16 left-0 right-0 p-3 bg-ivory border-t border-charcoal">
+            <div className="fixed bottom-16 left-0 right-0 p-3 bg-panel border-t border-brass-line">
               <div className="max-w-md mx-auto">
-                <button type="button" onClick={afterPick} disabled={picks.length < MIN_PICKS} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>
+                <button type="button" onClick={afterPick} disabled={picks.length < MIN_PICKS} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>
                   Next · {picks.length} selected
                 </button>
               </div>
@@ -497,20 +497,20 @@ export default function DrinkClient({
         {/* LABEL (self) */}
         {step === "label" && (
           <div className="pt-2">
-            <h2 className="text-base font-semibold text-charcoal mb-1">Label your glasses</h2>
-            <p className="text-sm text-gray-500 mb-4">Pour each bottle into the matching lettered glass, hide the letters, then shuffle so you can&apos;t tell which is which.</p>
+            <h2 className="text-base font-semibold text-cream mb-1">Label your glasses</h2>
+            <p className="text-sm text-cream-mute mb-4">Pour each bottle into the matching lettered glass, hide the letters, then shuffle so you can&apos;t tell which is which.</p>
             <div className="space-y-2 mb-6">
               {picks.map((b, i) => (
-                <div key={b.variantId} className="flex items-center gap-3 rounded-lg border border-charcoal p-3">
-                  <span className="w-8 h-8 flex items-center justify-center rounded-full text-white font-bold" style={{ backgroundColor: "#2F2F2F" }}>{letter(i)}</span>
+                <div key={b.variantId} className="flex items-center gap-3 rounded-lg border border-brass-line p-3">
+                  <span className="w-8 h-8 flex items-center justify-center rounded-full text-cream font-bold" style={{ backgroundColor: "#bd9436" }}>{letter(i)}</span>
                   <span>
-                    <span className="block text-sm font-medium text-charcoal">{b.name}</span>
-                    <span className="block text-xs text-gray-500">{b.distillery}</span>
+                    <span className="block text-sm font-medium text-cream">{b.name}</span>
+                    <span className="block text-xs text-cream-mute">{b.distillery}</span>
                   </span>
                 </div>
               ))}
             </div>
-            <button type="button" onClick={goToRankSelf} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>I&apos;ve poured &amp; shuffled — rank them</button>
+            <button type="button" onClick={goToRankSelf} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>I&apos;ve poured &amp; shuffled — rank them</button>
           </div>
         )}
 
@@ -518,29 +518,29 @@ export default function DrinkClient({
         {step === "handoff" && (
           <div className="pt-6 text-center">
             <div className="text-4xl mb-3">🤝</div>
-            <h2 className="text-lg font-semibold text-charcoal mb-1">Hand your phone to your helper</h2>
-            <p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">They&apos;ll pour the bottles into lettered glasses in a secret order — don&apos;t peek.</p>
-            <button type="button" onClick={helperContinue} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>I&apos;m the helper — continue</button>
+            <h2 className="text-lg font-semibold text-cream mb-1">Hand your phone to your helper</h2>
+            <p className="text-sm text-cream-mute mb-6 max-w-xs mx-auto">They&apos;ll pour the bottles into lettered glasses in a secret order — don&apos;t peek.</p>
+            <button type="button" onClick={helperContinue} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>I&apos;m the helper — continue</button>
           </div>
         )}
 
         {/* HELPER SETUP (secret) */}
         {step === "helperSetup" && (
           <div className="pt-2">
-            <h2 className="text-base font-semibold text-charcoal mb-1">Pour these into the glasses</h2>
-            <p className="text-sm text-gray-500 mb-4">Keep this hidden from the taster. Pour each bottle into its lettered glass, then hand the phone back.</p>
+            <h2 className="text-base font-semibold text-cream mb-1">Pour these into the glasses</h2>
+            <p className="text-sm text-cream-mute mb-4">Keep this hidden from the taster. Pour each bottle into its lettered glass, then hand the phone back.</p>
             <div className="space-y-2 mb-6">
               {glassAssignment.map((g) => (
-                <div key={g.letter} className="flex items-center gap-3 rounded-lg border border-charcoal p-3">
-                  <span className="w-8 h-8 flex items-center justify-center rounded-full text-white font-bold" style={{ backgroundColor: "#2F2F2F" }}>{g.letter}</span>
+                <div key={g.letter} className="flex items-center gap-3 rounded-lg border border-brass-line p-3">
+                  <span className="w-8 h-8 flex items-center justify-center rounded-full text-cream font-bold" style={{ backgroundColor: "#bd9436" }}>{g.letter}</span>
                   <span>
-                    <span className="block text-sm font-medium text-charcoal">{g.pick.name}</span>
-                    <span className="block text-xs text-gray-500">{g.pick.distillery}</span>
+                    <span className="block text-sm font-medium text-cream">{g.pick.name}</span>
+                    <span className="block text-xs text-cream-mute">{g.pick.distillery}</span>
                   </span>
                 </div>
               ))}
             </div>
-            <button type="button" onClick={() => setStep("handback")} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>Done pouring — hand back</button>
+            <button type="button" onClick={() => setStep("handback")} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>Done pouring — hand back</button>
             <button type="button" onClick={restartHelperLineup} className={`${secondaryBtn} mt-2`}>Wrong bottles? Pick again</button>
           </div>
         )}
@@ -549,17 +549,17 @@ export default function DrinkClient({
         {step === "handback" && (
           <div className="pt-6 text-center">
             <div className="text-4xl mb-3">👀</div>
-            <h2 className="text-lg font-semibold text-charcoal mb-1">Hand the phone back to the taster</h2>
-            <p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">Taste each lettered glass and rank them — you won&apos;t see the bottles until you lock in.</p>
-            <button type="button" onClick={goToRankHelper} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>I&apos;m ready to rank</button>
+            <h2 className="text-lg font-semibold text-cream mb-1">Hand the phone back to the taster</h2>
+            <p className="text-sm text-cream-mute mb-6 max-w-xs mx-auto">Taste each lettered glass and rank them — you won&apos;t see the bottles until you lock in.</p>
+            <button type="button" onClick={goToRankHelper} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>I&apos;m ready to rank</button>
           </div>
         )}
 
         {/* RANK (both) */}
         {step === "rank" && (
           <div className="pt-2">
-            <h2 className="text-base font-semibold text-charcoal mb-1">Your ranking</h2>
-            <p className="text-sm text-gray-500 mb-4">
+            <h2 className="text-base font-semibold text-cream mb-1">Your ranking</h2>
+            <p className="text-sm text-cream-mute mb-4">
               {mode === "helper"
                 ? "Taste each glass and put them in order — favorite at the top. Drag by the handle, or use the arrows. Bottles are revealed when you lock in."
                 : "Taste, flip the hidden letters, then put the bottles in order — favorite at the top. Drag by the handle, or use the arrows."}
@@ -577,38 +577,38 @@ export default function DrinkClient({
                 <div
                   key={b.variantId}
                   ref={setRowRef(i)}
-                  className={`flex items-center gap-2 rounded-lg border p-3 bg-white ${
-                    dragIndex === i ? "border-charcoal ring-2 ring-charcoal opacity-90 shadow-lg" : "border-charcoal"
+                  className={`flex items-center gap-2 rounded-lg border p-3 bg-panel ${
+                    dragIndex === i ? "border-brass-line ring-2 ring-brass opacity-90 shadow-lg" : "border-brass-line"
                   }`}
                 >
                   <button
                     type="button"
                     aria-label={`Reorder ${mode === "helper" ? `glass ${b.glassLetter}` : b.name}, currently ${i + 1} of ${rankOrder.length}. Drag, or use the arrow keys.`}
-                    className="p-1 -ml-1 text-gray-500 cursor-grab active:cursor-grabbing touch-none"
+                    className="p-1 -ml-1 text-cream-mute cursor-grab active:cursor-grabbing touch-none"
                     {...handleProps(i)}
                   >
                     <GripVertical size={18} />
                   </button>
-                  <span className="w-6 text-center font-bold text-charcoal">{i + 1}</span>
+                  <span className="w-6 text-center font-bold text-cream">{i + 1}</span>
                   {mode === "helper" ? (
                     <span className="flex-1 flex items-center gap-2">
-                      <span className="w-8 h-8 flex items-center justify-center rounded-full text-white font-bold" style={{ backgroundColor: "#2F2F2F" }}>{b.glassLetter}</span>
-                      <span className="text-sm text-gray-500">Glass {b.glassLetter}</span>
+                      <span className="w-8 h-8 flex items-center justify-center rounded-full text-cream font-bold" style={{ backgroundColor: "#bd9436" }}>{b.glassLetter}</span>
+                      <span className="text-sm text-cream-mute">Glass {b.glassLetter}</span>
                     </span>
                   ) : (
                     <span className="flex-1">
-                      <span className="block text-sm font-medium text-charcoal">{b.name}</span>
-                      <span className="block text-xs text-gray-500">{b.distillery}</span>
+                      <span className="block text-sm font-medium text-cream">{b.name}</span>
+                      <span className="block text-xs text-cream-mute">{b.distillery}</span>
                     </span>
                   )}
                   <div className="flex flex-col">
-                    <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)} className="p-0.5 disabled:opacity-30 text-charcoal"><ChevronUp size={18} /></button>
-                    <button type="button" aria-label="Move down" disabled={i === rankOrder.length - 1} onClick={() => move(i, 1)} className="p-0.5 disabled:opacity-30 text-charcoal"><ChevronDown size={18} /></button>
+                    <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)} className="p-0.5 disabled:opacity-30 text-cream"><ChevronUp size={18} /></button>
+                    <button type="button" aria-label="Move down" disabled={i === rankOrder.length - 1} onClick={() => move(i, 1)} className="p-0.5 disabled:opacity-30 text-cream"><ChevronDown size={18} /></button>
                   </div>
                 </div>
               ))}
             </div>
-            <button type="button" onClick={() => setConfirming(true)} className={primaryBtn} style={{ backgroundColor: "#2F2F2F" }}>
+            <button type="button" onClick={() => setConfirming(true)} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>
               {mode === "helper" ? "Lock in & reveal" : "Confirm ranking"}
             </button>
           </div>
@@ -618,16 +618,16 @@ export default function DrinkClient({
         {step === "done" && result && (
           <div className="pt-6 text-center">
             <div className="text-4xl mb-3">🥃</div>
-            <h2 className="text-lg font-semibold text-charcoal mb-1">{mode === "helper" ? "The reveal" : "Tasting complete"}</h2>
-            <p className="text-sm text-gray-500 mb-5">Your rankings have been updated.</p>
+            <h2 className="text-lg font-semibold text-cream mb-1">{mode === "helper" ? "The reveal" : "Tasting complete"}</h2>
+            <p className="text-sm text-cream-mute mb-5">Your rankings have been updated.</p>
             <div className="space-y-2 text-left mb-6">
               {result.map((b, i) => (
-                <div key={b.variantId} className="flex items-center gap-3 rounded-lg border border-gray-300 p-3">
-                  <span className="w-6 text-center font-bold text-charcoal">{i + 1}</span>
+                <div key={b.variantId} className="flex items-center gap-3 rounded-lg border border-edge p-3">
+                  <span className="w-6 text-center font-bold text-cream">{i + 1}</span>
                   {mode === "helper" && (
-                    <span className="w-7 h-7 flex items-center justify-center rounded-full text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: "#2F2F2F" }}>{b.glassLetter}</span>
+                    <span className="w-7 h-7 flex items-center justify-center rounded-full text-cream text-xs font-bold flex-shrink-0" style={{ backgroundColor: "#bd9436" }}>{b.glassLetter}</span>
                   )}
-                  <span className="text-sm font-medium text-charcoal">{b.name}</span>
+                  <span className="text-sm font-medium text-cream">{b.name}</span>
                 </div>
               ))}
             </div>
@@ -639,12 +639,12 @@ export default function DrinkClient({
       {/* Confirm "Final?" */}
       {confirming && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center" onClick={() => !saving && setConfirming(false)}>
-          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()} style={{ color: "#2F2F2F" }}>
+          <div className="pc-leather w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()} style={{ color: "#f6ecd9" }}>
             <h3 className="text-base font-semibold mb-1 flex items-center gap-2">{mode === "helper" && <Eye size={18} />}Lock in this ranking?</h3>
-            <p className="text-sm text-gray-500 mb-4">This updates your personal and the global scores and can&apos;t be undone.</p>
+            <p className="text-sm text-cream-mute mb-4">This updates your personal and the global scores and can&apos;t be undone.</p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setConfirming(false)} disabled={saving} className="flex-1 rounded-lg border border-charcoal py-2.5 text-sm font-medium text-charcoal disabled:opacity-50">Not yet</button>
-              <button type="button" onClick={handleSave} disabled={saving} className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "#2F2F2F" }}>{saving ? "Saving..." : mode === "helper" ? "Yes, reveal" : "Save ranking"}</button>
+              <button type="button" onClick={() => setConfirming(false)} disabled={saving} className="flex-1 rounded-lg border border-brass-line py-2.5 text-sm font-medium text-cream disabled:opacity-50">Not yet</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-cream disabled:opacity-50" style={{ backgroundColor: "#bd9436" }}>{saving ? "Saving..." : mode === "helper" ? "Yes, reveal" : "Save ranking"}</button>
             </div>
           </div>
         </div>

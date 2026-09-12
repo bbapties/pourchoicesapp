@@ -102,12 +102,11 @@ export default function PourSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="border-t border-charcoal max-h-[92vh] overflow-y-auto"
-        style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}
+        className="max-h-[92vh] overflow-y-auto"
       >
         <SheetHeader className="mb-3">
-          <SheetTitle className="text-charcoal text-left">Have a drink</SheetTitle>
-          <SheetDescription className="text-charcoal text-left">{bottleName}</SheetDescription>
+          <SheetTitle className="text-cream text-left">Have a drink</SheetTitle>
+          <SheetDescription className="text-cream text-left">{bottleName}</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-5 px-4 pb-6">
@@ -124,12 +123,12 @@ export default function PourSheet({
                     disabled={isSaving}
                     onClick={() => setServing(opt.type)}
                     className={`rounded-lg border px-2 py-2.5 text-sm font-medium disabled:opacity-50 ${
-                      on ? "bg-charcoal text-white border-charcoal" : "bg-white text-charcoal border-gray-400"
+                      on ? "pc-brass bg-brass text-engrave border-brass-line" : "bg-panel text-cream border-edge"
                     }`}
                     style={{ minHeight: 44 }}
                   >
                     {opt.label}
-                    <span className={`block text-[11px] font-normal ${on ? "text-gray-300" : "text-gray-500"}`}>{opt.hint}</span>
+                    <span className={`block text-[11px] font-normal ${on ? "text-engrave/70" : "text-cream-mute"}`}>{opt.hint}</span>
                   </button>
                 );
               })}
@@ -144,7 +143,7 @@ export default function PourSheet({
                 <button
                   type="button"
                   onClick={() => setRate((v) => !v)}
-                  className="text-xs text-gray-600 underline underline-offset-2 mb-2"
+                  className="text-xs text-cream-mute underline underline-offset-2 mb-2"
                 >
                   {rate ? "Skip rating" : "Add a rating"}
                 </button>
@@ -152,7 +151,7 @@ export default function PourSheet({
               {rate ? (
                 <StarRatingSlider value={stars} onChange={setStars} disabled={isSaving} />
               ) : (
-                <p className="text-xs text-gray-500">Your gut rating until you blind-taste it.</p>
+                <p className="text-xs text-cream-mute">Your gut rating until you blind-taste it.</p>
               )}
             </section>
           )}
@@ -167,7 +166,7 @@ export default function PourSheet({
                 maxLength={2000}
                 rows={3}
                 placeholder="Nose, taste, finish - whatever stood out"
-                className="w-full border border-gray-400 rounded-lg px-3 py-2 pr-11 text-sm text-black bg-white resize-none"
+                className="w-full border border-edge rounded-lg px-3 py-2 pr-11 text-sm text-cream bg-panel resize-none"
                 disabled={isSaving}
               />
               {dictation.supported && (
@@ -177,14 +176,14 @@ export default function PourSheet({
                   disabled={isSaving}
                   aria-label={dictation.listening ? "Stop dictation" : "Dictate a note"}
                   className={`absolute right-2 bottom-2 w-8 h-8 rounded-full border flex items-center justify-center ${
-                    dictation.listening ? "bg-red-600 border-red-600 text-white" : "bg-white border-gray-400 text-charcoal"
+                    dictation.listening ? "bg-red-600 border-red-600 text-cream" : "bg-panel border-edge text-cream"
                   }`}
                 >
                   <MicIcon />
                 </button>
               )}
             </div>
-            {dictation.listening && <p className="text-xs text-red-600 mt-1">Listening… tap the mic to stop</p>}
+            {dictation.listening && <p className="text-xs text-red-400 mt-1">Listening… tap the mic to stop</p>}
           </section>
 
           {/* Photo - one per pour */}
@@ -206,7 +205,7 @@ export default function PourSheet({
                 type="button"
                 disabled={isSaving}
                 onClick={() => fileRef.current?.click()}
-                className="w-[88px] h-[88px] rounded-lg border border-dashed border-gray-400 bg-white overflow-hidden flex flex-col items-center justify-center gap-1 text-[11px] text-gray-600"
+                className="w-[88px] h-[88px] rounded-lg border border-dashed border-edge bg-panel overflow-hidden flex flex-col items-center justify-center gap-1 text-[11px] text-cream-mute"
                 aria-label={photo ? "Retake photo" : "Add a photo"}
               >
                 {preview ? (
@@ -219,7 +218,7 @@ export default function PourSheet({
                   </>
                 )}
               </button>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-cream-mute">
                 {photo ? (
                   <>
                     One photo per pour.{" "}
@@ -242,8 +241,8 @@ export default function PourSheet({
             type="button"
             disabled={!canPour}
             onClick={submit}
-            className="w-full rounded-lg py-3 text-sm font-semibold text-white disabled:opacity-40"
-            style={{ backgroundColor: "#2F2F2F", minHeight: 44 }}
+            className="w-full rounded-lg py-3 text-sm font-semibold text-cream disabled:opacity-40"
+            style={{ backgroundColor: "#bd9436", minHeight: 44 }}
             data-coach="drink.pour"
           >
             {isSaving ? "Logging…" : "Pour"}
@@ -253,7 +252,7 @@ export default function PourSheet({
             type="button"
             disabled={isSaving}
             onClick={onBlind}
-            className="w-full text-center text-sm text-gray-600 underline underline-offset-2 py-1"
+            className="w-full text-center text-sm text-cream-mute underline underline-offset-2 py-1"
           >
             Blind tasting instead
           </button>
@@ -265,9 +264,9 @@ export default function PourSheet({
 
 function Label({ children, optional = false }: { children: React.ReactNode; optional?: boolean }) {
   return (
-    <div className="text-[11px] font-semibold uppercase tracking-[.14em] text-charcoal mb-2">
+    <div className="text-[11px] font-semibold uppercase tracking-[.14em] text-cream mb-2">
       {children}
-      {optional && <span className="ml-1 font-normal normal-case tracking-normal text-gray-400">optional</span>}
+      {optional && <span className="ml-1 font-normal normal-case tracking-normal text-cream-faint">optional</span>}
     </div>
   );
 }

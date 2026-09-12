@@ -181,16 +181,16 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-    <SheetContent side="top" className="border-b border-charcoal max-h-[92vh] overflow-y-auto" style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}>
+    <SheetContent side="top" className="max-h-[92vh] overflow-y-auto">
     <SheetHeader className="mb-2">
-      <SheetTitle className="text-charcoal text-left">Settings</SheetTitle>
+      <SheetTitle className="text-cream text-left">Settings</SheetTitle>
       <SheetDescription className="sr-only">Account settings</SheetDescription>
     </SheetHeader>
-    <div className="max-w-md mx-auto px-4 pb-6 text-charcoal">
+    <div className="max-w-md mx-auto px-4 pb-6 text-cream">
 
       {/* Username */}
-      <div className="border border-gray-300 rounded p-4 mb-3">
-        <div className="text-xs text-gray-500 mb-1">Username</div>
+      <div className="border border-edge rounded p-4 mb-3">
+        <div className="text-xs text-cream-mute mb-1">Username</div>
         {editing ? (
           <div>
             <input
@@ -198,10 +198,10 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
               onChange={(e) => setDraft(e.target.value)}
               maxLength={USERNAME_MAX}
               autoFocus
-              className="w-full border border-gray-400 rounded px-3 py-2 text-sm text-black"
+              className="w-full border border-edge rounded px-3 py-2 text-sm text-cream"
               placeholder="Your username"
             />
-            <p className="text-[11px] text-gray-400 mt-1">
+            <p className="text-[11px] text-cream-faint mt-1">
               3–{USERNAME_MAX} characters · letters, numbers, - and _
             </p>
             <div className="flex gap-2 mt-2">
@@ -209,7 +209,7 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
                 type="button"
                 disabled={saving}
                 onClick={saveEdit}
-                className="px-3 py-1.5 text-sm rounded bg-gray-900 text-white disabled:opacity-50"
+                className="px-3 py-1.5 text-sm rounded pc-brass bg-brass text-engrave disabled:opacity-50"
               >
                 {saving ? "Saving…" : "Save"}
               </button>
@@ -217,7 +217,7 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
                 type="button"
                 disabled={saving}
                 onClick={cancelEdit}
-                className="px-3 py-1.5 text-sm rounded border border-gray-400 bg-white text-gray-700"
+                className="px-3 py-1.5 text-sm rounded border border-edge bg-panel text-cream"
               >
                 Cancel
               </button>
@@ -225,13 +225,13 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
           </div>
         ) : (
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-black truncate">
+            <span className="text-sm font-medium text-cream truncate">
               {loading ? "…" : displayName || "—"}
             </span>
             <button
               type="button"
               onClick={startEdit}
-              className="text-xs px-2 py-1 rounded border border-gray-400 bg-white text-gray-700 shrink-0"
+              className="text-xs px-2 py-1 rounded border border-edge bg-panel text-cream shrink-0"
             >
               Edit
             </button>
@@ -240,9 +240,9 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
       </div>
 
       {/* Email (read-only) */}
-      <div className="border border-gray-300 rounded p-4 mb-6">
-        <div className="text-xs text-gray-500 mb-1">Email</div>
-        <span className="text-sm text-black break-words">{email ?? "—"}</span>
+      <div className="border border-edge rounded p-4 mb-6">
+        <div className="text-xs text-cream-mute mb-1">Email</div>
+        <span className="text-sm text-cream break-words">{email ?? "—"}</span>
       </div>
 
       {/* Actions */}
@@ -250,19 +250,19 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
         <button
           type="button"
           onClick={() => setMutedOpen(true)}
-          className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900 flex items-center justify-between px-4"
+          className="w-full py-3 text-sm font-medium rounded border border-edge bg-panel text-cream flex items-center justify-between px-4"
           style={{ minHeight: "44px" }}
           data-coach="profile.muted"
         >
           <span>Muted users</span>
-          <span className="text-xs text-gray-600">Manage</span>
+          <span className="text-xs text-cream-mute">Manage</span>
         </button>
 
         <button
           type="button"
           disabled={resetting}
           onClick={handleReplayTutorial}
-          className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900 disabled:opacity-50"
+          className="w-full py-3 text-sm font-medium rounded border border-edge bg-panel text-cream disabled:opacity-50"
           style={{ minHeight: "44px" }}
         >
           {resetting ? "Restarting…" : "Replay tutorial"}
@@ -273,11 +273,11 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
           data-coach="profile.notifications"
           disabled={notifyBusy}
           onClick={handleToggleNotifications}
-          className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900 disabled:opacity-50 flex items-center justify-between px-4"
+          className="w-full py-3 text-sm font-medium rounded border border-edge bg-panel text-cream disabled:opacity-50 flex items-center justify-between px-4"
           style={{ minHeight: "44px" }}
         >
           <span>Notifications</span>
-          <span className="text-xs text-gray-600">
+          <span className="text-xs text-cream-mute">
             {notifyBusy
               ? "…"
               : notifyOn
@@ -294,12 +294,12 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
           type="button"
           onClick={toggleReactions}
           disabled={reactionsOn === null}
-          className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900 flex items-center justify-between px-4 disabled:opacity-50"
+          className="w-full py-3 text-sm font-medium rounded border border-edge bg-panel text-cream flex items-center justify-between px-4 disabled:opacity-50"
           style={{ minHeight: "44px" }}
           data-coach="profile.notify_reactions"
         >
           <span>Reactions to my posts</span>
-          <span className="text-xs text-gray-600">{reactionsOn === null ? "…" : reactionsOn ? "On" : "Off"}</span>
+          <span className="text-xs text-cream-mute">{reactionsOn === null ? "…" : reactionsOn ? "On" : "Off"}</span>
         </button>
 
         {!installed && (
@@ -307,7 +307,7 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
             type="button"
             data-coach="profile.install"
             onClick={handleInstallAgain}
-            className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900"
+            className="w-full py-3 text-sm font-medium rounded border border-edge bg-panel text-cream"
             style={{ minHeight: "44px" }}
           >
             Install the app
@@ -318,7 +318,7 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
           type="button"
           data-coach="profile.feedback"
           onClick={() => setFeedbackOpen(true)}
-          className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900"
+          className="w-full py-3 text-sm font-medium rounded border border-edge bg-panel text-cream"
           style={{ minHeight: "44px" }}
         >
           Send Feedback / Report a Bug
@@ -327,7 +327,7 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
         <button
           type="button"
           onClick={handleSignOut}
-          className="w-full py-3 text-sm font-semibold rounded bg-gray-900 text-white"
+          className="w-full py-3 text-sm font-semibold rounded pc-brass bg-brass text-engrave"
           style={{ minHeight: "44px" }}
         >
           Sign Out

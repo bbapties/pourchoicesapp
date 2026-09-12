@@ -112,9 +112,9 @@ export default function PeopleSheet({ open, onOpenChange, mode, userId, viewerId
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="border-t border-charcoal max-h-[85vh] overflow-y-auto" style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}>
+      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
         <SheetHeader className="mb-2">
-          <SheetTitle className="text-charcoal text-left">{title}</SheetTitle>
+          <SheetTitle className="text-cream text-left">{title}</SheetTitle>
           <SheetDescription className="sr-only">{title}</SheetDescription>
         </SheetHeader>
 
@@ -125,7 +125,7 @@ export default function PeopleSheet({ open, onOpenChange, mode, userId, viewerId
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search usernames"
-              className="w-full h-11 border border-charcoal rounded-lg px-3 text-sm text-black bg-white"
+              className="w-full h-11 border border-brass-line rounded-lg px-3 text-sm text-cream bg-panel"
               data-coach="social.search"
             />
           </div>
@@ -133,9 +133,9 @@ export default function PeopleSheet({ open, onOpenChange, mode, userId, viewerId
 
         <div className="px-4 pb-6">
           {rows === null ? (
-            <p className="text-sm text-gray-400 py-8 text-center">{mode === "search" ? "" : "Loading…"}</p>
+            <p className="text-sm text-cream-faint py-8 text-center">{mode === "search" ? "" : "Loading…"}</p>
           ) : rows.length === 0 ? (
-            <p className="text-sm text-gray-500 py-8 text-center">
+            <p className="text-sm text-cream-mute py-8 text-center">
               {mode === "search" ? (q.trim().length < 2 ? "Type at least two letters." : "No one by that name.")
                 : mode === "muted" ? "You haven't muted anyone."
                 : mode === "followers" ? "No followers yet."
@@ -146,19 +146,19 @@ export default function PeopleSheet({ open, onOpenChange, mode, userId, viewerId
               const isMe = p.userId === viewerId;
               const following = mine.following.has(p.userId);
               return (
-                <div key={p.userId} className="flex items-center gap-3 py-2.5 border-b border-gray-200">
+                <div key={p.userId} className="flex items-center gap-3 py-2.5 border-b border-edge">
                   <button type="button" onClick={() => openUser(p)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
                     <UserAvatar username={p.username} avatarUrl={p.avatarUrl} size={36} />
-                    <span className="text-sm font-medium text-charcoal truncate">@{p.username}</span>
+                    <span className="text-sm font-medium text-cream truncate">@{p.username}</span>
                   </button>
                   {mode === "muted" ? (
-                    <button type="button" onClick={() => doUnmute(p)} className="h-8 px-3.5 rounded-full border border-gray-400 text-xs font-semibold text-charcoal bg-white">Unmute</button>
+                    <button type="button" onClick={() => doUnmute(p)} className="h-8 px-3.5 rounded-full border border-edge text-xs font-semibold text-cream bg-panel">Unmute</button>
                   ) : !isMe && viewerId ? (
                     <button
                       type="button"
                       onClick={() => toggleFollow(p)}
-                      className={`h-8 px-3.5 rounded-full text-xs font-semibold ${following ? "border border-gray-400 text-charcoal bg-white" : "text-white"}`}
-                      style={following ? undefined : { backgroundColor: "#111" }}
+                      className={`h-8 px-3.5 rounded-full text-xs font-semibold ${following ? "border border-edge text-cream bg-panel" : "text-cream"}`}
+                      style={following ? undefined : { backgroundColor: "#bd9436" }}
                     >
                       {following ? "Following" : "Follow"}
                     </button>

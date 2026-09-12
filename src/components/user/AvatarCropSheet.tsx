@@ -114,10 +114,10 @@ export default function AvatarCropSheet({ open, onOpenChange, userId, onSaved }:
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="border-t border-charcoal max-h-[92vh] overflow-y-auto" style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}>
+      <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto">
         <SheetHeader className="mb-2">
-          <SheetTitle className="text-charcoal text-left">Profile photo</SheetTitle>
-          <SheetDescription className="text-charcoal opacity-70 text-left">Drag to position, slide to zoom. It shows as a circle everywhere.</SheetDescription>
+          <SheetTitle className="text-cream text-left">Profile photo</SheetTitle>
+          <SheetDescription className="text-cream opacity-70 text-left">Drag to position, slide to zoom. It shows as a circle everywhere.</SheetDescription>
         </SheetHeader>
 
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = ""; }} />
@@ -126,7 +126,7 @@ export default function AvatarCropSheet({ open, onOpenChange, userId, onSaved }:
           {img ? (
             <>
               <div
-                className="relative overflow-hidden bg-gray-200 touch-none select-none"
+                className="relative overflow-hidden bg-panel-3 touch-none select-none"
                 style={{ width: VIEW, height: VIEW, cursor: "grab" }}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
@@ -141,20 +141,20 @@ export default function AvatarCropSheet({ open, onOpenChange, userId, onSaved }:
                   style={{ position: "absolute", left: VIEW / 2 - drawW / 2 + clamp(pos).x, top: VIEW / 2 - drawH / 2 + clamp(pos).y, width: drawW, height: drawH, maxWidth: "none" }}
                 />
                 {/* the circle mask: everything outside it is dimmed, the ring is the edge of the avatar */}
-                <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "0 0 0 9999px rgba(255,255,255,.7)", borderRadius: "50%", border: "1px solid #2F2F2F" }} />
+                <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "0 0 0 9999px rgba(14,8,5,.7)", borderRadius: "50%", border: "1px solid #f6ecd9" }} />
               </div>
               <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={(e) => { setZoom(Number(e.target.value)); setPos((p) => clamp(p)); }} className="w-[260px]" aria-label="Zoom" />
               <div className="flex gap-2.5 w-full">
-                <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="flex-1 h-11 rounded-lg border border-gray-400 bg-white text-sm font-semibold text-charcoal">Choose another</button>
-                <button type="button" onClick={save} disabled={busy} className="flex-1 h-11 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "#2F2F2F" }}>{busy ? "Saving…" : "Save"}</button>
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="flex-1 h-11 rounded-lg border border-edge bg-panel text-sm font-semibold text-cream">Choose another</button>
+                <button type="button" onClick={save} disabled={busy} className="flex-1 h-11 rounded-lg text-sm font-semibold text-cream disabled:opacity-50" style={{ backgroundColor: "#bd9436" }}>{busy ? "Saving…" : "Save"}</button>
               </div>
             </>
           ) : (
             <>
-              <button type="button" onClick={() => fileRef.current?.click()} className="w-full h-12 rounded-lg text-sm font-semibold text-white" style={{ backgroundColor: "#2F2F2F" }}>
+              <button type="button" onClick={() => fileRef.current?.click()} className="w-full h-12 rounded-lg text-sm font-semibold text-cream" style={{ backgroundColor: "#bd9436" }}>
                 Choose a photo
               </button>
-              <button type="button" onClick={remove} disabled={busy} className="text-sm text-gray-600 underline underline-offset-2">Remove current photo</button>
+              <button type="button" onClick={remove} disabled={busy} className="text-sm text-cream-mute underline underline-offset-2">Remove current photo</button>
             </>
           )}
         </div>

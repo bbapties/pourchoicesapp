@@ -265,8 +265,8 @@ export default function VariantSelectSheet({
   };
 
   const inputClass =
-    "w-full border border-charcoal rounded px-3 py-2 text-sm bg-ivory text-charcoal placeholder:text-charcoal placeholder:opacity-50 focus:outline-none focus:ring-1 focus:ring-charcoal";
-  const labelClass = "block text-xs font-medium text-charcoal mb-1";
+    "w-full border border-brass-line rounded px-3 py-2 text-sm bg-panel text-cream placeholder:text-cream placeholder:opacity-50 focus:outline-none focus:ring-1 focus:ring-brass";
+  const labelClass = "block text-xs font-medium text-cream mb-1";
 
   // Reusable selection row — solid charcoal fill when selected, transparent/faint when not
   const SelectRow = ({
@@ -284,31 +284,31 @@ export default function VariantSelectSheet({
       onClick={onClick}
       className={`flex items-center gap-3 p-3 rounded border cursor-pointer transition-all ${
         isSelected
-          ? "border-charcoal bg-charcoal"
-          : "border-gray-300 bg-transparent hover:bg-charcoal/5"
+          ? "border-brass-line bg-brass"
+          : "border-edge bg-transparent hover:bg-cream/5"
       }`}
     >
       <div className="flex-1 min-w-0">
         <div
           className={`text-sm font-semibold truncate ${
-            isSelected ? "text-white" : "text-charcoal"
+            isSelected ? "text-cream" : "text-cream"
           }`}
         >
           {label}
         </div>
         {sublabel && (
-          <div className={`text-xs mt-0.5 ${isSelected ? "text-white/70" : "text-gray-500"}`}>
+          <div className={`text-xs mt-0.5 ${isSelected ? "text-cream/70" : "text-cream-mute"}`}>
             {sublabel}
           </div>
         )}
       </div>
       <div
         className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
-          isSelected ? "bg-white/20" : "border-2 border-gray-300"
+          isSelected ? "bg-cream/15" : "border-2 border-edge"
         }`}
       >
         {isSelected && (
-          <Check className="w-4 h-4 text-white" strokeWidth={3} />
+          <Check className="w-4 h-4 text-cream" strokeWidth={3} />
         )}
       </div>
     </div>
@@ -321,14 +321,13 @@ export default function VariantSelectSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="border-t border-charcoal max-h-[90vh] overflow-y-auto"
-        style={{ backgroundColor: "#FFFFFF", color: "#2F2F2F" }}
+        className="border-t border-brass-line max-h-[90vh] overflow-y-auto"
       >
         <SheetHeader className="mb-4">
-          <SheetTitle className="text-charcoal text-left">
+          <SheetTitle className="text-cream text-left">
             {isContribute ? `Add a version of ${bottle.name}` : `Add ${bottle.name}`}
           </SheetTitle>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-cream-mute">
             {isContribute
               ? "A new batch, release, or your store pick. Store picks are private to you."
               : "Which version of this bottle are you adding?"}
@@ -336,7 +335,7 @@ export default function VariantSelectSheet({
         </SheetHeader>
 
         {isFetching ? (
-          <div className="flex items-center justify-center py-10 text-sm text-gray-400">
+          <div className="flex items-center justify-center py-10 text-sm text-cream-faint">
             Loading options...
           </div>
         ) : (
@@ -344,7 +343,7 @@ export default function VariantSelectSheet({
 
             {/* ── Section 1: Which bottle? ── */}
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              <p className="text-xs font-semibold text-cream-faint uppercase tracking-wide">
                 Which bottle?
               </p>
 
@@ -387,8 +386,8 @@ export default function VariantSelectSheet({
               <div
                 className={`rounded border cursor-pointer transition-all ${
                   bottleKind.kind === "new_variant"
-                    ? "border-charcoal bg-charcoal"
-                    : "border-gray-300 bg-transparent hover:bg-charcoal/5"
+                    ? "border-brass-line bg-brass"
+                    : "border-edge bg-transparent hover:bg-cream/5"
                 }`}
               >
                 <div
@@ -399,25 +398,25 @@ export default function VariantSelectSheet({
                     <div
                       className={`text-sm font-semibold ${
                         bottleKind.kind === "new_variant"
-                          ? "text-white"
-                          : "text-charcoal"
+                          ? "text-cream"
+                          : "text-cream"
                       }`}
                     >
                       + Add new variant
                     </div>
-                    <div className={`text-xs mt-0.5 ${bottleKind.kind === "new_variant" ? "text-white/70" : "text-gray-500"}`}>
+                    <div className={`text-xs mt-0.5 ${bottleKind.kind === "new_variant" ? "text-cream/70" : "text-cream-mute"}`}>
                       Custom batch, proof, or release year
                     </div>
                   </div>
                   <div
                     className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
                       bottleKind.kind === "new_variant"
-                        ? "bg-white/20"
-                        : "border-2 border-gray-300"
+                        ? "bg-cream/15"
+                        : "border-2 border-edge"
                     }`}
                   >
                     {bottleKind.kind === "new_variant" && (
-                      <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                      <Check className="w-4 h-4 text-cream" strokeWidth={3} />
                     )}
                   </div>
                 </div>
@@ -468,7 +467,7 @@ export default function VariantSelectSheet({
 
             {/* ── Section 2: Store pick add-on ── */}
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              <p className="text-xs font-semibold text-cream-faint uppercase tracking-wide">
                 Store pick? <span className="normal-case font-normal">(optional add-on)</span>
               </p>
 
@@ -486,32 +485,32 @@ export default function VariantSelectSheet({
                 }}
                 className={`flex items-center gap-3 p-3 rounded border cursor-pointer transition-all ${
                   isStorePick
-                    ? "border-charcoal bg-charcoal"
-                    : "border-gray-300 bg-transparent hover:bg-charcoal/5"
+                    ? "border-brass-line bg-brass"
+                    : "border-edge bg-transparent hover:bg-cream/5"
                 }`}
               >
                 <div className="flex-1">
-                  <div className={`text-sm font-semibold ${isStorePick ? "text-white" : "text-charcoal"}`}>
+                  <div className={`text-sm font-semibold ${isStorePick ? "text-cream" : "text-cream"}`}>
                     This is a store pick
                   </div>
-                  <div className={`text-xs mt-0.5 ${isStorePick ? "text-white/70" : "text-gray-500"}`}>
+                  <div className={`text-xs mt-0.5 ${isStorePick ? "text-cream/70" : "text-cream-mute"}`}>
                     A dedicated store allocation or barrel pick
                   </div>
                 </div>
                 <div
                   className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
-                    isStorePick ? "bg-white/20" : "border-2 border-gray-300"
+                    isStorePick ? "bg-cream/15" : "border-2 border-edge"
                   }`}
                 >
                   {isStorePick && (
-                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                    <Check className="w-4 h-4 text-cream" strokeWidth={3} />
                   )}
                 </div>
               </div>
 
               {/* Store name selection — only shown when isStorePick */}
               {isStorePick && (
-                <div className="pl-3 space-y-2 pt-1 border-l-2 border-charcoal/20 ml-1">
+                <div className="pl-3 space-y-2 pt-1 border-l-2 border-brass-line/20 ml-1">
                   {/* Previous stores */}
                   {myStores.map((store) => (
                     <SelectRow
@@ -530,8 +529,8 @@ export default function VariantSelectSheet({
                   <div
                     className={`rounded border cursor-pointer transition-all ${
                       isNewStore
-                        ? "border-charcoal bg-charcoal"
-                        : "border-gray-300 bg-transparent hover:bg-charcoal/5"
+                        ? "border-brass-line bg-brass"
+                        : "border-edge bg-transparent hover:bg-cream/5"
                     }`}
                   >
                     <div
@@ -542,20 +541,20 @@ export default function VariantSelectSheet({
                       }}
                     >
                       <div className="flex-1">
-                        <div className={`text-sm font-semibold ${isNewStore ? "text-white" : "text-charcoal"}`}>
+                        <div className={`text-sm font-semibold ${isNewStore ? "text-cream" : "text-cream"}`}>
                           + New store
                         </div>
-                        <div className={`text-xs mt-0.5 ${isNewStore ? "text-white/70" : "text-gray-500"}`}>
+                        <div className={`text-xs mt-0.5 ${isNewStore ? "text-cream/70" : "text-cream-mute"}`}>
                           Enter the store name
                         </div>
                       </div>
                       <div
                         className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
-                          isNewStore ? "bg-white/20" : "border-2 border-gray-300"
+                          isNewStore ? "bg-cream/15" : "border-2 border-edge"
                         }`}
                       >
                         {isNewStore && (
-                          <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                          <Check className="w-4 h-4 text-cream" strokeWidth={3} />
                         )}
                       </div>
                     </div>
@@ -582,7 +581,7 @@ export default function VariantSelectSheet({
             {/* ── Section 3: Save choice (contribute only) ── */}
             {isContribute && (
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Save</p>
+                <p className="text-xs font-semibold text-cream-faint uppercase tracking-wide">Save</p>
                 <SelectRow
                   isSelected={saveChoice === "database-only"}
                   label="Save to database only"
@@ -602,8 +601,8 @@ export default function VariantSelectSheet({
             <button
               onClick={handleAdd}
               disabled={isAddDisabled}
-              className="w-full py-3 rounded border border-charcoal text-sm font-medium transition-colors disabled:opacity-50"
-              style={{ backgroundColor: "#2F2F2F", color: "#FFFFFF" }}
+              className="w-full py-3 rounded border border-brass-line text-sm font-medium transition-colors disabled:opacity-50"
+              style={{ backgroundColor: "#bd9436", color: "#1c1303" }}
             >
               {isAdding
                 ? "Saving..."

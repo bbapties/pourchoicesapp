@@ -40,14 +40,14 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center px-6 bg-ivory">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6">
-        <h1 className="text-xl font-bold text-gray-900">Set a new password</h1>
+    <div className="fixed inset-0 flex items-center justify-center px-6 bg-panel">
+      <div className="w-full max-w-sm pc-leather rounded-2xl p-6">
+        <h1 className="text-xl font-bold text-cream">Set a new password</h1>
 
         {done ? (
-          <p className="text-green-700 text-sm mt-3">Password updated. Taking you to your bar…</p>
+          <p className="text-green-400 text-sm mt-3">Password updated. Taking you to your bar…</p>
         ) : !ready ? (
-          <p className="text-sm text-gray-500 mt-3">
+          <p className="text-sm text-cream-mute mt-3">
             Open this page from the password-reset link in your email. If you came here directly,
             request a new link from the login screen.
           </p>
@@ -59,7 +59,7 @@ export default function ResetPasswordPage() {
               placeholder="New password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base outline-none focus:border-gray-600"
+              className="w-full border border-edge rounded-lg px-4 py-3 text-base outline-none focus:border-edge"
             />
             <input
               type="password"
@@ -67,14 +67,14 @@ export default function ResetPasswordPage() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base outline-none focus:border-gray-600"
+              className="w-full border border-edge rounded-lg px-4 py-3 text-base outline-none focus:border-edge"
             />
-            <p className="text-xs text-gray-400">At least {PASSWORD_MIN} characters.</p>
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+            <p className="text-xs text-cream-faint">At least {PASSWORD_MIN} characters.</p>
+            {error && <p className="text-red-400 text-sm">{error}</p>}
             <button
               onClick={submit}
               disabled={!password || !confirm || saving}
-              className="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold disabled:opacity-40"
+              className="w-full py-3 pc-brass bg-brass text-engrave rounded-xl font-semibold disabled:opacity-40"
             >
               {saving ? "Saving…" : "Update password"}
             </button>

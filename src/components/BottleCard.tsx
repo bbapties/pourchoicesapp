@@ -26,21 +26,21 @@ function StarRating({ value }: { value: number }) {
   return (
     <div className="flex items-center gap-0">
       {Array.from({ length: full }).map((_, i) => (
-        <span key={`f${i}`} className="text-gray-800 text-sm leading-none">★</span>
+        <span key={`f${i}`} className="text-cream text-sm leading-none">★</span>
       ))}
       {partial > 0 && (
         <span className="relative inline-block text-sm leading-none">
-          <span className="text-gray-300">★</span>
+          <span className="text-cream-faint">★</span>
           <span
-            className="absolute inset-0 overflow-hidden text-gray-800"
+            className="absolute inset-0 overflow-hidden text-cream"
             style={{ width: `${partial * 100}%` }}
           >★</span>
         </span>
       )}
       {Array.from({ length: empty }).map((_, i) => (
-        <span key={`e${i}`} className="text-gray-300 text-sm leading-none">★</span>
+        <span key={`e${i}`} className="text-cream-faint text-sm leading-none">★</span>
       ))}
-      <span className="ml-1 text-xs text-gray-500">{clamped.toFixed(2)}</span>
+      <span className="ml-1 text-xs text-cream-mute">{clamped.toFixed(2)}</span>
     </div>
   );
 }
@@ -123,7 +123,7 @@ interface BottleCardProps {
 
 export default function BottleCard({ bottle }: BottleCardProps) {
   return (
-    <div className={`relative flex items-center p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
+    <div className={`relative flex items-center p-3 border-b border-edge hover:bg-panel-2 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
       <EarmarkCorner hadIt={bottle.hadIt ?? bottle.inCollection ?? false} provisional={bottle.provisional ?? false} ownedCount={bottle.ownedCount ?? 0} />
 
       {/* Image — fixed frame; the bottle is forced to fit it and can never change the card height */}
@@ -143,27 +143,27 @@ export default function BottleCard({ bottle }: BottleCardProps) {
 
       {/* Content: name + distillery/category + stars bottom-right */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-gray-900 truncate pr-6">{bottle.name}</h3>
+        <h3 className="font-semibold text-cream truncate pr-6">{bottle.name}</h3>
         {(bottle.distillery || bottle.category) && (
-          <p className="text-gray-600 text-sm truncate">
+          <p className="text-cream-mute text-sm truncate">
             {bottle.distillery && bottle.distillery}
             {bottle.distillery && bottle.category && " • "}
             {bottle.category}
           </p>
         )}
         {bottle.variantLabel && (
-          <p className="text-xs text-gray-500 italic truncate">{bottle.variantLabel}</p>
+          <p className="text-xs text-cream-mute italic truncate">{bottle.variantLabel}</p>
         )}
         <div className="flex items-center mt-1">
           {bottle.variantCount != null && bottle.variantCount > 1 && (
-            <span className="text-[11px] text-gray-600 bg-gray-100 border border-gray-300 rounded-full px-2 py-0.5 whitespace-nowrap">
+            <span className="text-[11px] text-cream-mute bg-panel-2 border border-edge rounded-full px-2 py-0.5 whitespace-nowrap">
               {bottle.variantCount} variants
             </span>
           )}
           <div className="ml-auto">
             {bottle.stars != null
               ? <StarRating value={bottle.stars} />
-              : <span className="text-xs text-gray-400">—</span>
+              : <span className="text-xs text-cream-faint">—</span>
             }
           </div>
         </div>

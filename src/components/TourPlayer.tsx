@@ -83,7 +83,7 @@ export default function TourPlayer({
       <div className={`absolute inset-0 ${hole ? "" : "bg-black/50"}`} />
       {hole && (
         <div
-          className="absolute border-2 border-white rounded-md pointer-events-none"
+          className="absolute border-2 border-cream rounded-md pointer-events-none"
           style={{
             top: hole.top,
             left: hole.left,
@@ -95,7 +95,7 @@ export default function TourPlayer({
       )}
 
       <div
-        className="absolute left-1/2 -translate-x-1/2 w-[min(360px,calc(100%-24px))] bg-white text-black border border-gray-500 rounded-lg p-4 z-[81]"
+        className="absolute left-1/2 -translate-x-1/2 w-[min(360px,calc(100%-24px))] bg-panel text-cream border border-edge rounded-lg p-4 z-[81]"
         style={
           captionOnTop
             ? { top: 16 }
@@ -109,12 +109,12 @@ export default function TourPlayer({
           <button
             type="button"
             onClick={onSkip}
-            className="text-xs text-gray-500 underline"
+            className="text-xs text-cream-mute underline"
           >
             Skip
           </button>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-cream-faint">
               {index + 1} / {steps.length}
             </span>
             <button
@@ -123,7 +123,7 @@ export default function TourPlayer({
                 if (index + 1 >= steps.length) onComplete();
                 else setIndex((i) => i + 1);
               }}
-              className="px-3 py-1.5 text-sm border border-gray-500 rounded bg-gray-800 text-white"
+              className="px-3 py-1.5 text-sm border border-edge rounded pc-brass bg-brass text-engrave"
             >
               {index + 1 >= steps.length ? "Done" : "Next"}
             </button>

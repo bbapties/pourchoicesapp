@@ -7,7 +7,9 @@
 // Greyscale on purpose - Phase 5 restyles. The tint is one of a few greys picked by hash so a
 // list of people is still tellable apart at a glance. Swap the palette, not the hash, later.
 
-const TINTS = ["#C9C9C9", "#D9D9D9", "#BDBDBD", "#E3E3E3", "#B3B3B3", "#DDDDDD"];
+// Phase 5: six warm, muted leathers and lacquers from the room - cognac, oxblood, forest, navy,
+// tobacco, plum. Dark enough that cream initials read on every one; the brass ring does the rest.
+const TINTS = ["#7a3a1e", "#5a1f1f", "#2f4a2f", "#2d3a5e", "#5c4322", "#4a2a4a"];
 
 /** Stable small hash of a string (djb2). Same input, same tint, forever. */
 function hash(s: string): number {

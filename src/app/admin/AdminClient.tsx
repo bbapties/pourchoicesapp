@@ -32,19 +32,19 @@ export default function AdminClient({
 
   return (
     <div className="flex flex-col h-full">
-      <header className="border-b border-charcoal bg-ivory px-4 py-3">
-        <h1 className="text-lg font-semibold text-charcoal">Admin</h1>
-        <p className="text-xs text-gray-500">Signed in as {username}</p>
+      <header className="border-b border-brass-line bg-panel px-4 py-3">
+        <h1 className="font-display text-xl font-bold tracking-wide pc-brass-text">Admin</h1>
+        <p className="text-xs text-cream-mute">Signed in as {username}</p>
       </header>
 
-      <nav className="flex border-b border-charcoal bg-ivory">
+      <nav className="flex border-b border-brass-line bg-panel">
         {TABS.map((t) => {
           const active = tab === t.id;
           return (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 py-3 text-sm ${active ? "font-semibold text-black border-b-2 border-black" : "text-gray-500"}`}
+              className={`flex-1 py-3 text-sm ${active ? "font-semibold text-cream border-b-2 border-brass" : "text-cream-mute"}`}
             >
               {t.label}
             </button>
