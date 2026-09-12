@@ -10,6 +10,7 @@ import { type BottleDetails } from "@/lib/types";
 import VariantSelectSheet from "@/components/VariantSelectSheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import PourSheet, { type PourSubmission } from "@/components/PourSheet";
+import { EarmarkCorner } from "@/components/BottleCard";
 import { recordPour } from "@/lib/pours";
 import MoreSheet from "@/components/MoreSheet";
 import HistoryModal from "@/components/HistoryModal";
@@ -727,13 +728,21 @@ export default function BottleDetailView({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="bg-white text-black border border-gray-500 rounded-lg p-4 w-full max-w-[375px] mx-auto my-4 relative"
+        className="bg-white text-black border border-gray-500 rounded-lg p-4 w-full max-w-[375px] mx-auto my-4 relative overflow-hidden"
         onPointerDown={onCardPointerDown}
         onPointerUp={onCardPointerUp}
         onPointerCancel={() => { swipeX.current = null; }}
       >
+        {/* The same earmark the cards wear, on the tray's own corner (Brian, 2026-09-12): the
+            digit is bottles on hand, green means had it, yellow means unverified. */}
+        <EarmarkCorner
+          hadIt={currentOwnership.inColl || hasTasted || !!lastActivityLabel}
+          provisional={!localBottle.verified}
+          ownedCount={ownedCount}
+          size={36}
+        />
         {/* Top bar: close/cancel + suggest-edit pencil */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 pr-5">
           <button
             onClick={isEditing ? cancelEdit : onClose}
             aria-label={isEditing ? 'Cancel edit' : 'Close'}

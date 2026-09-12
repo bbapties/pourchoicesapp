@@ -547,6 +547,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         // Tasting-only rows (times_had = 0) do not count as being in the collection.
         inCollection,
         currentlyOwned: userBottlesMap[skuId]?.some(r => r.currently_owned) ?? false,
+        ownedCount: (userBottlesMap[skuId] ?? []).reduce((n, r) => n + (r.owned_count ?? (r.currently_owned ? 1 : 0)), 0),
         // "Had it" (earmark) = owned/past OR drank OR blind-tasted — any relationship (B-31).
         hadIt: inCollection || hadItSet.has(skuId),
         // #70: the global score, the same for everyone -- but from the right level. In Bottles the

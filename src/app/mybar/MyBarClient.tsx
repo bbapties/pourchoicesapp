@@ -99,6 +99,7 @@ function mapToCardData(d: any, currentlyOwned: boolean, tasted: boolean, labelOv
     tasted,
     // B-32: quantity for the tab — current owned on In My Bar, lifetime finished on Empty.
     quantity: currentlyOwned ? (d.owned_count ?? 1) : (!tasted ? (d.emptied_count ?? 1) : undefined),
+    ownedCount: currentlyOwned ? (d.owned_count ?? 1) : 0,
     // The viewer's OWN Elo, for the My Ranks sort. Null when they have never ranked this one.
     personalElo: d.personal_elo ?? null,
   };

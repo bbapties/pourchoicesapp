@@ -192,9 +192,9 @@ export default function ImagesTab({ publicUserId }: { publicUserId: string }) {
                   {/* Green = at least one person has this on their shelf, the same colour a
                       bottle card uses for had-it. Yellow = a user flagged the image. */}
                   {b.state === "needs_rereview" ? (
-                    <span className="pc-mark" style={{ background: "#FFD700" }} />
+                    <span className="pc-led pc-led-prov" aria-hidden="true" />
                   ) : b.ownerCount > 0 ? (
-                    <span className="pc-mark" style={{ background: "#22c55e" }} />
+                    <span className="pc-led pc-led-own" aria-hidden="true" />
                   ) : null}
                 </button>
               ))}

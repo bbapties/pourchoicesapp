@@ -18,6 +18,7 @@ export interface BottleCardMediumData {
   currentlyOwned?: boolean;
   tasted?: boolean;
   quantity?: number; // B-32: how many (owned on In My Bar, finished on Empty); shown when > 1
+  ownedCount?: number; // on hand right now - the digit in the earmark corner
 }
 
 function StarRating({ value }: { value: number }) {
@@ -68,7 +69,7 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
       {/* #103: the same earmark as Search (B-31). Every card in My Bar has been had by definition
           (owned, emptied, or blind-tasted), so every card gets the green check; the tab already
           says which. The old owned-green / empty-grey / tasted-none split disagreed with Search. */}
-      <EarmarkCorner hadIt provisional={provisional} />
+      <EarmarkCorner hadIt provisional={provisional} ownedCount={bottle.ownedCount ?? (bottle.currentlyOwned ? (bottle.quantity ?? 1) : 0)} />
 
       {/* Main row: image + attributes */}
       <div className="flex items-center p-3 gap-3">

@@ -83,11 +83,21 @@ function shortName(name: string): string[] {
  * earmarks — green "had it", yellow "unverified and never had". Anything else gets no mark, which
  * is exactly what a card shows too.
  */
-function markColor(b: ShelfBottle): string | null {
-  const hadIt = b.status === "owned" || b.status === "tasted";
-  if (hadIt) return "#22c55e";
-  if (b.provisional) return "#FFD700";
-  return null;
+/**
+ * The LED under the bottle (Brian, 2026-09-12) - light from under the deck, the viewer's own
+ * relationship, everywhere: solid green = in your bar now; green ring, white centre = had it,
+ * none on hand; a yellow outer ring on either = unverified; yellow ring alone = unverified and
+ * never had. Verified and never had stays dark. Classes live in globals.css under .pc-led-*.
+ */
+function ledClass(b: ShelfBottle): string | null {
+  const own = b.status === "owned";
+  const had = own || b.status === "tasted";
+  if (!had && !b.provisional) return null;
+  const parts = ["pc-led"];
+  if (own) parts.push("pc-led-own");
+  else if (had) parts.push("pc-led-had");
+  if (b.provisional) parts.push("pc-led-prov");
+  return parts.join(" ");
 }
 
 export default function BottleOnShelf({
@@ -107,7 +117,7 @@ export default function BottleOnShelf({
   // nothing about the layout moves.
   const [imageFailed, setImageFailed] = useState(false);
   const isGhost = bottle.imageState !== "ready" || imageFailed;
-  const mark = markColor(bottle);
+  const led = ledClass(bottle);
   const lines = isGhost ? shortName(bottle.name) : [];
   const firstLineY = 104 - (lines.length - 1) * 6;
 
@@ -161,7 +171,7 @@ export default function BottleOnShelf({
         />
       )}
 
-      {mark ? <span className="pc-mark" style={{ background: mark }} /> : null}
+      {led ? <span className={led} aria-hidden="true" /> : null}
 
       {/* #113: on the Social shelf, who (bottom-left) and what (bottom-right). Tapping the avatar
           opens the person; tapping the bottle opens the post - the slot's onClick handles both

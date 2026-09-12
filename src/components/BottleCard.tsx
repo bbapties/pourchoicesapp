@@ -12,6 +12,7 @@ export interface Bottle {
   inCollection?: boolean;    // bottle_id exists in user_bottles
   currentlyOwned?: boolean;  // user_bottles.currently_owned = true
   hadIt?: boolean;           // owned/past OR drank OR blind-tasted — drives the earmark (B-31)
+  ownedCount?: number;       // bottles on hand right now - the digit in the corner
   variantCount?: number;     // Bottles view: SKU roll-up count; badge shown when > 1
   variantLabel?: string;     // All Variants view: per-variant tag (Default / Batch 302 / 2021 …)
 }
@@ -44,18 +45,26 @@ function StarRating({ value }: { value: number }) {
   );
 }
 
-// Earmark matrix (top-right corner) — two dimensions: verified × had-it (BOTTLE_ACTIONS.md B.1):
-//   verified   + never had  → none
-//   unverified + never had  → subtle yellow dot
-//   verified   + had it      → green triangle + white ✓
-//   unverified + had it      → green triangle + yellow ✓
-// "Had it" spans ownership (now or past), a pour, or a blind tasting — no owned-vs-past split.
+// Earmark matrix (top-right corner) - two dimensions: verified x had-it (BOTTLE_ACTIONS.md B.1),
+// settled again with Brian 2026-09-12 so the same corner works on cards AND the detail tray:
+//   verified   + never had  -> none
+//   unverified + never had  -> subtle yellow dot
+//   had it                  -> green triangle carrying THE COUNT ON HAND: "0" = had it, none left;
+//                              "2" = two in your bar right now. White digit; yellow when unverified.
+// "Had it" spans ownership (now or past), a pour, or a blind tasting. The shelf says the same
+// thing with light (BottleOnShelf's LED); the detail tray reuses this exact corner.
 export function EarmarkCorner({
   hadIt,
   provisional,
+  ownedCount = 0,
+  size = 28,
 }: {
   hadIt: boolean;
   provisional: boolean;
+  /** Bottles on hand right now. Only meaningful when hadIt. */
+  ownedCount?: number;
+  /** Corner size in px; the detail tray uses a larger one. */
+  size?: number;
 }) {
   if (!hadIt && !provisional) return null;
 
@@ -74,27 +83,34 @@ export function EarmarkCorner({
     );
   }
 
-  // Had it: green triangle + checkmark (yellow check when the bottle is unverified)
-  const triangleColor = '#22c55e';
-  const checkColor = provisional ? '#FFD700' : '#ffffff';
+  const count = Math.max(0, Math.floor(ownedCount));
+  const label = count > 99 ? '99+' : String(count);
+  const digitColor = provisional ? '#FFD700' : '#ffffff';
+  const font = Math.round(size * 0.4);
 
   return (
-    <div style={{ position: 'absolute', top: 0, right: 0, width: 28, height: 28 }}>
+    <div
+      style={{ position: 'absolute', top: 0, right: 0, width: size, height: size }}
+      aria-label={count === 0 ? 'Had it, none on hand' : `${count} on hand`}
+      title={count === 0 ? 'Had it - none on hand' : `${count} in your bar`}
+    >
       <div style={{
         position: 'absolute',
         inset: 0,
-        background: triangleColor,
+        background: '#22c55e',
         clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
       }} />
       <span style={{
         position: 'absolute',
-        top: 3,
-        right: 4,
-        fontSize: 11,
+        top: Math.round(size * 0.1),
+        right: Math.round(size * 0.14),
+        fontSize: font,
         lineHeight: 1,
-        color: checkColor,
+        color: digitColor,
         fontWeight: 'bold',
-      }}>✓</span>
+        fontVariantNumeric: 'tabular-nums',
+        textShadow: provisional ? '0 0 2px rgba(0,0,0,0.45)' : 'none',
+      }}>{label}</span>
     </div>
   );
 }
@@ -106,10 +122,7 @@ interface BottleCardProps {
 export default function BottleCard({ bottle }: BottleCardProps) {
   return (
     <div className={`relative flex items-center p-3 border-b border-gray-300 hover:bg-gray-100 transition-colors ${bottle.provisional ? 'opacity-75' : ''}`}>
-      <EarmarkCorner
-        hadIt={bottle.hadIt ?? bottle.inCollection ?? false}
-        provisional={bottle.provisional ?? false}
-      />
+      <EarmarkCorner hadIt={bottle.hadIt ?? bottle.inCollection ?? false} provisional={bottle.provisional ?? false} ownedCount={bottle.ownedCount ?? 0} />
 
       {/* Image — fixed frame; the bottle is forced to fit it and can never change the card height */}
       <div className="w-8 h-16 flex-shrink-0 mr-2 overflow-hidden">
