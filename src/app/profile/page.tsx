@@ -12,6 +12,7 @@ import { clearDismissedInstall, isStandalone } from "@/lib/pwa";
 import { FORCE_REPLAY_KEY } from "@/lib/coaches";
 import InstallSheet from "@/components/InstallSheet";
 import NotificationSheet from "@/components/NotificationSheet";
+import UserAvatar from "@/components/UserAvatar";
 import { checkPushSupport, disablePush, hasDeviceSubscription, permissionState, syncPushSubscription } from "@/lib/pushNotifications";
 import { logClick, logEvent } from "@/lib/events";
 
@@ -152,7 +153,11 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-md mx-auto px-4 py-6 text-charcoal">
-      <h1 className="text-xl font-semibold mb-6">Profile</h1>
+      {/* Generated avatar (#107). Step 5 of #105 turns this page into the full user page. */}
+      <div className="flex items-center gap-3 mb-6">
+        <UserAvatar username={displayName} size={48} />
+        <h1 className="text-xl font-semibold">Profile</h1>
+      </div>
 
       {/* Username */}
       <div className="border border-gray-300 rounded p-4 mb-3">

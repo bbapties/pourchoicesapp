@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
+import UserAvatar from "@/components/UserAvatar";
 import BottleDetailView from "@/components/BottleDetailView";
 import { type BottleDetails } from "@/lib/types";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -243,7 +244,8 @@ export default function SocialClient() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 truncate">{row.bottleName}</h3>
-                  <p className="text-sm text-gray-700 truncate">
+                  <p className="text-sm text-gray-700 truncate flex items-center gap-1.5">
+                    <UserAvatar username={row.username} avatarUrl={row.avatarUrl} size={20} />
                     <span className="font-medium">{row.username}</span>
                     {" "}
                     {formatFeedAction(row.action, row.pourType)}
