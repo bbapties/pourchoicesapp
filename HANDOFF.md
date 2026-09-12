@@ -45,6 +45,15 @@ What is open and in what order now lives on **[the board](https://github.com/use
   Social tab and Home Social shelf for ~10 minutes until `a9da042` landed. Any new junction
   table touching `activities`+`users` will do it again.
 
+### THE STATUS LANGUAGE (settled and shipped 2026-09-12, `d04d076`)
+Two dimensions everywhere: **verified x had it**. Cards AND the detail tray wear the same
+`EarmarkCorner`: no corner = never had; **green corner with a digit = bottles on hand** (`0` = had
+it, none left); yellow digit / yellow dot = unverified. Shelves say it with **LEDs** under the
+bottle (`.pc-led-*`): solid green = on hand, green ring with white centre = had it, yellow outer
+ring = unverified, yellow alone = unverified never had. **Always the viewer's own relationship**,
+on every shelf, including someone else's bar. Phase 5 may restyle the glow; the four states are
+the contract. Do not reintroduce the old owned-green / empty-grey split.
+
 ### WHAT BRIAN SHOULD TEST ON PROD (none of it code)
 1. **A pour with a photo** from the phone (camera is HTTPS-only; I could not drive it here).
    Check the photo shows on the Social card and the post.
@@ -1426,6 +1435,7 @@ the browser against the live DB before pushing.
 | #112 | `118b7db` | avatar upload with circle crop; admin Reset avatar route |
 | #113 | `459565c` | Home Social shelf overlays (closes #104) |
 | #114 | `acf3678` | social pushes (`/api/social/notify`, `push-server.ts`, `notify.ts`); "Reactions to my posts" switch |
+| status | `d04d076` | earmark = count on hand, on cards and the detail tray; shelf LEDs (4 states); `130b495` avatar preview fix |
 | #103 | `912214b` | My Bar card uses the shared B-31 earmark |
 
 **Decisions Brian made that are not obvious from the code:**
