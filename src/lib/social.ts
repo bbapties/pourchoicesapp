@@ -16,6 +16,9 @@ export type FeedItem = ActivityRow & {
   cheers: number;
   comments: number;
   viewerCheered: boolean;
+  /** The VIEWER's relationship to the card's bottle - the same earmark the cards wear. */
+  viewerHadIt: boolean;
+  viewerOwnedCount: number;
   /** Adds / wishlists by the same person within an hour collapse into one card. */
   group?: ActivityRow[];
 };
@@ -46,17 +49,32 @@ export type PodiumGlass = {
 const COLLAPSE_ACTIONS = new Set(["added_to_collection", "wishlisted"]);
 const COLLAPSE_WINDOW_MS = 60 * 60 * 1000;
 
-/** Attach reaction / comment counts and the viewer's cheer to a page of rows. */
+/** Attach reaction / comment counts, the viewer's cheer, and the viewer's bottle status to a page. */
 export async function enrichRows(rows: ActivityRow[], viewerId: string | null): Promise<FeedItem[]> {
   const ids = rows.map((r) => r.id);
+  const bottleIds = [...new Set(rows.map((r) => r.bottleId).filter(Boolean))];
   const cheers = new Map<string, number>();
   const mine = new Set<string>();
   const comments = new Map<string, number>();
+  const had = new Set<string>();
+  const owned = new Map<string, number>();
   if (ids.length) {
-    const [{ data: re }, { data: co }] = await Promise.all([
+    const [{ data: re }, { data: co }, { data: ub }, { data: dr }] = await Promise.all([
       supabase.from("post_reactions").select("activity_id, user_id").in("activity_id", ids),
       supabase.from("post_comments").select("activity_id").in("activity_id", ids).is("deleted_at", null),
+      viewerId && bottleIds.length
+        ? supabase.from("user_bottles").select("bottle_id, currently_owned, times_had, owned_count, tasted_at, blind_tasted_at").eq("user_id", viewerId).in("bottle_id", bottleIds)
+        : Promise.resolve({ data: [] as any[] }),
+      viewerId && bottleIds.length
+        ? supabase.from("activities").select("bottle_id").eq("user_id", viewerId).eq("action", "drank").in("bottle_id", bottleIds)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
+    // The B-31 "had it" set: owned now or ever, poured, or blind-tasted.
+    (ub || []).forEach((r: any) => {
+      if (r.currently_owned || (r.times_had ?? 0) >= 1 || r.tasted_at || r.blind_tasted_at) had.add(r.bottle_id);
+      owned.set(r.bottle_id, (owned.get(r.bottle_id) ?? 0) + (r.owned_count ?? (r.currently_owned ? 1 : 0)));
+    });
+    (dr || []).forEach((r: any) => { if (r.bottle_id) had.add(r.bottle_id); });
     (re || []).forEach((r: { activity_id: string; user_id: string }) => {
       cheers.set(r.activity_id, (cheers.get(r.activity_id) ?? 0) + 1);
       if (viewerId && r.user_id === viewerId) mine.add(r.activity_id);
@@ -70,6 +88,8 @@ export async function enrichRows(rows: ActivityRow[], viewerId: string | null): 
     cheers: cheers.get(r.id) ?? 0,
     comments: comments.get(r.id) ?? 0,
     viewerCheered: mine.has(r.id),
+    viewerHadIt: had.has(r.bottleId),
+    viewerOwnedCount: owned.get(r.bottleId) ?? 0,
   }));
 }
 

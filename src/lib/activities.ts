@@ -55,6 +55,7 @@ export type ActivityRow = {
   variantId?: string | null;
   bottleName: string;
   bottleDistillery?: string | null;
+  bottleVerified?: boolean;
   bottleImageUrl?: string | null;
 };
 
@@ -235,7 +236,7 @@ export async function fetchLastActivityForBottle(
 export const FEED_SELECT = `
   id, action, pour_type, created_at, bottle_id, variant_id, user_id, details, session_id,
   users!activities_user_id_fkey!inner ( username, avatar_url ),
-  bottles ( name, distillery ),
+  bottles ( name, distillery, verified ),
   bottle_variants ( frontimage_url )
 `;
 
@@ -309,6 +310,7 @@ export function mapFeedRow(raw: any, defaultImages: Map<string, string | null> =
       variantId: raw.variant_id ?? null,
       bottleName: bottle?.name ?? "Unknown bottle",
       bottleDistillery: bottle?.distillery ?? null,
+      bottleVerified: bottle?.verified ?? true,
       // The version the post was actually about, when it names one -- a store pick or a specific
       // batch should show its own bottle, not the SKU's stand-in.
       bottleImageUrl: variant?.frontimage_url ?? defaultImages.get(raw.bottle_id) ?? null,

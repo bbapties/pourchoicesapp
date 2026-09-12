@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import UserAvatar from "@/components/UserAvatar";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
+import { EarmarkCorner } from "@/components/BottleCard";
 import { formatFeedTime, type ActivityRow } from "@/lib/activities";
 import { fetchPodium, type FeedItem, type PodiumGlass } from "@/lib/social";
 
@@ -75,8 +76,13 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
   })();
 
   return (
-    <article className="border border-gray-300 rounded-lg bg-white mx-4 mb-3 overflow-hidden" data-coach="social.card">
-      <div className="flex items-center gap-2.5 px-3.5 py-3">
+    <article className="relative border border-gray-300 rounded-lg bg-white mx-4 mb-3 overflow-hidden" data-coach="social.card">
+      {/* The viewer's own relationship to this bottle, in the same corner every card wears.
+          Grouped adds carry several bottles; the corner speaks for the first. */}
+      {group.length === 1 && (
+        <EarmarkCorner hadIt={item.viewerHadIt} provisional={!(item.bottleVerified ?? true)} ownedCount={item.viewerOwnedCount} />
+      )}
+      <div className="flex items-center gap-2.5 px-3.5 py-3 pr-8">
         <button
           type="button"
           onClick={() => onOpenUser?.(item.userId, item.username)}
