@@ -44,6 +44,8 @@ export default function Shelf({
   return (
     <section className="pc-shelf" aria-label={shelf.label} data-coach="home.shelf">
       <div className="pc-face pc-back" />
+      {/* the pool of light the top panel throws down the brick */}
+      <div className="pc-sconce" aria-hidden="true" />
       <div className="pc-face pc-top" />
       <div className="pc-face pc-deck" />
 

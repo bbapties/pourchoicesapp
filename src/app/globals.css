@@ -1,81 +1,93 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* ============================================================================
+   PHASE 5 — THE ROOM (#115, settled with Brian 2026-09-12 on the design canvas).
+
+   Sophisticated modern mancave: an EBONY carcass, a dark rustic BRICK back wall behind the
+   bottles, tufted COGNAC LEATHER for cards and sheets, satin BRASS for plates, headings, counts
+   and primary buttons, and CREAM for anything you read at length. Warm light from above; the
+   texture shows where the light lands and falls off to dark.
+
+   Two rules that came out of the session:
+   - Cream for body text, brass only for plates / headings / counts. Brass at paragraph length
+     is hard to read; brass on a plate is the look.
+   - Brass is SATIN, not mirror. The first cut had a highlight band across every plate and Brian
+     could not read them. Flat gradient, dark engraving, no glare.
+
+   The colour tokens are the whole vocabulary. Every screen uses these and nothing else, so a
+   change here is a change everywhere. The old greyscale tokens (ivory / charcoal / amber / gold)
+   are GONE on purpose: a straggling `text-charcoal` now renders unstyled and shows up, rather
+   than silently painting the wireframe grey back in.
+   ============================================================================ */
 @theme {
-  /* Greyscale wireframe palette — real brand colors applied in Phase 5 */
-  --color-ivory: #FFFFFF;
-  --color-charcoal: #2F2F2F;
-  --color-amber: #888888;
-  --color-gold: #AAAAAA;
+  /* reading */
+  --color-cream: #f6ecd9;
+  --color-cream-mute: #d8bf9c;
+  --color-cream-faint: #9c8262;
+  --color-engrave: #1c1303;          /* text ON brass */
+
+  /* surfaces — ebony, three depths */
+  --color-panel: #1a1511;
+  --color-panel-2: #241d17;
+  --color-panel-3: #2e2620;
+  --color-edge: #3a2f26;             /* the seam between two panels */
+  --color-wall: #0e0805;             /* page ground / brick mortar */
+
+  /* brass — satin */
+  --color-brass: #bd9436;
+  --color-brass-hi: #d6b565;
+  --color-brass-lo: #9c7524;
+  --color-brass-line: #8a6a2a;       /* hairline borders, the muted brass */
+
+  /* leather — cognac */
+  --color-leather: #5a2a16;
+  --color-leather-hi: #7a3a1e;
+  --color-leather-lo: #3e1c0e;
+
+  /* status — the contract from HANDOFF "the status language"; unchanged */
+  --color-had: #22c55e;
+  --color-unverified: #FFD700;
+
+  --font-sans: var(--font-body), "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-display), Georgia, "Times New Roman", serif;
 }
 
+/* shadcn/ui primitives read these. They were the light greyscale; now they are the room. */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --radius: 0.5rem;
+  --background: #1a1511;
+  --foreground: #f6ecd9;
+  --card: #1a1511;
+  --card-foreground: #f6ecd9;
+  --popover: #241d17;
+  --popover-foreground: #f6ecd9;
+  --primary: #bd9436;
+  --primary-foreground: #1c1303;
+  --secondary: #2e2620;
+  --secondary-foreground: #f6ecd9;
+  --muted: #241d17;
+  --muted-foreground: #d8bf9c;
+  --accent: #2e2620;
+  --accent-foreground: #f6ecd9;
+  --destructive: #e05252;
+  --border: #3a2f26;
+  --input: #3a2f26;
+  --ring: #bd9436;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: #1a1511;
+  --sidebar-foreground: #f6ecd9;
+  --sidebar-primary: #bd9436;
+  --sidebar-primary-foreground: #1c1303;
+  --sidebar-accent: #2e2620;
+  --sidebar-accent-foreground: #f6ecd9;
+  --sidebar-border: #3a2f26;
+  --sidebar-ring: #bd9436;
+  color-scheme: dark;
 }
 
 @keyframes slideInFromRight {
@@ -94,37 +106,108 @@
   outline-color: color-mix(in srgb, var(--ring), transparent 50%);
 }
 
-body {
-  background-color: var(--background);
-  color: var(--foreground);
+/* ============================================================================
+   MATERIALS. Textures are CSS, not images: SVG turbulence for grain and noise, gradients for
+   the planks, an SVG tile for the brick. Nothing to download, nothing to cache-bust, and every
+   panel gets the same wood without a seam.
+   ============================================================================ */
+:root {
+  --pc-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --pc-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.09' numOctaves='3' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --pc-brick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='104' height='52'%3E%3Crect width='104' height='52' fill='%230e0805'/%3E%3Crect x='2' y='2' width='48' height='22' rx='1.5' fill='%23301c12'/%3E%3Crect x='54' y='2' width='48' height='22' rx='1.5' fill='%23291810'/%3E%3Crect x='-24' y='28' width='48' height='22' rx='1.5' fill='%232c1a11'/%3E%3Crect x='28' y='28' width='48' height='22' rx='1.5' fill='%23331f13'/%3E%3Crect x='80' y='28' width='48' height='22' rx='1.5' fill='%23261610'/%3E%3Crect x='2' y='2' width='48' height='1.5' fill='%23ffffff' opacity='.06'/%3E%3Crect x='54' y='2' width='48' height='1.5' fill='%23ffffff' opacity='.05'/%3E%3Crect x='28' y='28' width='48' height='1.5' fill='%23ffffff' opacity='.06'/%3E%3C/svg%3E");
 }
 
+/* ebony board — the carcass, nav, headers, page ground */
+.pc-wood {
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.25), rgba(255,255,255,.05) 35%, rgba(0,0,0,.05) 60%, rgba(0,0,0,.3)),
+    var(--pc-grain),
+    var(--color-panel-2);
+}
+/* a brass rail along one edge of a wood board */
+.pc-rail-top    { border-top: 3px solid; border-image: linear-gradient(180deg, var(--color-brass-hi), var(--color-brass-lo)) 1; }
+.pc-rail-bottom { border-bottom: 3px solid; border-image: linear-gradient(180deg, var(--color-brass-hi), var(--color-brass-lo)) 1; }
+
+/* cognac leather — cards and sheets. Diamond stitch, a lit top edge, brass rivets are the
+   caller's (`.pc-rivet`) so a small chip is not studded. */
+.pc-leather {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,0) 30%, rgba(0,0,0,.25)),
+    repeating-linear-gradient(45deg, rgba(0,0,0,0) 0 30px, rgba(0,0,0,.18) 30px 31px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,0) 0 30px, rgba(0,0,0,.18) 30px 31px),
+    var(--pc-noise),
+    var(--color-leather);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.7),
+    0 0 0 2px rgba(214,170,90,.35),
+    0 1px 0 rgba(255,255,255,.12) inset,
+    0 12px 26px -8px rgba(0,0,0,.85);
+  color: var(--color-cream);
+}
+/* the dark band across the foot of a leather card (Cheers · Comment) */
+.pc-leather-foot { background: rgba(0,0,0,.28); border-top: 1px solid rgba(0,0,0,.5); box-shadow: 0 1px 0 rgba(255,255,255,.08) inset; }
+.pc-rivet { position: absolute; width: 5px; height: 5px; border-radius: 50%; z-index: 2; pointer-events: none;
+  background: radial-gradient(circle at 35% 35%, #fff3c4, var(--color-brass-lo) 70%); box-shadow: 0 0 0 .5px rgba(0,0,0,.6); }
+
+/* satin brass — plates, chips, primary buttons. NO highlight band (the glare Brian rejected). */
+.pc-brass {
+  background: linear-gradient(180deg, #d6b565 0%, #bd9436 55%, #9c7524 100%);
+  color: var(--color-engrave);
+  text-shadow: 0 1px 0 rgba(255,240,200,.30);
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 -1px 0 rgba(0,0,0,.45) inset, 0 2px 4px rgba(0,0,0,.6);
+}
+.pc-brass:active { filter: brightness(.92); }
+/* brass lettering — page titles */
+.pc-brass-text {
+  background: linear-gradient(180deg, #e2c46f, #c09a3a 60%, #a37c28);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pc-screw { width: 4px; height: 4px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 35%, #fff3c4, var(--color-brass-lo) 70%); box-shadow: 0 0 0 .5px rgba(0,0,0,.5); }
+
+/* an inset — inputs, wells, the thumbnail behind a bottle on a card */
+.pc-inset {
+  background: var(--color-wall);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.8), inset 0 0 0 1px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.05);
+}
+/* the brick, small — behind a bottle thumbnail on a card */
+.pc-brick {
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.4), rgba(0,0,0,0) 40%, rgba(0,0,0,.55)),
+    var(--pc-noise),
+    var(--pc-brick);
+  background-size: auto, 160px 160px, 104px 52px;
+}
+
+body {
+  background-color: var(--color-wall);
+  background-image:
+    linear-gradient(90deg, rgba(0,0,0,.25), rgba(255,255,255,.04) 35%, rgba(0,0,0,.05) 60%, rgba(0,0,0,.3)),
+    var(--pc-grain);
+  color: var(--color-cream);
+}
+/* Native controls (date pickers, selects, scrollbars) pick the dark UI. */
+input, select, textarea { color-scheme: dark; }
+::placeholder { color: var(--color-cream-faint); }
+
 /* ============================================================================
-   Home — "The Cabinet" (#82).
+   Home — "The Cabinet" (#82), in its real materials.
 
-   WIREFRAME, in the SAME palette as every other screen: ivory ground, charcoal
-   line work, and the two colours the app already uses for earmarks (#22c55e
-   "had it", #FFD700 "unverified"). No gradients, no lighting, no dark ground.
-   The lit mancave cabinet is a Phase 5 job -- doing it here would mean styling
-   this screen twice and having it disagree with the rest of the app in between.
+   The BOX: top panel, brick back wall, deck, and the front lip that carries the brass plate.
+   A long box runs left and right indefinitely, so its front and back edges are parallel to the
+   viewer and STAY HORIZONTAL -- mitring them leaves wedges of void at both sides mid-run. Only
+   the two END walls recede, and they live inside the scroller so you see them at the first and
+   last bottle and nowhere else.
 
-   The BOX is line art. Fixed in the viewport: top panel, back wall, deck, and
-   the front lip that carries the label. A long box runs left and right
-   indefinitely, so its front and back edges are parallel to the viewer and STAY
-   HORIZONTAL -- mitring them leaves wedges of void at both sides mid-run. Only
-   the two END walls recede, and they live inside the scroller so you see them
-   at the first and last bottle and nowhere else.
+   A SHELF IS SIZED SO 2.5 OF THEM FIT THE VIEWPORT. The half-shelf peek is the whole affordance
+   -- it is what says "keep scrolling" -- so it cannot be left to a fixed height that happens to
+   work on one phone. The board and the deck are physical thicknesses and stay fixed; only the
+   back wall flexes, and the bottles size themselves off the run so they scale with it.
 
-   A SHELF IS SIZED SO 2.5 OF THEM FIT THE VIEWPORT. The half-shelf peek is the
-   whole affordance -- it is what says "keep scrolling" -- so it cannot be left
-   to a fixed height that happens to work on one phone. The board and the deck
-   are physical thicknesses and stay fixed; only the back wall flexes, and the
-   bottles size themselves off the run so they scale with it.
-
-   dvh, not vh: on mobile Safari and Chrome, vh is the tallest the viewport ever
-   gets, so with the browser chrome showing, 2.5 shelves would not actually fit
-   and the peek would be a third shelf's worth. The clamp keeps a shelf tall
-   enough for a bottle on a short screen and stops it ballooning on a tablet.
+   dvh, not vh: on mobile Safari and Chrome, vh is the tallest the viewport ever gets, so with
+   the browser chrome showing, 2.5 shelves would not actually fit and the peek would be a third
+   shelf's worth. The clamp keeps a shelf tall enough for a bottle on a short screen and stops
+   it ballooning on a tablet.
 
    Geometry: top panel 12px, deck 24px, lip 26px, back wall takes the rest.
    ============================================================================ */
@@ -136,19 +219,36 @@ body {
   --pc-top-h: 12px;
 }
 
-.pc-shelf { position: relative; height: var(--pc-shelf-h); background: var(--color-ivory);
-            border-bottom: 1px solid var(--color-charcoal); }
+.pc-shelf { position: relative; height: var(--pc-shelf-h); background: var(--color-wall); overflow: hidden; }
 .pc-face  { position: absolute; left: 0; right: 0; }
 
-.pc-top   { top: 0; height: var(--pc-top-h); background: #F2F2F2;
-            border-bottom: 1px solid var(--color-charcoal); }
+.pc-top   { top: 0; height: var(--pc-top-h); z-index: 5;
+            background: linear-gradient(90deg, rgba(0,0,0,.25), rgba(255,255,255,.05) 35%, rgba(0,0,0,.05) 60%, rgba(0,0,0,.3)), var(--pc-grain), var(--color-panel-2);
+            box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 -2px 3px rgba(0,0,0,.6) inset, 0 4px 8px rgba(0,0,0,.55); }
+/* the brick. Lit from the top panel: the top courses show their texture and it falls off to dark
+   at the deck, where the LEDs take over. */
 .pc-back  { top: var(--pc-top-h); bottom: calc(var(--pc-lip-h) + var(--pc-deck-h));
-            background: var(--color-ivory); }
-.pc-deck  { bottom: var(--pc-lip-h); height: var(--pc-deck-h); background: #F7F7F7;
-            border-top: 1px solid var(--color-charcoal); }
-/* the thickness of the shelf board -- the label is fixed to this face */
-.pc-lip   { top: auto; bottom: 0; height: var(--pc-lip-h); background: #EDEDED;
-            border-top: 1px solid var(--color-charcoal); }
+            background:
+              linear-gradient(180deg, rgba(0,0,0,.4), rgba(0,0,0,0) 40%, rgba(0,0,0,.55)),
+              var(--pc-noise),
+              var(--pc-brick);
+            background-size: auto, 160px 160px, 104px 52px;
+            box-shadow: inset 0 30px 40px -20px rgba(255,200,130,.18); }
+.pc-back::before { content: ""; position: absolute; inset: 0;
+            box-shadow: inset 14px 0 24px -12px rgba(0,0,0,.7), inset -14px 0 24px -12px rgba(0,0,0,.7); }
+.pc-back::after  { content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay;
+            background: linear-gradient(180deg, rgba(255,205,140,.34), rgba(255,205,140,.10) 38%, rgba(0,0,0,0) 55%, rgba(0,0,0,.45) 100%); }
+/* the warm pool the top panel's light throws down the wall */
+.pc-sconce { position: absolute; top: var(--pc-top-h); left: 0; right: 0; height: 60px; z-index: 1; pointer-events: none;
+            background: radial-gradient(70% 100% at 50% 0%, rgba(255,205,130,.55), rgba(255,205,130,0) 70%); }
+.pc-deck  { bottom: var(--pc-lip-h); height: var(--pc-deck-h); z-index: 2;
+            background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(255,255,255,.05) 35%, rgba(0,0,0,.05) 60%, rgba(0,0,0,.3)), var(--pc-grain), #1e1813;
+            box-shadow: 0 1px 0 rgba(255,255,255,.14) inset, 0 -6px 10px -6px rgba(0,0,0,.7) inset; }
+/* the thickness of the shelf board -- the plate is fixed to this face */
+.pc-lip   { top: auto; bottom: 0; height: var(--pc-lip-h); z-index: 5;
+            background: linear-gradient(90deg, rgba(0,0,0,.25), rgba(255,255,255,.05) 35%, rgba(0,0,0,.05) 60%, rgba(0,0,0,.3)), var(--pc-grain), #221b15;
+            box-shadow: 0 1px 0 rgba(255,255,255,.12) inset, 0 -1px 0 rgba(0,0,0,.6) inset, 0 -3px 6px rgba(0,0,0,.5); }
+.pc-lip::after { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 1px; background: rgba(0,0,0,.45); box-shadow: 0 1px 0 rgba(255,255,255,.06); }
 
 /* the horizontal run. Its own axis, and NOTHING above it may lock the axis:
    `touch-action` on the vertical scroller applies to every descendant and makes
@@ -191,68 +291,79 @@ body {
    set its own width and the button shrink to it. */
 .pc-slot { position: relative; flex: none; background: none; border: 0; padding: 0;
            cursor: pointer; -webkit-tap-highlight-color: transparent; display: block; }
-.pc-slot > svg, .pc-slot > img { display: block; height: 100%; width: auto; }
-.pc-slot:focus-visible { outline: 2px solid var(--color-charcoal); outline-offset: 3px; }
+.pc-slot > svg, .pc-slot > img { display: block; height: 100%; width: auto; position: relative; z-index: 1;
+           filter: drop-shadow(0 6px 5px rgba(0,0,0,.65)); }
+/* the bottle's shadow on the deck */
+.pc-slot::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -2px; height: 10px; border-radius: 50%;
+           background: rgba(0,0,0,.55); filter: blur(3px); z-index: 0; }
+.pc-slot:focus-visible { outline: 2px solid var(--color-brass); outline-offset: 3px; }
 /* #113: Social-shelf overlays - who (bottom-left) and what (bottom-right), on the slot */
 .pc-ov { position: absolute; bottom: 2px; width: 22px; height: 22px; border-radius: 50%; z-index: 2;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
-  border: 1px solid var(--color-charcoal); font-size: 9px; font-weight: 600; line-height: 1; }
-.pc-ov-who { left: -8px; background: #E5E5E5; color: var(--color-charcoal); }
+  border: 1px solid var(--color-brass); font-size: 9px; font-weight: 700; line-height: 1;
+  box-shadow: 0 2px 4px rgba(0,0,0,.6); }
+.pc-ov-who { left: -8px; background: #3b2c1e; color: var(--color-brass-hi); }
 .pc-ov-who img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pc-ov-what { right: -8px; background: #111; }
+.pc-ov-what { right: -8px; background: var(--color-wall); color: var(--color-brass-hi); }
 
-/* The LED under each bottle - the viewer's own relationship, lit from under the deck. A pool of
-   light on the wood that bleeds a little way up the glass. Solid green = on hand; green ring with
-   a white centre = had it, none left; a yellow outer ring = unverified; yellow alone = unverified,
-   never had. Phase 5 restyles the glow; the four states are the contract. */
-.pc-led { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); z-index: 1;
-          width: 34px; height: 12px; border-radius: 50%; pointer-events: none; }
-.pc-led-own  { background: radial-gradient(ellipse at center, #22c55e 0%, rgba(34,197,94,.55) 45%, rgba(34,197,94,0) 72%);
-               box-shadow: 0 -14px 22px 2px rgba(34,197,94,.35); }
-.pc-led-had  { background: radial-gradient(ellipse at center, #ffffff 0%, #ffffff 30%, #22c55e 34%, rgba(34,197,94,.5) 55%, rgba(34,197,94,0) 74%);
-               box-shadow: 0 -10px 18px 0 rgba(34,197,94,.22); }
-.pc-led-prov { outline: 2px solid rgba(255,215,0,.9); outline-offset: 1px; }
-.pc-led-prov:not(.pc-led-own):not(.pc-led-had) { background: radial-gradient(ellipse at center, rgba(255,215,0,0) 0%, rgba(255,215,0,0) 40%, rgba(255,215,0,.6) 44%, rgba(255,215,0,0) 74%);
-               box-shadow: 0 -10px 16px 0 rgba(255,215,0,.22); outline: none; }
+/* THE GLOW BEHIND THE BOTTLE (Brian, Phase 5) - the viewer's own relationship, as a halo on the
+   brick behind the glass rather than a pool on the deck. Solid = on hand. A soft glowing RING
+   = had it, none on hand. Yellow ring = unverified. Sits between the wall and the bottle
+   (z-index 0, the image is 1). Sized off the slot so a tall bottle gets a taller halo. The four
+   states are the contract; only the rendering changed. */
+.pc-led { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); z-index: 0; pointer-events: none;
+          width: 150%; height: 70%; min-width: 68px; border-radius: 50%; }
+.pc-led-own  { background: radial-gradient(ellipse at 50% 60%, rgba(94,234,143,.55) 0%, rgba(34,197,94,.32) 30%, rgba(34,197,94,.10) 55%, rgba(34,197,94,0) 72%); }
+.pc-led-had  { background: radial-gradient(ellipse at 50% 60%, rgba(34,197,94,0) 0%, rgba(34,197,94,0) 44%, rgba(63,217,122,.28) 52%, rgba(63,217,122,.42) 56%, rgba(63,217,122,.20) 62%, rgba(34,197,94,0) 74%); }
+.pc-led-prov { background: radial-gradient(ellipse at 50% 60%, rgba(255,215,0,0) 0%, rgba(255,215,0,0) 44%, rgba(255,215,0,.26) 52%, rgba(255,215,0,.40) 56%, rgba(255,215,0,.18) 62%, rgba(255,215,0,0) 74%); }
+/* unverified AND had: the yellow ring sits outside the green */
+.pc-led-prov.pc-led-own  { background: radial-gradient(ellipse at 50% 60%, rgba(94,234,143,.55) 0%, rgba(34,197,94,.32) 30%, rgba(34,197,94,.08) 52%, rgba(255,215,0,.35) 60%, rgba(255,215,0,0) 74%); }
+.pc-led-prov.pc-led-had  { background: radial-gradient(ellipse at 50% 60%, rgba(34,197,94,0) 0%, rgba(34,197,94,0) 40%, rgba(63,217,122,.40) 48%, rgba(63,217,122,0) 54%, rgba(255,215,0,.35) 60%, rgba(255,215,0,0) 74%); }
 
 /* engraved into the board's face, and the door to that shelf's tab */
 .pc-plate {
-  position: absolute; left: 12px; bottom: 4px; z-index: 6; height: 18px; padding: 0 7px 0 9px;
+  position: absolute; left: 12px; bottom: 3px; z-index: 6; height: 20px; padding: 0 7px 0 8px;
   display: flex; align-items: center; gap: 6px; border-radius: 2px;
-  background: var(--color-ivory); border: 1px solid var(--color-charcoal);
-  font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--color-charcoal);
+  background: linear-gradient(180deg, #d6b565 0%, #bd9436 55%, #9c7524 100%);
+  color: var(--color-engrave); text-shadow: 0 1px 0 rgba(255,240,200,.30);
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 -1px 0 rgba(0,0,0,.45) inset, 0 2px 4px rgba(0,0,0,.6);
+  font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
 }
-.pc-plate:active { background: #E4E4E4; }
+.pc-plate::before, .pc-plate::after { content: ""; width: 4px; height: 4px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 35%, #fff3c4, var(--color-brass-lo) 70%); box-shadow: 0 0 0 .5px rgba(0,0,0,.5); }
+.pc-plate:active { filter: brightness(.92); }
 /* #111: the Social shelf's Following | Everyone switch, on the lip opposite the plate */
 .pc-lip-right { position: absolute; right: 12px; bottom: 4px; z-index: 6; height: 18px; display: flex; align-items: center; }
 .pc-feed-switch { display: flex; align-items: center; gap: 6px; height: 18px; padding: 0; border: 0; background: none;
-  font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--color-charcoal); cursor: pointer; }
-.pc-feed-switch .off { opacity: .45; }
-.pc-feed-switch .knob { position: relative; width: 26px; height: 14px; border-radius: 7px; background: var(--color-charcoal); display: block; }
-.pc-feed-switch .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; transition: left .15s; }
+  font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--color-brass-hi); cursor: pointer; }
+.pc-feed-switch .off { opacity: .4; }
+.pc-feed-switch .knob { position: relative; width: 26px; height: 14px; border-radius: 7px; display: block;
+  background: linear-gradient(180deg, #0a0806, #2a2118); box-shadow: inset 0 1px 2px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.08); }
+.pc-feed-switch .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--color-brass-hi), var(--color-brass-lo)); transition: left .15s; }
 .pc-feed-switch[data-scope="everyone"] .knob::after { left: 14px; }
-.pc-plate-count { opacity: .65; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.pc-plate-count { opacity: .7; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 
 /* a bare shelf says what is true and nothing more */
 .pc-empty {
   position: absolute; left: 0; right: 0; top: 84px; z-index: 4; text-align: center;
-  font-size: 12px; line-height: 1.7; color: var(--color-charcoal); opacity: .7;
+  font-size: 12px; line-height: 1.7; color: var(--color-cream-mute);
   pointer-events: none;
 }
-.pc-empty strong { display: block; font-weight: 600; font-size: 13px; opacity: 1; }
+.pc-empty strong { display: block; font-weight: 600; font-size: 13px; color: var(--color-cream); }
 .pc-empty a {
   pointer-events: auto; margin-top: 11px; display: inline-flex; align-items: center; gap: 8px;
-  padding: 9px 15px; border-radius: 8px; border: 1px solid var(--color-charcoal);
-  background: var(--color-ivory); color: var(--color-charcoal);
-  font-size: 12.5px; font-weight: 600; opacity: 1;
+  padding: 9px 15px; border-radius: 6px;
+  background: linear-gradient(180deg, #d6b565 0%, #bd9436 55%, #9c7524 100%);
+  color: var(--color-engrave); text-shadow: 0 1px 0 rgba(255,240,200,.30);
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 -1px 0 rgba(0,0,0,.45) inset, 0 2px 4px rgba(0,0,0,.6);
+  font-size: 12.5px; font-weight: 600;
 }
 
 /* Admin › Images — backdrops for judging a cut-out (#83).
-   A white shelf hides the exact fault the review exists to catch: an image with a white box
-   behind it is indistinguishable from a properly cut-out one. The checker shows any opaque
-   background instantly; the dark backdrop catches pale fringing and haloes that survive a
-   careless removal. */
+   The brick hides the exact fault the review exists to catch: an image with a dark box behind it
+   is hard to tell from a properly cut-out one. The checker shows any opaque background instantly;
+   the plain dark backdrop catches pale fringing and haloes that survive a careless removal. */
 .pc-bg-checker .pc-back, .pc-bg-checker .pc-deck {
   background-color: #FFFFFF;
   background-image:
@@ -260,7 +371,10 @@ body {
     linear-gradient(45deg, #D8D8D8 25%, transparent 25%, transparent 75%, #D8D8D8 75%);
   background-size: 16px 16px;
   background-position: 0 0, 8px 8px;
+  box-shadow: none;
 }
-.pc-bg-dark .pc-back { background: #2F2F2F; }
+.pc-bg-checker .pc-back::after, .pc-bg-checker .pc-sconce { display: none; }
+.pc-bg-dark .pc-back { background: #2F2F2F; box-shadow: none; }
+.pc-bg-dark .pc-back::after, .pc-bg-dark .pc-sconce { display: none; }
 .pc-bg-dark .pc-deck { background: #444444; }
 .pc-bg-dark .pc-empty { color: #FFFFFF; }

@@ -1,11 +1,14 @@
 import "./globals.css";
-import { Inter } from "next/font/google";
+import { Playfair_Display, Source_Sans_3 } from "next/font/google";
 import AppShell from "@/components/AppShell";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import InstallPrompt from "@/components/InstallPrompt";
 import type { Metadata, Viewport } from "next";
 
-const inter = Inter({ subsets: ["latin"] });
+// Phase 5 (#115): Playfair Display for titles and plates, Source Sans 3 for everything you read.
+// Exposed as CSS variables so globals.css can bind them to Tailwind's font-sans / font-display.
+const bodyFont = Source_Sans_3({ subsets: ["latin"], variable: "--font-body", weight: ["400", "600", "700"], style: ["normal", "italic"] });
+const displayFont = Playfair_Display({ subsets: ["latin"], variable: "--font-display", weight: ["600", "700"] });
 
 // Phase 10 C1 (PWA). `metadataBase` makes the icon/manifest URLs absolute, which iOS wants when it
 // resolves apple-touch-icon from a home-screen add.
@@ -23,11 +26,10 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Pour Choices",
-    // "default" = dark status bar text. NOT "black-translucent": that forces WHITE status bar text
-    // and lets content run under the notch, so on this app's ivory headers the clock and battery
-    // would be white-on-white, and the Dynamic Island would sit on top of the search bar.
-    // Revisit in Phase 5 if the palette goes dark.
-    statusBarStyle: "default",
+    // Phase 5 went dark, so the status bar text is white on the ebony headers. "black" (not
+    // "black-translucent") keeps content OUT from under the notch, so the Dynamic Island still
+    // never sits on top of the search bar.
+    statusBarStyle: "black",
   },
   // iOS Safari would otherwise linkify anything that looks like a phone number (proof, ages, years).
   formatDetection: { telephone: false },
@@ -43,7 +45,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   // Matches the manifest background: the cellar dark sampled from the login splash, so launching
   // the installed app is continuous with the first screen the user sees.
-  themeColor: "#2a1400",
+  themeColor: "#0e0805",
 };
 
 /**
@@ -88,7 +90,7 @@ export default function RootLayout({
           media={`(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: portrait)`}
         />
       ))}
-      <body className={`${inter.className} h-dvh flex flex-col bg-ivory`}>
+      <body className={`${bodyFont.variable} ${displayFont.variable} font-sans h-dvh flex flex-col`}>
         {/* Implemented fixed header/footer with scrollable middle per user spec */}
         <ServiceWorkerRegistrar />
         <InstallPrompt />
