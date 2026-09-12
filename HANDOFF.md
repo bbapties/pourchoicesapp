@@ -9,8 +9,12 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `31830ec` + this doc commit. All on origin/MVP-v3 and live on prod.
-- **Current phase:** **THE SOCIAL LAYER + USER PAGE SHIPPED, 2026-09-12, in one session** -
+- **Tip:** `dcbb7f6` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Current phase:** **PHASE 5 SHIPPED - THE APP IS IN THE ROOM (2026-09-12, later session).**
+  The greyscale wireframe is gone from every screen. See "THE ROOM" below before touching any
+  colour, and the 2026-09-12 (later) log entry for how the sweep was done. **The "greyscale until
+  Phase 5" rule is retired; the new rule is: use the tokens in `globals.css` and nothing else.**
+- **Previous phase:** **THE SOCIAL LAYER + USER PAGE SHIPPED, 2026-09-12, in one session** -
   epic **#105**, all nine steps (#106-#114), plus #103 and #104. Designed with Brian in the same
   session; the design record is the #105 body and the mockup canvas (ask Brian for the link).
   **Do not re-open settled design; read #105.**
@@ -44,6 +48,49 @@ What is open and in what order now lives on **[the board](https://github.com/use
   embed must name the FK: `users!activities_user_id_fkey!inner(...)`. The migration broke prod's
   Social tab and Home Social shelf for ~10 minutes until `a9da042` landed. Any new junction
   table touching `activities`+`users` will do it again.
+
+### THE ROOM (Phase 5, settled with Brian and shipped 2026-09-12, `8062a63` `32fdc41` `dcbb7f6`)
+**Sophisticated modern mancave.** Ebony carcass, dark rustic BRICK back wall behind the bottles,
+tufted COGNAC LEATHER for every card and sheet, satin BRASS for plates / titles / counts / primary
+buttons, CREAM for anything read at length. Warm light from the top panel; texture shows where it
+lands and falls off to dark. Playfair Display (titles, plates) + Source Sans 3 (body).
+
+**The design record is the canvas** (Brian has the link; artifact "Pour Choices Phase 5
+Directions"): page *Direction · settled* is the target, the other pages are the rounds behind it
+(three materials -> ebony/steel variations -> six back walls). **Do not re-open it.** Brian's
+words, in order: ebony + brass over walnut; cognac leather cards; brick, "a hair darker"; brass
+must be SATIN not mirror (glare made plates unreadable); LEDs 2x, hollow ring for had-it; cream
+for body text, brass only for plates/headings/counts.
+
+**How it is built - the only thing an agent needs:**
+- `src/app/globals.css` `@theme` is the WHOLE colour vocabulary: `cream / cream-mute / cream-faint /
+  engrave` (text), `panel / panel-2 / panel-3 / edge / wall` (surfaces), `brass / brass-hi /
+  brass-lo / brass-line`, `leather / leather-hi / leather-lo`, `had / unverified`. The old
+  `ivory / charcoal / amber / gold` tokens are DELETED on purpose - a straggler renders unstyled
+  and shows up. Do not add colours; if a screen needs one, it needs a token.
+- Material classes, same file: `.pc-wood` (+ `.pc-rail-top/-bottom` brass rail) for headers,
+  nav, boards; `.pc-leather` (+ `.pc-leather-foot`, `.pc-rivet`) for cards and every
+  `SheetContent`; `.pc-brass` / `.pc-brass-text` for plates, chips, primaries, titles;
+  `.pc-inset` wells; `.pc-brick` for a small brick backdrop (card thumbnails).
+- **Inputs are styled by ONE unlayered rule** (`input, textarea, select` -> dark well, brass
+  hairline, cream type). Unlayered CSS beats Tailwind utilities, which is the point: no call
+  sites. The shadcn `* { border-color }` reset was moved INTO `@layer base` for the same reason
+  - unlayered it was overriding every `border-*` utility.
+- Buttons: `variant="brass"` (was `charcoal`) is the primary; `outline` is a brass hairline on
+  whatever it sits on, never a filled block.
+- **The LED stays ON THE DECK, drawn under the bottle image** (`.pc-led` z-index 0, image 1), 68x24,
+  so the base hides the back half of the ring. Solid = on hand; thin glowing ring = had it; yellow
+  ring = unverified; unverified+had = green inside yellow. Brian rejected a silhouette glow
+  ("the bottle sits in the light, it does not glow") - do not bring it back.
+- Fonts via `next/font` in `layout.tsx` (`--font-body`, `--font-display`). Status bar is
+  `"black"` and `themeColor` / manifest colours are `#0e0805`.
+- Admin > Images keeps its white / checker backdrops on purpose (the review exists to catch a
+  background; a dark shelf hides one).
+
+**Not done / owed:** iOS launch images still carry the old splash art - regenerate with the
+scratchpad `make_splash.py` if the white-then-dark flash bothers anyone. Admin tabs got the sweep
+but were only checked by grep, not by eye (the QA account cannot open Admin). The design canvas
+still shows the earlier silhouette-glow LED; the app is the reference now.
 
 ### THE STATUS LANGUAGE (settled and shipped 2026-09-12, `d04d076`)
 Two dimensions everywhere: **verified x had it**. Cards AND the detail tray wear the same
@@ -180,16 +227,17 @@ it was declined). Signed-in screens were verified through the **Claude-in-Chrome
 Brian's own already-signed-in browser**. That is the way to see a signed-in screen; use it.
 
 ### The single next step
-**Read the board RIGHT TO LEFT.** *In Progress* holds **#115 - the Phase 5 planning session
-(CSS, theme, colours)** - Brian filed it at the end of 2026-09-12 and it is what he wants next.
-It is a PLANNING session: probing questions one at a time, mockups from the app's real markup on
-a design canvas, 2-4 directions before committing, then cards. **No code until the design is
-settled.** *In Progress* also holds **#105** (the social epic) - it stays open until Brian has run
-the four prod tests above; close it with a comment when he has. *Next Items per Brian* is empty.
-*Top Priority* still holds **#97** (image Checker pass, needs Brian's eyes).
+**Read the board RIGHT TO LEFT.** #115 (Phase 5) is CLOSED - shipped. *In Progress* holds only
+**#105** (the social epic) - it stays open until Brian has run the four prod tests above; close it
+with a comment when he has. *Next Items per Brian* is empty. *Top Priority* holds **#97** (image
+Checker pass, needs Brian's eyes). Then the Coming Soon lane in order.
 
-After Phase 5 the natural follow-on is **#21 badges**: the surface (Profile plate) and the push
-kind ("Earns a badge") are already waiting for it, and `activities` + `events` have the history.
+**Expect a Phase 5 polish pass from Brian's phone** - he approved from the LAN URL, prod went out
+minutes later, and small things (brick density, leather stitch on a long scroll, the admin tabs)
+will surface. Take them as they come; every one is a token or a material class, never a new hex.
+
+After that the natural follow-on is **#21 badges**: the surface (Profile plate) and the push kind
+("Earns a badge") are already waiting for it, and `activities` + `events` have the history.
 
 ### THE ELO ENGINE WAS REWRITTEN AND ALL HISTORY REPLAYED (2026-09-06)
 
@@ -1416,6 +1464,35 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-12 (later) - Claude (Phase 5: design on the canvas, then the whole app restyled and shipped)
+
+**Design half, on a canvas built from the app's real markup** (`.pc-*` geometry, `ActivityCard`,
+the nav, nine real shelf-ready bottle images). Round 1: three materials (ebony & brass / walnut &
+amber / blackened steel & brick), Home + Social each. Brian: ebony and steel, not walnut. Round 2:
+two variations of each (ebony + cognac leather cards, ebony + crystal light, steel + walnut boards,
+steel + concrete). Brian: A2, ebony + cognac leather - but not a pure black back wall. Round 3: six
+back walls on A2 (his four: grained wood, rustic brick, T1-11, smoked mirror; mine: tufted leather,
+carved raised panel). Brian: **brick, a hair darker**; satin brass (glare unreadable); LEDs 2x with
+a hollow ring. Then "apply it everywhere" - his answer to "storyboard every screen, or is it
+modular?" was to trust the modular answer (tokens + one sweep) rather than mock every screen.
+
+**Build half, three commits, all on prod:**
+- `8062a63` the token layer + materials + fonts + the cabinet in brick/ebony/brass.
+- `32fdc41` the sweep: a mapping script took 45 files off the greys (`text-charcoal` x174,
+  `text-gray-500` x139, `bg-white` x90 ...), a second pass took the inline hex out of 25, then
+  by-hand: headers/nav as wood boards, leather on every sheet and card, brass primaries, outline =
+  hairline, warm avatar tints, ghost bottles and end walls in the room's colours, scanner kept black.
+- `dcbb7f6` the LED correction (see THE ROOM: I first read "glow behind the bottle" as a
+  silhouette glow; Brian meant the ring on the deck, half hidden by the base).
+
+**Verified** signed in as the QA account at 390px in the in-app browser (Home, Social, Search, My
+Bar, Profile, user page, bottle tray, pour sheet, Drink, post + comments), tsc clean, then Brian's
+phone on the LAN, then pushed. Admin not eyeballed (QA account is not admin). One pre-existing
+lint error in `useCurrentUser.tsx` (`_ids` unused, from July) is not from this session.
+
+**Board:** #115 closed. No new issues filed - the owed items are small and listed under THE ROOM.
+**Next:** #105 waits on Brian's four prod tests; #97 waits on his eyes; expect polish notes.
 
 ### 2026-09-12 - Claude (the social layer + user page: planning, mockups, and all nine steps)
 

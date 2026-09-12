@@ -78,7 +78,7 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
         do not work there — those need prod or an HTTPS tunnel.)
   - [ ] Pushed to GitHub
   - [ ] Verified on prod (www.pourchoicesapp.com)
-- Functionality first; stay **greyscale/wireframe** until Phase 5. Do not start visual polish early.
+- **Phase 5 shipped (2026-09-12): the app is styled.** Every colour is a token in `src/app/globals.css` `@theme` (cream / panel / brass / leather / wall); every surface is a material class (`.pc-wood`, `.pc-leather`, `.pc-brass`, `.pc-inset`). **Never write a hex or a Tailwind grey in a component** - if a screen needs a colour, it needs a token. HANDOFF "THE ROOM" has the full rules.
 - **Every bottle action logs an `activities` row** until Brian excludes it (`src/lib/activities.ts`). Fail-open. Current exclusion: admin hard-delete of a bottle (CASCADE would wipe the feed row).
   **LOGGED and SHOWN are two different decisions.** `FEED_HIDDEN_ACTIONS` in `src/lib/activities.ts`
   lists actions that are still recorded but never appear socially — currently `verified`, which is
