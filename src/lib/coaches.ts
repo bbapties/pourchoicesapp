@@ -204,7 +204,28 @@ export const COACH_CATALOG: CoachItem[] = [
       {
         route: "/social",
         anchor: "social.feed",
-        caption: "When someone drinks, adds, finishes, or verifies a bottle, it lands here. Tap a row to open it.",
+        caption: "When someone pours, blind-tastes, adds, or finishes a bottle, it lands here as a card. Tap the card to open the post.",
+      },
+    ],
+  },
+  {
+    // #109: the feed became cards with cheers and comments; every card opens a post.
+    id: "social.post",
+    title: "Cheers and comments",
+    body: "Every post in Social can be cheered and commented on. Tap a card to see the full note, the blind-tasting podium, and the conversation.",
+    route: "/social",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/social",
+        anchor: "social.cheers",
+        caption: "Cheers is a one-tap nod. Tap again to take it back.",
+      },
+      {
+        route: "/social",
+        anchor: "social.card",
+        caption: "Tap the card for the post: the whole note, the ranked results of a blind, and comments with replies.",
       },
     ],
   },

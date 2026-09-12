@@ -158,11 +158,15 @@ export async function saveTasting(opts: {
   //   shows on the Social feed + per-variant history. Only on first creation (a reused sessionId
   //   is a retry) so it never double-posts.
   if (!opts.sessionId) {
+    // #106/#109: session_id lets the feed card open the ranked results; details.count is the
+    // "Blind-tasted N bottles" headline without a second query.
     await logActivity({
       userId: opts.userId,
       bottleId: picks[0].bottleId,
       action: "tasted",
       variantId: picks[0].variantId,
+      sessionId,
+      details: { count: picks.length },
     });
   }
 

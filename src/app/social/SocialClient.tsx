@@ -5,19 +5,13 @@ import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
-import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
-import UserAvatar from "@/components/UserAvatar";
+import ActivityCard from "@/components/social/ActivityCard";
+import { fetchFeedPage, toggleCheer, type FeedItem } from "@/lib/social";
 import BottleDetailView from "@/components/BottleDetailView";
 import { type BottleDetails } from "@/lib/types";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { isVariantVisibleToViewer } from "@/lib/variants";
-import {
-  fetchActivityFeed,
-  formatFeedAction,
-  formatFeedTime,
-  logActivity,
-  type ActivityRow,
-} from "@/lib/activities";
+import { logClick } from "@/lib/events";
 import {
   addOrRestockUserBottle,
   formatLastActivity,
@@ -72,7 +66,9 @@ function mapDetail(result: any, row?: UserBottleRow | null, viewerPublicId?: str
 
 export default function SocialClient() {
   const { publicUserId } = useCurrentUser();
-  const [rows, setRows] = useState<ActivityRow[]>([]);
+  const [rows, setRows] = useState<FeedItem[]>([]);
+  // Raw rows fetched so far - the offset for the next page. Cards collapse runs, so rows.length lies.
+  const [fetched, setFetched] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -87,18 +83,34 @@ export default function SocialClient() {
     if (reset) setIsLoading(true);
     else setIsLoadingMore(true);
 
-    const offset = reset ? 0 : rows.length;
-    const { rows: next, error } = await fetchActivityFeed({ offset, limit: PAGE_SIZE });
+    const offset = reset ? 0 : fetched;
+    const { items, error, rawCount } = await fetchFeedPage({ offset, limit: PAGE_SIZE, viewerId: publicUserId ?? null });
     if (error) {
       toast.error("Couldn't load activity");
     } else {
-      setRows((prev) => (reset ? next : [...prev, ...next]));
-      setHasMore(next.length === PAGE_SIZE);
+      setRows((prev) => (reset ? items : [...prev, ...items]));
+      setFetched(offset + rawCount);
+      setHasMore(rawCount === PAGE_SIZE);
     }
 
     setIsLoading(false);
     setIsLoadingMore(false);
-  }, [rows.length]);
+  }, [fetched, publicUserId]);
+
+  // Cheers are optimistic: flip the card now, write behind it, roll back on a real error.
+  const handleCheer = async (item: FeedItem) => {
+    if (!publicUserId) return;
+    const on = !item.viewerCheered;
+    const patch = (rows: FeedItem[], cheered: boolean, delta: number) =>
+      rows.map((r) => (r.id === item.id ? { ...r, viewerCheered: cheered, cheers: Math.max(0, r.cheers + delta) } : r));
+    setRows((prev) => patch(prev, on, on ? 1 : -1));
+    logClick(on ? "post_cheered" : "post_uncheered", { userId: publicUserId, targetId: item.id, surface: "/social", metadata: { action: item.action } });
+    const res = await toggleCheer(item.id, publicUserId, on);
+    if (res.error) {
+      setRows((prev) => patch(prev, !on, on ? -1 : 1));
+      toast.error("Couldn't save that");
+    }
+  };
 
   useEffect(() => {
     load(true);
@@ -223,36 +235,15 @@ export default function SocialClient() {
             No activity yet. Have a drink or add a bottle to get the feed started.
           </p>
         ) : (
-          <div>
-            {rows.map((row) => (
-              <button
-                key={row.id}
-                type="button"
-                onClick={() => openBottle(row.bottleId)}
-                className="w-full text-left flex items-center p-3 border-b border-gray-300 hover:bg-gray-100"
-              >
-                <div className="w-8 h-14 flex-shrink-0 mr-2 overflow-hidden">
-                  {row.bottleImageUrl ? (
-                    <img
-                      src={row.bottleImageUrl}
-                      alt={row.bottleName}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <BottlePlaceholderImage />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate">{row.bottleName}</h3>
-                  <p className="text-sm text-gray-700 truncate flex items-center gap-1.5">
-                    <UserAvatar username={row.username} avatarUrl={row.avatarUrl} size={20} />
-                    <span className="font-medium">{row.username}</span>
-                    {" "}
-                    {formatFeedAction(row.action, row.pourType)}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">{formatFeedTime(row.createdAt)}</p>
-                </div>
-              </button>
+          <div className="pt-3">
+            {rows.map((item) => (
+              <ActivityCard
+                key={item.id}
+                item={item}
+                viewerId={publicUserId ?? null}
+                onCheer={handleCheer}
+                onOpenBottle={(bottleId) => openBottle(bottleId)}
+              />
             ))}
             {hasMore && (
               <div className="p-4 text-center">

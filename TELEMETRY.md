@@ -148,6 +148,22 @@ silent), but a spike on one platform means subscriptions are being dropped faste
 the app, and the reachable count in Admin will sag behind the opt-in count.
 
 
+### Social layer — cards, cheers, comments (#109, 2026-09-12)
+
+The feed is cards (`ActivityCard`) and every card opens `/post/[activityId]`. Reactions live in
+`post_reactions` (one row per user per post) and `post_comments` (soft-deleted, one level of
+replies) — those tables ARE the record; the `click` events below are the usage trail:
+
+| targetType | where | metadata |
+|---|---|---|
+| `post_opened` | `/post` | — |
+| `post_cheered` / `post_uncheered` | `/social`, `/post` (targetId = activity id) | `{ action }` of the post |
+| `comment_posted` | `/post` | `{ reply: bool }` |
+| `comment_deleted` | `/post` (targetId = comment id) | — |
+
+A `tasted` activity now carries `session_id` + `details.count`; the card's podium reads
+`tasting_details` (own) or the `tasting_podium` RPC (anyone's, once it exists).
+
 ### Home — "The Cabinet" (#82, 2026-09-09)
 
 Home replaced Drink in the nav and became the landing surface, so what it records is how we find

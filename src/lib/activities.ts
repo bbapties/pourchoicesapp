@@ -47,6 +47,11 @@ export type ActivityRow = {
   userId: string;
   username: string;
   avatarUrl?: string | null;
+  /** #108 snapshot: what the post showed when it was made. */
+  details?: { stars?: number | null; note?: string | null; photo_url?: string | null; count?: number | null } | null;
+  /** The tasting behind a `tasted` row (#106); opens the ranked results. */
+  sessionId?: string | null;
+  variantId?: string | null;
   bottleName: string;
   bottleDistillery?: string | null;
   bottleImageUrl?: string | null;
@@ -217,8 +222,8 @@ export async function fetchLastActivityForBottle(
  * `name` and `distillery` stay on `bottles` on purpose -- those are identity fields and an admin
  * edit writes them there, so they are current.
  */
-const FEED_SELECT = `
-  id, action, pour_type, created_at, bottle_id, variant_id, user_id,
+export const FEED_SELECT = `
+  id, action, pour_type, created_at, bottle_id, variant_id, user_id, details, session_id,
   users!activities_user_id_fkey!inner ( username, avatar_url ),
   bottles ( name, distillery ),
   bottle_variants ( frontimage_url )
@@ -261,7 +266,14 @@ export async function fetchActivityFeed(opts: {
     );
   }
 
-  const rows: ActivityRow[] = raws.map((raw: any) => {
+  const rows: ActivityRow[] = raws.map((raw: any) => mapFeedRow(raw, defaultImages));
+
+  return { rows };
+}
+
+/** One raw FEED_SELECT row -> ActivityRow. Shared with the post detail (#109). */
+export function mapFeedRow(raw: any, defaultImages: Map<string, string | null> = new Map()): ActivityRow {
+  {
     const user = Array.isArray(raw.users) ? raw.users[0] : raw.users;
     const bottle = Array.isArray(raw.bottles) ? raw.bottles[0] : raw.bottles;
     const variant = Array.isArray(raw.bottle_variants) ? raw.bottle_variants[0] : raw.bottle_variants;
@@ -274,13 +286,14 @@ export async function fetchActivityFeed(opts: {
       userId: raw.user_id,
       username: user?.username ?? "Someone",
       avatarUrl: user?.avatar_url ?? null,
+      details: raw.details ?? null,
+      sessionId: raw.session_id ?? null,
+      variantId: raw.variant_id ?? null,
       bottleName: bottle?.name ?? "Unknown bottle",
       bottleDistillery: bottle?.distillery ?? null,
       // The version the post was actually about, when it names one -- a store pick or a specific
       // batch should show its own bottle, not the SKU's stand-in.
       bottleImageUrl: variant?.frontimage_url ?? defaultImages.get(raw.bottle_id) ?? null,
     };
-  });
-
-  return { rows };
+  }
 }
