@@ -292,6 +292,7 @@ CREATE TABLE public.wishlists (
 --   split_bottle_into_variants(p_bottle uuid, p_axis text)
 --   stamp_blind_tasted_for_session()
 --   stamp_tasted_for_pour()
+--   tasting_podium(p_session_id uuid)  SECURITY DEFINER
 --   update_elo_after_result()
 --   update_elo_for_session()
 --   update_timestamp()  SECURITY DEFINER
@@ -365,9 +366,11 @@ CREATE TABLE public.wishlists (
 --   tasting_sessions: admins read all tasting_sessions (SELECT)
 --   user_bottles: Users can manage their own bottle data (ALL)
 --   user_bottles: admins read all user_bottles (SELECT)
+--   user_bottles: user_bottles_select_authenticated (SELECT)
 --   user_ratings: user_ratings_delete_own (DELETE)
 --   user_ratings: user_ratings_insert_own (INSERT)
 --   user_ratings: user_ratings_select (SELECT)
+--   user_ratings: user_ratings_select_authenticated (SELECT)
 --   user_ratings: user_ratings_update_own (UPDATE)
 --   user_relationships: user_relationships_delete_own (DELETE)
 --   user_relationships: user_relationships_insert_own (INSERT)
@@ -383,3 +386,4 @@ CREATE TABLE public.wishlists (
 --   wishlists: wishlists_delete_own (DELETE)
 --   wishlists: wishlists_insert_own (INSERT)
 --   wishlists: wishlists_select (SELECT)
+--   wishlists: wishlists_select_authenticated (SELECT)
