@@ -9,12 +9,58 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `0c23b99` + this doc commit. All on origin/MVP-v3 and live on prod.
-- **Current phase:** **The Home screen ("The Cabinet") is BUILT AND LIVE.** Designed and shipped
-  on 2026-09-09 in one session: #82 and all eight tasks, plus #83's admin tool.
-- **THE NAV CHANGED FOR EVERY USER.** It is now Search / Social / **Home** / My Bar / Profile
-  (+ Admin). **Drink lost its tab**; `/taste` is still a route and every link into it still works.
-  **Login lands on `/home`.** Verified on prod in Brian's own session.
+- **Tip:** `912214b` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Current phase:** **THE SOCIAL LAYER + USER PAGE SHIPPED, 2026-09-12, in one session** -
+  epic **#105**, all nine steps (#106-#114), plus #103 and #104. Designed with Brian in the same
+  session; the design record is the #105 body and the mockup canvas (ask Brian for the link).
+  **Do not re-open settled design; read #105.**
+- **THE APP CHANGED FOR EVERY USER, again:**
+  - **Profile IS your user page** (`/profile` = `<UserPage own>`): avatar, followers/following,
+    tried/blinds, your bar recent-first, Top 3, What you may like, Wishlist, Badges (placeholder),
+    Recent activity. **Settings moved into a tray behind the gear** (`ProfileSettingsSheet`).
+  - **Every person has a page** at `/u/[username]`; every name/avatar on a card opens it.
+  - **Social is cards** (`ActivityCard`) with **Cheers** and **Comment**; every card opens
+    `/post/[activityId]` (full note/photo, podium for blinds, cheer list, comment thread with
+    replies + soft delete). **Following | Everyone** sub-tabs, remembered in `users.feed_default`.
+  - **Home's Social shelf** has the same Following/Everyone switch on its lip, plus who/what
+    overlays; tapping a Social-shelf bottle opens the POST, the avatar opens the PERSON.
+  - **Have a drink is one sheet**: how, optional stars, optional note (dictation), one optional
+    photo (compressed on the phone into `bottle-images/pours/<user>/`). The post-pour rating
+    prompt is gone from both entry points (the inline "edit guess" link still uses it).
+  - **Follow / mute / bells** (`src/lib/relationships.ts`): one-way follows; per-person
+    `notify_kinds[]` on the follow row; mute is quiet, one-way, auto-unfollows, and is enforced
+    in RLS (a muted person's cheers/comments are refused silently). Muted list under Settings.
+  - **Pushes** for cheers/comments/replies/follows and followed people's moments go through
+    `POST /api/social/notify` + `src/lib/push-server.ts`. **The first real one already fired:**
+    a QA cheer on a Lake House post reached Brian's 3 devices during verification.
+- **Schema changed twice (both applied to prod, both with rollbacks):**
+  `sql/social-foundation-migration.sql` (relationships, reactions, comments, `activities.details`
+  + `session_id`, `user_ratings.note`, `users.avatar_url/feed_default/notify_reactions`) and
+  `sql/social-reads-migration.sql` (tasted backfill, `tasting_podium()` SECURITY DEFINER read,
+  **cross-user SELECT on `user_bottles` / `user_ratings` / `wishlists`** - any signed-in user can
+  read anyone's bar; writes unchanged). `DB_Schema.txt.txt` regenerated.
+- **LANDMINE, already hit once:** `post_reactions` is a junction between `activities` and
+  `users`, so PostgREST refuses a bare `users!inner` embed on `activities` (two paths). Every such
+  embed must name the FK: `users!activities_user_id_fkey!inner(...)`. The migration broke prod's
+  Social tab and Home Social shelf for ~10 minutes until `a9da042` landed. Any new junction
+  table touching `activities`+`users` will do it again.
+
+### WHAT BRIAN SHOULD TEST ON PROD (none of it code)
+1. **A pour with a photo** from the phone (camera is HTTPS-only; I could not drive it here).
+   Check the photo shows on the Social card and the post.
+2. **A real blind tasting** - every existing `tasted` row belongs to a seeded `data` account, so
+   the blind card with the podium has never been seen in the live feed. Brian's will be the first.
+3. **Follow the QA account** (`Claude Code Agent`, a `test` account - its posts are hidden from
+   the feed by design, but its page and follow work) or a tester, ring the bell, and pour
+   something from the other side to see a follower push arrive.
+4. **Avatar upload** with a real camera photo (verified only with a synthetic image).
+
+### What is NOT built (deliberately) and where it lives
+- What each relationship level (Muted/Regular/Following/Friend) can SEE - deferred in #105.
+- Block, "comments from friends only", the real suggestion engine behind `getSuggestions()`
+  (stub = top-5 global Elo never tried), the flavor-tag board, a Photos strip (Brian wants a
+  non-Untappd answer), "See all" behind a user's bar (plate is a label, not a door).
+- **Badges** (#21) fills the "No badges yet" plate and the bell's "Earns a badge" kind.
 
 ### THE HOME SCREEN IS BUILT - #82, and what still needs Brian
 
@@ -126,43 +172,12 @@ it was declined). Signed-in screens were verified through the **Claude-in-Chrome
 Brian's own already-signed-in browser**. That is the way to see a signed-in screen; use it.
 
 ### The single next step
-**Read the board RIGHT TO LEFT.** *In Progress* is empty. **#64 is Done** -- the dead
-`update_elo_for_session(uuid)` overload was dropped on prod (snapshot first). Only the
-no-arg trigger function remains.
+**Read the board RIGHT TO LEFT.** *In Progress* holds only **#105** (the epic) - it stays open
+until Brian has run the four prod tests above; close it with a comment when he has. *Next Items
+per Brian* is empty. *Top Priority* still holds **#97** (image Checker pass, needs Brian's eyes).
 
-*Next Items per Brian* is empty. **#6 was merged into #5** (Coming Soon): login-cookie refresh
-is one job. **#13 was folded into #98** (two tabs can forget a seen tutorial tip; design the
-new persist to merge). Do not touch auth without Brian's go.
-
-*Top Priority* holds **#97** (0 rejected, 5 in Checker -- looser recrops of the last over-crops).
-Always bottle-only. **#8 is Done** -- B-13 quoting still holds on prod.
-**#75 is Done** -- Brian walked the catalog (0 untriaged). New versions go to Admin > Bottles,
-not back onto the Variants triage list. **#95 and #96 are Done.**
-
-**#13 is closed.** Folded into #98 as a design bullet: two tabs can forget a seen tutorial tip.
-Not a one-off fix.
-
-**#75 is Done.** Brian walked every bottle (90 single, 13 split, 5 needs_merge, 0 untriaged).
-New contributed versions do **not** re-enter the Variants triage list; they land in Admin >
-Bottles as unverified. Verify on a still-single parent is where the axis question fires.
-
-**#8 is Done.** Replayed the original breakers against prod: escaped `.or()` is fine;
-unescaped `batch 1, 2` still PGRST100s. No code change.
-
-**#64 is Done.** `DROP FUNCTION public.update_elo_for_session(uuid)` applied. Trigger still
-fires `update_elo_for_session()`. Restore: `sql/drop-dead-elo-overload-snapshot.sql`.
-
-**#78** (versions table on bottle detail) is in Backlog and is worth nothing until bottles are split.
-
-**Admin screens and the iPhone slider are confirmed.** Brian looked at Variants (triage + merge),
-the axis modal on the verify queue, the delete/purge dialog, Admin bells (#65), the sticky search
-bar (#62), and #66 on a real iPhone. All considered done. If something breaks, he will file a new
-card -- do not keep asking him to re-eyeball these.
-
-**#20** (ranked tasting-results view, L) is the big one still sitting in *Coming Soon*, and it is now
-better supported than it was: `tasting_details` carries `rank`, `glass_letter` and `pour_index`
-(#11), and `user_bottles` now carries `tasted_at` / `blind_tasted_at` (#4), so the payoff screen can
-show "you had B, D and A - you ranked D first" and know when each was tasted.
+Then the natural follow-on is **#21 badges**: the surface (Profile plate) and the push kind
+("Earns a badge") are already waiting for it, and `activities` + `events` have the history.
 
 ### THE ELO ENGINE WAS REWRITTEN AND ALL HISTORY REPLAYED (2026-09-06)
 
@@ -1389,6 +1404,45 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-12 - Claude (the social layer + user page: planning, mockups, and all nine steps)
+
+**One session, two halves.** First a long design conversation with Brian (relationship model,
+the page, the activity card, notes + photo on a pour, avatars, pushes), captured in the #105 epic
+body and a mockup canvas (12 screens, revised twice, then Brian drew the header himself and it
+was adopted). Then execution in the agreed order. Every step is one commit and was verified in
+the browser against the live DB before pushing.
+
+| # | commit | what |
+|---|---|---|
+| #106 | `54a1ce2` | schema: social foundation (applied to prod) |
+| fix | `a9da042` | **the embed landmine** - `users!activities_user_id_fkey!inner` in 3 places |
+| #107 | `8be04ab` | generated avatars + `<UserAvatar>` |
+| #108 | `1aa39e9` | Have a drink: stars + note (dictation, `useDictation` shared with feedback) + one photo; `recordPour()`; `activities.details` snapshot |
+| #109 | `35e0acc` | `ActivityCard`, `/post/[id]`, cheers, comments + replies + soft delete, `src/lib/social.ts` |
+| reads | `(db commit)` | `sql/social-reads-migration.sql` applied: tasted backfill (11 rows), `tasting_podium()`, cross-user SELECT policies |
+| #110 | `fdb7d49` | `/u/[username]` + Profile becomes it; `ProfileSettingsSheet`; `src/lib/userPage.ts`; Home's Shelf/ShelfRun reused (ShelfDef.id widened to string, plate can be a label) |
+| #111 | `8e63c13` | follow / mute / bells / Following-Everyone / people lists / user search; `src/lib/relationships.ts` |
+| #112 | `118b7db` | avatar upload with circle crop; admin Reset avatar route |
+| #113 | `459565c` | Home Social shelf overlays (closes #104) |
+| #114 | `acf3678` | social pushes (`/api/social/notify`, `push-server.ts`, `notify.ts`); "Reactions to my posts" switch |
+| #103 | `912214b` | My Bar card uses the shared B-31 earmark |
+
+**Decisions Brian made that are not obvious from the code:**
+- "Tried" = the B-31 set (owned now/ever, poured, or blind-tasted), and that is what the user
+  page's number means. Star-only Top 3 entries say **"Manual rated"** (not "provisional" - that
+  word already means an unverified bottle).
+- No email search, ever (enumeration). No location, no bio, no Photos strip, no friends-in-common.
+- One photo per pour. Cheers + comments on EVERY card kind, uniformly.
+- Following = feed + opt-in pushes; the bell is per person AND per event; the master switch stays.
+- The user page's suggested shelf is always exactly five bottles spread edge to edge.
+
+**Verification notes for the next agent:** the Browser pane cannot pick files, so photo/avatar
+paths were driven by injecting a canvas-made `File` into the input via `DataTransfer` - that works
+for the crop and upload code, not for the phone camera. The `data`/`test` account rule bites here:
+a seeded account's post 404s ("This post is gone") for a regular viewer because `users` RLS hides
+non-human accounts - correct, not a bug.
+
 
 ### 2026-09-05 (cont.) - Claude (A5: data-only accounts; seeded-ranking groundwork)
 
