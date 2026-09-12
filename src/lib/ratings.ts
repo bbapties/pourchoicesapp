@@ -68,25 +68,38 @@ export async function setRatingStars(opts: {
   userId: string;
   bottleId: string;
   variantId?: string | null;
-  stars: number;
+  /** Omit to leave the existing stars alone (a note-only save from Have a drink, #108). */
+  stars?: number;
+  /** Pour note (#108). `null` leaves it alone; a string replaces it. */
+  note?: string | null;
 }): Promise<{ error?: string }> {
   const variantId = opts.variantId ?? (await resolveDefaultVariantId(opts.bottleId));
   if (!variantId) return { error: "no default variant for bottle" };
-  const stars = Math.round(Math.min(5, Math.max(0, opts.stars)) * 10) / 10;
   const now = new Date().toISOString();
+  const row: Record<string, unknown> = {
+    user_id: opts.userId,
+    bottle_id: opts.bottleId,
+    variant_id: variantId,
+    updated_at: now,
+  };
+  if (typeof opts.stars === "number") row.stars = Math.round(Math.min(5, Math.max(0, opts.stars)) * 10) / 10;
+  if (typeof opts.note === "string") row.note = opts.note;
+
+  // A note-only save on a bottle with no rating yet still needs a stars value (NOT NULL): seed
+  // the neutral 2.5 the prompt would have shown, and let the user adjust it later.
+  if (row.stars === undefined) {
+    const { data } = await supabase
+      .from("user_ratings")
+      .select("stars")
+      .eq("user_id", opts.userId)
+      .eq("variant_id", variantId)
+      .maybeSingle();
+    if (data == null) row.stars = 2.5;
+  }
 
   const { error } = await supabase
     .from("user_ratings")
-    .upsert(
-      {
-        user_id: opts.userId,
-        bottle_id: opts.bottleId,
-        variant_id: variantId,
-        stars,
-        updated_at: now,
-      },
-      { onConflict: "user_id,variant_id" }
-    );
+    .upsert(row, { onConflict: "user_id,variant_id" });
   if (error) return { error: error.message };
   return {};
 }

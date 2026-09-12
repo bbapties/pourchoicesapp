@@ -7,12 +7,11 @@ import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import { saveTasting, type TastingPick, MIN_PICKS, MAX_PICKS } from "@/lib/tastings";
-import { logActivity, type PourType } from "@/lib/activities";
 import { logClick, logEvent } from "@/lib/events";
 import { useDragReorder, arrayMove } from "@/lib/useDragReorder";
-import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
-import PourSheet from "@/components/PourSheet";
-import RatePromptSheet from "@/components/RatePromptSheet";
+import { fetchUserRatingState } from "@/lib/ratings";
+import PourSheet, { type PourSubmission } from "@/components/PourSheet";
+import { recordPour } from "@/lib/pours";
 
 type Step = "home" | "pourPick" | "mode" | "pick" | "label" | "handoff" | "helperSetup" | "handback" | "rank" | "done";
 type Mode = "self" | "helper";
@@ -70,8 +69,6 @@ export default function DrinkClient({
   const [pourTarget, setPourTarget] = useState<CatalogBottle | null>(null);
   const [showPourSheet, setShowPourSheet] = useState(false);
   const [isPouring, setIsPouring] = useState(false);
-  const [showRatePrompt, setShowRatePrompt] = useState(false);
-  const [ratingSaving, setRatingSaving] = useState(false);
   const [ratingStars, setRatingStarsState] = useState<number | null>(null);
   const [hasTasted, setHasTasted] = useState(false);
 
@@ -287,7 +284,7 @@ export default function DrinkClient({
   const reset = () => {
     pendingSessionRef.current = null;
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
-    setPourTarget(null); setShowPourSheet(false); setShowRatePrompt(false); setStep("home");
+    setPourTarget(null); setShowPourSheet(false); setStep("home");
     if (seedBottleId) router.replace("/taste");
   };
 
@@ -316,72 +313,61 @@ export default function DrinkClient({
     setRatingStarsState(s.ratingStars);
   };
 
-  const handleDrinkPour = async (pourType: PourType) => {
+  const finishPour = () => {
+    setPourTarget(null);
+    setQuery("");
+    setStep("home");
+  };
+
+  const handleBlindFromPour = () => {
+    if (!pourTarget) return;
+    logClick("blind_tasting", {
+      userId: publicUserId,
+      targetId: pourTarget.bottleId,
+      metadata: { source: "drink_tab", variant_id: pourTarget.variantId },
+    });
+    seeded.current = true;
+    setPicks([pourTarget]);
+    setShowPourSheet(false);
+    setStep("mode");
+  };
+
+  // #108: the sheet carries how / stars / note / photo; recordPour() does the rest.
+  const handleDrinkPour = async (pour: PourSubmission) => {
     if (!pourTarget || isPouring) return;
-    if (pourType === "blind") {
-      logClick("blind_tasting", {
-        userId: publicUserId,
-        targetId: pourTarget.bottleId,
-        metadata: { source: "drink_tab", variant_id: pourTarget.variantId },
-      });
-      seeded.current = true;
-      setPicks([pourTarget]);
-      setShowPourSheet(false);
-      setStep("mode");
-      return;
-    }
     logClick("have_a_drink", {
       userId: publicUserId,
       targetId: pourTarget.bottleId,
-      metadata: { pour_type: pourType, variant_id: pourTarget.variantId, source: "drink_tab" },
+      metadata: {
+        pour_type: pour.pourType,
+        variant_id: pourTarget.variantId,
+        source: "drink_tab",
+        has_note: !!pour.note,
+        has_photo: !!pour.photo,
+        has_stars: pour.stars != null,
+      },
     });
     setIsPouring(true);
     try {
-      const result = await logActivity({
+      const result = await recordPour({
         userId: publicUserId,
         bottleId: pourTarget.bottleId,
         variantId: pourTarget.variantId,
-        action: "drank",
-        pourType,
+        pourType: pour.pourType,
+        stars: pour.stars,
+        note: pour.note,
+        photo: pour.photo,
       });
       if (result.error) {
         toast.error("Could not log this pour");
         return;
       }
       setShowPourSheet(false);
-      toast.success("Pour logged");
-      if (!hasTasted) setShowRatePrompt(true);
-      else {
-        setPourTarget(null);
-        setQuery("");
-        setStep("home");
-      }
+      if (result.warnings.length) toast.warning(`Pour logged - ${result.warnings.join(", ").toLowerCase()}`);
+      else toast.success("Pour logged");
+      finishPour();
     } finally {
       setIsPouring(false);
-    }
-  };
-
-  const handleSaveRating = async (stars: number) => {
-    if (!pourTarget || ratingSaving) return;
-    setRatingSaving(true);
-    try {
-      const res = await setRatingStars({
-        userId: publicUserId,
-        bottleId: pourTarget.bottleId,
-        variantId: pourTarget.variantId,
-        stars,
-      });
-      if (res.error) {
-        toast.error("Could not save your rating");
-        return;
-      }
-      setShowRatePrompt(false);
-      toast.success("Rating saved");
-      setPourTarget(null);
-      setQuery("");
-      setStep("home");
-    } finally {
-      setRatingSaving(false);
     }
   };
 
@@ -670,31 +656,10 @@ export default function DrinkClient({
           onOpenChange={setShowPourSheet}
           bottleName={pourTarget.name}
           isSaving={isPouring}
-          onSelect={handleDrinkPour}
-        />
-      )}
-
-      {pourTarget && (
-        <RatePromptSheet
-          open={showRatePrompt}
-          onOpenChange={(open) => {
-            setShowRatePrompt(open);
-            if (!open) {
-              setPourTarget(null);
-              setQuery("");
-              setStep("home");
-            }
-          }}
-          bottleName={pourTarget.name}
           initialStars={ratingStars}
-          isSaving={ratingSaving}
-          onSave={handleSaveRating}
-          onSkip={() => {
-            setShowRatePrompt(false);
-            setPourTarget(null);
-            setQuery("");
-            setStep("home");
-          }}
+          hasTasted={hasTasted}
+          onSubmit={handleDrinkPour}
+          onBlind={handleBlindFromPour}
         />
       )}
 

@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { type BottleDetails } from "@/lib/types";
 import VariantSelectSheet from "@/components/VariantSelectSheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
-import PourSheet from "@/components/PourSheet";
+import PourSheet, { type PourSubmission } from "@/components/PourSheet";
+import { recordPour } from "@/lib/pours";
 import MoreSheet from "@/components/MoreSheet";
 import HistoryModal from "@/components/HistoryModal";
 import RatePromptSheet from "@/components/RatePromptSheet";
@@ -32,7 +33,6 @@ import {
   fetchLastActivityForBottle,
   formatActivityLine,
   logActivity,
-  type PourType,
 } from "@/lib/activities";
 import { logClick } from "@/lib/events";
 
@@ -630,27 +630,30 @@ export default function BottleDetailView({
     router.push(`/taste?${params.toString()}`);
   };
 
-  const handlePour = async (pourType: PourType) => {
+  // #108: the sheet now carries how / stars / note / photo; recordPour() does the rest.
+  const handlePour = async (pour: PourSubmission) => {
     if (!publicUserId || isPouring) return;
-    // Blind starts the Drink flow with this bottle pre-seeded. It is not a pour log —
-    // logging "drank it blind" here would hit Social before they even rank.
-    if (pourType === "blind") {
-      startBlindTasting("pour");
-      return;
-    }
     logClick("have_a_drink", {
       userId: publicUserId,
       targetId: bottle.id,
-      metadata: { pour_type: pourType, variant_id: currentVariant?.variantId ?? null },
+      metadata: {
+        pour_type: pour.pourType,
+        variant_id: currentVariant?.variantId ?? null,
+        has_note: !!pour.note,
+        has_photo: !!pour.photo,
+        has_stars: pour.stars != null,
+      },
     });
     setIsPouring(true);
     try {
-      const result = await logActivity({
+      const result = await recordPour({
         userId: publicUserId,
         bottleId: bottle.id,
         variantId: currentVariant?.variantId ?? null,
-        action: "drank",
-        pourType,
+        pourType: pour.pourType,
+        stars: pour.stars,
+        note: pour.note,
+        photo: pour.photo,
       });
       if (result.error) {
         toast.error("Could not log this pour");
@@ -658,18 +661,25 @@ export default function BottleDetailView({
       }
       const label = formatActivityLine({
         action: "drank",
-        pour_type: pourType,
+        pour_type: pour.pourType,
         created_at: new Date().toISOString(),
       });
       if (label) setLastActivityLabel(label);
+      if (pour.stars != null) setRatingStarsState(Math.round(pour.stars * 10) / 10);
       setShowPourSheet(false);
-      toast.success("Pour logged");
+      if (result.warnings.length) toast.warning(`Pour logged - ${result.warnings.join(", ").toLowerCase()}`);
+      else toast.success("Pour logged");
       onActivityLogged?.();
-      // 3.1: after a pour, prompt for the manual star guess if not yet blind-tasted.
-      if (!hasTasted) setShowRatePrompt(true);
     } finally {
       setIsPouring(false);
     }
+  };
+
+  // Blind from the pour sheet starts the Drink flow with this bottle pre-seeded. It is not a
+  // pour log - logging "drank it blind" here would hit Social before they even rank.
+  const handleBlindFromPour = () => {
+    setShowPourSheet(false);
+    startBlindTasting("pour");
   };
 
   // 3.1: save/skip the manual star guess for the current variant.
@@ -1337,7 +1347,10 @@ export default function BottleDetailView({
           onOpenChange={setShowPourSheet}
           bottleName={localBottle.name}
           isSaving={isPouring}
-          onSelect={handlePour}
+          initialStars={ratingStars}
+          hasTasted={hasTasted}
+          onSubmit={handlePour}
+          onBlind={handleBlindFromPour}
         />
       )}
 

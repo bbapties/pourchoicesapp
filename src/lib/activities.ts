@@ -132,6 +132,10 @@ export async function logActivity(opts: {
   action: ActivityAction;
   pourType?: PourType | null;
   variantId?: string | null;
+  /** #108: what the post shows, snapshotted at post time (stars / note / photo_url). */
+  details?: Record<string, unknown> | null;
+  /** The tasting a `tasted` row belongs to, so its card can open the ranked results. */
+  sessionId?: string | null;
 }): Promise<{ error?: string }> {
   const pourType = opts.action === "drank" ? (opts.pourType ?? null) : null;
   if (opts.action === "drank" && !pourType) {
@@ -144,6 +148,8 @@ export async function logActivity(opts: {
     variant_id: opts.variantId ?? null,
     action: opts.action,
     pour_type: pourType,
+    details: opts.details ?? null,
+    session_id: opts.sessionId ?? null,
   });
 
   if (error) {

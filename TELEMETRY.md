@@ -35,7 +35,10 @@ must be storing *now*, before those features exist.
 - **`activities`** (`src/lib/activities.ts`) — user/admin **bottle actions**: `drank`,
   `added_to_collection`, `finished`, `added_to_db`, `suggested_edit`, `verified`,
   `removed_from_collection` (+ `pour_type`, optional `variant_id`). Powers the Social feed and
-  "My last activity". Standing rule: **log every bottle action** until Brian excludes one; fail-open.
+  "My last activity". **#106/#108 (2026-09-12):** `details jsonb` snapshots what the post showed
+  at post time — a `drank` row carries `{stars, note, photo_url}` — and `session_id` links a
+  `tasted` row to its `tasting_sessions` row. A later re-rate updates `user_ratings`, never an old
+  post. The `have_a_drink` click event gained `has_note` / `has_photo` / `has_stars` booleans. Standing rule: **log every bottle action** until Brian excludes one; fail-open.
   **Feed visibility (2026-09-05):** rows are still written for *every* account, but the Social feed
   (`fetchActivityFeed`) inner-joins `users` and filters to `account_type = 'human'`. Seeded ranking
   accounts (`data`) and QA accounts (`test`) move personal + global Elo and keep their own per-variant

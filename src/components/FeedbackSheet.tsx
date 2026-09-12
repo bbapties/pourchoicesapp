@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useDictation } from "@/lib/useDictation";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { submitFeedback, type FeedbackType } from "@/lib/feedback";
@@ -11,33 +12,20 @@ interface FeedbackSheetProps {
   userId: string | null;
 }
 
-// Minimal shape of the Web Speech API we use. Not in lib.dom, so declared here.
-type SpeechRecognitionLike = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: ((e: any) => void) | null;
-  onerror: ((e: any) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-
-function getSpeechCtor(): (new () => SpeechRecognitionLike) | null {
-  if (typeof window === "undefined") return null;
-  return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
-}
-
 export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSheetProps) {
   const [type, setType] = useState<FeedbackType>("bug");
   const [message, setMessage] = useState("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const [listening, setListening] = useState(false);
-
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const speechSupported = getSpeechCtor() !== null;
+  // Shared with the pour note (#108): src/lib/useDictation.ts
+  const dictation = useDictation(
+    (chunk) => setMessage((prev) => (prev ? `${prev.replace(/\s*$/, "")} ${chunk}` : chunk)),
+    open,
+    () => toast.error("Could not access the microphone."),
+  );
+  const listening = dictation.listening;
+  const speechSupported = dictation.supported;
 
   // Reset the form each time the sheet opens.
   useEffect(() => {
@@ -48,48 +36,6 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
     }
   }, [open]);
 
-  // Stop dictation if the sheet closes mid-listen.
-  useEffect(() => {
-    if (!open && recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-  }, [open]);
-
-  const toggleDictation = () => {
-    if (listening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-    const Ctor = getSpeechCtor();
-    if (!Ctor) return;
-
-    const rec = new Ctor();
-    rec.lang = "en-US";
-    rec.continuous = true;
-    rec.interimResults = false;
-    rec.onresult = (e: any) => {
-      let chunk = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) chunk += e.results[i][0].transcript;
-      }
-      if (chunk) {
-        setMessage((prev) => (prev ? `${prev.replace(/\s*$/, "")} ${chunk.trim()}` : chunk.trim()));
-      }
-    };
-    rec.onerror = () => {
-      setListening(false);
-      toast.error("Could not access the microphone.");
-    };
-    rec.onend = () => setListening(false);
-    recognitionRef.current = rec;
-    try {
-      rec.start();
-      setListening(true);
-    } catch {
-      setListening(false);
-    }
-  };
-
   const handleSubmit = async () => {
     if (!userId) {
       toast.error("You need to be signed in.");
@@ -99,7 +45,7 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
       toast.error("Add a short description first.");
       return;
     }
-    recognitionRef.current?.stop();
+    dictation.stop();
     setBusy(true);
     const res = await submitFeedback({ userId, type, message, screenshot });
     setBusy(false);
@@ -160,7 +106,7 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
               {speechSupported && (
                 <button
                   type="button"
-                  onClick={toggleDictation}
+                  onClick={dictation.toggle}
                   className={`text-xs px-2 py-1 rounded border ${
                     listening ? "bg-red-600 text-white border-red-600" : "bg-white text-black border-gray-400"
                   }`}

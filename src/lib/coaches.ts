@@ -142,6 +142,16 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // #108: the pour sheet grew a rating, a note and a photo. Not core - the loop is the same.
+    id: "bottle.pour_notes",
+    title: "Notes and a photo with your pour",
+    body: "Have a drink now takes a gut rating, a note (type it or tap the mic), and one photo. They show up on your post in Social.",
+    route: "/search",
+    core: false,
+    announce: true,
+    tour: [],
+  },
+  {
     id: "taste.blind",
     title: "Blind tastings",
     body: `Rank ${MIN_PICKS}-${MAX_PICKS} bottles blind from the Drink tab. Your ranking updates your personal and the global scores.`,
