@@ -1,6 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
--- Regenerated from the live prod DB on 2026-09-11 via scripts/_psql.mjs against information_schema/pg_catalog.
+-- Regenerated from the live prod DB on 2026-09-12 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
 
 CREATE TABLE public.activities (
@@ -10,7 +10,9 @@ CREATE TABLE public.activities (
   variant_id uuid,
   action text NOT NULL,
   pour_type text,
-  created_at timestamp with time zone NOT NULL DEFAULT now());
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  session_id uuid,
+  details jsonb);
 
 CREATE TABLE public.announcements (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -132,6 +134,20 @@ CREATE TABLE public.notifications (
   failed_count integer NOT NULL DEFAULT 0,
   created_at timestamp with time zone NOT NULL DEFAULT now());
 
+CREATE TABLE public.post_comments (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  activity_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  parent_id uuid,
+  body text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  deleted_at timestamp with time zone);
+
+CREATE TABLE public.post_reactions (
+  activity_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now());
+
 CREATE TABLE public.push_subscriptions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
@@ -211,7 +227,15 @@ CREATE TABLE public.user_ratings (
   variant_id uuid NOT NULL,
   stars numeric NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now());
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  note text);
+
+CREATE TABLE public.user_relationships (
+  from_user_id uuid NOT NULL,
+  to_user_id uuid NOT NULL,
+  kind text NOT NULL,
+  notify_kinds ARRAY NOT NULL DEFAULT '{}'::text[],
+  created_at timestamp with time zone NOT NULL DEFAULT now());
 
 CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -224,7 +248,10 @@ CREATE TABLE public.users (
   seen_coach_ids ARRAY NOT NULL DEFAULT '{}'::text[],
   notify_push boolean NOT NULL DEFAULT true,
   notify_prompt_optout boolean NOT NULL DEFAULT false,
-  account_type text NOT NULL DEFAULT 'human'::text);
+  account_type text NOT NULL DEFAULT 'human'::text,
+  avatar_url text,
+  feed_default text NOT NULL DEFAULT 'everyone'::text,
+  notify_reactions boolean NOT NULL DEFAULT true);
 
 CREATE TABLE public.wishlists (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -242,6 +269,7 @@ CREATE TABLE public.wishlists (
 --   variant_scores  [runs as owner]
 
 -- Functions
+--   actor_muted_by_post_owner(p_activity_id uuid, p_actor_id uuid)  SECURITY DEFINER
 --   bottle_delete_impact(p_bottle uuid)  SECURITY DEFINER
 --   commit_bottle_import(payload jsonb)  SECURITY DEFINER
 --   default_to_admin()  SECURITY DEFINER
@@ -255,6 +283,7 @@ CREATE TABLE public.wishlists (
 --   is_admin()  SECURITY DEFINER
 --   merge_bottle(p_source uuid, p_target uuid, p_variant_map jsonb, p_confirm_name text)  SECURITY DEFINER
 --   merge_variant_into(p_source uuid, p_target uuid)  SECURITY DEFINER
+--   protect_comment_update()
 --   protect_image_review()  SECURITY DEFINER
 --   protect_submission_update()  SECURITY DEFINER
 --   protect_user_role()  SECURITY DEFINER
@@ -278,6 +307,7 @@ CREATE TABLE public.wishlists (
 --   trg_update_timestamp_bottles on bottles
 --   trg_guard_event_insert on events
 --   trg_protect_feedback_update on feedback
+--   trg_protect_comment_update on post_comments
 --   trg_protect_suggested_edits_update on suggested_edits
 --   trig_update_elo_after_session on tasting_results
 --   trig_zz_stamp_tasted_after_session on tasting_results
@@ -313,6 +343,12 @@ CREATE TABLE public.wishlists (
 --   image_reject_reasons: admins write reasons (ALL)
 --   image_reject_reasons: read reject reasons (SELECT)
 --   notifications: Admin read notifications (SELECT)
+--   post_comments: post_comments_insert_own (INSERT)
+--   post_comments: post_comments_select (SELECT)
+--   post_comments: post_comments_soft_delete (UPDATE)
+--   post_reactions: post_reactions_delete_own (DELETE)
+--   post_reactions: post_reactions_insert_own (INSERT)
+--   post_reactions: post_reactions_select (SELECT)
 --   push_subscriptions: Delete own subscription (DELETE)
 --   push_subscriptions: Insert own subscription (INSERT)
 --   push_subscriptions: Select own subscriptions (SELECT)
@@ -333,6 +369,10 @@ CREATE TABLE public.wishlists (
 --   user_ratings: user_ratings_insert_own (INSERT)
 --   user_ratings: user_ratings_select (SELECT)
 --   user_ratings: user_ratings_update_own (UPDATE)
+--   user_relationships: user_relationships_delete_own (DELETE)
+--   user_relationships: user_relationships_insert_own (INSERT)
+--   user_relationships: user_relationships_select (SELECT)
+--   user_relationships: user_relationships_update_own (UPDATE)
 --   users: Users own their data (ALL)
 --   users: Allow anon insert via auth (INSERT)
 --   users: Users can insert their own profile (INSERT)
