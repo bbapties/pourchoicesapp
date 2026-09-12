@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
 import ActivityCard from "@/components/social/ActivityCard";
 import { fetchFeedPage, toggleCheer, type FeedItem } from "@/lib/social";
+import { notify } from "@/lib/notify";
 import PeopleSheet from "@/components/user/PeopleSheet";
 import { fetchFeedDefault, fetchMyGraph, saveFeedDefault, type FeedScope } from "@/lib/relationships";
 import BottleDetailView from "@/components/BottleDetailView";
@@ -143,6 +144,7 @@ export default function SocialClient() {
     setRows((prev) => patch(prev, on, on ? 1 : -1));
     logClick(on ? "post_cheered" : "post_uncheered", { userId: publicUserId, targetId: item.id, surface: "/social", metadata: { action: item.action } });
     const res = await toggleCheer(item.id, publicUserId, on);
+    if (!res.error && on) notify({ kind: "cheer", activityId: item.id });
     if (res.error) {
       setRows((prev) => patch(prev, !on, on ? -1 : 1));
       toast.error("Couldn't save that");

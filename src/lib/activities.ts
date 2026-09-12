@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { notify } from "@/lib/notify";
 
 // Policy: every user/admin action on a bottle writes an activities row
 // until Brian explicitly excludes it. Fail-open — never block the parent action.
@@ -141,28 +142,37 @@ export async function logActivity(opts: {
   details?: Record<string, unknown> | null;
   /** The tasting a `tasted` row belongs to, so its card can open the ranked results. */
   sessionId?: string | null;
-}): Promise<{ error?: string }> {
+}): Promise<{ error?: string; id?: string }> {
   const pourType = opts.action === "drank" ? (opts.pourType ?? null) : null;
   if (opts.action === "drank" && !pourType) {
     return { error: "Pour type is required" };
   }
 
-  const { error } = await supabase.from("activities").insert({
-    user_id: opts.userId,
-    bottle_id: opts.bottleId,
-    variant_id: opts.variantId ?? null,
-    action: opts.action,
-    pour_type: pourType,
-    details: opts.details ?? null,
-    session_id: opts.sessionId ?? null,
-  });
+  const { data, error } = await supabase
+    .from("activities")
+    .insert({
+      user_id: opts.userId,
+      bottle_id: opts.bottleId,
+      variant_id: opts.variantId ?? null,
+      action: opts.action,
+      pour_type: pourType,
+      details: opts.details ?? null,
+      session_id: opts.sessionId ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     console.error("logActivity:", error.message);
     return { error: error.message };
   }
-  return {};
+  // #114: followers who rang the bell for this kind of moment get a push. Server-side decides who.
+  if (data?.id && NOTIFIED_ACTIONS.has(opts.action)) notify({ kind: "activity", activityId: data.id });
+  return { id: data?.id };
 }
+
+/** Actions a follower can ask to be pushed about (the bell's list, minus badges which have no row yet). */
+const NOTIFIED_ACTIONS = new Set<ActivityAction>(["drank", "tasted", "added_to_collection", "wishlisted"]);
 
 /**
  * B.4: delete one of the viewer's own hand-logged activities (a pour / add / finished), which

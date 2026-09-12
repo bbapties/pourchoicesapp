@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import UserAvatar from "@/components/UserAvatar";
 import { logClick } from "@/lib/events";
+import { notify } from "@/lib/notify";
 import {
   ALL_KINDS,
   fetchFollowers,
@@ -91,6 +92,7 @@ export default function PeopleSheet({ open, onOpenChange, mode, userId, viewerId
       return;
     }
     logClick(on ? "user_followed" : "user_unfollowed", { userId: viewerId, targetId: p.userId, surface: "/people", metadata: { from: mode } });
+    if (on) notify({ kind: "follow", targetUserId: p.userId });
     onChanged?.();
   };
 

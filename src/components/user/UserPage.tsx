@@ -19,6 +19,7 @@ import { ALL_KINDS, fetchRelationship, follow, unfollow, unmute, type Relationsh
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { logClick, logEvent } from "@/lib/events";
 import { fetchUserFeed, toggleCheer, type FeedItem } from "@/lib/social";
+import { notify } from "@/lib/notify";
 import type { ShelfBottle, ShelfDef } from "@/lib/shelves";
 import {
   fetchTop3,
@@ -129,6 +130,7 @@ export default function UserPage({ own = false, username }: Props) {
       setRelBusy(false);
       if (res.error) { toast.error("Couldn't follow"); return; }
       logClick("user_followed", { userId: publicUserId, targetId: user.id, surface });
+      notify({ kind: "follow", targetUserId: user.id });
       setRel({ following: true, notifyKinds: [], muted: false });
       setAskPush(true);
     }
@@ -169,6 +171,7 @@ export default function UserPage({ own = false, username }: Props) {
     setFeed((prev) => patch(prev, on, on ? 1 : -1));
     logClick(on ? "post_cheered" : "post_uncheered", { userId: publicUserId, targetId: item.id, surface: own ? "/profile" : "/u", metadata: { action: item.action } });
     const res = await toggleCheer(item.id, publicUserId, on);
+    if (!res.error && on) notify({ kind: "cheer", activityId: item.id });
     if (res.error) {
       setFeed((prev) => patch(prev, !on, on ? -1 : 1));
       toast.error("Couldn't save that");

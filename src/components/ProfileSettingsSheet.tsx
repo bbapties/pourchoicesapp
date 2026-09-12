@@ -31,6 +31,23 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
 
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [mutedOpen, setMutedOpen] = useState(false);
+  // #114: pushes about MY posts (cheers, comments, replies, new followers). Separate from the
+  // per-person bells, under the same master switch.
+  const [reactionsOn, setReactionsOn] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!publicUserId) return;
+    supabase.from("users").select("notify_reactions").eq("id", publicUserId).maybeSingle().then(({ data }) => {
+      setReactionsOn(data?.notify_reactions ?? true);
+    });
+  }, [publicUserId]);
+  const toggleReactions = async () => {
+    if (!publicUserId || reactionsOn === null) return;
+    const next = !reactionsOn;
+    setReactionsOn(next);
+    const { error } = await supabase.from("users").update({ notify_reactions: next }).eq("id", publicUserId);
+    if (error) { setReactionsOn(!next); toast.error("Couldn't save that"); return; }
+    logClick("notify_reactions_changed", { userId: publicUserId, surface: "/profile", metadata: { on: next } });
+  };
   const [email, setEmail] = useState<string | null>(null);
 
   const [displayName, setDisplayName] = useState<string>("");
@@ -271,6 +288,18 @@ export default function ProfileSettingsSheet({ open, onOpenChange, onUsernameCha
                     ? "Off"
                     : "Needs the app installed"}
           </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={toggleReactions}
+          disabled={reactionsOn === null}
+          className="w-full py-3 text-sm font-medium rounded border border-gray-400 bg-white text-gray-900 flex items-center justify-between px-4 disabled:opacity-50"
+          style={{ minHeight: "44px" }}
+          data-coach="profile.notify_reactions"
+        >
+          <span>Reactions to my posts</span>
+          <span className="text-xs text-gray-600">{reactionsOn === null ? "…" : reactionsOn ? "On" : "Off"}</span>
         </button>
 
         {!installed && (

@@ -148,6 +148,18 @@ silent), but a spike on one platform means subscriptions are being dropped faste
 the app, and the reachable count in Admin will sag behind the opt-in count.
 
 
+### Social pushes (#114, 2026-09-12)
+
+`POST /api/social/notify` (`src/app/api/social/notify/route.ts`) is the only sender besides the
+admin blast; `src/lib/push-server.ts` is the shared gate (VAPID, `users.notify_push`, pruning).
+Kinds: `cheer` / `comment` / `reply` → the post owner (+ parent commenter), gated by
+`users.notify_reactions`; `follow` → the followed person, same gate; `activity` → followers whose
+follow row's `notify_kinds` contains the action (`drank`, `tasted`, `added_to_collection`,
+`wishlisted`). Fired fail-open from the client after the action succeeds (`src/lib/notify.ts`);
+`logActivity` fires `activity` itself. Not written to `notifications` (that table is the admin
+blast log); the reaction / relationship rows are the record. Click `notify_reactions_changed {on}`
+is the Profile switch.
+
 ### Home Social shelf overlays (#113, 2026-09-12)
 
 `home_bottle` on the Social shelf now carries `metadata.post: true` and opens the post instead of

@@ -10,6 +10,7 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { logClick } from "@/lib/events";
 import { formatFeedTime } from "@/lib/activities";
 import { addOrRestockUserBottle, resolveDefaultVariantId } from "@/lib/userBottles";
+import { notify } from "@/lib/notify";
 import { addToWishlist } from "@/lib/wishlist";
 import {
   addComment,
@@ -66,6 +67,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
     setCheerers(null);
     logClick(on ? "post_cheered" : "post_uncheered", { userId: publicUserId, targetId: it.id, surface: "/post", metadata: { action: it.action } });
     const res = await toggleCheer(it.id, publicUserId, on);
+    if (!res.error && on) notify({ kind: "cheer", activityId: it.id });
     if (res.error) {
       setItem(it);
       toast.error("Couldn't save that");
@@ -95,6 +97,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
       return;
     }
     logClick("comment_posted", { userId: publicUserId, targetId: item.id, surface: "/post", metadata: { reply: !!replyTo } });
+    if (res.id) notify({ kind: replyTo ? "reply" : "comment", activityId: item.id, commentId: res.id });
     setDraft("");
     setReplyTo(null);
     setComments(await fetchComments(item.id));
