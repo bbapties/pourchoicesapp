@@ -47,8 +47,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ### THE STATUS LANGUAGE (settled and shipped 2026-09-12, `d04d076`)
 Two dimensions everywhere: **verified x had it**. Cards AND the detail tray wear the same
-`EarmarkCorner`: no corner = never had; **green corner with a digit = bottles on hand** (`0` = had
-it, none left); yellow digit / yellow dot = unverified. Shelves say it with **LEDs** under the
+`EarmarkCorner`: no corner = never had; **plain green corner = had it, none on hand; a digit from 1 = bottles on hand**; yellow digit / yellow dot = unverified. Shelves say it with **LEDs** under the
 bottle (`.pc-led-*`): solid green = on hand, green ring with white centre = had it, yellow outer
 ring = unverified, yellow alone = unverified never had. **Always the viewer's own relationship**,
 on every shelf, including someone else's bar. Phase 5 may restyle the glow; the four states are
