@@ -357,6 +357,16 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // #112: the pencil on your avatar. Quiet - a small addition to a surface already announced.
+    id: "profile.avatar",
+    title: "Add a profile photo",
+    body: "Tap the pencil on your avatar to add a photo. It shows as a circle on every post and shelf.",
+    route: "/profile",
+    core: false,
+    announce: true,
+    tour: [{ route: "/profile", anchor: "profile.avatar", caption: "Tap the pencil to choose a photo and frame it in the circle." }],
+  },
+  {
     id: "user.page",
     title: "Everyone has a page",
     body: "Tap any name in Social to see their bar, their Top 3 and what they might like next — a handy gift list.",

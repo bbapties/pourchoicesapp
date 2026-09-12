@@ -11,6 +11,7 @@ type AdminUser = {
   email: string;
   role: string;
   created_at: string;
+  avatar_url: string | null;
   bottleCount: number;
   sessionCount: number;
   /** null = notifications not enabled at all; a number = enabled, with this many registered devices. */
@@ -33,7 +34,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
     // every other user as 0 devices (B-59). The route returns only users with notify_push = true,
     // which is exactly the distinction the bell draws -- absent means "not enabled".
     const [usersRes, bottlesRes, sessionsRes, pushRes] = await Promise.all([
-      supabase.from("users").select("id, username, email, role, created_at"),
+      supabase.from("users").select("id, username, email, role, created_at, avatar_url"),
       supabase.from("user_bottles").select("user_id"),
       supabase.from("tasting_sessions").select("user_id"),
       fetch("/api/admin/push-recipients")
@@ -67,6 +68,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
       email: u.email,
       role: u.role ?? "user",
       created_at: u.created_at,
+      avatar_url: u.avatar_url ?? null,
       bottleCount: bottleCounts.get(u.id) || 0,
       sessionCount: sessionCounts.get(u.id) || 0,
       pushDevices: pushDevices.has(u.id) ? pushDevices.get(u.id)! : null,
@@ -198,6 +200,20 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
                   {new Date(u.created_at).toLocaleDateString()}
                 </div>
               </div>
+              {u.avatar_url && (
+                <button
+                  onClick={async () => {
+                    const res = await fetch("/api/admin/reset-avatar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetPublicUserId: u.id }) });
+                    if (!res.ok) { toast.error("Couldn't reset the avatar"); return; }
+                    toast.success(`Avatar reset for ${u.username}`);
+                    setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, avatar_url: null } : x)));
+                  }}
+                  className="text-xs px-3 py-1.5 border border-gray-400 text-gray-700 rounded mr-2"
+                  title="Clear their photo; the initials disc takes over"
+                >
+                  Reset avatar
+                </button>
+              )}
               <button
                 disabled={isSelf}
                 onClick={() => openConfirm(u)}

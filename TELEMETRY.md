@@ -148,6 +148,11 @@ silent), but a spike on one platform means subscriptions are being dropped faste
 the app, and the reachable count in Admin will sag behind the opt-in count.
 
 
+### Avatar (#112, 2026-09-12)
+
+Clicks `avatar_uploaded` / `avatar_removed` on `/profile`; the file lands under
+`bottle-images/avatars/<user>/`. Admin › Users › Reset avatar clears the pointer only.
+
 ### Follows, mutes, bells (#111, 2026-09-12)
 
 `user_relationships` is the record (follow rows with `notify_kinds[]`, mute rows). Clicks:

@@ -13,6 +13,7 @@ import { Stars, Chip } from "@/components/social/ActivityCard";
 import ProfileSettingsSheet from "@/components/ProfileSettingsSheet";
 import PeopleSheet, { type PeopleMode } from "@/components/user/PeopleSheet";
 import BellSheet from "@/components/user/BellSheet";
+import AvatarCropSheet from "@/components/user/AvatarCropSheet";
 import InstallSheet from "@/components/InstallSheet";
 import { ALL_KINDS, fetchRelationship, follow, unfollow, unmute, type Relationship } from "@/lib/relationships";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -63,6 +64,7 @@ export default function UserPage({ own = false, username }: Props) {
   const [installOpen, setInstallOpen] = useState(false);
   const [people, setPeople] = useState<PeopleMode | null>(null);
   const [statsKey, setStatsKey] = useState(0);
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
   // Resolve who this page is about.
   useEffect(() => {
@@ -201,13 +203,15 @@ export default function UserPage({ own = false, username }: Props) {
         <div className="relative shrink-0">
           <UserAvatar username={user?.username} avatarUrl={user?.avatarUrl} size={112} />
           {own && (
-            <span
+            <button
+              type="button"
+              onClick={() => setAvatarOpen(true)}
               className="absolute right-0.5 bottom-0.5 w-7 h-7 rounded-full bg-gray-900 border-2 border-white flex items-center justify-center text-white"
-              title="Photo upload comes in a later step"
-              aria-hidden="true"
+              aria-label="Change profile photo"
+              data-coach="profile.avatar"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h4l10-10-4-4L4 16z" /></svg>
-            </span>
+            </button>
           )}
         </div>
         <div className="flex-1 flex flex-col items-center gap-2.5">
@@ -381,6 +385,15 @@ export default function UserPage({ own = false, username }: Props) {
         />
       )}
       <InstallSheet open={installOpen} onOpenChange={setInstallOpen} surface="/u" />
+
+      {own && publicUserId && (
+        <AvatarCropSheet
+          open={avatarOpen}
+          onOpenChange={setAvatarOpen}
+          userId={publicUserId}
+          onSaved={(url) => setUser((prev) => (prev ? { ...prev, avatarUrl: url || null } : prev))}
+        />
+      )}
 
       {askPush && user && (
         <div className="fixed inset-0 z-40 flex items-end" onClick={() => answerPush(false)}>
