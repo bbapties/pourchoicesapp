@@ -194,6 +194,13 @@ body {
 .pc-slot > svg, .pc-slot > img { display: block; height: 100%; width: auto; }
 .pc-slot:focus-visible { outline: 2px solid var(--color-charcoal); outline-offset: 3px; }
 /* status, in the app's own earmark colours: green = had it, yellow = unverified */
+/* #113: Social-shelf overlays - who (bottom-left) and what (bottom-right), on the slot */
+.pc-ov { position: absolute; bottom: 2px; width: 22px; height: 22px; border-radius: 50%; z-index: 2;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  border: 1px solid var(--color-charcoal); font-size: 9px; font-weight: 600; line-height: 1; }
+.pc-ov-who { left: -8px; background: #E5E5E5; color: var(--color-charcoal); }
+.pc-ov-who img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pc-ov-what { right: -8px; background: #111; }
 .pc-mark { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
            width: 9px; height: 9px; border-radius: 50%;
            border: 1px solid var(--color-charcoal); }

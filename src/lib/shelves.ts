@@ -53,6 +53,16 @@ export type ShelfBottle = {
   /** Real-world bottle height in MILLIMETRES, when known. This is what makes a squat Blanton's
    *  read as squat beside a tall bourbon — a cut-out's pixel height only describes its crop. */
   heightMm: number | null;
+  /** #113: on the Social shelf, the post that put this bottle here - who and what. */
+  post?: ShelfPost;
+};
+
+export type ShelfPost = {
+  activityId: string;
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+  action: string;
 };
 
 export type ShelfPage = {
@@ -98,6 +108,8 @@ export type Seed = {
   bottleId: string;
   /** The variant the row actually names, when it names one. Null falls back to the default. */
   variantId: string | null;
+  /** Carried through buildPage untouched (#113). */
+  post?: ShelfPost;
 };
 
 type VariantImage = { variantId: string; imageUrl: string | null; shelfReady: boolean; heightMm: number | null };
@@ -237,6 +249,7 @@ export async function buildPage(
       status: statuses.get(s.bottleId) ?? fallbackStatus,
       provisional: nm ? !nm.verified : false,
       heightMm: img?.heightMm ?? null,
+      post: s.post,
     };
   });
 
@@ -296,7 +309,7 @@ async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE, onlyUser
 
   let q = supabase
     .from("activities")
-    .select("bottle_id, variant_id, created_at, users!activities_user_id_fkey!inner(account_type)")
+    .select("id, action, user_id, bottle_id, variant_id, created_at, users!activities_user_id_fkey!inner(account_type, username, avatar_url)")
     .eq("users.account_type", "human")
     // Same exclusion as the Social tab -- the shelf is that tab seen from across the room, so a
     // bottle that only ever got verified must not appear on it either.
@@ -313,7 +326,7 @@ async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE, onlyUser
     return { bottles: [], nextCursor: null };
   }
 
-  const rows = (data || []) as { bottle_id: string; variant_id: string | null; created_at: string }[];
+  const rows = (data || []) as any[];
   const seen = new Set<string>();
   const seeds: Seed[] = [];
   let consumed = 0;
@@ -321,7 +334,13 @@ async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE, onlyUser
     consumed++;
     if (!r.bottle_id || seen.has(r.bottle_id)) continue;
     seen.add(r.bottle_id);
-    seeds.push({ bottleId: r.bottle_id, variantId: r.variant_id });
+    const u = Array.isArray(r.users) ? r.users[0] : r.users;
+    seeds.push({
+      bottleId: r.bottle_id,
+      variantId: r.variant_id,
+      // The LATEST post for this bottle is the one that put it at this spot on the shelf.
+      post: { activityId: r.id, userId: r.user_id, username: u?.username ?? "Someone", avatarUrl: u?.avatar_url ?? null, action: r.action },
+    });
     if (seeds.length === limit) break;
   }
 

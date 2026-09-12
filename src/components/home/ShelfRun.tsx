@@ -37,11 +37,13 @@ export default function ShelfRun({
   shelf,
   viewerId,
   onPick,
+  onPickUser,
   fetchOpts,
 }: {
   shelf: ShelfDef;
   viewerId: string;
   onPick?: (b: ShelfBottle) => void;
+  onPickUser?: (b: ShelfBottle) => void;
   /** #111: extra scope for the fetch (Following / muted). Remount the run when it changes. */
   fetchOpts?: Partial<ShelfFetchOpts>;
 }) {
@@ -146,7 +148,7 @@ export default function ShelfRun({
       <EndWall side="left" height={wallHeight} />
 
       {bottles.map((b) => (
-        <BottleOnShelf key={b.key} bottle={b} onPick={onPick} />
+        <BottleOnShelf key={b.key} bottle={b} onPick={onPick} onPickUser={onPickUser} />
       ))}
 
       {/* The right wall only exists once the last bottle has arrived — you do not see the end of

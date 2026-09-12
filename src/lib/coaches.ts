@@ -367,6 +367,16 @@ export const COACH_CATALOG: CoachItem[] = [
     tour: [{ route: "/profile", anchor: "profile.avatar", caption: "Tap the pencil to choose a photo and frame it in the circle." }],
   },
   {
+    // #113: the Social shelf's overlays. Quiet-ish: announced once, no tour needed.
+    id: "home.social_overlays",
+    title: "Who and what, on the shelf",
+    body: "Bottles on Home's Social shelf now show who posted (bottom-left) and what they did (bottom-right). Tap the bottle for the post, the face for the person.",
+    route: "/home",
+    core: false,
+    announce: true,
+    tour: [],
+  },
+  {
     id: "user.page",
     title: "Everyone has a page",
     body: "Tap any name in Social to see their bar, their Top 3 and what they might like next — a handy gift list.",

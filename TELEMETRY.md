@@ -148,6 +148,11 @@ silent), but a spike on one platform means subscriptions are being dropped faste
 the app, and the reachable count in Admin will sag behind the opt-in count.
 
 
+### Home Social shelf overlays (#113, 2026-09-12)
+
+`home_bottle` on the Social shelf now carries `metadata.post: true` and opens the post instead of
+picking the bottle up; `home_bottle_user` (targetId = the poster) is the avatar tap.
+
 ### Avatar (#112, 2026-09-12)
 
 Clicks `avatar_uploaded` / `avatar_removed` on `/profile`; the file lands under

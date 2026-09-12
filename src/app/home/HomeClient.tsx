@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Shelf from "@/components/home/Shelf";
 import ShelfRun from "@/components/home/ShelfRun";
 import PickedUpBottle from "@/components/home/PickedUpBottle";
@@ -26,6 +27,7 @@ type ShelfState = { count: number | null; loading: boolean };
 const INITIAL: ShelfState = { count: null, loading: true };
 
 export default function HomeClient({ viewerId }: { viewerId: string }) {
+  const router = useRouter();
   const [picked, setPicked] = useState<ShelfBottle | null>(null);
   // Bumped only when a bottle's ownership actually changed. Re-mounting the runs is a blunt
   // refresh, but it is rare and it is the honest one: a new bottle belongs at the front of My Bar.
@@ -122,6 +124,11 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
                 shelf={shelf}
                 viewerId={viewerId}
                 fetchOpts={socialOpts}
+                onPickUser={(b) => {
+                  if (!b.post) return;
+                  logClick("home_bottle_user", { userId: viewerId, surface: "/home", targetId: b.post.userId, metadata: { shelf: shelf.id } });
+                  router.push(`/u/${encodeURIComponent(b.post.username)}`);
+                }}
                 onPick={(b) => {
                   // Ghost-vs-real on every pick-up: the share of what people actually touch that
                   // is still a placeholder is the number that says when Home stops being a
@@ -130,9 +137,11 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
                     userId: viewerId,
                     surface: "/home",
                     targetId: b.bottleId,
-                    metadata: { shelf: shelf.id, image: b.imageState, status: b.status },
+                    metadata: { shelf: shelf.id, image: b.imageState, status: b.status, post: !!b.post },
                   });
-                  setPicked(b);
+                  // #113: a Social-shelf bottle IS a post - open it. Other shelves pick the bottle up.
+                  if (b.post) router.push(`/post/${b.post.activityId}`);
+                  else setPicked(b);
                 }}
               />
             )}
