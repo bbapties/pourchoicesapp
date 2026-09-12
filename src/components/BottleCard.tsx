@@ -49,8 +49,8 @@ function StarRating({ value }: { value: number }) {
 // settled again with Brian 2026-09-12 so the same corner works on cards AND the detail tray:
 //   verified   + never had  -> none
 //   unverified + never had  -> subtle yellow dot
-//   had it                  -> green triangle carrying THE COUNT ON HAND: "0" = had it, none left;
-//                              "2" = two in your bar right now. White digit; yellow when unverified.
+//   had it, none on hand    -> plain green triangle (yellow-edged check when unverified)
+//   had it, N on hand       -> green triangle carrying the digit N. White; yellow when unverified.
 // "Had it" spans ownership (now or past), a pour, or a blind tasting. The shelf says the same
 // thing with light (BottleOnShelf's LED); the detail tray reuses this exact corner.
 export function EarmarkCorner({
@@ -84,7 +84,9 @@ export function EarmarkCorner({
   }
 
   const count = Math.max(0, Math.floor(ownedCount));
-  const label = count > 99 ? '99+' : String(count);
+  // Zero on hand is just the green corner - Brian: a "0" reads as nothing. Digits start at one.
+  // Unverified with nothing to write still needs its yellow, so it keeps a small check.
+  const label = count === 0 ? (provisional ? '✓' : '') : count > 99 ? '99+' : String(count);
   const digitColor = provisional ? '#FFD700' : '#ffffff';
   const font = Math.round(size * 0.4);
 
