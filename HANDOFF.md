@@ -73,8 +73,14 @@ What is open and in what order now lives on **[the board](https://github.com/use
   step 7 of the verify-bottle skill - GROK: run it after every data-account insert.** The three
   missed adds were backfilled and sent (9 pushes / 0 failed). `a6d5456`: Admin Import tab removed
   (it was a stub). Test card **#125** in *Brian to test*.
+- **#122 shipped** `1e7bd47`: a tapped push opens its screen. `sw.js` `notificationclick` now
+  focuses the client and posts `{type:'pc:navigate', url}` with a reply port;
+  `ServiceWorkerRegistrar` does `router.push` (same-origin only) and acks; no ack in 1.5s ->
+  `navigate()` where it exists -> `openWindow()`. iOS never implemented `WindowClient.navigate`,
+  which is why every push link was dead there. **SW cache is `pc-v4`.** Test card **#126**.
 - **Next step per the board** (read right to left, 2026-09-13): *In Progress* EMPTY. *Next Items
-  per Brian* EMPTY. *Top Priority* EMPTY. *Top Priority* is **#97** (48
+  per Brian* EMPTY. *Top Priority* EMPTY. *Coming Soon*, in order: **#118** search flicker,
+  **#119** Have a drink not reaching My Bar > Tasted, **#33** '+' on My Bar, **#20** past tastings. *Top Priority* is **#97** (48
   rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#122** push tap must
   open the link (small, and Brian just hit it), **#33** My Bar FAB -> add flow, **#27** barcode
   census, **#32** My Bar edit bottle, **#20** ranked results view.
