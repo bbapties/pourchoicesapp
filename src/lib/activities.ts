@@ -149,6 +149,24 @@ export async function logActivity(opts: {
     return { error: "Pour type is required" };
   }
 
+  // #120: the bottle-level `added_to_db` row is written by the DB trigger `log_bottle_added`
+  // the moment the bottle is inserted (so SQL adds by data bots get one too). Reuse it rather
+  // than log a second one; the notify call below still fires so admins hear about data adds.
+  if (opts.action === "added_to_db" && !opts.variantId) {
+    const { data: existing } = await supabase
+      .from("activities")
+      .select("id")
+      .eq("bottle_id", opts.bottleId)
+      .eq("action", "added_to_db")
+      .is("variant_id", null)
+      .limit(1)
+      .maybeSingle();
+    if (existing?.id) {
+      notify({ kind: "activity", activityId: existing.id });
+      return { id: existing.id };
+    }
+  }
+
   const { data, error } = await supabase
     .from("activities")
     .insert({

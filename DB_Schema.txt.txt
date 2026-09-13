@@ -283,6 +283,7 @@ CREATE TABLE public.wishlists (
 --   guard_event_insert()
 --   guard_feedback_insert()
 --   is_admin()  SECURITY DEFINER
+--   log_bottle_added()  SECURITY DEFINER
 --   merge_bottle(p_source uuid, p_target uuid, p_variant_map jsonb, p_confirm_name text)  SECURITY DEFINER
 --   merge_variant_into(p_source uuid, p_target uuid)  SECURITY DEFINER
 --   protect_comment_update()
@@ -307,6 +308,7 @@ CREATE TABLE public.wishlists (
 --   trg_protect_image_review on bottle_variants
 --   trg_update_timestamp_bottle_attr on bottle_variants
 --   trg_default_to_admin_bottles on bottles
+--   trg_log_bottle_added on bottles
 --   trg_update_timestamp_bottles on bottles
 --   trg_guard_event_insert on events
 --   trg_guard_feedback_insert on feedback

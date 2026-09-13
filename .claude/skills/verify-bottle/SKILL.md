@@ -109,6 +109,19 @@ A ruler beats all of it. If Brian ever measures one, it becomes `measured` and l
 ### 6. Hand off for review
 Report the `submission_group` id and a summary of every suggested change (field, old→new, plus any merge/delete). Brian reviews in the admin queue, approves, then flips `verified=true` on the bottle + default variant as his sign-off.
 
+### 7. If you INSERTED a bottle: push the admins (#120)
+A bottle inserted by SQL never goes through the app, so the app cannot tell the admins. The DB
+trigger `log_bottle_added` writes the `added_to_db` activity for you; the push is this one command,
+**always the last step of a run that inserted a bottle as a data account**:
+
+```
+node scripts/notify_admin_adds.mjs
+```
+
+It sends one push per un-notified data-account add to every admin and marks the row, so re-running
+is a no-op. `--dry-run` lists without sending. Grain_of_Truth's three adds on 2026-09-12/13 went
+out without this and Brian never heard (#120) — do not skip it.
+
 ## Known landmines (from the 2026-08-27 sweep)
 - **Corrupted notes:** whole note crammed into `nose` as `"<nose>. Palate:/Taste: <p>. Finish: <f>."` — the 36 parseable ones were bulk-decomposed 2026-08-27; new imports may reintroduce it.
 - **Missing barcodes:** ~27 bottles had none. **Shared barcode:** `096749002368` on 4 Elijah Craig Barrel Proof batches (by design).
