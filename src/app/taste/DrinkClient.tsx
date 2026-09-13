@@ -86,9 +86,30 @@ export default function DrinkClient({
   const [ratingStars, setRatingStarsState] = useState<number | null>(null);
   const [hasTasted, setHasTasted] = useState(false);
 
-  // Resolve the viewer's auth id so store-pick scoping can match either id (B-46/B-74).
+  // Keep the screen awake from the moment a blind starts until it is saved. The helper pours
+  // with the phone in one hand and a bottle in the other; a lock screen every 30 seconds is
+  // the one thing that makes them put the bottle down. Re-acquired when the tab comes back
+  // (the browser releases the lock on every background), silently ignored where unsupported.
+  const inTasting = step !== "home" && step !== "pourPick" && step !== "done";
   useEffect(() => {
-  }, []);
+    if (!inTasting || typeof navigator === "undefined" || !("wakeLock" in navigator)) return;
+    let lock: { release: () => Promise<void> } | null = null;
+    let live = true;
+    const acquire = async () => {
+      try {
+        if (document.visibilityState !== "visible") return;
+        lock = await (navigator as Navigator & { wakeLock: { request: (t: "screen") => Promise<{ release: () => Promise<void> }> } }).wakeLock.request("screen");
+        if (!live) await lock.release();
+      } catch { /* fail-open: no lock, no harm */ }
+    };
+    void acquire();
+    document.addEventListener("visibilitychange", acquire);
+    return () => {
+      live = false;
+      document.removeEventListener("visibilitychange", acquire);
+      void lock?.release().catch(() => {});
+    };
+  }, [inTasting]);
 
   // 7.9 store-pick scoping: global variants + only the viewer's own store picks.
   // B-74: `created_by` is a public.users.id, enforced by a foreign key.
@@ -666,7 +687,7 @@ export default function DrinkClient({
           <div className="pt-6 text-center">
             <div className="text-4xl mb-3">🤝</div>
             <h2 className="text-lg font-semibold text-cream mb-1">Hand your phone to your helper</h2>
-            <p className="text-sm text-cream-mute mb-6 max-w-xs mx-auto">They&apos;ll pour the bottles into lettered glasses in a secret order — don&apos;t peek.</p>
+            <p className="text-sm text-cream-mute mb-6 max-w-xs mx-auto">Tell the taster to leave the room. The helper pours the bottles into lettered glasses in a secret order.</p>
             <button type="button" onClick={helperContinue} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>I&apos;m the helper — continue</button>
           </div>
         )}
@@ -805,7 +826,7 @@ export default function DrinkClient({
                 </div>
               ))}
             </div>
-            <button type="button" onClick={reset} className={secondaryBtn}>Done</button>
+            <button type="button" onClick={() => { reset(); router.push("/home"); }} className={secondaryBtn}>Done</button>
           </div>
         )}
       </div>
