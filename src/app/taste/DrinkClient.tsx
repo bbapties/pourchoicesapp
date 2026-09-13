@@ -63,6 +63,9 @@ export default function DrinkClient({
   // What is on the shelf right now (owned_count > 0), per variant. It is the default list for a
   // pour (you usually drink what you own) and the pool a "surprise me" blind draws from.
   const [owned, setOwned] = useState<CatalogBottle[] | null>(null);
+  // How many of the viewer's blinds each owned variant has been in. A "surprise me" lineup
+  // always includes one of the least-tasted bottles; the rest of the draw is genuinely random.
+  const [blindCounts, setBlindCounts] = useState<Record<string, number>>({});
   // "Surprise me from my bar": the app picks the lineup, so the pick step is skipped.
   const [random, setRandom] = useState(false);
   const [randomCount, setRandomCount] = useState(MIN_PICKS);
@@ -174,6 +177,17 @@ export default function DrinkClient({
         .in("variant_id", variantIds)
         .order("bottle_name", { ascending: true });
       if (!live) return;
+      const { data: sessions } = await supabase
+        .from("tasting_sessions")
+        .select("variant_ids")
+        .eq("user_id", publicUserId)
+        .eq("is_blind", true);
+      if (!live) return;
+      const counts: Record<string, number> = {};
+      (sessions || []).forEach((sn: { variant_ids: string[] | null }) => {
+        (sn.variant_ids || []).forEach((v) => { counts[v] = (counts[v] ?? 0) + 1; });
+      });
+      setBlindCounts(counts);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setOwned((data || []).map((d: any) => ({
         bottleId: d.bottle_id,
@@ -248,11 +262,17 @@ export default function DrinkClient({
     setMode(m);
     setQuery("");
     if (random && owned) {
-      // The app deals the lineup from the shelf and skips straight past the pick step.
-      const lineup = shuffle(owned).slice(0, Math.max(MIN_PICKS, Math.min(randomCount, randomMax)));
+      // The app deals the lineup from the shelf and skips straight past the pick step. One slot
+      // goes to a least-blind-tasted bottle (ties broken at random) so the shelf's neglected
+      // corners get a turn; every other slot is a straight draw from what is left.
+      const size = Math.max(MIN_PICKS, Math.min(randomCount, randomMax));
+      const fewest = Math.min(...owned.map((b) => blindCounts[b.variantId] ?? 0));
+      const neglected = shuffle(owned.filter((b) => (blindCounts[b.variantId] ?? 0) === fewest))[0];
+      const rest = shuffle(owned.filter((b) => b.variantId !== neglected.variantId)).slice(0, size - 1);
+      const lineup = shuffle([neglected, ...rest]);
       setPicks(lineup);
       setGlassAssignment([]);
-      logClick("blind_random_lineup", { userId: publicUserId, metadata: { count: lineup.length, mode: m, owned: owned.length } });
+      logClick("blind_random_lineup", { userId: publicUserId, metadata: { count: lineup.length, mode: m, owned: owned.length, seeded_variant: neglected.variantId, seeded_blinds: fewest } });
       setStep(m === "helper" ? "handoff" : "label");
       return;
     }
