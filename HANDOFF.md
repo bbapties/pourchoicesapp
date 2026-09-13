@@ -83,8 +83,10 @@ What is open and in what order now lives on **[the board](https://github.com/use
   until the new one lands; skeleton only on a first search; the empty state needs the CURRENT
   query to have answered; `searchSeq` drops stale responses. Test card **#127**.
 - **Next step per the board** (read right to left, 2026-09-13): *In Progress* EMPTY. *Next Items
-  per Brian* EMPTY. *Top Priority* EMPTY. *Brian to test* has five cards (#123-#127) - his lane,
-  not yours. *Coming Soon*, in order: **#119** Have a drink not reaching My Bar > Tasted, **#33**
+  per Brian* EMPTY. *Top Priority* EMPTY. *Brian to test* has four cards (#123, #125-#127) - his lane,
+  not yours; #124 (stay signed in) he already passed. **A card Brian drags to Done stays an
+  OPEN issue** unless the board's "item closed -> Done" workflow is on; at START SESSION, close any
+  open issue sitting in Done. *Coming Soon*, in order: **#119** Have a drink not reaching My Bar > Tasted, **#33**
   '+' on My Bar, **#20** past tastings.
 - **OPEN DECISION blocking #119 (asked, not yet answered):** what does the My Bar **Tasted** tab
   mean - *any bottle you have had a drink of* (Have a drink sets `tasted_at`, `times_had` 0,
