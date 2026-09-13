@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronUp, ChevronDown, Check, Wine, Eye, GripVertical } from "lucide-react";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
+import RevealShow from "@/components/taste/RevealShow";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
@@ -93,6 +94,8 @@ export default function DrinkClient({
   const pendingSessionRef = useRef<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [result, setResult] = useState<RankItem[] | null>(null);
+  // The theatre runs once per saved tasting, before the plain list; tapping skips it.
+  const [revealing, setRevealing] = useState(false);
   const [pourTarget, setPourTarget] = useState<CatalogBottle | null>(null);
   const [showPourSheet, setShowPourSheet] = useState(false);
   const [isPouring, setIsPouring] = useState(false);
@@ -431,6 +434,7 @@ export default function DrinkClient({
       pendingSessionRef.current = null;
       setResult([...rankOrder]);
       setConfirming(false);
+      setRevealing(true);
       setStep("done");
       toast.success("Tasting saved — rankings updated");
     } finally {
@@ -442,7 +446,7 @@ export default function DrinkClient({
     pendingSessionRef.current = null;
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
     setRandom(false); setRandomCount(MIN_PICKS); setSwaps([]); setSwapping(false);
-    setGlassNotes({}); setNotesOpen(null);
+    setGlassNotes({}); setNotesOpen(null); setRevealing(false);
     setPourTarget(null); setShowPourSheet(false); setStep("home");
     if (seedBottleId) router.replace("/taste");
   };
@@ -914,7 +918,10 @@ export default function DrinkClient({
         )}
 
         {/* DONE / REVEAL (both) */}
-        {step === "done" && result && (
+        {step === "done" && result && revealing && (
+          <RevealShow ranked={result} onDone={() => setRevealing(false)} />
+        )}
+        {step === "done" && result && !revealing && (
           <div className="pt-6 text-center">
             <div className="text-4xl mb-3">🥃</div>
             <h2 className="text-lg font-semibold text-cream mb-1">{mode === "helper" ? "The reveal" : "Tasting complete"}</h2>
