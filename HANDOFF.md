@@ -64,10 +64,17 @@ What is open and in what order now lives on **[the board](https://github.com/use
   the lane, the card format, and two traps: **paginate** the board query (`first:100` hid #120/#121
   and an agent reported the lane empty), and **never rewrite the Status options** without a dump
   (adding the lane wiped every card's Status; restored from the dump).
+- **#120 + #121 shipped (2026-09-13, late).** `e490f2f`: **Grain_of_Truth is Grok's data bot and
+  inserts bottles by SQL**, so the app's add flow (the only caller of the admin push) never ran.
+  Now DB trigger `log_bottle_added` (AFTER INSERT on `bottles`, SECURITY DEFINER) writes the
+  `added_to_db` activity for any insert with a `created_by`; `logActivity()` reuses that row;
+  **`scripts/notify_admin_adds.mjs` sends the admin push from this machine** (VAPID + service role
+  are in `.env.local`; the project has no `pg_net`) and marks `details.admin_notified`. **It is
+  step 7 of the verify-bottle skill - GROK: run it after every data-account insert.** The three
+  missed adds were backfilled and sent (9 pushes / 0 failed). `a6d5456`: Admin Import tab removed
+  (it was a stub). Test card **#125** in *Brian to test*.
 - **Next step per the board** (read right to left, 2026-09-13): *In Progress* EMPTY. *Next Items
-  per Brian*: **#120** admins got no push when grain_of_truth added a bottle (investigate: the
-  `account_type = 'data'` gate, or `added_to_db` never reaching the notify route), **#121** remove
-  the Admin Import tab (XS). *Top Priority* EMPTY (#97 closed). *Top Priority* is **#97** (48
+  per Brian* EMPTY. *Top Priority* EMPTY. *Top Priority* is **#97** (48
   rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#122** push tap must
   open the link (small, and Brian just hit it), **#33** My Bar FAB -> add flow, **#27** barcode
   census, **#32** My Bar edit bottle, **#20** ranked results view.
