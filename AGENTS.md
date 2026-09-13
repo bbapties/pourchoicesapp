@@ -14,7 +14,9 @@ docs, then switches. This file is the standing context both agents load every se
 3. **The board** — https://github.com/users/bbapties/projects/1 — **the single source of truth for
    what is open and what order it happens in.** **PRIORITY RUNS RIGHT TO LEFT** — read the rightmost
    non-Done lane first: *In Progress*, then *Next Items per Brian*, then *Top Priority*, then
-   *Coming Soon*. **Re-read the column list every session**, descriptions included; the set has
+   *Coming Soon*. (*Brian to test* sits between In Progress and Done and is **Brian's** lane —
+   read it for context, never take work from it.) **Paginate the query** — the board has more than
+   100 items and `first:100` alone silently hid #120/#121 on 2026-09-13. **Re-read the column list every session**, descriptions included; the set has
    already changed once and an agent that stopped at *Top Priority* walked straight past the lane
    Brian had filled in (2026-09-07). *Next Items per Brian* is a **proposal** lane — judge each card
    and either work it or move it **with a comment saying why**.
@@ -208,7 +210,11 @@ END SESSION. We're switching agents. Before you stop:
      (what changed, commit hashes, the next single step, any open decision).
   2. Close the board issues that actually shipped, with a one-line comment naming the commit.
      Move anything that slipped to the right column. File anything new you found.
-  3. Reply with a 3-line summary: what shipped, what's committed/pushed to MVP-v3,
+  3. For anything you shipped but could NOT verify yourself (a real phone keyboard, camera,
+     push, wake lock, anything HTTPS-only), add a card to the "Brian to test" lane with
+     NUMBERED TEST STEPS and a pass/fail line. I test when I can: pass -> Done, fail -> back
+     to In Progress with a comment saying what was wrong.
+  4. Reply with a 3-line summary: what shipped, what's committed/pushed to MVP-v3,
      and the exact next step for the other agent.
 Write for a reader with zero memory of this session.
 ```
@@ -217,6 +223,9 @@ Write for a reader with zero memory of this session.
 1. Finish the work and **commit the code** (one change per commit).
 2. Run the test checklist under **Working conventions**.
 3. Update **HANDOFF.md** ("Right now" + a dated log entry) and **close the shipped board issues**.
+   **Add a *Brian to test* card** (numbered steps, pass/fail line — see [docs/BOARD.md](docs/BOARD.md))
+   for anything shipped that only a real phone can prove. New cards follow the board's card format:
+   plain-English title, "In plain English", "To do" checkboxes.
 4. **Commit the doc updates.**
 5. **Push everything to `MVP-v3`** (code + doc commits together) — the agent pushes, per Branch & deploy rules.
    The doc edits are the agent's own commit, not something Brian pushes later.

@@ -54,8 +54,20 @@ What is open and in what order now lives on **[the board](https://github.com/use
   carry-over from the previous session (wake lock through a helper pour, the reveal's shake, the
   swap flow mid-pour, the admin push on a data-account add). Also a signed-in prod pass (the pane
   cannot sign in to prod - passwords are Brian's to type).
-- **Next step per the board** (read right to left, 2026-09-13): *In Progress* and *Next Items
-  per Brian* are EMPTY. *Top Priority* is **#97** (48
+- **THE BOARD WAS CLEANED UP (2026-09-13, late).** Every open card now has a plain-English title,
+  an "In plain English" summary and a "To do" checklist (originals folded into `<details>`).
+  12 cards closed as done or merged (#97 images complete, #27/#28 barcodes 111/112, #32, #37,
+  #105 epic, #26 into #98, #17 into #38, #57 into #53, #30+#50 into #20, #117 into #118).
+  **New lane: "Brian to test"** between In Progress and Done - Brian's, with numbered steps on
+  every card (#123 blind-tasting flow, #124 stay-signed-in). **END SESSION now has a step 3**:
+  add a card there for anything you shipped but could not prove on a phone. `docs/BOARD.md` has
+  the lane, the card format, and two traps: **paginate** the board query (`first:100` hid #120/#121
+  and an agent reported the lane empty), and **never rewrite the Status options** without a dump
+  (adding the lane wiped every card's Status; restored from the dump).
+- **Next step per the board** (read right to left, 2026-09-13): *In Progress* EMPTY. *Next Items
+  per Brian*: **#120** admins got no push when grain_of_truth added a bottle (investigate: the
+  `account_type = 'data'` gate, or `added_to_db` never reaching the notify route), **#121** remove
+  the Admin Import tab (XS). *Top Priority* EMPTY (#97 closed). *Top Priority* is **#97** (48
   rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#122** push tap must
   open the link (small, and Brian just hit it), **#33** My Bar FAB -> add flow, **#27** barcode
   census, **#32** My Bar edit bottle, **#20** ranked results view.
@@ -634,6 +646,14 @@ plus #42, the QoL fix the previous baton had already queued. Brian gave the expl
 in `.claude/settings.local.json`), the ALTER went through, #12 closed. He tested #42 and the feedback
 trigger on his phone (pass) and asked for **every feedback report to push every admin** - shipped
 as `kind: "feedback"` in the notify route + `/admin?tab=feedback` deep link.
+
+**Then, later the same session: the board cleanup.** Brian asked for a full review: merge dupes,
+combine what belongs together, retitle everything in layman's terms, bullet the tasks, add a manual-
+testing lane for him, and put that lane into END SESSION. Done via a scripted pass
+(`gh issue edit` + GraphQL field writes). Two lessons are in `docs/BOARD.md`: the board is >100
+items so **paginate** (the first read missed 8 cards including Brian's two morning asks), and
+**`updateProjectV2Field` re-keys the options and wipes every card's Status** - dump first, restore
+after. `#123` / `#124` are the first two test cards.
 
 **Process notes for the next agent:**
 - **`node scripts/_psql.mjs` is now on the Bash allowlist** (`.claude/settings.local.json`), so

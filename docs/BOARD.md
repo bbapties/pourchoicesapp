@@ -37,7 +37,38 @@ gh api graphql -f query='query { user(login:"bbapties"){ projectV2(number:1){
 | **Top Priority** | Immediate work. |
 | **Next Items per Brian** | **What Brian wants to see next — but it is a PROPOSAL, not an order.** His own words on the column: *"if you logically think it's better to be skipped for another priority or wait for it to be joined with another, or needs more details, then move it appropriately and add comments."* So an agent is expected to judge each card and either work it or move it **with a comment saying why**. Never silently leave one sitting. |
 | **In Progress** | Actively being worked. |
+| **Brian to test** | **Shipped, but needs Brian's hands on a real phone.** Added 2026-09-13. Every card here carries **numbered test steps** and a pass/fail line. Brian: pass = drag to *Done*; fail = drag back to *In Progress* and comment which step and what you saw. Agents: at END SESSION, add a card here for anything you shipped but could not verify yourself (camera, push, wake lock, a real keyboard, anything HTTPS-only). Not a lane to take work from. |
 | **Done** | Completed. |
+
+### Card format (since the 2026-09-13 cleanup)
+
+Every open card reads the same way: **a plain-English title** (what a user would say, not a
+module name), then `## In plain English` (2-3 sentences), `## To do` (checkboxes, one per task),
+optional `## Notes for the agent` (file pointers, gotchas), and the original imported notes folded
+into a `<details>` block. **Keep new cards in this shape.** A title like "NULL-variant backfill can
+leave an orphan row" is for the agent; "Tapping a push notification does not open the right screen"
+is for Brian, and Brian is who reads the board.
+
+### Reading the board: PAGINATE
+
+The board has more than 100 items. `items(first:100)` **silently drops the newest cards** - on
+2026-09-13 an agent read "Next Items per Brian is empty" while #120 and #121 sat in it, past the
+page boundary. Always use `--paginate` with a cursor variable:
+
+```
+gh api graphql --paginate -f query='query($endCursor:String) { user(login:"bbapties"){ projectV2(number:1){
+  items(first:100, after:$endCursor){ pageInfo { hasNextPage endCursor } nodes {
+    status: fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue { name } }
+    content { ... on Issue { number title state } } } } } } }' \
+  --jq '.data.user.projectV2.items.nodes[] | select(.content.state=="OPEN") | "\(.status.name // "NONE") | #\(.content.number) | \(.content.title)"' | sort
+```
+
+`gh issue ...` commands need the repo: run them from the repo directory or set
+`GH_REPO=bbapties/pourchoicesapp`.
+
+**Never rewrite the Status field's option list** (`updateProjectV2Field` with `singleSelectOptions`)
+without dumping every item's Status first: GitHub re-keys the options and **every card's Status is
+wiped**. Adding the *Brian to test* lane did exactly that; the statuses were restored from the dump.
 
 ## Fields
 
