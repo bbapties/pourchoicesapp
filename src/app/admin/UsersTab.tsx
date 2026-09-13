@@ -35,7 +35,10 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
     // which is exactly the distinction the bell draws -- absent means "not enabled".
     const [usersRes, bottlesRes, sessionsRes, pushRes] = await Promise.all([
       supabase.from("users").select("id, username, email, role, created_at, avatar_url"),
-      supabase.from("user_bottles").select("user_id"),
+      // #7: one row per variant since the per-variant re-key, and tasting-only rows (times_had 0,
+      // nothing owned) are bookkeeping, not a bottle in My Bar. Count distinct bottles a person
+      // actually owns or has had, which is what "N bottles" and the delete warning both mean.
+      supabase.from("user_bottles").select("user_id, bottle_id, currently_owned, times_had"),
       supabase.from("tasting_sessions").select("user_id"),
       fetch("/api/admin/push-recipients")
         .then((r) => (r.ok ? r.json() : { recipients: [] }))
@@ -48,10 +51,14 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
       return;
     }
 
-    const bottleCounts = new Map<string, number>();
+    const bottlesByUser = new Map<string, Set<string>>();
     (bottlesRes.data || []).forEach((r) => {
-      bottleCounts.set(r.user_id, (bottleCounts.get(r.user_id) || 0) + 1);
+      if (!r.currently_owned && (r.times_had ?? 0) < 1) return;
+      if (!bottlesByUser.has(r.user_id)) bottlesByUser.set(r.user_id, new Set());
+      bottlesByUser.get(r.user_id)!.add(r.bottle_id);
     });
+    const bottleCounts = new Map<string, number>();
+    bottlesByUser.forEach((set, userId) => bottleCounts.set(userId, set.size));
     const pushDevices = new Map<string, number>();
     ((pushRes as { recipients?: { id: string; devices: number }[] }).recipients ?? []).forEach((r) =>
       pushDevices.set(r.id, r.devices)
