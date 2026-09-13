@@ -237,6 +237,7 @@ export const COACH_CATALOG: CoachItem[] = [
     route: "/social",
     core: false,
     announce: true,
+    tour: [],
   },
   {
     id: "bottle.variants",
