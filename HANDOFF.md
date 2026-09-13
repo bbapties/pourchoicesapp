@@ -9,12 +9,51 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `dcbb7f6` + this doc commit. All on origin/MVP-v3 and live on prod.
-- **Current phase:** **PHASE 5 SHIPPED - THE APP IS IN THE ROOM (2026-09-12, later session).**
+- **Tip:** `7c6d850` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Last session (2026-09-13, Claude): 29 commits of Brian's own asks, none from the board.**
+  He used the app all evening and fed back live. Everything below is on prod; the log entry has
+  the detail. Headlines a cold agent needs:
+  - **STARS ARE ON ONE FIXED SCALE NOW.** `elo_star()` = 2.5 at 1500, one star per 60 Elo,
+    clamped 0-5, IMMUTABLE, the same for personal and global Elo. Client mirror `eloToStar()` in
+    `src/lib/scores.ts` - change both or neither. The old "0-5 across the global min..max" scale
+    is gone (it moved everyone's stars whenever anyone tasted). `sql/elo-star-fixed-scale-*.sql`.
+  - **THE CARD'S STAR ALWAYS MATCHES THE ACTIVE SORT.** Global sort shows/orders by the blended
+    star (`blended_star` in the browse views; **an unscored bottle is 2.5, never null**), My Ranks
+    shows/orders by YOUR star (`my_star` in the views, scoped by `auth.uid()` via
+    `current_public_user_id()`). **Search's My Ranks is a SORT of the whole catalog again**, not a
+    narrowing - the key lives in the view so the ORDER BY survives pagination. Unranked = dash.
+  - **"RANKED" MEANS `blind_tasted_at IS NOT NULL`, never `elo <> 1500`.** A bottle can finish
+    mid-pack and net out at exactly 1500.00 (Bib & Tucker did). Grep for `1500` before adding
+    any "has this been ranked" check.
+  - **`my_variant_scores` IS NOW SCOPED TO THE CALLER.** It silently returned everyone's rows
+    after the social migration opened cross-user reads; My Bar's "your star" could have been
+    someone else's. Fixed in `sql/my-star-sort-migration.sql`.
+  - **NATIVE STORE APPS ARE COMING** (Brian's decision). No native work yet, but AGENTS.md now has
+    a standing section: build nothing that would have to be undone for a Capacitor shell.
+  - **The blind tasting flow changed a lot**: Home's top trim (drink glass left / scanner right),
+    "Surprise me from my bar" random lineups (one slot reserved for a least-tasted bottle), the
+    helper pours ONE GLASS PER SCREEN with a big bottle image and can SWAP a bottle they can't
+    pour (reason captured, footnoted on the reveal), notes per glass while ranking, a cinematic
+    reveal (`RevealShow`: shake / pop / confetti), wake lock through the tasting, Done -> Home.
+  - **Social**: rolled-up cards sum cheers + comments and SPLIT on tap (`splitGroup`); "Join @x in
+    a drink of the same bottle" on a post -> pour it or start a blind with it; the Home Social
+    shelf shows EVERY bottle of a blind in finishing order (via `tasting_podium`), with who/what
+    as one centred pill (`.pc-pill`, 38px).
+  - **Nav responsiveness**: `loading.tsx` on every tab (`RouteSkeleton`), optimistic tab
+    highlight in `AppShell`, My Bar's five user-keyed reads in one `Promise.all`.
+  - **Push**: monochrome Glencairn status-bar badge (`public/icons/badge-96.png`, SW `pc-v3`);
+    admins get a push when a `data` account adds a bottle (`added_to_db` through the notify route).
+- **Brian still has to test on his phone** (the pane could not): wake lock through a helper
+  pour, the reveal's shake, the swap flow mid-pour, and the admin push on a data-account add.
+- **Next step per the board** (read right to left, 2026-09-13): *In Progress* and *Next Items per
+  Brian* are EMPTY, so it is **#97** (Top Priority: 48 rejected bottle images, each needs a fresh
+  source), then the small *Coming Soon* fixes: **#42** keyboard dismissal, **#33** My Bar FAB ->
+  add flow, **#5** login cookie refresh, **#27** barcode census.
+- **Previous phase:** **PHASE 5 SHIPPED - THE APP IS IN THE ROOM (2026-09-12, later session).**
   The greyscale wireframe is gone from every screen. See "THE ROOM" below before touching any
   colour, and the 2026-09-12 (later) log entry for how the sweep was done. **The "greyscale until
   Phase 5" rule is retired; the new rule is: use the tokens in `globals.css` and nothing else.**
-- **Previous phase:** **THE SOCIAL LAYER + USER PAGE SHIPPED, 2026-09-12, in one session** -
+- **Phase before that:** **THE SOCIAL LAYER + USER PAGE SHIPPED, 2026-09-12, in one session** -
   epic **#105**, all nine steps (#106-#114), plus #103 and #104. Designed with Brian in the same
   session; the design record is the #105 body and the mockup canvas (ask Brian for the link).
   **Do not re-open settled design; read #105.**
@@ -506,6 +545,87 @@ this holds. **Re-check it before wiring anything else to a replay.**
   action per call**, which gives React a real render between steps. A synchronous loop of dispatched
   events measures a stale DOM and silently produces wrong results. A full helper-mode blind tasting
   was driven this way on 2026-09-06.
+
+---
+
+### 2026-09-13 - Claude (29 commits, all Brian's live feedback; three DB migrations)
+
+Brian drove this session from his phone; nothing came from the board. In order:
+
+- `b5eb39c` **Push badge.** The status-bar icon was a white square because Android draws the
+  badge from the alpha channel only and the barrel logo is opaque. New `badge-96.png` (white
+  Glencairn on transparent, `scripts/badge_icon.mjs`), SW cache `pc-v2 -> pc-v3`. The big icon
+  in the tray is still the logo.
+- `de3bd2d` **Admins hear data-account adds.** `added_to_db` now notifies; the route pushes every
+  `role='admin'` user when the adder's `account_type='data'` (Grain_of_Truth, Right_Blind).
+- `23a233a` **Start a blind tasting** on the picked-up bottle (Home) and on bottle detail. Both
+  push `/taste?bottle=&variant=` - the pre-seed that already existed, just surfaced.
+- `6a1473d` `52c8c33` `f08f13e` `c25379d` **Join @x in a drink of the same bottle** on someone
+  else's post (not on blind-result posts - no single bottle). Secondary button -> two brass
+  options: *Pour this bottle* (opens `BottleDetailView` with `autoOpenPour`) / *Start a blind
+  with this*. Event `join_drink`. Coach row `social.join_drink`.
+- `93a3ad9` Variant sheet's **Add to My Bar is sticky** at the bottom (Chattanooga has 47).
+- `b411bc2` **First Add showed a green earmark with no digit**: Search's optimistic row lacked
+  `owned_count`; the detail tray read it as 0. Row now carries the count; detail falls back.
+- `4ffad3a` **Rolled-up Social cards** sum cheers/comments (lit if you cheered any) and any tap
+  splits them in place (`splitGroup` in `src/lib/social.ts`; `group` is now `FeedItem[]`).
+- `ab4ec71` **Home top trim**: 40px fixed ebony rail, POUR CHOICES engraved, scanner far right
+  (`/search?scan=1`). AppShell clears 40px for `/home`. Coach `home.scan`.
+- `a80bd93` **Quick drink from the trim** (glass far left -> `/taste`). Pour list defaults to
+  YOUR BAR (typing searches everything). Blind: *Which bottles?* -> *I'll pick them* /
+  *Surprise me from my bar* -> *How many?* (2..owned, max 10) -> mode -> skips the pick step.
+  Random needs >=2 owned. New steps `source` / `count` in `DrinkClient`; back map updated.
+- `92b3e0e` **Helper pours one glass per screen**: big bottle image (`imageUrl` added to
+  `CatalogBottle` from `attr_frontimage_url`), brass letter disc, "about an ounce, same in every
+  glass", Back a glass, hide-the-bottles note on the last one.
+- `88bcabe` A random lineup **reserves one slot for a least-blind-tasted bottle** (ties random),
+  counted from the viewer's `tasting_sessions.variant_ids`; the rest is a straight draw.
+- `9ecc606` Hand-off copy: "Tell the taster to leave the room." **Screen Wake Lock** for the
+  whole tasting (re-acquired on visibilitychange, fail-open - needs HTTPS, untested). Done -> Home.
+- `0d19e07` **Swap a bottle the helper can't pour**: subtle link -> canned reasons (can't find /
+  can't open / terrible to blind / other + text) -> random replacement from the shelf not already
+  in the lineup, glass letter kept, `picks` + `glassAssignment` both updated. Footnote on the
+  reveal; event `blind_swap_bottle` is the durable record (state only otherwise).
+- `d1194b0` **Notes per glass while ranking** (nose / palate / finish), passed to `saveTasting`
+  as `notes` keyed by variantId -> `tasting_details.notes`, which the podium already shows.
+- `06ecef5` **The reveal as theatre**: `src/components/taste/RevealShow.tsx` - last place first,
+  shake (`pc-shake`), bottle pops (`pc-pop`) with a place bubble, longer shake and CSS confetti
+  (`pc-confetti`, brass/cream) for 1st, then the plain list. Tap to skip.
+- `02a1efc` **STARS ON ONE FIXED SCALE** - see "Right now". Three client copies of the old
+  floating formula (BottleDetailView, SearchClient, userPage Top 3) replaced by `eloToStar()`;
+  the two range-fetching effects deleted. My Bar: Global sort shows/orders by the global star,
+  My Ranks by your star (blind-earned or manual, one scale). Search: My Ranks shows your star.
+- `773f82c` **AGENTS.md: native store apps are coming** - the standing constraints.
+- `fb465af` **Home Social shelf shows every bottle of a blind** in finishing order
+  (`fetchSocial` expands `tasted` rows through `tasting_podium`; falls back to the winner).
+- `3564c7a` `c5ec5bb` `3d4b530` Social-shelf who/what -> **one centred pill** (`.pc-pill`),
+  settled at 1.75x (38px tall, 32px avatar + glyph).
+- `a986267` **Nav lag**: every tab was a server render with no loading boundary, so a tap showed
+  nothing until Supabase answered. `loading.tsx` on all six tabs (`RouteSkeleton`), optimistic
+  tab highlight (`pendingHref` in AppShell), My Bar's five user-keyed reads in one wave. The
+  remaining sequential detail reads in `mybar/page.tsx` are the next thing if it still lags.
+- `fb09850` `5b4af00` **Global browse order vs card star**: the browse WAS ordered by
+  `blended_star`, but an unscored bottle was NULL (sorted last) while the card invented 2.5 from
+  its 1500 Elo. Brian's rule: **unscored = 2.5 at 1500**, in the view, so it sorts in with the
+  2.5s. `sql/blended-star-default-2-5-*.sql`. Cards show `blended_star` and nothing else.
+- `7c6d850` **My Ranks on Search is a sort again; ranked = blind_tasted_at; my_variant_scores
+  scoped.** `sql/my-star-sort-migration.sql` adds `current_public_user_id()` and `my_star` to
+  both browse views; Search orders by it server-side and no longer narrows (`applyMyRanksOrder`
+  replaced `applyMyRanksToQuery`; the client `myStarMap`/`rankedIds` machinery is gone). The
+  count banner shows the full catalog under My Ranks.
+
+**QA data left behind (Claude account, `account_type='test'`, hidden from Social and from global
+Elo):** two blind sessions (1792 / Michter's / Angel's Envy; 1792 / Michter's) with one note, and
+two `added_to_collection` activity rows from the earmark test (their user_bottles rows deleted).
+
+**Landmines added this session:**
+- `elo_star()` is IMMUTABLE now. If it ever needs to read a table again it must go back to STABLE
+  or the planner will cache wrong answers.
+- `current_public_user_id()` is SECURITY INVOKER and reads `users` by `auth.uid()`; the browse
+  views call it per row inside a correlated subquery. Free at 111 bottles; if Search slows at
+  thousands, materialise `my_star` or move the join out of the view.
+- The Browser pane hides timers: a `setTimeout` loop measures nothing. Drive one action per
+  `javascript_tool` call (the 2026-09-06 rule) - it bit again three times tonight.
 
 ---
 
