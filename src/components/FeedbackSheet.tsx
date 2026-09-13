@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDictation } from "@/lib/useDictation";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { submitFeedback, type FeedbackType } from "@/lib/feedback";
+import { submitFeedback, FEEDBACK_MESSAGE_MAX, type FeedbackType } from "@/lib/feedback";
 
 interface FeedbackSheetProps {
   open: boolean;
@@ -118,9 +118,15 @@ export default function FeedbackSheet({ open, onOpenChange, userId }: FeedbackSh
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
+              maxLength={FEEDBACK_MESSAGE_MAX}
               placeholder={speechSupported ? "Type here, or tap Speak instead." : "Type here."}
               className="w-full border border-edge rounded px-3 py-2 text-sm text-cream"
             />
+            {message.length > FEEDBACK_MESSAGE_MAX * 0.9 && (
+              <p className="text-xs text-cream-faint mt-1 text-right">
+                {message.length.toLocaleString()} / {FEEDBACK_MESSAGE_MAX.toLocaleString()}
+              </p>
+            )}
           </div>
 
           {/* Screenshot attach */}

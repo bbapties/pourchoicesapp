@@ -12,6 +12,23 @@ export type FeedbackStatus = "new" | "triaged" | "planned" | "done";
 
 export const FEEDBACK_STATUSES: FeedbackStatus[] = ["new", "triaged", "planned", "done"];
 
+// #14 (B-68): bounds on what one person can put in the queue. The message cap is mirrored by
+// the feedback insert trigger (sql/b68-feedback-limits-migration.sql), which also caps reports
+// per user per hour, so a raw insert cannot bypass either. The client burst limit is the
+// polite first line: a double-tap or a stuck dictation loop should not file five reports.
+export const FEEDBACK_MESSAGE_MAX = 4000;
+const FEEDBACK_BURST_WINDOW_MS = 10 * 60 * 1000;
+const FEEDBACK_BURST_MAX = 5;
+let recentSubmits: number[] = [];
+
+function feedbackRateLimited(): boolean {
+  const now = Date.now();
+  recentSubmits = recentSubmits.filter((t) => now - t < FEEDBACK_BURST_WINDOW_MS);
+  if (recentSubmits.length >= FEEDBACK_BURST_MAX) return true;
+  recentSubmits.push(now);
+  return false;
+}
+
 export function statusLabel(s: FeedbackStatus): string {
   switch (s) {
     case "new": return "New";
@@ -144,6 +161,10 @@ export async function submitFeedback(opts: {
 }): Promise<{ error?: string; screenshotFailed?: boolean }> {
   const message = opts.message.trim();
   if (!message) return { error: "Message is empty" };
+  if (message.length > FEEDBACK_MESSAGE_MAX) {
+    return { error: `Please keep it under ${FEEDBACK_MESSAGE_MAX.toLocaleString()} characters` };
+  }
+  if (feedbackRateLimited()) return { error: "That's a lot of feedback at once — try again in a few minutes" };
 
   const ctx = captureContext();
 
