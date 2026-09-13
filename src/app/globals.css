@@ -335,14 +335,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
    the person on the left, the action on the right. Tapping the person opens them; the pill
    otherwise belongs to the bottle (the slot's own click opens the post). */
 .pc-pill { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); z-index: 2;
-  height: 44px; padding: 0 4px; border-radius: 22px; display: flex; align-items: center; gap: 4px;
+  height: 38px; padding: 0 3px; border-radius: 19px; display: flex; align-items: center; gap: 3px;
   background: var(--color-wall); border: 1.5px solid var(--color-brass);
   box-shadow: 0 3px 6px rgba(0,0,0,.6); }
-.pc-pill-who { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex: none;
+.pc-pill-who { width: 32px; height: 32px; border-radius: 50%; overflow: hidden; flex: none;
   display: flex; align-items: center; justify-content: center; background: #3b2c1e;
-  color: var(--color-brass-hi); font-size: 14px; font-weight: 700; line-height: 1; }
+  color: var(--color-brass-hi); font-size: 12px; font-weight: 700; line-height: 1; }
 .pc-pill-who img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pc-pill-what { width: 36px; height: 36px; border-radius: 50%; flex: none;
+.pc-pill-what { width: 32px; height: 32px; border-radius: 50%; flex: none;
   display: flex; align-items: center; justify-content: center; color: var(--color-brass-hi); }
 
 /* THE LED ON THE DECK (Brian, Phase 5) - the viewer's own relationship, as a pool of light on
