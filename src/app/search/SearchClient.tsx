@@ -19,7 +19,7 @@ import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty, type UserBottleRow } from "@/lib/userBottles";
 import { logEvent, logClick } from "@/lib/events";
-import { fetchBottleScores, fetchVariantScores, eloToStar, type BottleScore, type VariantScore } from "@/lib/scores";
+import { fetchBottleScores, fetchVariantScores, type BottleScore, type VariantScore } from "@/lib/scores";
 
 const DEFAULT_PAGE_SIZE = 30;
 const LOAD_MORE_SIZE = 15;
@@ -35,9 +35,9 @@ const EMPTY_UUID = '00000000-0000-0000-0000-000000000000';
 const DEFAULT_ELO = 1500;
 
 const BOTTLE_SELECT =
-  "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by, default_variant_elo, default_variant_id, variant_count, blended_star";
+  "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by, default_variant_elo, default_variant_id, variant_count, blended_star, my_star";
 const VARIANT_SELECT =
-  "variant_id, bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, variant_is_default, variant_elo_global, variant_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_batch, attr_release_year, attr_store_pick_name, attr_nose, attr_palate, attr_finish, attr_notes, blended_star";
+  "variant_id, bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, variant_is_default, variant_elo_global, variant_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_batch, attr_release_year, attr_store_pick_name, attr_nose, attr_palate, attr_finish, attr_notes, blended_star, my_star";
 
 interface SearchClientProps {
   bottlesElo: number[];       // default-variant Elo distribution (Bottles mode star scaling)
@@ -169,6 +169,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
       // every row -- an unscored bottle is 2.5 at its untouched 1500 Elo, not a null -- so the
       // number on the card is always the number the list is sorted by.
       stars: num(result.blended_star),
+      myStar: num(result.my_star),
       variantCount: visibleVariantCount,
       style: result.bottle_style,
       age: result.attr_age,
@@ -210,6 +211,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
       elo_global: elo,
       provisional: !result.variant_verified,
       stars: num(result.blended_star),
+      myStar: num(result.my_star),
       variantLabel: variantTag(result),
       style: result.bottle_style,
       age: result.attr_age,
@@ -257,7 +259,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
 
       const { data, error } = await supabase
         .from('user_bottles')
-        .select('bottle_id, currently_owned, variant_id, times_had, owned_count, elo, created_at, updated_at')
+        .select('bottle_id, currently_owned, variant_id, times_had, owned_count, elo, blind_tasted_at, created_at, updated_at')
         .eq('user_id', publicUser.id);
 
       if (error) {
@@ -283,10 +285,13 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
       // which is what a blind tasting produces. Reading only stars made "My Ranks" invisible to
       // exactly the people who had used the headline feature: Right_Blind had 6 ranked bottles and
       // 0 rows in user_ratings, and was told to "rate some bottles" (2026-09-05).
+      // "Ranked" means blind-tasted, never `elo <> 1500`: a bottle that finishes mid-pack can net
+      // out at exactly 1500 and would otherwise vanish from My Ranks (Bib & Tucker, 2026-09-13).
       const eloMap: Record<string, number> = {};
-      (data || []).forEach((row: { bottle_id: string; elo: number | string | null }) => {
-        const e = row.elo == null ? null : Number(row.elo);
-        if (e == null || Number.isNaN(e) || e === DEFAULT_ELO) return;
+      (data || []).forEach((row: { bottle_id: string; elo: number | string | null; blind_tasted_at: string | null }) => {
+        if (!row.blind_tasted_at) return;
+        const e = row.elo == null ? DEFAULT_ELO : Number(row.elo);
+        if (Number.isNaN(e)) return;
         eloMap[row.bottle_id] = Math.max(eloMap[row.bottle_id] ?? -Infinity, e);
       });
       setPersonalEloMap(eloMap);
@@ -347,38 +352,15 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
     ? filter.value + ':' + [...hadItIds].sort().join(',')
     : '';
 
-  // The viewer's own star per bottle, ONE scale (Brian, 2026-09-13): a blind-tasted bottle's star
-  // is its personal Elo on the fixed scale, an only-rated bottle's is the manual star, and both
-  // simply slot into the same 0-5 list. Blind wins over manual because B-47 deletes the guess the
-  // moment a bottle is blind-tasted anyway.
-  const myStarMap = useMemo(() => {
-    const out: Record<string, number> = { ...personalStarMap };
-    Object.entries(personalEloMap).forEach(([id, elo]) => { const s = eloToStar(elo); if (s != null) out[id] = s; });
-    return out;
-  }, [personalEloMap, personalStarMap]);
-
-  // The bottles this viewer has actually ranked or rated, best first.
-  const rankedIds = useMemo(
-    () => Object.entries(myStarMap).sort((a, b) => b[1] - a[1] || (personalEloMap[b[0]] ?? 0) - (personalEloMap[a[0]] ?? 0)).map(([id]) => id),
-    [myStarMap, personalEloMap],
-  );
-
-  const rankedKey = sortBy === 'yours' ? rankedIds.join(',') : '';
 
   /**
-   * My Ranks has to narrow the QUERY, not just reorder what is on screen. The browse list is
-   * paginated 30 at a time out of ~90 bottles, so sorting client-side only ever reordered the
-   * current page: a viewer's ranked bottles are scattered through the full list and most of them
-   * simply were not loaded to be sorted. Measured 2026-09-05: of 4 ranked bottles, 2 were on page
-   * one. Same failure shape as B-38.
-   *
-   * So "My Ranks" means "the bottles I have ranked, best first" -- the only reading that survives
-   * pagination, and the one that matches what the sort is for.
+   * My Ranks is a SORT of the whole catalog (Brian, 2026-09-13): the bottles you have ranked or
+   * rated first, best first, then everything else in global order. It used to NARROW the query to
+   * ranked bottles, because a client-side sort could only reorder the loaded page (2026-09-05).
+   * The key now lives in the view (`my_star`, scoped to the caller by auth.uid()), so the ORDER BY
+   * runs server-side across every page and there is nothing to narrow.
    */
-  const applyMyRanksToQuery = (q: any) => {
-    if (sortBy !== 'yours') return q;
-    return rankedIds.length ? q.in('bottle_id', rankedIds) : q.eq('bottle_id', EMPTY_UUID);
-  };
+  const applyMyRanksOrder = (q: any) => (sortBy === 'yours' ? q.order("my_star", { ascending: false, nullsFirst: false }) : q);
 
   /**
    * Apply the "Had it before" filter to a browse query. It has to run SERVER-side like the other
@@ -424,7 +406,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
         q = q.eq(isBottles ? 'bottle_verified' : 'variant_verified', filter.value === 'Verified');
       }
       q = applyHadItToQuery(q);
-      q = applyMyRanksToQuery(q);
+      q = applyMyRanksOrder(q);
       const { data, error } = await q
         // Sort by the star the card actually SHOWS. It used to sort by Elo while displaying the
         // blended score, which put W.L. Weller Antique 107 -- one manual 5.0, never blind-tasted,
@@ -458,7 +440,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
       else { setIsLoadingMore(false); isLoadingMoreRef.current = false; }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, publicUserId, filter.field, filter.value, hadItKey, sortBy, rankedKey]);
+  }, [viewMode, publicUserId, filter.field, filter.value, hadItKey, sortBy]);
 
   // Initial browse load (re-runs when the mode changes or the filter changes — B-38)
   useEffect(() => {
@@ -555,15 +537,16 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
         // version and shows that version's own score, which is the entire point of the toggle.
         // `bottle.stars` is the old client-side scaling of elo_global, kept as the fallback for
         // anything the views have no row for.
-        // My Ranks on: the card shows YOUR star, so the number you read is the number the list
-        // is ordered by (Brian, 2026-09-13). Otherwise the global star, as always.
+        // My Ranks on: the card shows YOUR star (a dash if you have none), so the number you read
+        // is the number the list is ordered by (Brian, 2026-09-13). Otherwise the global star.
         stars:
-          (sortBy === 'yours' ? myStarMap[skuId] : undefined) ??
-          (bottle.variantId
-            ? variantScores[bottle.variantId as string]?.star
-            : bottleScores[skuId]?.star) ??
-          (bottle.stars as number | null | undefined) ??
-          null,
+          sortBy === 'yours'
+            ? ((bottle.myStar as number | null | undefined) ?? null)
+            : (bottle.variantId
+                ? variantScores[bottle.variantId as string]?.star
+                : bottleScores[skuId]?.star) ??
+              (bottle.stars as number | null | undefined) ??
+              null,
         // #70: once a bottle has split, its main row IS the catch-all, so calling it "Default"
         // tells the reader they are looking at the standard bottling when they are looking at the
         // opposite. The score view knows which row that is, so no extra query.
@@ -591,15 +574,9 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
 
     if (sortBy === 'az') return [...annotated].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (sortBy === 'za') return [...annotated].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
-    if (sortBy === 'yours') {
-      // My Ranks (S4): the viewer's own star, best first; anything they have no opinion on falls
-      // to the end. One scale for blind-earned and manual stars -- see myStarMap.
-      const rank = (b: { bottleId?: string; id: string }) => myStarMap[b.bottleId ?? b.id] ?? -Infinity;
-      const elo = (b: { bottleId?: string; id: string }) => personalEloMap[b.bottleId ?? b.id] ?? 0;
-      return [...annotated].sort((a, b) => rank(b) - rank(a) || elo(b) - elo(a));
-    }
-    return annotated; // global/null = server Elo order
-  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, myStarMap, personalEloMap, bottleScores, variantScores]);
+    // My Ranks and Global both arrive in server order (my_star / blended_star); nothing to re-sort.
+    return annotated;
+  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, bottleScores, variantScores]);
 
   const handleSortSelect = (option: SortOption) => {
     if (option === 'yours' && Object.keys(personalEloMap).length === 0 && Object.keys(personalStarMap).length === 0) {
@@ -743,6 +720,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
         .select(isBottles ? BOTTLE_SELECT : VARIANT_SELECT)
         .or(orClause);
       if (!isBottles) sq = scopeVariantQuery(sq);
+      sq = applyMyRanksOrder(sq);
       const { data: searchResults, error } = await sq
         // Sort by the star the card actually SHOWS. It used to sort by Elo while displaying the
         // blended score, which put W.L. Weller Antique 107 -- one manual 5.0, never blind-tasted,
@@ -912,7 +890,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
 
   useEffect(() => {
     // Only needed when browsing (no query) with a filter active
-    if (query.trim() || (!filterActive && sortBy !== 'yours')) {
+    if (query.trim() || !filterActive) {
       setFilteredBrowseCount(null);
       return;
     }
@@ -930,14 +908,13 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
         q = q.eq(col, filter.value === 'Verified');
       }
       q = applyHadItToQuery(q);
-      q = applyMyRanksToQuery(q);
 
       const { count } = await q;
       setFilteredBrowseCount(count ?? 0);
     }
 
     fetchCount();
-  }, [filter, query, filterActive, viewMode, publicUserId, hadItKey, sortBy, rankedKey]);
+  }, [filter, query, filterActive, viewMode, publicUserId, hadItKey, sortBy]);
 
   // Count shown in banner
   // - No query, no filter: total DB count for the mode (from server prop)
@@ -946,7 +923,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
   const totalCount = viewMode === 'bottles' ? totalBottleCount : totalVariantCount;
   const displayCount = query.trim()
     ? sortedBottles.length
-    : (filterActive || sortBy === 'yours') && filteredBrowseCount !== null
+    : filteredBrowseCount !== null && filterActive
     ? filteredBrowseCount
     : totalCount;
 

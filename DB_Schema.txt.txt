@@ -272,6 +272,7 @@ CREATE TABLE public.wishlists (
 --   actor_muted_by_post_owner(p_activity_id uuid, p_actor_id uuid)  SECURITY DEFINER
 --   bottle_delete_impact(p_bottle uuid)  SECURITY DEFINER
 --   commit_bottle_import(payload jsonb)  SECURITY DEFINER
+--   current_public_user_id()
 --   default_to_admin()  SECURITY DEFINER
 --   delete_user_cascade(target_user_id uuid)  SECURITY DEFINER
 --   elo_global_target(p_variant uuid)
