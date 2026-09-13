@@ -7,7 +7,7 @@ import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
-import { saveTasting, type TastingPick, MIN_PICKS, MAX_PICKS } from "@/lib/tastings";
+import { saveTasting, type TastingPick, type GlassNote, MIN_PICKS, MAX_PICKS } from "@/lib/tastings";
 import { logClick, logEvent } from "@/lib/events";
 import { useDragReorder, arrayMove } from "@/lib/useDragReorder";
 import { fetchUserRatingState } from "@/lib/ratings";
@@ -30,6 +30,7 @@ type CatalogBottle = {
 type RankItem = CatalogBottle & { glassLetter: string };
 
 const letter = (i: number) => String.fromCharCode(65 + i); // 0 -> A
+const hasNote = (n?: GlassNote) => !!(n && (n.nose?.trim() || n.palate?.trim() || n.finish?.trim()));
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -82,6 +83,10 @@ export default function DrinkClient({
   const [swapReason, setSwapReason] = useState<string>("");
   const [swapOther, setSwapOther] = useState("");
   const [rankOrder, setRankOrder] = useState<RankItem[]>([]);
+  // Tasting notes per glass, typed while ranking. Keyed by variantId; saved with the session
+  // and shown on the post's podium. Which glass is open for notes is UI state, not data.
+  const [glassNotes, setGlassNotes] = useState<Record<string, GlassNote>>({});
+  const [notesOpen, setNotesOpen] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // Holds the session created by a failed save so a retry reuses it (B-07: never
   // create a second session that would score the same tasting twice).
@@ -412,7 +417,14 @@ export default function DrinkClient({
       // saveTasting can persist the pour order too — in helper mode the glasses were
       // shuffled, so it is not recoverable from this list (board #11).
       const orderedPicks: TastingPick[] = rankOrder.map((b) => ({ bottleId: b.bottleId, variantId: b.variantId, name: b.name, glassLetter: b.glassLetter }));
-      const res = await saveTasting({ userId: publicUserId, mode, picks: orderedPicks, sessionId: pendingSessionRef.current });
+      // Only glasses with something written get a notes object; empty strings are dropped.
+      const notes: Record<string, GlassNote> = {};
+      Object.entries(glassNotes).forEach(([vid, n]) => {
+        const clean: GlassNote = {};
+        (["nose", "palate", "finish"] as const).forEach((k) => { const v = n[k]?.trim(); if (v) clean[k] = v; });
+        if (Object.keys(clean).length) notes[vid] = clean;
+      });
+      const res = await saveTasting({ userId: publicUserId, mode, picks: orderedPicks, notes, sessionId: pendingSessionRef.current });
       // Remember the session even on failure so a retry reuses it (idempotent).
       if (res.sessionId) pendingSessionRef.current = res.sessionId;
       if (res.error) { toast.error("Could not save the tasting"); return; }
@@ -430,6 +442,7 @@ export default function DrinkClient({
     pendingSessionRef.current = null;
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
     setRandom(false); setRandomCount(MIN_PICKS); setSwaps([]); setSwapping(false);
+    setGlassNotes({}); setNotesOpen(null);
     setPourTarget(null); setShowPourSheet(false); setStep("home");
     if (seedBottleId) router.replace("/taste");
   };
@@ -839,10 +852,11 @@ export default function DrinkClient({
                 <div
                   key={b.variantId}
                   ref={setRowRef(i)}
-                  className={`flex items-center gap-2 rounded-lg border p-3 bg-panel ${
+                  className={`rounded-lg border p-3 bg-panel ${
                     dragIndex === i ? "border-brass-line ring-2 ring-brass opacity-90 shadow-lg" : "border-brass-line"
                   }`}
                 >
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     aria-label={`Reorder ${mode === "helper" ? `glass ${b.glassLetter}` : b.name}, currently ${i + 1} of ${rankOrder.length}. Drag, or use the arrow keys.`}
@@ -867,6 +881,29 @@ export default function DrinkClient({
                     <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)} className="p-0.5 disabled:opacity-30 text-cream"><ChevronUp size={18} /></button>
                     <button type="button" aria-label="Move down" disabled={i === rankOrder.length - 1} onClick={() => move(i, 1)} className="p-0.5 disabled:opacity-30 text-cream"><ChevronDown size={18} /></button>
                   </div>
+                </div>
+                {/* Notes: a small toggle, then nose / palate / finish under the row. */}
+                <button
+                  type="button"
+                  onClick={() => setNotesOpen((cur) => (cur === b.variantId ? null : b.variantId))}
+                  className="mt-2 text-xs text-cream-mute underline underline-offset-2"
+                >
+                  {notesOpen === b.variantId ? "Hide notes" : hasNote(glassNotes[b.variantId]) ? "Edit notes" : "Add tasting notes"}
+                </button>
+                {notesOpen === b.variantId && (
+                  <div className="mt-2 space-y-1.5">
+                    {(["nose", "palate", "finish"] as const).map((k) => (
+                      <input
+                        key={k}
+                        type="text"
+                        value={glassNotes[b.variantId]?.[k] ?? ""}
+                        onChange={(e) => setGlassNotes((prev) => ({ ...prev, [b.variantId]: { ...prev[b.variantId], [k]: e.target.value } }))}
+                        placeholder={k === "nose" ? "Nose" : k === "palate" ? "Palate" : "Finish"}
+                        className="w-full rounded-md border border-brass-line px-3 h-10 text-base bg-panel text-cream"
+                      />
+                    ))}
+                  </div>
+                )}
                 </div>
               ))}
             </div>
