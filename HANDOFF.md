@@ -78,9 +78,13 @@ What is open and in what order now lives on **[the board](https://github.com/use
   `ServiceWorkerRegistrar` does `router.push` (same-origin only) and acks; no ack in 1.5s ->
   `navigate()` where it exists -> `openWindow()`. iOS never implemented `WindowClient.navigate`,
   which is why every push link was dead there. **SW cache is `pc-v4`.** Test card **#126**.
+- **#118 shipped** `4322954`: Search no longer flickers. `resultsFor` (which query `bottles`
+  answers) + `searchPending`; the previous list stays at half opacity with "..." in the banner
+  until the new one lands; skeleton only on a first search; the empty state needs the CURRENT
+  query to have answered; `searchSeq` drops stale responses. Test card **#127**.
 - **Next step per the board** (read right to left, 2026-09-13): *In Progress* EMPTY. *Next Items
-  per Brian* EMPTY. *Top Priority* EMPTY. *Coming Soon*, in order: **#118** search flicker,
-  **#119** Have a drink not reaching My Bar > Tasted, **#33** '+' on My Bar, **#20** past tastings. *Top Priority* is **#97** (48
+  per Brian* EMPTY. *Top Priority* EMPTY. *Coming Soon*, in order: **#119** Have a drink not
+  reaching My Bar > Tasted, **#33** '+' on My Bar, **#20** past tastings. *Top Priority* is **#97** (48
   rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#122** push tap must
   open the link (small, and Brian just hit it), **#33** My Bar FAB -> add flow, **#27** barcode
   census, **#32** My Bar edit bottle, **#20** ranked results view.
