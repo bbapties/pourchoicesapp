@@ -9,7 +9,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `dfbee6b` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `4322954` + doc commits (this one last). All on origin/MVP-v3 and live on prod.
 - **Last session (2026-09-13, later, Claude): six bugs cleared off the board in six commits.**
   Brian said "clear the next 6 bugs" and gave the explicit go for the two behind the auth /
   security guardrail. All six closed; then one ask on top (feedback -> admin push):
@@ -83,8 +83,14 @@ What is open and in what order now lives on **[the board](https://github.com/use
   until the new one lands; skeleton only on a first search; the empty state needs the CURRENT
   query to have answered; `searchSeq` drops stale responses. Test card **#127**.
 - **Next step per the board** (read right to left, 2026-09-13): *In Progress* EMPTY. *Next Items
-  per Brian* EMPTY. *Top Priority* EMPTY. *Coming Soon*, in order: **#119** Have a drink not
-  reaching My Bar > Tasted, **#33** '+' on My Bar, **#20** past tastings. *Top Priority* is **#97** (48
+  per Brian* EMPTY. *Top Priority* EMPTY. *Brian to test* has five cards (#123-#127) - his lane,
+  not yours. *Coming Soon*, in order: **#119** Have a drink not reaching My Bar > Tasted, **#33**
+  '+' on My Bar, **#20** past tastings.
+- **OPEN DECISION blocking #119 (asked, not yet answered):** what does the My Bar **Tasted** tab
+  mean - *any bottle you have had a drink of* (Have a drink sets `tasted_at`, `times_had` 0,
+  `currently_owned` false) or *only bottles you blind-tasted* (`blind_tasted_at`)? Today it shows
+  neither for a plain pour. Get Brian's answer before touching `src/app/mybar/page.tsx`; the
+  2026-09-13 "ranked = blind_tasted_at" rule must not be what Tasted accidentally uses. *Top Priority* is **#97** (48
   rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#122** push tap must
   open the link (small, and Brian just hit it), **#33** My Bar FAB -> add flow, **#27** barcode
   census, **#32** My Bar edit bottle, **#20** ranked results view.
@@ -671,6 +677,20 @@ testing lane for him, and put that lane into END SESSION. Done via a scripted pa
 items so **paginate** (the first read missed 8 cards including Brian's two morning asks), and
 **`updateProjectV2Field` re-keys the options and wipes every card's Status** - dump first, restore
 after. `#123` / `#124` are the first two test cards.
+
+**Then, after the cleanup, four more cards in board order:**
+- `e490f2f` **#120** admins hear data-bot adds. Grain_of_Truth is Grok's bot and inserts by SQL;
+  the app's add flow never ran. DB trigger `log_bottle_added` writes `added_to_db` on any bottle
+  insert with a `created_by`; `logActivity()` reuses it; `scripts/notify_admin_adds.mjs` pushes
+  admins from this machine and marks `details.admin_notified`. Step 7 of the verify-bottle skill.
+  Backfilled + sent the three missed adds (9 pushes). Test card #125.
+- `a6d5456` **#121** Admin Import tab removed (stub).
+- `1e7bd47` **#122** push taps open their screen: worker posts `pc:navigate` + reply port,
+  `ServiceWorkerRegistrar` routes and acks; fallback `navigate()` -> `openWindow()`. iOS has no
+  `WindowClient.navigate`. SW `pc-v4`. Test card #126.
+- `4322954` **#118** search flicker: `resultsFor` / `searchPending` / `searchSeq`; previous list
+  dimmed while pending, empty state only once answered, stale responses dropped. Test card #127.
+- **#119 stopped on a question for Brian** (what "Tasted" means) - see "Right now".
 
 **Process notes for the next agent:**
 - **`node scripts/_psql.mjs` is now on the Bash allowlist** (`.claude/settings.local.json`), so
