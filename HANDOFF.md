@@ -24,7 +24,10 @@ What is open and in what order now lives on **[the board](https://github.com/use
     (`kind: "feedback"` in `/api/social/notify`, fired from `submitFeedback` before the screenshot
     upload). Deep-links to `/admin?tab=feedback` (`AdminPage` reads `searchParams.tab`, passes
     `initialTab`). Verified: QA report -> `{"sent":3,"failed":0,"recipients":1}` = Brian's 3
-    devices.
+    devices. **The push arrived but tapping it did NOT open the Feedback tab** - filed as
+    **#122** (Coming Soon, S): `sw.js` `notificationclick` relies on `WindowClient.navigate()`,
+    which iOS does not implement and the handler swallows; **every push's link is affected**,
+    not just feedback. Brian's words: the report is what triggered the push, so it must land there.
   - **#14** `7c6976f` feedback message capped at 4000 chars + 5 reports / 10 min on the client;
     `guard_feedback_insert` trigger (truncate + 20 / user / hour, RAISE) **is applied to prod**
     (`sql/b68-feedback-limits-migration.sql`). Events were already bounded (B-60 + Phase 10 A1).
@@ -53,8 +56,9 @@ What is open and in what order now lives on **[the board](https://github.com/use
   cannot sign in to prod - passwords are Brian's to type).
 - **Next step per the board** (read right to left, 2026-09-13): *In Progress* and *Next Items
   per Brian* are EMPTY. *Top Priority* is **#97** (48
-  rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#33** My Bar FAB ->
-  add flow, **#27** barcode census, **#32** My Bar edit bottle, **#20** ranked results view.
+  rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#122** push tap must
+  open the link (small, and Brian just hit it), **#33** My Bar FAB -> add flow, **#27** barcode
+  census, **#32** My Bar edit bottle, **#20** ranked results view.
 - **Previous session (2026-09-13, Claude): 29 commits of Brian's own asks, none from the board.**
   He used the app all evening and fed back live. Everything below is on prod; the log entry has
   the detail. Headlines a cold agent needs:
