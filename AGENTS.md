@@ -123,6 +123,25 @@ check `cat .vercel/project.json` before believing it.
 
 ---
 
+## Native apps are coming — build so nothing has to be undone
+Pour Choices **will ship as real App Store / Play Store apps** (Brian, 2026-09-13), most likely a
+Capacitor shell around this codebase. No native work yet — but every solution from now on must not
+conflict with that. In practice:
+- **Keep the client independent of the browser chrome.** Nothing may assume a URL bar, browser
+  back button, or `window.open`; navigation goes through Next's router. No `alert`/`confirm`.
+- **Device features behind one seam.** Camera / barcode, push, wake lock, haptics, share, file
+  pickers: call them through a small wrapper in `src/lib/` (or a hook), never sprinkled inline, so a
+  native plugin can be swapped in later. Web push today; APNs/FCM will be a second sender in
+  `push-server.ts`, so the notify routes must stay transport-agnostic (decide WHO, then send).
+- **Auth must work inside a webview:** cookie/session flows only, no popup OAuth, no third-party
+  login without Sign in with Apple alongside it.
+- **Store rules become launch blockers:** in-app account deletion (#16), a privacy policy, 17+
+  alcohol rating. Don't add data collection that would be awkward to declare.
+- **No `localStorage` as the source of truth** for anything that matters; it is per-webview and
+  wiped by the OS. Supabase is the record.
+- Prefer capabilities that map to native ones (manifest shortcuts, badges, share target) and avoid
+  browser-only tricks that would look broken in a wrapper.
+
 ## Guardrails — ask Brian first
 - **No hard-deletes** of user data.
 - **No changes to auth, security, middleware, or env/secret config** without explicit approval.
