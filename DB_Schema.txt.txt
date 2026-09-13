@@ -212,7 +212,7 @@ CREATE TABLE public.user_bottles (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   currently_owned boolean DEFAULT true,
-  variant_id uuid,
+  variant_id uuid NOT NULL,
   times_had integer NOT NULL DEFAULT 1,
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   owned_count integer NOT NULL DEFAULT 0,
