@@ -185,7 +185,8 @@ export default function BottleDetailView({
   const currentOwnership = (() => {
     if (currentVariantId && ownershipMap[currentVariantId]) {
       const r = ownershipMap[currentVariantId];
-      return { inColl: r.currently_owned || r.times_had >= 1, owned: r.currently_owned, ownedCount: r.owned_count };
+      // A row without a count (an optimistic one) still owns at least one bottle if it says so.
+      return { inColl: r.currently_owned || r.times_had >= 1, owned: r.currently_owned, ownedCount: r.owned_count ?? (r.currently_owned ? 1 : 0) };
     }
     if (skuHasRows && currentVariantId) return { inColl: false, owned: false, ownedCount: 0 };
     if (skuHasRows) {

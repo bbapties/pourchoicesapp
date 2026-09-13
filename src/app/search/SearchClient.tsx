@@ -852,6 +852,9 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         currently_owned: true,
         variant_id: resolvedVariant,
         times_had: result.timesHad,
+        // One more on the shelf. Without this the detail tray's earmark read the missing count as
+        // 0 and showed a green corner with no digit after the very first add (Brian, 2026-09-13).
+        owned_count: (idx >= 0 ? rows[idx].owned_count ?? 0 : 0) + 1,
         created_at: idx >= 0 ? rows[idx].created_at ?? now : now,
         updated_at: now,
       };
