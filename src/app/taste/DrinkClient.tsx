@@ -73,6 +73,14 @@ export default function DrinkClient({
   const [glassAssignment, setGlassAssignment] = useState<{ letter: string; pick: CatalogBottle }[]>([]);
   // Helper pours one glass at a time; this is the glass on screen.
   const [pourIndex, setPourIndex] = useState(0);
+  // A bottle the helper could not pour, swapped for another from the shelf. Shown as a
+  // footnote on the reveal so Brian can tell a My Bar data problem from a cork that would
+  // not budge. Lives in state only; the event row is the durable record.
+  type Swap = { letter: string; from: CatalogBottle; to: CatalogBottle; reason: string };
+  const [swaps, setSwaps] = useState<Swap[]>([]);
+  const [swapping, setSwapping] = useState(false);
+  const [swapReason, setSwapReason] = useState<string>("");
+  const [swapOther, setSwapOther] = useState("");
   const [rankOrder, setRankOrder] = useState<RankItem[]>([]);
   const [saving, setSaving] = useState(false);
   // Holds the session created by a failed save so a retry reuses it (B-07: never
@@ -336,6 +344,32 @@ export default function DrinkClient({
     setStep("helperSetup");
   };
 
+  const SWAP_REASONS = ["Can't find that bottle", "Can't get that bottle open", "That's a terrible bottle to blind", "Other"];
+
+  // Replace the bottle on screen with a random one from the shelf that is not already in the
+  // lineup. The glass letter stays: the helper is still pouring glass C, just from a different
+  // bottle. Both `picks` and the frozen assignment move together so the save sees the swap.
+  const swapCurrent = () => {
+    const g = glassAssignment[pourIndex];
+    if (!g) return;
+    const reason = swapReason === "Other" ? (swapOther.trim() || "Other") : swapReason;
+    if (!reason) { toast("Say why, so the swap makes sense on the reveal"); return; }
+    const inLineup = new Set(glassAssignment.map((x) => x.pick.variantId));
+    const pool = (owned || []).filter((b) => !inLineup.has(b.variantId));
+    if (!pool.length) { toast.error("Nothing else on your shelf to swap in"); return; }
+    const to = shuffle(pool)[0];
+    setGlassAssignment((prev) => prev.map((x, i) => (i === pourIndex ? { ...x, pick: to } : x)));
+    setPicks((prev) => prev.map((p) => (p.variantId === g.pick.variantId ? to : p)));
+    setSwaps((prev) => [...prev, { letter: g.letter, from: g.pick, to, reason }]);
+    logClick("blind_swap_bottle", {
+      userId: publicUserId,
+      targetId: g.pick.bottleId,
+      metadata: { from_variant: g.pick.variantId, to_variant: to.variantId, glass: g.letter, reason, canned: swapReason !== "Other" },
+    });
+    setSwapping(false); setSwapReason(""); setSwapOther("");
+    toast(`Glass ${g.letter} is now ${to.name}`);
+  };
+
   const restartHelperLineup = () => {
     setGlassAssignment([]);
     setRankOrder([]);
@@ -395,7 +429,7 @@ export default function DrinkClient({
   const reset = () => {
     pendingSessionRef.current = null;
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
-    setRandom(false); setRandomCount(MIN_PICKS);
+    setRandom(false); setRandomCount(MIN_PICKS); setSwaps([]); setSwapping(false);
     setPourTarget(null); setShowPourSheet(false); setStep("home");
     if (seedBottleId) router.replace("/taste");
   };
@@ -735,6 +769,39 @@ export default function DrinkClient({
                   Before you hand back: leave the bottles on the table in a random order if the taster may know what is in play, or put them back in the collection so they have no idea.
                 </p>
               )}
+              {!swapping ? (
+                <button type="button" onClick={() => setSwapping(true)} className="mt-4 text-xs text-cream-mute underline underline-offset-2">Can&apos;t pour this one? Swap it for another</button>
+              ) : (
+                <div className="w-full mt-4 rounded-lg border border-brass-line p-3 text-left">
+                  <p className="text-sm font-semibold text-cream mb-2">Why swap it?</p>
+                  <div className="space-y-1.5">
+                    {SWAP_REASONS.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setSwapReason(r)}
+                        className="w-full text-left rounded-md border px-3 py-2 text-sm"
+                        style={swapReason === r ? { backgroundColor: "#bd9436", color: "#1c1303", borderColor: "#bd9436" } : { borderColor: "#3a2f26", color: "#f6ecd9" }}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                    {swapReason === "Other" && (
+                      <input
+                        type="text"
+                        value={swapOther}
+                        onChange={(e) => setSwapOther(e.target.value)}
+                        placeholder="What happened?"
+                        className="w-full rounded-md border border-brass-line px-3 h-10 text-base bg-panel text-cream"
+                      />
+                    )}
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button type="button" onClick={() => { setSwapping(false); setSwapReason(""); setSwapOther(""); }} className="flex-1 rounded-lg border border-brass-line py-2 text-sm text-cream">Keep it</button>
+                    <button type="button" onClick={swapCurrent} disabled={!swapReason} className="flex-1 rounded-lg py-2 text-sm font-semibold disabled:opacity-40" style={{ backgroundColor: "#bd9436", color: "#1c1303" }}>Deal another</button>
+                  </div>
+                </div>
+              )}
               <button type="button" onClick={restartHelperLineup} className="mt-4 text-xs text-cream-mute underline underline-offset-2">Wrong bottles? Pick again</button>
             </div>
           );
@@ -826,6 +893,13 @@ export default function DrinkClient({
                 </div>
               ))}
             </div>
+            {swaps.length > 0 && (
+              <div className="text-left text-xs text-cream-mute mb-5 space-y-1">
+                {swaps.map((sw, i) => (
+                  <p key={i}>Glass {sw.letter} was going to be {sw.from.name}; swapped for {sw.to.name} — &ldquo;{sw.reason}&rdquo;.</p>
+                ))}
+              </div>
+            )}
             <button type="button" onClick={() => { reset(); router.push("/home"); }} className={secondaryBtn}>Done</button>
           </div>
         )}
