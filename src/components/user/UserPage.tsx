@@ -18,7 +18,7 @@ import InstallSheet from "@/components/InstallSheet";
 import { ALL_KINDS, fetchRelationship, follow, unfollow, unmute, type Relationship } from "@/lib/relationships";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { logClick, logEvent } from "@/lib/events";
-import { fetchUserFeed, toggleCheer, type FeedItem } from "@/lib/social";
+import { fetchUserFeed, splitGroup, toggleCheer, type FeedItem } from "@/lib/social";
 import { notify } from "@/lib/notify";
 import type { ShelfBottle, ShelfDef } from "@/lib/shelves";
 import {
@@ -342,7 +342,7 @@ export default function UserPage({ own = false, username }: Props) {
       ) : (
         <div className="pt-1">
           {feed.map((item) => (
-            <ActivityCard key={item.id} item={item} viewerId={publicUserId ?? null} onCheer={handleCheer} />
+            <ActivityCard key={item.id} item={item} viewerId={publicUserId ?? null} onCheer={handleCheer} onExpand={(it) => setFeed((prev) => splitGroup(prev, it.id))} />
           ))}
           {hasMore && (
             <div className="p-4 text-center">

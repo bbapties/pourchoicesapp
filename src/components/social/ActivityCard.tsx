@@ -25,6 +25,8 @@ type Props = {
   detail?: boolean;
   /** Detail view only: Comment focuses the compose box instead of navigating. */
   onComment?: () => void;
+  /** Rolled-up card: any tap (body, Cheers, Comment) splits it into its members instead. */
+  onExpand?: (item: FeedItem) => void;
 };
 
 /** The verb line. The body names the bottle, so the verb never repeats it - it would truncate. */
@@ -48,9 +50,16 @@ export function verbFor(row: ActivityRow, groupSize = 1): string {
   }
 }
 
-export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, onOpenUser, detail = false, onComment }: Props) {
+export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, onOpenUser, detail = false, onComment, onExpand }: Props) {
   const group = item.group ?? [item];
   const href = `/post/${item.id}`;
+  // A rolled-up card speaks for all its members: summed counts, lit if the viewer cheered any.
+  // It cannot be reacted to as a whole - every tap on it splits it so reactions land on one post.
+  const rolled = group.length > 1 && !detail;
+  const cheers = rolled ? group.reduce((n, g) => n + g.cheers, 0) : item.cheers;
+  const comments = rolled ? group.reduce((n, g) => n + g.comments, 0) : item.comments;
+  const viewerCheered = rolled ? group.some((g) => g.viewerCheered) : item.viewerCheered;
+  const expand = () => onExpand?.(item);
 
   const openBottle = (e: React.MouseEvent, row: ActivityRow) => {
     if (!onOpenBottle) return;
@@ -99,22 +108,34 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
         <span className="ml-auto text-xs text-cream-faint shrink-0">{formatFeedTime(item.createdAt)}</span>
       </div>
 
-      {detail ? <div>{body}</div> : <Link href={href} className="block">{body}</Link>}
+      {detail ? <div>{body}</div> : rolled ? (
+        <button type="button" onClick={expand} className="block w-full text-left" aria-label={`Show each of the ${group.length} bottles`}>{body}</button>
+      ) : <Link href={href} className="block">{body}</Link>}
 
       <div className="flex pc-leather-foot">
         <button
           type="button"
-          onClick={() => onCheer(item)}
+          onClick={() => (rolled ? expand() : onCheer(item))}
           disabled={!viewerId}
-          className={`flex-1 h-11 flex items-center justify-center gap-1.5 text-[13px] font-medium disabled:opacity-50 ${item.viewerCheered ? "text-brass-hi" : "text-cream-mute"}`}
-          aria-pressed={item.viewerCheered}
+          className={`flex-1 h-11 flex items-center justify-center gap-1.5 text-[13px] font-medium disabled:opacity-50 ${viewerCheered ? "text-brass-hi" : "text-cream-mute"}`}
+          aria-pressed={viewerCheered}
           data-coach="social.cheers"
         >
-          <CheersIcon filled={item.viewerCheered} />
+          <CheersIcon filled={viewerCheered} />
           Cheers
-          {item.cheers > 0 && <span className="text-cream-mute font-normal">{item.cheers}</span>}
+          {cheers > 0 && <span className="text-cream-mute font-normal">{cheers}</span>}
         </button>
-        {detail ? (
+        {rolled ? (
+          <button
+            type="button"
+            onClick={expand}
+            className="flex-1 h-11 flex items-center justify-center gap-1.5 text-[13px] font-medium text-cream border-l border-black/40"
+          >
+            <CommentIcon />
+            Comment
+            {comments > 0 && <span className="text-cream-mute font-normal">{comments}</span>}
+          </button>
+        ) : detail ? (
           <button
             type="button"
             onClick={onComment}

@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
 import ActivityCard from "@/components/social/ActivityCard";
-import { fetchFeedPage, toggleCheer, type FeedItem } from "@/lib/social";
+import { fetchFeedPage, splitGroup, toggleCheer, type FeedItem } from "@/lib/social";
 import { notify } from "@/lib/notify";
 import PeopleSheet from "@/components/user/PeopleSheet";
 import { fetchFeedDefault, fetchMyGraph, saveFeedDefault, type FeedScope } from "@/lib/relationships";
@@ -322,6 +322,7 @@ export default function SocialClient() {
                 item={item}
                 viewerId={publicUserId ?? null}
                 onCheer={handleCheer}
+                onExpand={(it) => setRows((prev) => splitGroup(prev, it.id))}
                 onOpenBottle={(bottleId) => openBottle(bottleId)}
                 onOpenUser={(_, username) => router.push(`/u/${encodeURIComponent(username)}`)}
               />

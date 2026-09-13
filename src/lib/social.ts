@@ -19,8 +19,9 @@ export type FeedItem = ActivityRow & {
   /** The VIEWER's relationship to the card's bottle - the same earmark the cards wear. */
   viewerHadIt: boolean;
   viewerOwnedCount: number;
-  /** Adds / wishlists by the same person within an hour collapse into one card. */
-  group?: ActivityRow[];
+  /** Adds / wishlists by the same person within an hour collapse into one card. Each member keeps
+   *  its own counts; the rolled-up card shows the sums and splits back into these on a tap. */
+  group?: FeedItem[];
 };
 
 export type Comment = {
@@ -95,7 +96,8 @@ export async function enrichRows(rows: ActivityRow[], viewerId: string | null): 
 
 /**
  * Fold a run of the same person's adds (or wishlists) inside one hour into a single card, so a
- * restock of six bottles is one post, not six. Reactions attach to the FIRST row of the run.
+ * restock of six bottles is one post, not six. The card sums the members' cheers and comments;
+ * reacting means splitting it first (`splitGroup`), so every reaction lands on one real post.
  */
 export function collapseRuns(items: FeedItem[]): FeedItem[] {
   const out: FeedItem[] = [];
@@ -114,6 +116,11 @@ export function collapseRuns(items: FeedItem[]): FeedItem[] {
     out.push({ ...it });
   }
   return out;
+}
+
+/** Replace a rolled-up card with its members, in place, so each can be cheered and commented on. */
+export function splitGroup(items: FeedItem[], id: string): FeedItem[] {
+  return items.flatMap((it) => (it.id === id && it.group && it.group.length > 1 ? it.group.map((g) => ({ ...g, group: undefined })) : [it]));
 }
 
 export async function fetchFeedPage(opts: {
