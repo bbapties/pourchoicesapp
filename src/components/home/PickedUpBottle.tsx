@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import BottleDetailView from "@/components/BottleDetailView";
 import { loadBottleDetails } from "@/lib/bottleDetails";
@@ -21,7 +22,9 @@ import type { ShelfBottle } from "@/lib/shelves";
  * The actions DELEGATE rather than reimplement. Bottle details opens the same
  * `BottleDetailView` every other screen uses, and "Have a drink" opens it with its pour sheet
  * already up — so the pour, the star prompt and the blind-tasting hand-off stay in exactly one
- * place. Home is an entrance to a bottle, not a second copy of it.
+ * place. Home is an entrance to a bottle, not a second copy of it. "Start a blind tasting" is the
+ * one exception: it is a plain link into `/taste?bottle=` (the same URL the detail view builds),
+ * because Drink pre-seeds from the URL and there is nothing on the bottle to open first.
  */
 
 export default function PickedUpBottle({
@@ -39,6 +42,7 @@ export default function PickedUpBottle({
   const [details, setDetails] = useState<BottleDetails | null>(null);
   const [openDetail, setOpenDetail] = useState<false | "plain" | "pour">(false);
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
 
   // Fetched up front so tapping an action never waits: by the time the sheet has finished
   // sliding up, the bottle behind it is already loaded.
@@ -62,6 +66,19 @@ export default function PickedUpBottle({
 
   const owned = bottle.status === "owned";
   const isGhost = bottle.imageState !== "ready";
+
+  // Same URL the detail view's startBlindTasting builds; Drink lands on the mode picker with
+  // this bottle already in the lineup.
+  const startBlindTasting = () => {
+    logClick("blind_tasting", {
+      userId: viewerId,
+      targetId: bottle.bottleId,
+      metadata: { source: "picked_up", variant_id: bottle.variantId },
+    });
+    const params = new URLSearchParams({ bottle: bottle.bottleId });
+    if (bottle.variantId) params.set("variant", bottle.variantId);
+    router.push(`/taste?${params.toString()}`);
+  };
 
   const addToBar = async () => {
     if (busy) return;
@@ -144,6 +161,12 @@ export default function PickedUpBottle({
             className="col-span-2 py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm disabled:opacity-50"
           >
             Have a drink
+          </button>
+          <button
+            onClick={startBlindTasting}
+            className="col-span-2 py-3 rounded-lg border border-brass-line text-cream font-semibold text-sm"
+          >
+            Start a blind tasting
           </button>
           <button
             disabled={!details}

@@ -616,7 +616,7 @@ export default function BottleDetailView({
     }
   };
 
-  const startBlindTasting = (source: "pour" | "more") => {
+  const startBlindTasting = (source: "pour" | "more" | "detail") => {
     if (!publicUserId) return;
     logClick("blind_tasting", {
       userId: publicUserId,
@@ -1195,6 +1195,22 @@ export default function BottleDetailView({
               data-coach="bottle.have_a_drink"
             >
               Have a drink
+            </Button>
+          </div>
+        )}
+
+        {/* Start a blind tasting — always one tap away, not just behind Pour / More */}
+        {publicUserId && (
+          <div className="mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => startBlindTasting('detail')}
+              className="border-brass-line text-cream bg-transparent hover:bg-panel-2 w-full"
+              style={{ minHeight: '44px' }}
+              data-coach="bottle.blind"
+            >
+              Start a blind tasting
             </Button>
           </div>
         )}
