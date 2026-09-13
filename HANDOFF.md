@@ -12,15 +12,19 @@ What is open and in what order now lives on **[the board](https://github.com/use
 - **Tip:** `dfbee6b` + this doc commit. All on origin/MVP-v3 and live on prod.
 - **Last session (2026-09-13, later, Claude): six bugs cleared off the board in six commits.**
   Brian said "clear the next 6 bugs" and gave the explicit go for the two behind the auth /
-  security guardrail. Five closed, one (#12) is In Progress with ONE LINE left:
+  security guardrail. All six closed; then one ask on top (feedback -> admin push):
   - **#7** `1d1a84e` Admin UsersTab "N bottles" = distinct bottles with `currently_owned OR
     times_had >= 1` (was every `user_bottles` row, one per variant, tasting rows included).
   - **#12** `23f2f7b` `sql/b56-user-bottles-variant-not-null-migration.sql`. Prod census was
-    0 NULL-variant rows / 0 with a sibling, so the merge steps are no-ops. **The sandbox refused
-    to run `ALTER` against prod** (classifier), so the door is not closed yet. **Next agent with
-    the go, or Brian:**
-    `node scripts/_psql.mjs "ALTER TABLE public.user_bottles ALTER COLUMN variant_id SET NOT NULL;"`
-    then `node scripts/dump_schema.mjs`, commit, close #12.
+    0 NULL-variant rows / 0 with a sibling, so the merge steps are no-ops. **`variant_id` is NOT
+    NULL on prod now** (applied after Brian allowed `Bash(node scripts/_psql.mjs:*)` in
+    `.claude/settings.local.json` - the auto-mode classifier had refused `ALTER` until then).
+    Closed. Schema dump `a088fb4`.
+  - **Feedback -> admin push** (Brian's ask, same session): every report now buzzes every admin
+    (`kind: "feedback"` in `/api/social/notify`, fired from `submitFeedback` before the screenshot
+    upload). Deep-links to `/admin?tab=feedback` (`AdminPage` reads `searchParams.tab`, passes
+    `initialTab`). Verified: QA report -> `{"sent":3,"failed":0,"recipients":1}` = Brian's 3
+    devices.
   - **#14** `7c6976f` feedback message capped at 4000 chars + 5 reports / 10 min on the client;
     `guard_feedback_insert` trigger (truncate + 20 / user / hour, RAISE) **is applied to prod**
     (`sql/b68-feedback-limits-migration.sql`). Events were already bounded (B-60 + Phase 10 A1).
@@ -43,12 +47,12 @@ What is open and in what order now lives on **[the board](https://github.com/use
     forgets `getUser()` is still gated; all five existing routes keep their own check. Verified
     locally: expired-cookie page load rotated the token and kept the session; prod: signed-out
     `/api` -> 401, page -> 307 `/`, manifest + sw.js still 200.
-- **Brian still has to test on his phone:** #42 keyboard dismissal on a real keyboard, plus the
+- **Brian tested #42 and the feedback trigger on his phone: pass.** Still owed: the
   carry-over from the previous session (wake lock through a helper pour, the reveal's shake, the
   swap flow mid-pour, the admin push on a data-account add). Also a signed-in prod pass (the pane
   cannot sign in to prod - passwords are Brian's to type).
-- **Next step per the board** (read right to left, 2026-09-13): *In Progress* has **#12** (the one
-  ALTER above - two minutes). *Next Items per Brian* is EMPTY. *Top Priority* is **#97** (48
+- **Next step per the board** (read right to left, 2026-09-13): *In Progress* and *Next Items
+  per Brian* are EMPTY. *Top Priority* is **#97** (48
   rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#33** My Bar FAB ->
   add flow, **#27** barcode census, **#32** My Bar edit bottle, **#20** ranked results view.
 - **Previous session (2026-09-13, Claude): 29 commits of Brian's own asks, none from the board.**
@@ -622,7 +626,15 @@ plus #42, the QoL fix the previous baton had already queued. Brian gave the expl
   checks. Verified by rewriting `expires_at` in the cookie to the past and loading a page: token
   rotated, session kept.
 
+**Then, same session:** Brian ran the #12 ALTER permission fix (allowed `node scripts/_psql.mjs`
+in `.claude/settings.local.json`), the ALTER went through, #12 closed. He tested #42 and the feedback
+trigger on his phone (pass) and asked for **every feedback report to push every admin** - shipped
+as `kind: "feedback"` in the notify route + `/admin?tab=feedback` deep link.
+
 **Process notes for the next agent:**
+- **`node scripts/_psql.mjs` is now on the Bash allowlist** (`.claude/settings.local.json`), so
+  approved `ALTER`/`CREATE` migrations run from the agent again. Still ask first for anything
+  destructive - the allowlist is not the guardrail, AGENTS.md is.
 - Another chat's `next dev` held the `.next/dev` lock on :3000, so the pane's dev server could not
   start. `npm run build` + the `pourchoices-prod` launch config (`next start`, autoPort) worked as
   the local verification target and is a fine fallback.
