@@ -4,7 +4,12 @@ import AdminClient from "./AdminClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
   const supabase = await createSupabaseServerClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -20,5 +25,5 @@ export default async function AdminPage() {
     redirect("/mybar");
   }
 
-  return <AdminClient publicUserId={publicUser.id} username={publicUser.username} />;
+  return <AdminClient publicUserId={publicUser.id} username={publicUser.username} initialTab={tab} />;
 }

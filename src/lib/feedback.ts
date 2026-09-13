@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/compressImage";
+import { notify } from "@/lib/notify";
 
 // Feedback / bug-report channel (beta-prep).
 // Users submit from Profile; admins triage in Admin > Feedback.
@@ -183,6 +184,11 @@ export async function submitFeedback(opts: {
     .single();
 
   if (error) return { error: error.message };
+
+  // Every admin gets a push for every report (Brian, 2026-09-13). The server decides who is an
+  // admin; this only says which report. Fired before the screenshot upload so a slow photo
+  // never delays the buzz -- the admin queue shows the image when it lands.
+  notify({ kind: "feedback", feedbackId: data.id });
 
   if (opts.screenshot) {
     const up = await uploadScreenshot(opts.screenshot, data.id);

@@ -24,11 +24,14 @@ const TABS: { id: TabId; label: string }[] = [
 export default function AdminClient({
   publicUserId,
   username,
+  initialTab,
 }: {
   publicUserId: string;
   username: string;
+  initialTab?: string;
 }) {
-  const [tab, setTab] = useState<TabId>("users");
+  // A push about new feedback deep-links to /admin?tab=feedback; anything unknown falls back to Users.
+  const [tab, setTab] = useState<TabId>(TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : "users");
 
   return (
     <div className="flex flex-col h-full">

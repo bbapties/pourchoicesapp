@@ -14,15 +14,18 @@ export const dynamic = "force-dynamic";
 //                               this action (the bell), never the poster
 //   activity (added_to_db)   -> every admin, when the adder is a data account (account_type =
 //                               'data'); Brian wants to see each bottle those accounts put in.
+//   feedback                 -> every admin, for every report (Brian, 2026-09-13); deep-links to
+//                               Admin > Feedback.
 // Every recipient still passes the master switch (users.notify_push) inside sendPushTo, and a
 // muted person can never reach the muter: muting deleted the follow row, so there is no bell.
 // Fail-open end to end: the caller's action already happened; this only decides whether phones buzz.
 
 type Body = {
-  kind: "cheer" | "comment" | "reply" | "follow" | "activity";
+  kind: "cheer" | "comment" | "reply" | "follow" | "activity" | "feedback";
   activityId?: string;
   commentId?: string;
   targetUserId?: string;
+  feedbackId?: string;
 };
 
 const NOTIFY_ACTIONS = new Set(["drank", "tasted", "added_to_collection", "wishlisted"]);
@@ -133,6 +136,23 @@ export async function POST(request: Request) {
       recipients = (followers || []).map((f: { from_user_id: string }) => f.from_user_id);
       msg = { title: `${me} ${verb(act.action, act.pour_type, bottle)}`, body: act.action === "tasted" ? "See who won" : "Open the post", url: `/post/${act.id}` };
     }
+  } else if (body.kind === "feedback") {
+    if (!body.feedbackId) return NextResponse.json({ error: "feedbackId required" }, { status: 400 });
+    // Only a report the caller actually filed buzzes anyone (same shape as the cheer check).
+    const { data: fb } = await admin
+      .from("feedback")
+      .select("id, type, message")
+      .eq("id", body.feedbackId)
+      .eq("submitted_by", caller.id)
+      .maybeSingle();
+    if (!fb) return NextResponse.json({ sent: 0 });
+    const { data: admins } = await admin.from("users").select("id").eq("role", "admin");
+    recipients = (admins || []).map((a: { id: string }) => a.id).filter((id) => id !== caller.id);
+    msg = {
+      title: `${me} sent ${fb.type === "bug" ? "a bug report" : "a feature request"}`,
+      body: String(fb.message ?? "").replace(/\s+/g, " ").slice(0, 200),
+      url: "/admin?tab=feedback",
+    };
   } else {
     return NextResponse.json({ error: "Unknown kind" }, { status: 400 });
   }

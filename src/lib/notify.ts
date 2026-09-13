@@ -1,10 +1,11 @@
 // Fire-and-forget social pushes (#114). The action already happened; this only asks the server
 // to decide who should hear about it. Never awaited by callers, never throws.
 export function notify(body: {
-  kind: "cheer" | "comment" | "reply" | "follow" | "activity";
+  kind: "cheer" | "comment" | "reply" | "follow" | "activity" | "feedback";
   activityId?: string;
   commentId?: string;
   targetUserId?: string;
+  feedbackId?: string;
 }): void {
   if (typeof window === "undefined") return;
   try {
