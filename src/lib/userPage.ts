@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { eloToStar } from "@/lib/scores";
 import { buildPage, type Seed, type ShelfDef, type ShelfFetchOpts, type ShelfPage, SHELF_PAGE_SIZE } from "@/lib/shelves";
 
 // The user page's reads (#110, step 5 of #105). All fail-open: a number that cannot load is 0,
@@ -25,7 +26,7 @@ export type TopBottle = {
   name: string;
   distillery: string | null;
   imageUrl: string | null;
-  /** 0-5, half-star steps. Blind-earned: personal Elo scaled to the global range. Manual: their stars. */
+  /** 0-5, half-star steps. Blind-earned: personal Elo on the fixed star scale. Manual: their stars. */
   stars: number;
   /** True when the rank comes from a star rating, not a blind tasting. */
   manual: boolean;
@@ -73,18 +74,6 @@ export async function fetchUserStats(userId: string): Promise<UserStats> {
   };
 }
 
-/** Global Elo range, the same scale the bottle detail uses for its star. */
-async function globalRange(): Promise<{ min: number; max: number } | null> {
-  const [hi, lo] = await Promise.all([
-    supabase.from("bottle_variants").select("elo_global").is("store_pick_name", null).not("elo_global", "is", null).order("elo_global", { ascending: false }).limit(1),
-    supabase.from("bottle_variants").select("elo_global").is("store_pick_name", null).not("elo_global", "is", null).order("elo_global", { ascending: true }).limit(1),
-  ]);
-  const max = Number(hi.data?.[0]?.elo_global);
-  const min = Number(lo.data?.[0]?.elo_global);
-  if (Number.isNaN(max) || Number.isNaN(min) || max === min) return null;
-  return { min, max };
-}
-
 const half = (n: number) => Math.round(Math.min(5, Math.max(0, n)) * 2) / 2;
 
 /**
@@ -106,10 +95,9 @@ export async function fetchTop3(userId: string): Promise<TopBottle[]> {
   for (const r of rows) if (!best.has(r.bottle_id)) best.set(r.bottle_id, r);
   const ids = [...best.keys()];
 
-  const [{ data: bottles }, { data: ratings }, range] = await Promise.all([
+  const [{ data: bottles }, { data: ratings }] = await Promise.all([
     supabase.from("all_bottle_details").select("bottle_id, bottle_name, bottle_distillery, bottle_elo_global, attr_frontimage_url").in("bottle_id", ids),
     supabase.from("user_ratings").select("bottle_id, stars").eq("user_id", userId).in("bottle_id", ids),
-    globalRange(),
   ]);
   const info = new Map<string, any>();
   (bottles || []).forEach((b: any) => info.set(b.bottle_id, b));
@@ -128,7 +116,7 @@ export async function fetchTop3(userId: string): Promise<TopBottle[]> {
 
   return ranked.map(({ r, elo }) => {
     const manual = !r.blind_tasted_at;
-    const scaled = range ? ((elo - range.min) / (range.max - range.min)) * 5 : 2.5;
+    const scaled = eloToStar(elo) ?? 2.5;
     const stars = manual ? (starOf.get(r.bottle_id) ?? half(scaled)) : half(scaled);
     const b = info.get(r.bottle_id);
     return {

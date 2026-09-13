@@ -19,7 +19,7 @@ import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty, type UserBottleRow } from "@/lib/userBottles";
 import { logEvent, logClick } from "@/lib/events";
-import { fetchBottleScores, fetchVariantScores, type BottleScore, type VariantScore } from "@/lib/scores";
+import { fetchBottleScores, fetchVariantScores, eloToStar, type BottleScore, type VariantScore } from "@/lib/scores";
 
 const DEFAULT_PAGE_SIZE = 30;
 const LOAD_MORE_SIZE = 15;
@@ -46,7 +46,8 @@ interface SearchClientProps {
   totalVariantCount: number;
 }
 
-export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount, totalVariantCount }: SearchClientProps) {
+// `bottlesElo` / `variantsElo` used to drive the star scale; the scale is fixed now (eloToStar).
+export default function SearchClient({ totalBottleCount, totalVariantCount }: SearchClientProps) {
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>('bottles');
   const [bottles, setBottles] = useState<any[]>([]);         // search results (active mode)
@@ -128,19 +129,8 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [filter, setFilter] = useState<FilterState>({ step: 'closed', field: null, value: null });
 
-  // Elo range for star scaling — depends on the active mode's distribution (server fetched DESC).
-  const { minElo, maxElo } = useMemo(() => {
-    const valid = viewMode === 'bottles' ? bottlesElo : variantsElo;
-    return {
-      maxElo: valid[0] ?? 1500,
-      minElo: valid[valid.length - 1] ?? 1500,
-    };
-  }, [viewMode, bottlesElo, variantsElo]);
-
-  const calcStars = (elo: number | null | undefined): number | null => {
-    if (elo == null || maxElo === minElo) return null;
-    return Math.min(5, Math.max(0, ((elo - minElo) / (maxElo - minElo)) * 5));
-  };
+  // Fixed scale (2026-09-13): see eloToStar. The min/max above are no longer part of the star.
+  const calcStars = (elo: number | null | undefined): number | null => eloToStar(elo);
 
   // Per-variant subtitle tag for the All Variants view.
   const variantTag = (result: any): string => {
@@ -355,13 +345,21 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     ? filter.value + ':' + [...hadItIds].sort().join(',')
     : '';
 
-  // The bottles this viewer has actually ranked, best first. Elo and stars are different scales, so
-  // whichever signal they have decides the whole ordering rather than being blended; Elo wins when
-  // present because it is the app's real ranking system and is what a blind tasting produces.
-  const rankedIds = useMemo(() => {
-    const src = Object.keys(personalEloMap).length ? personalEloMap : personalStarMap;
-    return Object.entries(src).sort((a, b) => b[1] - a[1]).map(([id]) => id);
+  // The viewer's own star per bottle, ONE scale (Brian, 2026-09-13): a blind-tasted bottle's star
+  // is its personal Elo on the fixed scale, an only-rated bottle's is the manual star, and both
+  // simply slot into the same 0-5 list. Blind wins over manual because B-47 deletes the guess the
+  // moment a bottle is blind-tasted anyway.
+  const myStarMap = useMemo(() => {
+    const out: Record<string, number> = { ...personalStarMap };
+    Object.entries(personalEloMap).forEach(([id, elo]) => { const s = eloToStar(elo); if (s != null) out[id] = s; });
+    return out;
   }, [personalEloMap, personalStarMap]);
+
+  // The bottles this viewer has actually ranked or rated, best first.
+  const rankedIds = useMemo(
+    () => Object.entries(myStarMap).sort((a, b) => b[1] - a[1] || (personalEloMap[b[0]] ?? 0) - (personalEloMap[a[0]] ?? 0)).map(([id]) => id),
+    [myStarMap, personalEloMap],
+  );
 
   const rankedKey = sortBy === 'yours' ? rankedIds.join(',') : '';
 
@@ -458,7 +456,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       else { setIsLoadingMore(false); isLoadingMoreRef.current = false; }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, minElo, maxElo, publicUserId, filter.field, filter.value, hadItKey, sortBy, rankedKey]);
+  }, [viewMode, publicUserId, filter.field, filter.value, hadItKey, sortBy, rankedKey]);
 
   // Initial browse load (re-runs when the mode changes or the filter changes — B-38)
   useEffect(() => {
@@ -555,7 +553,10 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
         // version and shows that version's own score, which is the entire point of the toggle.
         // `bottle.stars` is the old client-side scaling of elo_global, kept as the fallback for
         // anything the views have no row for.
+        // My Ranks on: the card shows YOUR star, so the number you read is the number the list
+        // is ordered by (Brian, 2026-09-13). Otherwise the global star, as always.
         stars:
+          (sortBy === 'yours' ? myStarMap[skuId] : undefined) ??
           (bottle.variantId
             ? variantScores[bottle.variantId as string]?.star
             : bottleScores[skuId]?.star) ??
@@ -589,22 +590,14 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
     if (sortBy === 'az') return [...annotated].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (sortBy === 'za') return [...annotated].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
     if (sortBy === 'yours') {
-      // My Ranks (S4): the viewer's own ordering, best first; anything they have no opinion on
-      // falls to the end.
-      //
-      // Elo and stars are different scales, so they are not blended -- whichever signal the viewer
-      // actually has decides the ordering for the whole list. Elo wins when present because it is
-      // the app's real ranking system and reflects head-to-head tastings; stars are the fallback
-      // for someone who has only ever rated.
-      const useElo = Object.keys(personalEloMap).length > 0;
-      const rank = (b: { bottleId?: string; id: string }) => {
-        const key = b.bottleId ?? b.id;
-        return (useElo ? personalEloMap[key] : personalStarMap[key]) ?? -Infinity;
-      };
-      return [...annotated].sort((a, b) => rank(b) - rank(a));
+      // My Ranks (S4): the viewer's own star, best first; anything they have no opinion on falls
+      // to the end. One scale for blind-earned and manual stars -- see myStarMap.
+      const rank = (b: { bottleId?: string; id: string }) => myStarMap[b.bottleId ?? b.id] ?? -Infinity;
+      const elo = (b: { bottleId?: string; id: string }) => personalEloMap[b.bottleId ?? b.id] ?? 0;
+      return [...annotated].sort((a, b) => rank(b) - rank(a) || elo(b) - elo(a));
     }
     return annotated; // global/null = server Elo order
-  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, personalStarMap, personalEloMap, bottleScores, variantScores]);
+  }, [bottles, defaultBottles, query, sortBy, filter, userBottlesMap, hadItSet, myStarMap, personalEloMap, bottleScores, variantScores]);
 
   const handleSortSelect = (option: SortOption) => {
     if (option === 'yours' && Object.keys(personalEloMap).length === 0 && Object.keys(personalStarMap).length === 0) {
@@ -799,7 +792,7 @@ export default function SearchClient({ bottlesElo, variantsElo, totalBottleCount
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, minElo, maxElo, publicUserId]);
+  }, [viewMode, publicUserId]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {

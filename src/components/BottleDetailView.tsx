@@ -16,7 +16,7 @@ import MoreSheet from "@/components/MoreSheet";
 import HistoryModal from "@/components/HistoryModal";
 import RatePromptSheet from "@/components/RatePromptSheet";
 import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
-import { fetchVariantScores, evidenceLabel, type VariantScore } from "@/lib/scores";
+import { fetchVariantScores, evidenceLabel, eloToStar, type VariantScore } from "@/lib/scores";
 import { fetchWishlistVariantIds, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 import { reportBarcodeMismatch } from "@/lib/feedback";
 import { supabase } from "@/lib/supabase";
@@ -149,7 +149,6 @@ export default function BottleDetailView({
   const [variantScore, setVariantScore] = useState<VariantScore | null>(null);
   const [showRatePrompt, setShowRatePrompt] = useState(false);
   const [ratingSaving, setRatingSaving] = useState(false);
-  const [gRange, setGRange] = useState<{ min: number; max: number } | null>(null);
   const swipeX = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -277,12 +276,8 @@ export default function BottleDetailView({
   const hasNotes = !!(shown.nose || shown.palate || shown.finish);
   const showImage = !!imageUrl && !imgError;
 
-  // 3.1: Elo is shown ONLY as a 0-5 star (scaled to the global range); the number stays hidden.
-  const scaleStar = (elo: number | null | undefined): number | null => {
-    const n = elo == null ? null : Number(elo);
-    if (n == null || Number.isNaN(n) || !gRange || gRange.max === gRange.min) return null;
-    return Math.min(5, Math.max(0, ((n - gRange.min) / (gRange.max - gRange.min)) * 5));
-  };
+  // 3.1: Elo is shown ONLY as a 0-5 star; the number stays hidden. Fixed scale since 2026-09-13.
+  const scaleStar = (elo: number | null | undefined): number | null => eloToStar(elo);
   // D.2: real global Elo once a blind tasting has moved it off the 1500 baseline; until then the
   // community star falls back to the average of everyone's manual guesses (already 0-5, no scaling).
   // D.2 -> #70: `variant_scores.star` already IS the blend of blind tastings and manual ratings, so
@@ -399,21 +394,6 @@ export default function BottleDetailView({
     return () => { cancelled = true; };
   }, [bottle.id, currentVariant?.variantId, publicUserId]);
 
-  // 3.1: global star range (exclude store picks) for scaling Elo -> stars. Fetched once per open.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [maxRes, minRes] = await Promise.all([
-        supabase.from('bottle_variants').select('elo_global').is('store_pick_name', null).not('elo_global', 'is', null).order('elo_global', { ascending: false }).limit(1),
-        supabase.from('bottle_variants').select('elo_global').is('store_pick_name', null).not('elo_global', 'is', null).order('elo_global', { ascending: true }).limit(1),
-      ]);
-      if (cancelled) return;
-      const max = maxRes.data?.[0]?.elo_global;
-      const min = minRes.data?.[0]?.elo_global;
-      if (max != null && min != null) setGRange({ min: Number(min), max: Number(max) });
-    })();
-    return () => { cancelled = true; };
-  }, [bottle.id]);
 
   const goVariant = (dir: number) => {
     if (!showPager || isEditing) return;

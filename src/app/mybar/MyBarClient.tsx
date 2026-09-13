@@ -74,15 +74,19 @@ function variantSubtitle(d: any): string | undefined {
 function starFor(
   d: any,
   mine: Record<string, MyScore>,
-  global: Record<string, BottleScore>
+  global: Record<string, BottleScore>,
+  preferGlobal = false
 ): { value: number | null; owned: boolean } {
   const my = d.variant_id ? mine[d.variant_id] : undefined;
-  if (my?.yourStar != null) return { value: my.yourStar, owned: true };
   const g = d.bottle_id ? global[d.bottle_id] : undefined;
+  // Global Ranks on: the card shows the global star, so the number you read is the number the
+  // list is ordered by (Brian, 2026-09-13). Every other time it is YOUR star, as before.
+  if (preferGlobal && g?.star != null) return { value: g.star, owned: false };
+  if (my?.yourStar != null) return { value: my.yourStar, owned: true };
   return { value: g?.star ?? null, owned: false };
 }
 
-function mapToCardData(d: any, currentlyOwned: boolean, tasted: boolean, labelOverride?: string, mine: Record<string, MyScore> = {}, global: Record<string, BottleScore> = {}) {
+function mapToCardData(d: any, currentlyOwned: boolean, tasted: boolean, labelOverride?: string, mine: Record<string, MyScore> = {}, global: Record<string, BottleScore> = {}, preferGlobal = false) {
   return {
     id: tasted ? (d.variant_id || d.bottle_id) : d.bottle_id,
     name: d.bottle_name,
@@ -91,7 +95,10 @@ function mapToCardData(d: any, currentlyOwned: boolean, tasted: boolean, labelOv
     style: tasted ? variantSubtitle(d) : d.bottle_style,
     proof: d.attr_proof,
     image_url: d.attr_frontimage_url,
-    ...(() => { const st = starFor(d, mine, global); return { stars: st.value, starIsMine: st.owned }; })(),
+    ...(() => { const st = starFor(d, mine, global, preferGlobal); return { stars: st.value, starIsMine: st.owned }; })(),
+    // Both stars, for the sorts: yours (blind-earned or manual, one scale) and everyone's.
+    myStar: (d.variant_id ? mine[d.variant_id]?.yourStar : null) ?? null,
+    globalStar: (d.bottle_id ? global[d.bottle_id]?.star : null) ?? null,
     addedAt: d.addedAt,
     dateLabel: labelOverride ?? (tasted ? "Tasted" : "Added"),
     provisional: !d.bottle_verified,
@@ -156,7 +163,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const isOwned = kind === 'owned';
     const variantKeyed = kind === 'tasted' || kind === 'wishlist';
     const label = kind === 'wishlist' ? 'Wishlisted' : undefined;
-    let cards = raw.map(d => mapToCardData(d, isOwned, variantKeyed, label, myScores, bottleScores));
+    let cards = raw.map(d => mapToCardData(d, isOwned, variantKeyed, label, myScores, bottleScores, sortBy === 'global'));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       cards = cards.filter(c =>
@@ -174,7 +181,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       }
     }
     return cards;
-  }, [searchQuery, filter, myScores, bottleScores]);
+  }, [searchQuery, filter, myScores, bottleScores, sortBy]);
 
   // Counts for each tab — always reflect active search + filter
   const tabCounts = useMemo(() => ({
@@ -198,12 +205,16 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     if (sortBy === 'az') return [...cards].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (sortBy === 'za') return [...cards].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
     if (sortBy === 'yours') {
-      // My Ranks: the viewer's own Elo, best first, with anything they have not ranked at the end.
-      // Unlike Search this is a pure sort -- My Bar is already just their bottles and is not
-      // paginated, so there is nothing to narrow and no count to fall out of step with.
-      return [...cards].sort((a, b) => (b.personalElo ?? -Infinity) - (a.personalElo ?? -Infinity));
+      // My Ranks: the viewer's own star (blind-earned or manual, one scale), best first, ties by
+      // personal Elo, anything they have no opinion on at the end. A pure sort -- My Bar is already
+      // just their bottles and is not paginated.
+      return [...cards].sort((a, b) => (b.myStar ?? -Infinity) - (a.myStar ?? -Infinity) || (b.personalElo ?? 0) - (a.personalElo ?? 0));
     }
-    return cards; // global/null = server Elo order
+    if (sortBy === 'global') {
+      // Global Ranks: the star everyone sees, which is also the star the card shows in this mode.
+      return [...cards].sort((a, b) => (b.globalStar ?? -Infinity) - (a.globalStar ?? -Infinity));
+    }
+    return cards; // null = server Elo order
   }, [activeRaw, activeTab, applySearchAndFilter, sortBy]);
 
   const handleCardClick = (cardId: string) => {

@@ -3,6 +3,19 @@
 import { supabase } from "@/lib/supabase";
 
 /**
+ * Elo -> star, the fixed scale (Brian, 2026-09-13): 2.5 stars at 1500, one star per 60 Elo,
+ * clamped 0-5. Personal and global Elo use the same conversion, so a bottle you ranked and a
+ * bottle everyone ranked are read off the same ruler. Mirrors `elo_star()` in
+ * sql/elo-star-fixed-scale-migration.sql; change both or neither.
+ */
+export const STAR_PER_ELO = 1 / 60;
+export function eloToStar(elo: number | string | null | undefined): number | null {
+  const n = elo == null ? null : Number(elo);
+  if (n == null || Number.isNaN(n)) return null;
+  return Math.round(Math.min(5, Math.max(0, 2.5 + (n - 1500) * STAR_PER_ELO)) * 100) / 100;
+}
+
+/**
  * Reads the scoring views from #72 (`sql/variant-scores-views.sql`).
  *
  * WHY THE STAR COMES FROM THE DATABASE NOW. It used to be scaled in the browser from `elo_global`,
