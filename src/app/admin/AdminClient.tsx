@@ -4,12 +4,11 @@ import { useState } from "react";
 import UsersTab from "./UsersTab";
 import BottlesTab from "./BottlesTab";
 import VariantsTab from "./VariantsTab";
-import ImportTab from "./ImportTab";
 import FeedbackTab from "./FeedbackTab";
 import NotifyTab from "./NotifyTab";
 import ImagesTab from "./ImagesTab";
 
-type TabId = "users" | "bottles" | "variants" | "images" | "feedback" | "notify" | "import";
+type TabId = "users" | "bottles" | "variants" | "images" | "feedback" | "notify";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "users",    label: "Users" },
@@ -18,7 +17,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "images",   label: "Images" },
   { id: "feedback", label: "Feedback" },
   { id: "notify",   label: "Notify" },
-  { id: "import",   label: "Import" },
 ];
 
 export default function AdminClient({
@@ -62,7 +60,6 @@ export default function AdminClient({
         {tab === "images"   && <ImagesTab publicUserId={publicUserId} />}
         {tab === "feedback" && <FeedbackTab publicUserId={publicUserId} />}
         {tab === "notify"   && <NotifyTab publicUserId={publicUserId} />}
-        {tab === "import"   && <ImportTab />}
       </div>
     </div>
   );
