@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 /**
  * Registers the service worker (Phase 10 C2). Renders nothing.
@@ -12,6 +13,29 @@ import { useEffect } from "react";
  * there. It will NOT register on the LAN QA URL, which is plain HTTP.
  */
 export default function ServiceWorkerRegistrar() {
+  const router = useRouter();
+
+  // #122: a tapped push asks the open app to go somewhere (see `notificationclick` in sw.js).
+  // Route client-side and answer on the reply port so the worker knows not to fall back.
+  // Registered in every environment (it is harmless without a worker) so it cannot be
+  // missing on the one build that matters.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; url?: string } | null;
+      if (!data || data.type !== "pc:navigate" || !data.url) return;
+      try {
+        const u = new URL(data.url, window.location.origin);
+        if (u.origin === window.location.origin) router.push(u.pathname + u.search + u.hash);
+      } catch {
+        /* ignore a malformed url */
+      }
+      event.ports?.[0]?.postMessage({ ok: true });
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [router]);
+
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;

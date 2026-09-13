@@ -17,7 +17,7 @@
  * reason a service worker has to exist at all.
  */
 
-const VERSION = 'pc-v3';
+const VERSION = 'pc-v4';
 const STATIC_CACHE = `${VERSION}-static`;
 
 // Small, stable, and needed before the first paint of an installed app.
@@ -133,18 +133,37 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || '/mybar';
+  const url = new URL(target, self.location.origin).href;
 
+  // #122: a tap must land ON the thing the push is about. `WindowClient.navigate()` is not
+  // implemented on iOS (it rejects, and the old code swallowed that and just focused the app on
+  // whatever screen it was on). So: ask the open page to route itself (works everywhere and keeps
+  // the app's state), wait briefly for it to say "got it", and only if nothing answers fall back
+  // to navigate() where it exists, then to opening a window. This is also the seam a Capacitor
+  // push plugin will use: it, too, ends up posting a URL to the running app.
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      // Prefer focusing a window we already have -- opening a second copy of an installed app is
-      // jarring, and on Android it can spawn a duplicate task.
-      for (const client of clients) {
-        if ('focus' in client) {
-          client.navigate(target).catch(() => {});
-          return client.focus();
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      const client = clients.find((c) => 'focus' in c);
+      if (!client) return self.clients.openWindow(url);
+
+      await client.focus();
+      const acked = await new Promise((resolve) => {
+        const channel = new MessageChannel();
+        const timer = setTimeout(() => resolve(false), 1500);
+        channel.port1.onmessage = () => { clearTimeout(timer); resolve(true); };
+        try {
+          client.postMessage({ type: 'pc:navigate', url }, [channel.port2]);
+        } catch {
+          clearTimeout(timer); resolve(false);
         }
+      });
+      if (acked) return;
+
+      // Old page bundle with no listener: do it the blunt way.
+      if (typeof client.navigate === 'function') {
+        try { await client.navigate(url); return; } catch { /* iOS: fall through */ }
       }
-      return self.clients.openWindow(target);
+      return self.clients.openWindow(url);
     })
   );
 });
