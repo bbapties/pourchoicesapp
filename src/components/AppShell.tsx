@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Search, Users, GlassWater, LayoutGrid, User as UserIcon, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -13,6 +13,11 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const { authId, isAdmin, loading } = useCurrentUser();
   const announceRoutes = unseenAnnounceRoutes();
   const pathname = usePathname();
+  // The tab lights the instant it is tapped, before the route has moved (Brian, 2026-09-13: a
+  // server-rendered page can take a beat, and a tap with no response reads as a missed tap).
+  // Cleared the moment the pathname catches up.
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  useEffect(() => { setPendingHref(null); }, [pathname]);
   const router = useRouter();
   const isAuthPage = pathname === "/";
 
@@ -63,7 +68,8 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="h-16 flex items-center justify-around">
           {navItems.map(({ href, icon, label }) => {
-            const active = pathname === href || (href === "/admin" && pathname.startsWith("/admin"));
+            const here = pathname === href || (href === "/admin" && pathname.startsWith("/admin"));
+            const active = pendingHref ? pendingHref === href : here;
             const coachId =
               href === "/search" ? "nav.search"
               : href === "/social" ? "nav.social"
@@ -78,6 +84,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
                 key={href}
                 href={href}
                 data-coach={coachId}
+                onClick={() => { if (!here) setPendingHref(href); }}
                 className={`relative flex flex-col items-center gap-0.5 px-3 py-1 ${active ? "text-brass-hi" : "text-cream-faint"}`}
               >
                 {/* the lamp over the lit tab */}

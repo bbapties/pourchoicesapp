@@ -44,26 +44,28 @@ export default async function MyBarPage() {
   };
 
   // B-32: owned = any owned_count > 0; empty = any emptied_count > 0. A SKU can be in BOTH.
-  const { data: ownedBottles } = await supabase
-    .from('user_bottles')
-    .select(userBottleSelect)
-    .eq('user_id', publicUser.id)
-    .gt('owned_count', 0);
-  const { data: emptyBottles } = await supabase
-    .from('user_bottles')
-    .select(userBottleSelect)
-    .eq('user_id', publicUser.id)
-    .gt('emptied_count', 0);
-
   // Personal Elo for the "My Ranks" sort. Read across ALL of this user's rows, not just the
-  // owned/empty ones above: a blind tasting leaves a tasting-only row (times_had 0, not owned),
+  // owned/empty ones: a blind tasting leaves a tasting-only row (times_had 0, not owned),
   // which is exactly the row carrying the ranking the Tasted tab is showing.
   // A row still sitting on the 1500 default has never been ranked, so it is skipped rather than
   // sorted as if it were a real opinion.
-  const { data: personalEloRows } = await supabase
-    .from('user_bottles')
-    .select('bottle_id, variant_id, elo')
-    .eq('user_id', publicUser.id);
+  //
+  // Everything keyed only by the user goes out in ONE wave (Brian, 2026-09-13: the tab lagged).
+  // These five used to run one after another, each a round trip to Supabase before the page
+  // could send a byte; the dependent detail reads below still wait on their ids.
+  const [
+    { data: ownedBottles },
+    { data: emptyBottles },
+    { data: personalEloRows },
+    { data: sessions },
+    { data: wishRows },
+  ] = await Promise.all([
+    supabase.from('user_bottles').select(userBottleSelect).eq('user_id', publicUser.id).gt('owned_count', 0),
+    supabase.from('user_bottles').select(userBottleSelect).eq('user_id', publicUser.id).gt('emptied_count', 0),
+    supabase.from('user_bottles').select('bottle_id, variant_id, elo').eq('user_id', publicUser.id),
+    supabase.from("tasting_sessions").select("id").eq("user_id", publicUser.id),
+    supabase.from('wishlists').select('variant_id, created_at').eq('user_id', publicUser.id),
+  ]);
   const personalEloByVariant = new Map<string, number>();
   const personalEloByBottle = new Map<string, number>();
   for (const r of (personalEloRows || []) as { bottle_id: string; variant_id: string | null; elo: number | null }[]) {
@@ -148,10 +150,6 @@ export default async function MyBarPage() {
   // (tasting-only). Excludes star-guess placeholders (no tasting_results) and
   // bottles already on Owned / Empty. One card per variant.
   let tastedCollection: any[] = [];
-  const { data: sessions } = await supabase
-    .from("tasting_sessions")
-    .select("id")
-    .eq("user_id", publicUser.id);
   const sessionIds = (sessions || []).map((s) => s.id as string);
   if (sessionIds.length > 0) {
     const { data: results } = await supabase
@@ -219,10 +217,6 @@ export default async function MyBarPage() {
 
   // Wishlist (B.5) = variants the user flagged. One card per variant; opens not-in-collection.
   let wishlistCollection: any[] = [];
-  const { data: wishRows } = await supabase
-    .from('wishlists')
-    .select('variant_id, created_at')
-    .eq('user_id', publicUser.id);
   const wishVariantIds = (wishRows || []).map((w) => w.variant_id as string).filter(Boolean);
   if (wishVariantIds.length > 0) {
     const wishAddedAt: Record<string, string> = {};
