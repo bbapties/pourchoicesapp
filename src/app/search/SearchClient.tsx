@@ -935,6 +935,8 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cream w-4 h-4" />
           <Input
             type="text"
+            enterKeyHint="search"
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
             placeholder="Search bottles, distilleries, categories..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}

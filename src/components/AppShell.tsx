@@ -8,6 +8,7 @@ import { CurrentUserProvider, useCurrentUser } from "@/lib/useCurrentUser";
 import CoachHost, { unseenAnnounceRoutes } from "@/components/CoachHost";
 import EventTracker from "@/components/EventTracker";
 import NotificationNudge from "@/components/NotificationNudge";
+import { useDismissKeyboard } from "@/lib/useDismissKeyboard";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const { authId, isAdmin, loading } = useCurrentUser();
@@ -20,6 +21,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   useEffect(() => { setPendingHref(null); }, [pathname]);
   const router = useRouter();
   const isAuthPage = pathname === "/";
+  useDismissKeyboard(); // #42: a tap outside a text field puts the phone keyboard away
 
   useEffect(() => {
     if (!loading && !authId && !isAuthPage) {

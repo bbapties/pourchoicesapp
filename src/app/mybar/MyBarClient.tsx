@@ -481,6 +481,8 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cream w-4 h-4" />
           <Input
             type="text"
+            enterKeyHint="search"
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
             placeholder="Search your collection..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
