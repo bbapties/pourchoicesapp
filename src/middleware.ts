@@ -3,32 +3,27 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  let response = NextResponse.next({ request })
 
+  // #5 (B-64/B-65): when Supabase refreshes the token here, the new cookie has to reach TWO
+  // places. The response, so the browser stores it -- and the REQUEST, so the Server Component
+  // rendering this same request reads the fresh token instead of the stale one. The old
+  // get/set/remove shape only wrote the response, which meant every page render after a refresh
+  // still saw the expired cookie, re-ran the refresh itself, and had its cookie write swallowed
+  // by supabase-server.ts (Next forbids cookie writes during render). This is the @supabase/ssr
+  // recommended getAll/setAll pattern.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name) {
-          return request.cookies.get(name)?.value
+        getAll() {
+          return request.cookies.getAll()
         },
-        set(name, value, options) {
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name, options) {
-          response.cookies.delete({
-            name,
-            ...options,
-          })
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
         },
       },
     }
@@ -50,13 +45,25 @@ export async function middleware(request: NextRequest) {
   const tokenDefinitelyDead =
     !!error && typeof error.status === 'number' && error.status >= 400 && error.status < 500
 
+  const pathname = request.nextUrl.pathname
+
+  // #5: API routes now pass through here too, so a future route that forgets its own getUser()
+  // check is still gated -- but with a 401, never a redirect to the login page, because the
+  // caller is fetch(), not a browser navigation. Every existing route still checks for itself
+  // (defence in depth); this is the floor, not the ceiling. No cookie purge on this path: a
+  // background call must not be able to sign the person out of the page they are looking at.
+  if (pathname.startsWith('/api/')) {
+    if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+    return response
+  }
+
   // Routes reachable without a session. `/` is the login/splash screen. `/reset-password`
   // consumes a Supabase recovery link: the user arrives from their email NOT yet
   // authenticated, so gating it here would bounce them out of the reset flow entirely.
   const PUBLIC_PATHS = new Set(['/', '/reset-password'])
 
   // Protect every other route.
-  if (!user && !PUBLIC_PATHS.has(request.nextUrl.pathname)) {
+  if (!user && !PUBLIC_PATHS.has(pathname)) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/'
     const redirect = NextResponse.redirect(redirectUrl)
@@ -81,7 +88,8 @@ export const config = {
   // a logged-out first visit is exactly when the install prompt runs, and if the manifest 307s to
   // the login page the browser sees no installable app at all. Same for the service worker.
   // Image extensions were already excluded, which is why the icons worked and the manifest did not.
+  // `/api` is deliberately NOT excluded any more (#5) -- see the 401 branch above.
   matcher:
-    '/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|_error|error|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|_error|error|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest).*)',
   runtime: 'nodejs'
 }

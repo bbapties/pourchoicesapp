@@ -21,6 +21,13 @@ export async function createSupabaseServerClient() {
             // writing cookies during render. Safe to ignore: middleware.ts
             // refreshes the auth session on every request and writes the
             // cookies onto the response. (Supabase @ssr recommended pattern.)
+            //
+            // #5: this is only safe because middleware ALSO writes the refreshed
+            // cookie back onto the request, so the render that reaches here already
+            // holds the fresh token and rarely needs to refresh at all. Middleware
+            // now covers /api too, so there is no path where this swallow is the
+            // only writer. Route Handlers are allowed to set cookies, so their
+            // setAll never lands in this catch.
           }
         },
       },
