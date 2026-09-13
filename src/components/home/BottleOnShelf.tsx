@@ -202,7 +202,7 @@ export default function BottleOnShelf({
 
 /** The four glyphs: glass = poured, crossed eye = blind, plus = added, bookmark = wishlisted. */
 function ActionGlyph({ action }: { action: string }) {
-  const common = { width: 11, height: 11, viewBox: "0 0 24 24", fill: "none", stroke: "#f6ecd9", strokeWidth: 2.4, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const common = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "#f6ecd9", strokeWidth: 2.2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (action) {
     case "drank":
     case "finished":
