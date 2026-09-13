@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ScanLine } from "lucide-react";
+import { ScanLine, Wine } from "lucide-react";
 import Shelf from "@/components/home/Shelf";
 import ShelfRun from "@/components/home/ShelfRun";
 import PickedUpBottle from "@/components/home/PickedUpBottle";
@@ -84,18 +84,27 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
   return (
     <div className="bg-panel min-h-full">
       {/* The cabinet's top trim: a slim ebony rail that stays put while the shelves scroll under
-          it. The name is engraved into the brass; the scanner sits at the far right so a bottle
-          can be scanned from Home without hunting for Search first. AppShell clears 40px for it. */}
+          it. Drink at the far left (a pour or a blind, two taps from anywhere on Home), the name
+          engraved in the brass in the middle, the scanner at the far right. AppShell clears 40px. */}
       <header
-        className="fixed top-0 left-0 right-0 h-10 pc-wood pc-rail-bottom z-20 shadow-[0_6px_14px_rgba(0,0,0,.55)] flex items-center justify-between px-4"
+        className="fixed top-0 left-0 right-0 h-10 pc-wood pc-rail-bottom z-20 shadow-[0_6px_14px_rgba(0,0,0,.55)] flex items-center justify-between px-2"
         style={{ top: "env(safe-area-inset-top)" }}
       >
-        <span className="font-display text-[15px] font-bold tracking-[.18em] uppercase pc-brass-text select-none">Pour Choices</span>
+        <Link
+          href="/taste"
+          aria-label="Have a drink or start a blind tasting"
+          data-coach="home.drink"
+          className="w-10 h-10 flex items-center justify-center text-brass-hi"
+          onClick={() => logClick("home_drink_trim", { userId: viewerId, surface: "/home" })}
+        >
+          <Wine size={20} aria-hidden="true" />
+        </Link>
+        <span className="font-display text-base font-black tracking-[.2em] uppercase pc-brass-text select-none">Pour Choices</span>
         <Link
           href="/search?scan=1"
           aria-label="Scan a barcode"
           data-coach="home.scan"
-          className="w-10 h-10 -mr-2 flex items-center justify-center text-brass-hi"
+          className="w-10 h-10 flex items-center justify-center text-brass-hi"
           onClick={() => logClick("home_scan_trim", { userId: viewerId, surface: "/home" })}
         >
           <ScanLine size={20} aria-hidden="true" />

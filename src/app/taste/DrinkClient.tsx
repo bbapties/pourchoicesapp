@@ -13,7 +13,7 @@ import { fetchUserRatingState } from "@/lib/ratings";
 import PourSheet, { type PourSubmission } from "@/components/PourSheet";
 import { recordPour } from "@/lib/pours";
 
-type Step = "home" | "pourPick" | "mode" | "pick" | "label" | "handoff" | "helperSetup" | "handback" | "rank" | "done";
+type Step = "home" | "pourPick" | "source" | "count" | "mode" | "pick" | "label" | "handoff" | "helperSetup" | "handback" | "rank" | "done";
 type Mode = "self" | "helper";
 
 type CatalogBottle = {
@@ -57,6 +57,12 @@ export default function DrinkClient({
   const [searchError, setSearchError] = useState(false);
   const [query, setQuery] = useState("");
   const [picks, setPicks] = useState<CatalogBottle[]>([]);
+  // What is on the shelf right now (owned_count > 0), per variant. It is the default list for a
+  // pour (you usually drink what you own) and the pool a "surprise me" blind draws from.
+  const [owned, setOwned] = useState<CatalogBottle[] | null>(null);
+  // "Surprise me from my bar": the app picks the lineup, so the pick step is skipped.
+  const [random, setRandom] = useState(false);
+  const [randomCount, setRandomCount] = useState(MIN_PICKS);
   // Helper mode: randomized glass -> bottle assignment, in letter order (A, B, C...).
   const [glassAssignment, setGlassAssignment] = useState<{ letter: string; pick: CatalogBottle }[]>([]);
   const [rankOrder, setRankOrder] = useState<RankItem[]>([]);
@@ -144,6 +150,37 @@ export default function DrinkClient({
     return () => clearTimeout(timer);
   }, [query, runSearch]);
 
+  // The viewer's shelf, once. Owned rows are variant-keyed, so two batches of one SKU are two
+  // bottles here too. Fail-open: no shelf just means no default list and no random blind.
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      const { data: rows } = await supabase
+        .from("user_bottles")
+        .select("bottle_id, variant_id")
+        .eq("user_id", publicUserId)
+        .gt("owned_count", 0);
+      const variantIds = (rows || []).map((r: { variant_id: string | null }) => r.variant_id).filter(Boolean) as string[];
+      if (!variantIds.length) { if (live) setOwned([]); return; }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from("all_variant_details") as any)
+        .select("variant_id, bottle_id, bottle_name, bottle_distillery, variant_is_default, attr_store_pick_name, attr_batch, attr_release_year")
+        .in("variant_id", variantIds)
+        .order("bottle_name", { ascending: true });
+      if (!live) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setOwned((data || []).map((d: any) => ({
+        bottleId: d.bottle_id,
+        variantId: d.variant_id as string,
+        name: d.bottle_name,
+        distillery: d.bottle_distillery,
+        label: rowLabel(d),
+      })));
+    })();
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicUserId]);
+
   // Pre-seed from bottle-card Blind (Have a drink or More). Skip home → land on mode
   // with that bottle already in the lineup. Fetch by id so we aren't limited to the
   // 300-name catalog window.
@@ -180,6 +217,15 @@ export default function DrinkClient({
     return extra.length ? [...extra, ...results] : results;
   }, [results, picks]);
 
+  // A pour with nothing typed shows YOUR BAR, not the alphabet: you are almost always logging
+  // something you own. Typing anything searches the whole database as before.
+  const pourList = useMemo(
+    () => (!query.trim() && owned && owned.length > 0 ? owned : filtered),
+    [query, owned, filtered],
+  );
+  const canRandom = (owned?.length ?? 0) >= MIN_PICKS;
+  const randomMax = Math.min(MAX_PICKS, owned?.length ?? 0);
+
   const isPicked = (variantId: string) => picks.some((p) => p.variantId === variantId);
 
   const togglePick = (b: CatalogBottle) => {
@@ -194,9 +240,24 @@ export default function DrinkClient({
   const startMode = (m: Mode) => {
     setMode(m);
     setQuery("");
+    if (random && owned) {
+      // The app deals the lineup from the shelf and skips straight past the pick step.
+      const lineup = shuffle(owned).slice(0, Math.max(MIN_PICKS, Math.min(randomCount, randomMax)));
+      setPicks(lineup);
+      setGlassAssignment([]);
+      logClick("blind_random_lineup", { userId: publicUserId, metadata: { count: lineup.length, mode: m, owned: owned.length } });
+      setStep(m === "helper" ? "handoff" : "label");
+      return;
+    }
     // Keep a bottle-card pre-seed; a normal Start from home begins empty.
     if (!seeded.current) setPicks([]);
     setStep("pick");
+  };
+
+  // "Start a blind" from home: a pre-seeded bottle already answers "which bottles?".
+  const startBlind = () => {
+    setRandom(false);
+    setStep(seeded.current ? "mode" : "source");
   };
 
   const afterPick = () => {
@@ -229,7 +290,8 @@ export default function DrinkClient({
   const restartHelperLineup = () => {
     setGlassAssignment([]);
     setRankOrder([]);
-    setStep("pick");
+    // A dealt lineup has no pick step to go back to; re-deal from the count instead.
+    setStep(random ? "count" : "pick");
   };
 
   // Helper: taster ranks the LETTERS blind (names hidden until reveal). Start in letter order.
@@ -284,6 +346,7 @@ export default function DrinkClient({
   const reset = () => {
     pendingSessionRef.current = null;
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
+    setRandom(false); setRandomCount(MIN_PICKS);
     setPourTarget(null); setShowPourSheet(false); setStep("home");
     if (seedBottleId) router.replace("/taste");
   };
@@ -293,8 +356,13 @@ export default function DrinkClient({
     // would show the taster the bottle→letter mapping.
     if (step === "helperSetup" || step === "handback") return;
     const map: Record<Step, Step> = {
-      home: "home", done: "done", pourPick: "home", mode: "home", pick: "mode",
-      label: "pick", handoff: "pick", helperSetup: "helperSetup", handback: "handback",
+      home: "home", done: "done", pourPick: "home",
+      source: "home", count: "source",
+      mode: seeded.current ? "home" : random ? "count" : "source",
+      pick: "mode",
+      // A dealt lineup skipped the pick step, so back from labelling re-asks the mode.
+      label: random ? "mode" : "pick", handoff: random ? "mode" : "pick",
+      helperSetup: "helperSetup", handback: "handback",
       rank: mode === "self" ? "label" : "handback",
     };
     setStep(map[step]);
@@ -407,7 +475,7 @@ export default function DrinkClient({
             <p className="text-sm text-cream-mute max-w-xs">Log a pour, or rank {MIN_PICKS}–{MAX_PICKS} bottles blind. Blind rankings update your personal and the global scores.</p>
             <div className="w-full mt-2 space-y-2">
               <button type="button" data-coach="taste.pour" onClick={() => { setQuery(""); setStep("pourPick"); }} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>Have a drink</button>
-              <button type="button" data-coach="taste.start" onClick={() => setStep("mode")} className={secondaryBtn}>Start a blind tasting</button>
+              <button type="button" data-coach="taste.start" onClick={startBlind} className={secondaryBtn}>Start a blind tasting</button>
               <button type="button" onClick={() => toast("Joining someone's tasting is coming soon")} className={secondaryBtn}>Join a blind (enter code)</button>
             </div>
           </div>
@@ -419,10 +487,12 @@ export default function DrinkClient({
             <div className={stickySearch}>
               <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search for a bottle..."
                 className="w-full rounded-full border border-brass-line px-4 h-10 text-base bg-panel text-cream" />
-              <p className="text-xs text-cream-mute mt-2">Pick a bottle to log a pour or start a blind tasting</p>
+              <p className="text-xs text-cream-mute mt-2">
+                {pourList === owned ? "Your bar. Type to search every bottle instead." : "Pick a bottle to log a pour or start a blind tasting"}
+              </p>
             </div>
             <div className="space-y-1 mb-8">
-              {filtered.map((b) => (
+              {pourList.map((b) => (
                 <button key={b.variantId} type="button" onClick={() => openPourFor(b)}
                   className="w-full flex items-center justify-between rounded-lg border p-3 text-left"
                   style={{ borderColor: "#3a2f26" }}>
@@ -432,10 +502,56 @@ export default function DrinkClient({
                   </span>
                 </button>
               ))}
-              {searching && filtered.length === 0 && <p className="text-center text-sm text-cream-faint py-8">Searching...</p>}
-              {!searching && searchError && <p className="text-center text-sm text-red-400 py-8">Couldn&apos;t load bottles. Check your connection and try again.</p>}
-              {!searching && !searchError && filtered.length === 0 && <p className="text-center text-sm text-cream-faint py-8">No bottles found</p>}
+              {searching && pourList.length === 0 && <p className="text-center text-sm text-cream-faint py-8">Searching...</p>}
+              {!searching && searchError && pourList.length === 0 && <p className="text-center text-sm text-red-400 py-8">Couldn&apos;t load bottles. Check your connection and try again.</p>}
+              {!searching && !searchError && pourList.length === 0 && <p className="text-center text-sm text-cream-faint py-8">No bottles found</p>}
             </div>
+          </div>
+        )}
+
+        {/* SOURCE - do you know the lineup, or should the app deal one from your bar? */}
+        {step === "source" && (
+          <div className="pt-4 space-y-3">
+            <h2 className="text-base font-semibold text-cream mb-1">Which bottles?</h2>
+            <button type="button" onClick={() => { setRandom(false); setStep("mode"); }} className="w-full text-left rounded-lg border border-brass-line p-4">
+              <div className="font-semibold text-cream">I&apos;ll pick them</div>
+              <div className="text-sm text-cream-mute">Choose {MIN_PICKS}-{MAX_PICKS} bottles from the whole database.</div>
+            </button>
+            <button
+              type="button"
+              disabled={!canRandom}
+              onClick={() => { setRandom(true); setRandomCount((c) => Math.min(Math.max(c, MIN_PICKS), randomMax)); setStep("count"); }}
+              className="w-full text-left rounded-lg border border-brass-line p-4 disabled:opacity-40"
+            >
+              <div className="font-semibold text-cream">Surprise me from my bar</div>
+              <div className="text-sm text-cream-mute">
+                {canRandom
+                  ? `The app deals a random lineup from the ${owned!.length} bottles you own.`
+                  : owned === null ? "Checking your bar..." : `You need at least ${MIN_PICKS} bottles in your bar for this.`}
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* COUNT - how big a random lineup */}
+        {step === "count" && (
+          <div className="pt-4 space-y-4">
+            <h2 className="text-base font-semibold text-cream mb-1">How many bottles?</h2>
+            <p className="text-sm text-cream-mute">Up to {randomMax} - that is what is on your shelf right now.</p>
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: Math.max(0, randomMax - MIN_PICKS + 1) }, (_, i) => MIN_PICKS + i).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRandomCount(n)}
+                  className="rounded-lg border py-3 text-base font-semibold"
+                  style={randomCount === n ? { backgroundColor: "#bd9436", color: "#1c1303", borderColor: "#bd9436" } : { borderColor: "#3a2f26", color: "#f6ecd9" }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => setStep("mode")} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>Next - {randomCount} bottles</button>
           </div>
         )}
 
@@ -443,8 +559,11 @@ export default function DrinkClient({
         {step === "mode" && (
           <div className="pt-4 space-y-3">
             <h2 className="text-base font-semibold text-cream mb-1">How are you tasting?</h2>
-            {picks.length === 1 && (
+            {picks.length === 1 && !random && (
               <p className="text-sm text-cream-mute">Starting with {picks[0].name}. Pick 1–{MAX_PICKS - 1} more after this.</p>
+            )}
+            {random && (
+              <p className="text-sm text-cream-mute">{randomCount} bottles, dealt from your bar once you choose.</p>
             )}
             <button type="button" onClick={() => startMode("self")} className="w-full text-left rounded-lg border border-brass-line p-4">
               <div className="font-semibold text-cream">I&apos;ll set it up myself</div>
