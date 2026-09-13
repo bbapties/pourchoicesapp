@@ -281,6 +281,7 @@ CREATE TABLE public.wishlists (
 --   email_exists(p_email text)  SECURITY DEFINER
 --   flag_variant_image(p_variant uuid, p_note text)  SECURITY DEFINER
 --   guard_event_insert()
+--   guard_feedback_insert()
 --   is_admin()  SECURITY DEFINER
 --   merge_bottle(p_source uuid, p_target uuid, p_variant_map jsonb, p_confirm_name text)  SECURITY DEFINER
 --   merge_variant_into(p_source uuid, p_target uuid)  SECURITY DEFINER
@@ -308,6 +309,7 @@ CREATE TABLE public.wishlists (
 --   trg_default_to_admin_bottles on bottles
 --   trg_update_timestamp_bottles on bottles
 --   trg_guard_event_insert on events
+--   trg_guard_feedback_insert on feedback
 --   trg_protect_feedback_update on feedback
 --   trg_protect_comment_update on post_comments
 --   trg_protect_suggested_edits_update on suggested_edits

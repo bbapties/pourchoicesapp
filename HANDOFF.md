@@ -9,8 +9,49 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `7c6d850` + this doc commit. All on origin/MVP-v3 and live on prod.
-- **Last session (2026-09-13, Claude): 29 commits of Brian's own asks, none from the board.**
+- **Tip:** `dfbee6b` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Last session (2026-09-13, later, Claude): six bugs cleared off the board in six commits.**
+  Brian said "clear the next 6 bugs" and gave the explicit go for the two behind the auth /
+  security guardrail. Five closed, one (#12) is In Progress with ONE LINE left:
+  - **#7** `1d1a84e` Admin UsersTab "N bottles" = distinct bottles with `currently_owned OR
+    times_had >= 1` (was every `user_bottles` row, one per variant, tasting rows included).
+  - **#12** `23f2f7b` `sql/b56-user-bottles-variant-not-null-migration.sql`. Prod census was
+    0 NULL-variant rows / 0 with a sibling, so the merge steps are no-ops. **The sandbox refused
+    to run `ALTER` against prod** (classifier), so the door is not closed yet. **Next agent with
+    the go, or Brian:**
+    `node scripts/_psql.mjs "ALTER TABLE public.user_bottles ALTER COLUMN variant_id SET NOT NULL;"`
+    then `node scripts/dump_schema.mjs`, commit, close #12.
+  - **#14** `7c6976f` feedback message capped at 4000 chars + 5 reports / 10 min on the client;
+    `guard_feedback_insert` trigger (truncate + 20 / user / hour, RAISE) **is applied to prod**
+    (`sql/b68-feedback-limits-migration.sql`). Events were already bounded (B-60 + Phase 10 A1).
+  - **#42** `3e0da30` `src/lib/useDismissKeyboard.ts`, mounted once in `AppShell`: a
+    `touchstart` outside any editable blurs the active one; Search / My Bar bars get
+    `enterKeyHint="search"` + Enter blurs. **Touch only** so desktop selection/drag is untouched.
+    This is the keyboard seam for a future Capacitor plugin. **Verified by simulated touch in
+    the pane only - Brian, tap-test on the phone.**
+  - **#15** `c46724e` `next.config.ts` `headers()`: HSTS, nosniff, X-Frame-Options SAMEORIGIN,
+    Referrer-Policy, Permissions-Policy (camera + mic self) **enforced**; **CSP is
+    `Content-Security-Policy-Report-Only`** on purpose. Report-only on prod shows exactly one
+    notice: an `'unsafe-eval'` from something in the page (not our code - possibly a library or the
+    pane's own instrumentation). **Identify it before ever renaming the header to enforce**, and add
+    `upgrade-insecure-requests` back at that point (report-only ignores it).
+  - **#5** `dfbee6b` `src/middleware.ts` is on the @supabase/ssr **getAll/setAll** pattern: a
+    refreshed token is written onto the REQUEST as well as the response, so the RSC render of the
+    same request reads the fresh cookie instead of re-refreshing and having its write swallowed
+    (`supabase-server.ts` comment explains why the swallow is now safe). **`/api/*` is in the
+    matcher** with a JSON **401 floor** - no redirect, no cookie purge - so a future route that
+    forgets `getUser()` is still gated; all five existing routes keep their own check. Verified
+    locally: expired-cookie page load rotated the token and kept the session; prod: signed-out
+    `/api` -> 401, page -> 307 `/`, manifest + sw.js still 200.
+- **Brian still has to test on his phone:** #42 keyboard dismissal on a real keyboard, plus the
+  carry-over from the previous session (wake lock through a helper pour, the reveal's shake, the
+  swap flow mid-pour, the admin push on a data-account add). Also a signed-in prod pass (the pane
+  cannot sign in to prod - passwords are Brian's to type).
+- **Next step per the board** (read right to left, 2026-09-13): *In Progress* has **#12** (the one
+  ALTER above - two minutes). *Next Items per Brian* is EMPTY. *Top Priority* is **#97** (48
+  rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#33** My Bar FAB ->
+  add flow, **#27** barcode census, **#32** My Bar edit bottle, **#20** ranked results view.
+- **Previous session (2026-09-13, Claude): 29 commits of Brian's own asks, none from the board.**
   He used the app all evening and fed back live. Everything below is on prod; the log entry has
   the detail. Headlines a cold agent needs:
   - **STARS ARE ON ONE FIXED SCALE NOW.** `elo_star()` = 2.5 at 1500, one star per 60 Elo,
@@ -43,12 +84,6 @@ What is open and in what order now lives on **[the board](https://github.com/use
     highlight in `AppShell`, My Bar's five user-keyed reads in one `Promise.all`.
   - **Push**: monochrome Glencairn status-bar badge (`public/icons/badge-96.png`, SW `pc-v3`);
     admins get a push when a `data` account adds a bottle (`added_to_db` through the notify route).
-- **Brian still has to test on his phone** (the pane could not): wake lock through a helper
-  pour, the reveal's shake, the swap flow mid-pour, and the admin push on a data-account add.
-- **Next step per the board** (read right to left, 2026-09-13): *In Progress* and *Next Items per
-  Brian* are EMPTY, so it is **#97** (Top Priority: 48 rejected bottle images, each needs a fresh
-  source), then the small *Coming Soon* fixes: **#42** keyboard dismissal, **#33** My Bar FAB ->
-  add flow, **#5** login cookie refresh, **#27** barcode census.
 - **Previous phase:** **PHASE 5 SHIPPED - THE APP IS IN THE ROOM (2026-09-12, later session).**
   The greyscale wireframe is gone from every screen. See "THE ROOM" below before touching any
   colour, and the 2026-09-12 (later) log entry for how the sweep was done. **The "greyscale until
@@ -547,6 +582,56 @@ this holds. **Re-check it before wiring anything else to a replay.**
   was driven this way on 2026-09-06.
 
 ---
+
+### 2026-09-13 (later) - Claude (six board bugs in six commits; two DB guards)
+
+**Ask:** "clear the next 6 bugs." *In Progress* and *Next Items per Brian* were empty; *Top
+Priority* held only #97 (image sourcing). The six were the five `bug`-labelled Coming Soon cards
+plus #42, the QoL fix the previous baton had already queued. Brian gave the explicit go for #5
+(auth/middleware) and #15 (security config) in the same message.
+
+**What shipped** (all on prod, verified with curl + the pane against the production build):
+- `1d1a84e` **#7** UsersTab count. Read the code first: the BottlesTab half of the card was already
+  void (#67 decided tasters BLOCK a delete and are labelled; nothing to drop). Only the over-count
+  was real: distinct `bottle_id` where `currently_owned OR times_had >= 1`.
+- `23f2f7b` **#12** NULL-variant orphan. Census on prod: **0 NULL rows, 0 with a sibling**; every
+  bottle has a default variant; every writer resolves a variant before inserting (app insert,
+  `update_elo_for_session`, the tasted_at triggers). So the fix is a door, not a cleanup: a merge-
+  don't-skip migration + `variant_id SET NOT NULL`. The sandbox classifier refused `ALTER` and
+  `DELETE` against prod in this session (it allowed `CREATE FUNCTION/TRIGGER/INDEX`), so the ALTER
+  is the one line left in "Right now". #12 moved to *In Progress* with the command in a comment.
+- `7c6976f` **#14** feedback limits. Events were already done (B-60 client + Phase 10 A1 trigger);
+  screenshots already capped. Added the message cap + burst limit client-side and
+  `guard_feedback_insert` (truncate to 4000, bound the context columns, RAISE past 20/user/hour)
+  - **applied to prod**, `DB_Schema.txt.txt` regenerated. Feedback RAISEs where events RETURN NULL
+  on purpose: feedback is a deliberate act with a visible result, so a refusal should toast.
+- `3e0da30` **#42** keyboard dismissal: one global `touchstart` listener (`useDismissKeyboard`)
+  rather than per-screen patches; touch only. Simulated in the pane (blur on outside touch, keep on
+  inside touch) - the real keyboard is Brian's to test.
+- `c46724e` **#15** headers. Inventory before writing the CSP: fonts self-hosted via `next/font`,
+  images from Supabase storage + two `remotePatterns` hosts + arbitrary admin-pasted `image_url`s
+  (hence `img-src https:`), only Supabase on connect (https + wss), camera + mic used. Next's
+  inline hydration script forces `'unsafe-inline'` on script-src. **CSP report-only**, safe
+  headers enforced. Report-only surfaced one `'unsafe-eval'` notice on prod from something in the
+  page - unidentified; find it before enforcing.
+- `dfbee6b` **#5** cookie refresh. The real defect was not the matcher: the middleware used the
+  deprecated `get/set/remove` cookie API, which wrote the refreshed token onto the response only,
+  so the RSC render in the same request saw the stale cookie, re-refreshed, and had its write
+  swallowed (#6's symptom). Now getAll/setAll (request + response). Matcher decision: `/api/*` IS
+  covered now, with a JSON 401 (never a redirect or purge) as the floor under the routes' own
+  checks. Verified by rewriting `expires_at` in the cookie to the past and loading a page: token
+  rotated, session kept.
+
+**Process notes for the next agent:**
+- Another chat's `next dev` held the `.next/dev` lock on :3000, so the pane's dev server could not
+  start. `npm run build` + the `pourchoices-prod` launch config (`next start`, autoPort) worked as
+  the local verification target and is a fine fallback.
+- The pane already carried a localhost session for the QA account, which is how the signed-in
+  path was tested without typing a password. It does NOT carry a prod session; signed-in prod
+  checks are Brian's.
+- `node scripts/_psql.mjs` chokes on non-ASCII in the SQL text on this box (`invalid byte sequence
+  for encoding "UTF8": 0x97` from an em dash). Keep migration text ASCII, or pipe through
+  `iconv -f utf-8 -t ascii//TRANSLIT`.
 
 ### 2026-09-13 - Claude (29 commits, all Brian's live feedback; three DB migrations)
 
