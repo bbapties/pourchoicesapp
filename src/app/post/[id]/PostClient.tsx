@@ -223,8 +223,8 @@ export default function PostClient({ activityId }: { activityId: string }) {
                     <button type="button" onClick={() => setJoining(false)} className="h-11 px-3 rounded-lg border border-edge text-sm text-cream-mute" aria-label="Never mind">✕</button>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => setJoining(true)} className="w-full h-11 rounded-lg pc-brass bg-brass text-engrave text-sm font-semibold">
-                    Join @{item.username} in a drink
+                  <button type="button" onClick={() => setJoining(true)} className="w-full h-11 rounded-lg border border-edge bg-panel text-sm font-semibold text-cream">
+                    Join @{item.username} in a drink of the same bottle
                   </button>
                 )}
               </div>
