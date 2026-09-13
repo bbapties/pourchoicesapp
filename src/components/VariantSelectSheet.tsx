@@ -597,19 +597,23 @@ export default function VariantSelectSheet({
               </div>
             )}
 
-            {/* ── Add button ── */}
-            <button
-              onClick={handleAdd}
-              disabled={isAddDisabled}
-              className="w-full py-3 rounded border border-brass-line text-sm font-medium transition-colors disabled:opacity-50"
-              style={{ backgroundColor: "#bd9436", color: "#1c1303" }}
-            >
-              {isAdding
-                ? "Saving..."
-                : isContribute
-                  ? saveChoice === "database-only" ? "Add version" : "Add & add to my bar"
-                  : "Add to My Bar"}
-            </button>
+            {/* ── Add button ── pinned to the bottom of the sheet while the variant list scrolls
+                under it. Chattanooga has 47 versions; nobody should scroll past all of them to
+                find the button. The leather behind it hides the rows sliding underneath. */}
+            <div className="sticky bottom-0 -mb-6 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pc-leather">
+              <button
+                onClick={handleAdd}
+                disabled={isAddDisabled}
+                className="w-full py-3 rounded border border-brass-line text-sm font-medium transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "#bd9436", color: "#1c1303" }}
+              >
+                {isAdding
+                  ? "Saving..."
+                  : isContribute
+                    ? saveChoice === "database-only" ? "Add version" : "Add & add to my bar"
+                    : "Add to My Bar"}
+              </button>
+            </div>
           </div>
         )}
       </SheetContent>
