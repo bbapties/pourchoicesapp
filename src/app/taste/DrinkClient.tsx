@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronUp, ChevronDown, Check, Wine, Eye, GripVertical } from "lucide-react";
+import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
@@ -23,6 +24,8 @@ type CatalogBottle = {
   distillery: string | null;
   // Variant tag ("Costco Pick", "2021", "Batch 3") — null for the default/plain SKU.
   label?: string | null;
+  // The helper's pour screen shows it big so the bottle can be found on the shelf.
+  imageUrl?: string | null;
 };
 type RankItem = CatalogBottle & { glassLetter: string };
 
@@ -65,6 +68,8 @@ export default function DrinkClient({
   const [randomCount, setRandomCount] = useState(MIN_PICKS);
   // Helper mode: randomized glass -> bottle assignment, in letter order (A, B, C...).
   const [glassAssignment, setGlassAssignment] = useState<{ letter: string; pick: CatalogBottle }[]>([]);
+  // Helper pours one glass at a time; this is the glass on screen.
+  const [pourIndex, setPourIndex] = useState(0);
   const [rankOrder, setRankOrder] = useState<RankItem[]>([]);
   const [saving, setSaving] = useState(false);
   // Holds the session created by a failed save so a retry reuses it (B-07: never
@@ -107,7 +112,7 @@ export default function DrinkClient({
       const t = term.trim();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let q = (supabase.from("all_variant_details") as any)
-        .select("variant_id, bottle_id, bottle_name, bottle_distillery, variant_is_default, attr_store_pick_name, attr_batch, attr_release_year");
+        .select("variant_id, bottle_id, bottle_name, bottle_distillery, variant_is_default, attr_store_pick_name, attr_batch, attr_release_year, attr_frontimage_url");
       if (t) {
         // B-13: quote + escape so commas/parens/quotes in the term don't break the .or().
         const v = `"%${t.replace(/[\\"]/g, (c) => "\\" + c)}%"`;
@@ -127,6 +132,7 @@ export default function DrinkClient({
           name: d.bottle_name,
           distillery: d.bottle_distillery,
           label: rowLabel(d),
+          imageUrl: (d.attr_frontimage_url as string | null) ?? null,
         }));
       setResults(rows);
       logEvent({
@@ -164,7 +170,7 @@ export default function DrinkClient({
       if (!variantIds.length) { if (live) setOwned([]); return; }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase.from("all_variant_details") as any)
-        .select("variant_id, bottle_id, bottle_name, bottle_distillery, variant_is_default, attr_store_pick_name, attr_batch, attr_release_year")
+        .select("variant_id, bottle_id, bottle_name, bottle_distillery, variant_is_default, attr_store_pick_name, attr_batch, attr_release_year, attr_frontimage_url")
         .in("variant_id", variantIds)
         .order("bottle_name", { ascending: true });
       if (!live) return;
@@ -175,6 +181,7 @@ export default function DrinkClient({
         name: d.bottle_name,
         distillery: d.bottle_distillery,
         label: rowLabel(d),
+        imageUrl: (d.attr_frontimage_url as string | null) ?? null,
       })));
     })();
     return () => { live = false; };
@@ -284,6 +291,7 @@ export default function DrinkClient({
       const shuffled = shuffle(picks);
       setGlassAssignment(shuffled.map((p, i) => ({ letter: letter(i), pick: p })));
     }
+    setPourIndex(0);
     setStep("helperSetup");
   };
 
@@ -644,25 +652,52 @@ export default function DrinkClient({
         )}
 
         {/* HELPER SETUP (secret) */}
-        {step === "helperSetup" && (
-          <div className="pt-2">
-            <h2 className="text-base font-semibold text-cream mb-1">Pour these into the glasses</h2>
-            <p className="text-sm text-cream-mute mb-4">Keep this hidden from the taster. Pour each bottle into its lettered glass, then hand the phone back.</p>
-            <div className="space-y-2 mb-6">
-              {glassAssignment.map((g) => (
-                <div key={g.letter} className="flex items-center gap-3 rounded-lg border border-brass-line p-3">
-                  <span className="w-8 h-8 flex items-center justify-center rounded-full text-cream font-bold" style={{ backgroundColor: "#bd9436" }}>{g.letter}</span>
-                  <span>
-                    <span className="block text-sm font-medium text-cream">{g.pick.name}</span>
-                    <span className="block text-xs text-cream-mute">{g.pick.distillery}</span>
-                  </span>
-                </div>
-              ))}
+        {step === "helperSetup" && glassAssignment[pourIndex] && (() => {
+          // One glass at a time (Brian, 2026-09-13): the bottle big enough to find on the shelf,
+          // the glass letter, Next. A list of six would be read by the taster over a shoulder;
+          // one bottle at a time keeps the helper's eyes on the pour and the phone in their hand.
+          const g = glassAssignment[pourIndex];
+          const last = pourIndex === glassAssignment.length - 1;
+          return (
+            <div className="pt-2 flex flex-col items-center text-center">
+              <p className="text-xs uppercase tracking-[.14em] text-cream-mute">Glass {pourIndex + 1} of {glassAssignment.length} · keep this from the taster</p>
+              <div className="w-full h-56 mt-3 flex items-center justify-center pc-inset rounded-lg overflow-hidden">
+                {g.pick.imageUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={g.pick.imageUrl} alt={g.pick.name} className="max-h-full max-w-full object-contain" />
+                ) : (
+                  <BottlePlaceholderImage />
+                )}
+              </div>
+              <h2 className="text-lg font-semibold text-cream mt-4">{g.pick.name}</h2>
+              <p className="text-sm text-cream-mute">{[g.pick.distillery, g.pick.label].filter(Boolean).join(" · ")}</p>
+              <div className="flex items-center gap-3 mt-4">
+                <span className="text-sm text-cream-mute">Pour into glass</span>
+                <span className="w-12 h-12 flex items-center justify-center rounded-full text-2xl text-engrave font-bold pc-brass">{g.letter}</span>
+              </div>
+              <p className="text-xs text-cream-mute mt-4 max-w-xs">
+                About an ounce — this is a tasting, not a pour — and the same amount in every glass.
+              </p>
+              <button
+                type="button"
+                onClick={() => (last ? setStep("handback") : setPourIndex((i) => i + 1))}
+                className={`${primaryBtn} mt-5`}
+                style={{ backgroundColor: "#bd9436" }}
+              >
+                {last ? "Done pouring — hand back" : `Poured · next glass (${glassAssignment[pourIndex + 1].letter})`}
+              </button>
+              {pourIndex > 0 && (
+                <button type="button" onClick={() => setPourIndex((i) => i - 1)} className={`${secondaryBtn} mt-2`}>Back a glass</button>
+              )}
+              {last && (
+                <p className="text-xs text-cream-faint mt-4 max-w-xs">
+                  Before you hand back: leave the bottles on the table in a random order if the taster may know what is in play, or put them back in the collection so they have no idea.
+                </p>
+              )}
+              <button type="button" onClick={restartHelperLineup} className="mt-4 text-xs text-cream-mute underline underline-offset-2">Wrong bottles? Pick again</button>
             </div>
-            <button type="button" onClick={() => setStep("handback")} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>Done pouring — hand back</button>
-            <button type="button" onClick={restartHelperLineup} className={`${secondaryBtn} mt-2`}>Wrong bottles? Pick again</button>
-          </div>
-        )}
+          );
+        })()}
 
         {/* HANDBACK (helper) */}
         {step === "handback" && (
