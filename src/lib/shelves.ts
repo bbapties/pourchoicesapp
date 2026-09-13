@@ -309,7 +309,7 @@ async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE, onlyUser
 
   let q = supabase
     .from("activities")
-    .select("id, action, user_id, bottle_id, variant_id, created_at, users!activities_user_id_fkey!inner(account_type, username, avatar_url)")
+    .select("id, action, user_id, bottle_id, variant_id, session_id, created_at, users!activities_user_id_fkey!inner(account_type, username, avatar_url)")
     .eq("users.account_type", "human")
     // Same exclusion as the Social tab -- the shelf is that tab seen from across the room, so a
     // bottle that only ever got verified must not appear on it either.
@@ -327,21 +327,38 @@ async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE, onlyUser
   }
 
   const rows = (data || []) as any[];
+
+  // A blind tasting is ONE activity row naming the winner, but on the shelf it is every bottle
+  // that was in the lineup, standing together in finishing order (Brian, 2026-09-13). The podium
+  // read is the SECURITY DEFINER RPC so other people's tastings expand too; a session that
+  // cannot be read just shows its winner, as before.
+  const sessionIds = [...new Set(rows.filter((r) => r.action === "tasted" && r.session_id).map((r) => r.session_id as string))];
+  const podiums = new Map<string, { bottle_id: string; variant_id: string | null }[]>();
+  await Promise.all(
+    sessionIds.map(async (sid) => {
+      const { data: glasses } = await supabase.rpc("tasting_podium", { p_session_id: sid });
+      if (glasses?.length) podiums.set(sid, (glasses as any[]).sort((a, b) => a.rank - b.rank));
+    }),
+  );
+
   const seen = new Set<string>();
   const seeds: Seed[] = [];
   let consumed = 0;
-  for (const r of rows) {
+  outer: for (const r of rows) {
     consumed++;
-    if (!r.bottle_id || seen.has(r.bottle_id)) continue;
-    seen.add(r.bottle_id);
     const u = Array.isArray(r.users) ? r.users[0] : r.users;
-    seeds.push({
-      bottleId: r.bottle_id,
-      variantId: r.variant_id,
-      // The LATEST post for this bottle is the one that put it at this spot on the shelf.
-      post: { activityId: r.id, userId: r.user_id, username: u?.username ?? "Someone", avatarUrl: u?.avatar_url ?? null, action: r.action },
-    });
-    if (seeds.length === limit) break;
+    // The LATEST post for this bottle is the one that put it at this spot on the shelf.
+    const post = { activityId: r.id, userId: r.user_id, username: u?.username ?? "Someone", avatarUrl: u?.avatar_url ?? null, action: r.action };
+    const lineup = (r.action === "tasted" && r.session_id && podiums.get(r.session_id)) || null;
+    const members = lineup
+      ? lineup.map((g: { bottle_id: string; variant_id: string | null }) => ({ bottleId: g.bottle_id, variantId: g.variant_id ?? null }))
+      : [{ bottleId: r.bottle_id as string | null, variantId: r.variant_id as string | null }];
+    for (const m of members) {
+      if (!m.bottleId || seen.has(m.bottleId)) continue;
+      seen.add(m.bottleId);
+      seeds.push({ bottleId: m.bottleId, variantId: m.variantId, post });
+      if (seeds.length === limit) break outer;
+    }
   }
 
   // Resume from the last activity row actually read, not the last bottle kept — otherwise the
