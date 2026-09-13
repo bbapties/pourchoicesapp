@@ -230,6 +230,15 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // Join a friend's pour: "Join @x in a drink" on their post, then a pour or a blind with that bottle.
+    id: "social.join_drink",
+    title: "Join them in a drink",
+    body: "Open a friend's post and tap Join in a drink to have the same pour, or start a blind tasting with that bottle already in the lineup.",
+    route: "/social",
+    core: false,
+    announce: true,
+  },
+  {
     id: "bottle.variants",
     title: "Variants",
     body: "Some bottles have more than one version. Swipe the detail card to see each one.",

@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import ActivityCard from "@/components/social/ActivityCard";
+import BottleDetailView, { type OwnershipRow } from "@/components/BottleDetailView";
+import { loadBottleDetails } from "@/lib/bottleDetails";
+import { supabase } from "@/lib/supabase";
+import type { BottleDetails } from "@/lib/types";
 import UserAvatar from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { logClick } from "@/lib/events";
@@ -38,6 +42,10 @@ export default function PostClient({ activityId }: { activityId: string }) {
   const [cheerers, setCheerers] = useState<{ userId: string; username: string; avatarUrl: string | null }[] | null>(null);
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  // "Join them in a drink": the chooser is inline; a pour opens the bottle as an overlay with its
+  // pour sheet already up (the same delegation Home uses), a blind hands off to /taste pre-seeded.
+  const [joining, setJoining] = useState(false);
+  const [joinBottle, setJoinBottle] = useState<{ details: BottleDetails; rows: OwnershipRow[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -123,6 +131,26 @@ export default function PostClient({ activityId }: { activityId: string }) {
     else toast.success("Added to My Bar");
   };
 
+  const joinWithDrink = async () => {
+    if (!publicUserId || !item) return;
+    logClick("join_drink", { userId: publicUserId, targetId: item.id, surface: "/post", metadata: { choice: "pour", bottle_id: item.bottleId } });
+    const [details, { data: rows }] = await Promise.all([
+      loadBottleDetails(item.bottleId, publicUserId),
+      supabase.from("user_bottles").select("variant_id, currently_owned, times_had, owned_count").eq("user_id", publicUserId).eq("bottle_id", item.bottleId),
+    ]);
+    if (!details) { toast.error("Couldn't open that bottle"); return; }
+    setJoining(false);
+    setJoinBottle({ details, rows: (rows || []) as OwnershipRow[] });
+  };
+
+  const joinWithBlind = () => {
+    if (!publicUserId || !item) return;
+    logClick("join_drink", { userId: publicUserId, targetId: item.id, surface: "/post", metadata: { choice: "blind", bottle_id: item.bottleId } });
+    const params = new URLSearchParams({ bottle: item.bottleId });
+    if (item.variantId) params.set("variant", item.variantId);
+    router.push(`/taste?${params.toString()}`);
+  };
+
   const wishlist = async () => {
     if (!publicUserId || !item) return;
     const variantId = item.variantId ?? (await resolveDefaultVariantId(item.bottleId));
@@ -138,6 +166,24 @@ export default function PostClient({ activityId }: { activityId: string }) {
   const roots = comments.filter((c) => !c.parentId);
   const repliesOf = (id: string) => comments.filter((c) => c.parentId === id);
   const title = item ? (item.action === "tasted" ? "Blind tasting" : item.action === "drank" ? "Pour" : "Post") : "Post";
+
+  if (joinBottle && publicUserId && item) {
+    return (
+      <BottleDetailView
+        bottle={joinBottle.details}
+        publicUserId={publicUserId}
+        initialVariantId={item.variantId ?? null}
+        ownershipRows={joinBottle.rows}
+        autoOpenPour
+        onAddToBar={async (bottleId, variantId) => {
+          const res = await addOrRestockUserBottle({ userId: publicUserId, bottleId, variantId: variantId ?? null });
+          if ("error" in res) toast.error("Couldn't add it");
+          else toast.success("Added to My Bar");
+        }}
+        onClose={() => setJoinBottle(null)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-full flex flex-col">
@@ -166,6 +212,22 @@ export default function PostClient({ activityId }: { activityId: string }) {
               <p className="px-4 -mt-1 mb-2 text-xs text-cream-mute">
                 #{rank.rank} of @{item.username}&apos;s {rank.of}
               </p>
+            )}
+
+            {publicUserId && publicUserId !== item.userId && item.action !== "tasted" && (
+              <div className="px-4 pt-2">
+                {joining ? (
+                  <div className="flex gap-2.5">
+                    <button type="button" onClick={joinWithDrink} className="flex-1 h-11 rounded-lg pc-brass bg-brass text-engrave text-sm font-semibold">Have a drink</button>
+                    <button type="button" onClick={joinWithBlind} className="flex-1 h-11 rounded-lg pc-brass bg-brass text-engrave text-sm font-semibold">Blind tasting</button>
+                    <button type="button" onClick={() => setJoining(false)} className="h-11 px-3 rounded-lg border border-edge text-sm text-cream-mute" aria-label="Never mind">✕</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setJoining(true)} className="w-full h-11 rounded-lg pc-brass bg-brass text-engrave text-sm font-semibold">
+                    Join @{item.username} in a drink
+                  </button>
+                )}
+              </div>
             )}
 
             {publicUserId && publicUserId !== item.userId && item.action !== "tasted" && (

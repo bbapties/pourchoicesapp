@@ -253,8 +253,11 @@ client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
 - `click` — `bottle_open` (SearchClient; not otherwise in `activities`), `have_a_drink` intent
   (BottleDetailView + Drink tab; `pour_type` and optional `source: 'drink_tab'` in metadata), and
   `blind_tasting` (Have-a-drink → Blind, More → Blind tasting, or Drink tab pour-pick → Blind;
-  metadata `{ source: 'pour'|'more'|'drink_tab', variant_id }`). Blind does **not** write an
-  `activities.drank` row — it opens `/taste` with the bottle pre-seeded.
+  metadata `{ source: 'pour'|'more'|'drink_tab'|'detail'|'picked_up', variant_id }`). Blind does
+  **not** write an `activities.drank` row — it opens `/taste` with the bottle pre-seeded.
+- `click` → `join_drink` — "Join @x in a drink" on someone else's post (`PostClient`).
+  `target_id` = activity id, `metadata = { choice: 'pour'|'blind', bottle_id }`. The pour path
+  then logs the normal `have_a_drink` / `activities.drank`; blind hands off to `/taste`.
 - `click` → `barcode_scan` — a successful camera scan from the search bar (`SearchClient.handleScan`).
   `metadata = { matched: boolean }`, `target_id` = matched bottle id when found. Feeds scan-usage
   and catalog-coverage insights (how often a scan finds nothing → add-flow).
