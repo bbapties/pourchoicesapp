@@ -173,13 +173,13 @@ export default function BottleOnShelf({
 
       {led ? <span className={led} aria-hidden="true" /> : null}
 
-      {/* #113: on the Social shelf, who (bottom-left) and what (bottom-right). Tapping the avatar
-          opens the person; tapping the bottle opens the post - the slot's onClick handles both
-          via onPickUser, so the overlays sit on the slot, never on the shelf image. */}
+      {/* #113: on the Social shelf, who and what, as one pill centred under the label. Tapping
+          the person opens them; tapping the bottle opens the post - the slot's onClick handles
+          both via onPickUser, so the pill sits on the slot, never on the shelf image. */}
       {bottle.post ? (
-        <>
+        <span className="pc-pill">
           <span
-            className="pc-ov pc-ov-who"
+            className="pc-pill-who"
             role="button"
             aria-label={`@${bottle.post.username}`}
             onClick={(e) => { e.stopPropagation(); onPickUser?.(bottle); }}
@@ -191,10 +191,10 @@ export default function BottleOnShelf({
               avatarInitials(bottle.post.username)
             )}
           </span>
-          <span className="pc-ov pc-ov-what" aria-hidden="true">
+          <span className="pc-pill-what" aria-hidden="true">
             <ActionGlyph action={bottle.post.action} />
           </span>
-        </>
+        </span>
       ) : null}
     </button>
   );
