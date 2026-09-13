@@ -53,6 +53,10 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
   const [bottles, setBottles] = useState<any[]>([]);         // search results (active mode)
   const [defaultBottles, setDefaultBottles] = useState<any[]>([]); // browse results (active mode)
   const [isLoading, setIsLoading] = useState(false);
+  // #118: the query `bottles` actually answers. Between a keystroke and the debounced fetch
+  // landing, `query` and `resultsFor` differ, and the list is "pending" - never "empty".
+  const [resultsFor, setResultsFor] = useState("");
+  const searchSeq = useRef(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [showAddSheet, setShowAddSheet] = useState(false);
@@ -698,11 +702,17 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
   };
 
   const searchBottles = useCallback(async (searchTerm: string) => {
-    if (!searchTerm.trim()) {
+    const term = searchTerm.trim();
+    if (!term) {
       setBottles([]);
+      setResultsFor("");
       setIsLoading(false);
       return;
     }
+
+    // #118: a slow response for an older term must never overwrite a newer one.
+    const seq = ++searchSeq.current;
+    const stale = () => seq !== searchSeq.current;
 
     setIsLoading(true);
     try {
@@ -730,7 +740,8 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
         .order(isBottles ? "default_variant_elo" : "variant_elo_global", { ascending: false, nullsFirst: false })
         .limit(50);
 
-      if (error) { setBottles([]); toast.error("Couldn't run that search — try different terms."); return; }
+      if (stale()) return;
+      if (error) { setBottles([]); setResultsFor(term); toast.error("Couldn't run that search — try different terms."); return; }
 
       const termLower = searchTerm.toLowerCase();
       const filteredResults = (searchResults || []).filter((row: any) => {
@@ -757,6 +768,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
 
       const mapFn = isBottles ? mapBottleResult : mapVariantResult;
       setBottles(filteredResults.map(mapFn));
+      setResultsFor(term);
 
       logEvent({
         eventType: "search",
@@ -765,11 +777,13 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
         metadata: { query: searchTerm, result_count: filteredResults.length, mode: viewMode },
       });
     } catch (error) {
+      if (stale()) return;
       console.error("Unexpected error:", error);
       setBottles([]);
+      setResultsFor(term);
       toast.error("Search failed. Please try again.");
     } finally {
-      setIsLoading(false);
+      if (!stale()) setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, publicUserId]);
@@ -921,7 +935,12 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
   // - No query, filter active: DB count for that filter (separate query)
   // - Query active: count of in-memory search results (bounded to 50)
   const totalCount = viewMode === 'bottles' ? totalBottleCount : totalVariantCount;
-  const displayCount = query.trim()
+  // #118: while the debounce or the fetch is still out, the list on screen does not answer the
+  // current query - it is the previous one, dimmed - so the banner shows no number either.
+  const searchPending = !!query.trim() && (isLoading || resultsFor !== query.trim());
+  const displayCount: number | null = searchPending
+    ? null
+    : query.trim()
     ? sortedBottles.length
     : filteredBrowseCount !== null && filterActive
     ? filteredBrowseCount
@@ -1025,7 +1044,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
 
         {/* Bottle count — center */}
         <span className="flex-1 text-center text-sm text-cream font-medium tabular-nums">
-          {displayCount.toLocaleString()} {viewMode === 'bottles' ? 'Bottles' : 'Variants'}
+          {displayCount === null ? "…" : displayCount.toLocaleString()} {viewMode === 'bottles' ? 'Bottles' : 'Variants'}
         </span>
 
         {/* Sort By */}
@@ -1089,7 +1108,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
 
       {/* Scrollable Content */}
       <div className="px-4 py-4" data-coach="search.list">
-        {isLoading ? (
+        {searchPending && sortedBottles.length === 0 ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center p-3 border-b border-edge">
@@ -1101,7 +1120,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
               </div>
             ))}
           </div>
-        ) : query.trim() && bottles.length === 0 ? (
+        ) : query.trim() && !searchPending && bottles.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🥃</div>
             <h3 className="text-lg font-semibold mb-2 text-cream">
@@ -1109,7 +1128,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
             </h3>
           </div>
         ) : (
-          <div>
+          <div className={searchPending ? "opacity-50 transition-opacity" : "transition-opacity"} aria-busy={searchPending}>
             <div className="space-y-0">
               {sortedBottles.map((bottle) => (
                 <div key={bottle.id || bottle.name} onClick={() => handleBottleClick(bottle)} className="cursor-pointer">
