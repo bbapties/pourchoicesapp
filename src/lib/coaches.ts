@@ -230,6 +230,16 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // The cabinet's top trim carries the scanner, so scanning no longer starts in Search.
+    id: "home.scan",
+    title: "Scan from Home",
+    body: "The scanner now lives on the top trim of the cabinet. Tap it from Home to scan any bottle.",
+    route: "/home",
+    core: false,
+    announce: true,
+    tour: [{ route: "/home", anchor: "home.scan", caption: "Tap here to scan a barcode from anywhere on Home." }],
+  },
+  {
     // Join a friend's pour: "Join @x in a drink" on their post, then a pour or a blind with that bottle.
     id: "social.join_drink",
     title: "Join them in a drink",

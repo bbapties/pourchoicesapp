@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ScanLine } from "lucide-react";
 import Shelf from "@/components/home/Shelf";
 import ShelfRun from "@/components/home/ShelfRun";
 import PickedUpBottle from "@/components/home/PickedUpBottle";
@@ -81,6 +83,25 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
 
   return (
     <div className="bg-panel min-h-full">
+      {/* The cabinet's top trim: a slim ebony rail that stays put while the shelves scroll under
+          it. The name is engraved into the brass; the scanner sits at the far right so a bottle
+          can be scanned from Home without hunting for Search first. AppShell clears 40px for it. */}
+      <header
+        className="fixed top-0 left-0 right-0 h-10 pc-wood pc-rail-bottom z-20 shadow-[0_6px_14px_rgba(0,0,0,.55)] flex items-center justify-between px-4"
+        style={{ top: "env(safe-area-inset-top)" }}
+      >
+        <span className="font-display text-[15px] font-bold tracking-[.18em] uppercase pc-brass-text select-none">Pour Choices</span>
+        <Link
+          href="/search?scan=1"
+          aria-label="Scan a barcode"
+          data-coach="home.scan"
+          className="w-10 h-10 -mr-2 flex items-center justify-center text-brass-hi"
+          onClick={() => logClick("home_scan_trim", { userId: viewerId, surface: "/home" })}
+        >
+          <ScanLine size={20} aria-hidden="true" />
+        </Link>
+      </header>
+
       {SHELVES.map((shelf) => {
         const s = state[shelf.id];
         // Empty only once we KNOW it is empty. Saying "your bar is empty" while the count is

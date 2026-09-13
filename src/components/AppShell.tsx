@@ -50,6 +50,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
             pathname === "/search" ? "calc(128px + env(safe-area-inset-top))"
             : pathname === "/mybar" ? "calc(132px + env(safe-area-inset-top))"
             : (pathname === "/social" || pathname === "/taste") ? "calc(56px + env(safe-area-inset-top))"
+            : pathname === "/home" ? "calc(40px + env(safe-area-inset-top))"
             : "0px",
           marginBottom: isAuthPage ? "0px" : "calc(64px + env(safe-area-inset-bottom))",
         }}
