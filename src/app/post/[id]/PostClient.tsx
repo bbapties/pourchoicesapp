@@ -218,8 +218,8 @@ export default function PostClient({ activityId }: { activityId: string }) {
               <div className="px-4 pt-2">
                 {joining ? (
                   <div className="flex gap-2.5">
-                    <button type="button" onClick={joinWithDrink} className="flex-1 h-11 rounded-lg pc-brass bg-brass text-engrave text-sm font-semibold">Have a drink</button>
-                    <button type="button" onClick={joinWithBlind} className="flex-1 h-11 rounded-lg pc-brass bg-brass text-engrave text-sm font-semibold">Blind tasting</button>
+                    <button type="button" onClick={joinWithDrink} className="flex-1 h-11 rounded-lg pc-brass bg-brass text-engrave text-sm font-semibold">Pour this bottle</button>
+                    <button type="button" onClick={joinWithBlind} className="flex-1 h-11 rounded-lg pc-brass bg-brass text-engrave text-sm font-semibold">Start a blind with this</button>
                     <button type="button" onClick={() => setJoining(false)} className="h-11 px-3 rounded-lg border border-edge text-sm text-cream-mute" aria-label="Never mind">✕</button>
                   </div>
                 ) : (
