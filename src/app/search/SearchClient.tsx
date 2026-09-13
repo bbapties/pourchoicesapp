@@ -35,9 +35,9 @@ const EMPTY_UUID = '00000000-0000-0000-0000-000000000000';
 const DEFAULT_ELO = 1500;
 
 const BOTTLE_SELECT =
-  "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by, default_variant_elo, default_variant_id, variant_count";
+  "bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, bottle_elo_global, bottle_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_volume, attr_nose, attr_palate, attr_finish, attr_extras, attr_variant_ids, attr_batch, attr_release_year, attr_store_pick_name, attr_variant_created_by, default_variant_elo, default_variant_id, variant_count, blended_star";
 const VARIANT_SELECT =
-  "variant_id, bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, variant_is_default, variant_elo_global, variant_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_batch, attr_release_year, attr_store_pick_name, attr_nose, attr_palate, attr_finish, attr_notes";
+  "variant_id, bottle_id, bottle_name, bottle_distillery, bottle_category, bottle_style, bottle_barcode, variant_is_default, variant_elo_global, variant_verified, attr_frontimage_url, attr_backimage_url, attr_age, attr_proof, attr_batch, attr_release_year, attr_store_pick_name, attr_nose, attr_palate, attr_finish, attr_notes, blended_star";
 
 interface SearchClientProps {
   bottlesElo: number[];       // default-variant Elo distribution (Bottles mode star scaling)
@@ -129,8 +129,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [filter, setFilter] = useState<FilterState>({ step: 'closed', field: null, value: null });
 
-  // Fixed scale (2026-09-13): see eloToStar. The min/max above are no longer part of the star.
-  const calcStars = (elo: number | null | undefined): number | null => eloToStar(elo);
+  const num = (v: unknown): number | null => { const n = v == null ? null : Number(v); return n == null || Number.isNaN(n) ? null : n; };
 
   // Per-variant subtitle tag for the All Variants view.
   const variantTag = (result: any): string => {
@@ -166,7 +165,10 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
       image_url: result.attr_frontimage_url,
       elo_global: elo,
       provisional: !result.bottle_verified,
-      stars: calcStars(elo),
+      // The blended star the browse is ORDERED by (Brian, 2026-09-13). It used to fall back to a
+      // star scaled from a bare 1500 Elo, which drew 2.5 on a bottle nobody has scored and put
+      // it visually above a real 0.49. No evidence -> no star -> a dash, and it sorts last.
+      stars: num(result.blended_star),
       variantCount: visibleVariantCount,
       style: result.bottle_style,
       age: result.attr_age,
@@ -207,7 +209,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
       image_url: result.attr_frontimage_url,
       elo_global: elo,
       provisional: !result.variant_verified,
-      stars: calcStars(elo),
+      stars: num(result.blended_star),
       variantLabel: variantTag(result),
       style: result.bottle_style,
       age: result.attr_age,
@@ -806,7 +808,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
     // ProvisionalSheet creates a SKU (bottle + default variant). Optimistically show it
     // in Bottles mode; in Variants mode just re-run the search to pick it up cleanly.
     if (newBottle && viewMode === 'bottles') {
-      newBottle.stars = calcStars(newBottle.elo_global ?? 1500);
+      newBottle.stars = null; // brand new: nobody has scored it yet
       newBottle.bottleId = newBottle.bottleId ?? newBottle.id;
       if (query.trim()) {
         setBottles((prev) => [newBottle, ...prev]);
