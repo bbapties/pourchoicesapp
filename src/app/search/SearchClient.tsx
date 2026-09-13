@@ -165,9 +165,9 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
       image_url: result.attr_frontimage_url,
       elo_global: elo,
       provisional: !result.bottle_verified,
-      // The blended star the browse is ORDERED by (Brian, 2026-09-13). It used to fall back to a
-      // star scaled from a bare 1500 Elo, which drew 2.5 on a bottle nobody has scored and put
-      // it visually above a real 0.49. No evidence -> no star -> a dash, and it sorts last.
+      // The blended star the browse is ORDERED by (Brian, 2026-09-13). The view supplies it for
+      // every row -- an unscored bottle is 2.5 at its untouched 1500 Elo, not a null -- so the
+      // number on the card is always the number the list is sorted by.
       stars: num(result.blended_star),
       variantCount: visibleVariantCount,
       style: result.bottle_style,
