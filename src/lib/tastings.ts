@@ -113,11 +113,13 @@ export async function saveTasting(opts: {
 
   // 3. Pairwise results — picks[i] ranked above picks[j] (i < j) => i beats j.
   //    All rows in ONE upsert so the Elo trigger runs once over the whole session.
-  //    ignoreDuplicates => ON CONFLICT DO NOTHING on the existing unique
-  //    (tasting_session_id, winner_bottle_id, loser_bottle_id): re-inserting the
+  //    ignoreDuplicates => ON CONFLICT DO NOTHING on the unique
+  //    (tasting_session_id, winner_variant_id, loser_variant_id): re-inserting the
   //    same set into the same session is a no-op, so a retry after a silently-
   //    successful insert (e.g. mobile timeout) adds zero new rows and the trigger
   //    cannot double-score.
+  //    The key is per VARIANT pair (2026-09-14). It used to be per bottle pair, so a lineup
+  //    holding two batches of the same bottle silently lost every pair after the first.
   const resultRows: {
     tasting_session_id: string;
     winner_bottle_id: string;
@@ -139,7 +141,7 @@ export async function saveTasting(opts: {
   const { error: rErr } = await supabase
     .from("tasting_results")
     .upsert(resultRows, {
-      onConflict: "tasting_session_id,winner_bottle_id,loser_bottle_id",
+      onConflict: "tasting_session_id,winner_variant_id,loser_variant_id",
       ignoreDuplicates: true,
     });
   // Return sessionId even on failure so the caller can retry against the SAME session.

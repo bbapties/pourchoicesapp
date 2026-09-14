@@ -147,7 +147,7 @@ w(pairs.map(([a, b, pa, pb]) =>
   `  -- place ${pa} beats place ${pb}\n` +
   `  ((SELECT id FROM _imported_session), ${q(a.bottle_id)}, ${q(b.bottle_id)}, ${q(a.variant_id)}, ${q(b.variant_id)}, ${ts})`
 ).join(",\n"));
-w(`ON CONFLICT (tasting_session_id, winner_bottle_id, loser_bottle_id) DO NOTHING;`);
+w(`ON CONFLICT (tasting_session_id, winner_variant_id, loser_variant_id) DO NOTHING;`);
 w();
 
 // ---- 4. B-47 ---------------------------------------------------------------
