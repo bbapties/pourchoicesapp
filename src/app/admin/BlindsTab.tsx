@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Search, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical, Plus, Search, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
 import { MIN_PICKS } from "@/lib/tastings";
 import { insertDefaultVariant } from "@/lib/variants";
+import { arrayMove, useDragReorder } from "@/lib/useDragReorder";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
@@ -116,6 +117,13 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
     [rows, pickingKey],
   );
 
+  // Reorder before saving (Brian, 2026-09-14): places get entered out of order. Same gesture set
+  // as the ranking screen - grip to drag, chevrons for one step - and a MOVE, not a swap.
+  const moveTo = useCallback((from: number, to: number) => {
+    setRows((prev) => arrayMove(prev, from, to));
+  }, []);
+  const { dragIndex, setRowRef, handleProps } = useDragReorder({ count: rows.length, onMove: moveTo });
+
   const setPick = (key: number, pick: Pick) =>
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, pick } : r)));
 
@@ -219,11 +227,23 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
 
       <ol className="space-y-2">
         {rows.map((r, i) => (
-          <li key={r.key} className="flex items-stretch gap-2">
+          <li
+            key={r.key}
+            ref={setRowRef(i)}
+            className={`flex items-stretch gap-1 rounded-lg ${dragIndex === i ? "ring-2 ring-brass opacity-90 shadow-lg" : ""}`}
+          >
+            <button
+              type="button"
+              aria-label={`Reorder ${r.pick?.name ?? `${ordinal(i + 1)} place`}, currently ${i + 1} of ${rows.length}. Drag, or use the arrow keys.`}
+              className="px-1 text-cream-mute cursor-grab active:cursor-grabbing touch-none"
+              {...handleProps(i)}
+            >
+              <GripVertical size={18} />
+            </button>
             <button
               type="button"
               onClick={() => setPickingKey(r.key)}
-              className="pc-leather flex-1 flex items-center gap-3 rounded-lg px-3 py-2 text-left min-h-14"
+              className="pc-leather flex-1 flex items-center gap-3 rounded-lg px-3 py-2 text-left min-h-14 min-w-0"
             >
               <span className="pc-brass-text font-display w-9 shrink-0">{ordinal(i + 1)}</span>
               {r.pick ? (
@@ -248,12 +268,16 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
                 </span>
               )}
             </button>
+            <div className="flex flex-col justify-center">
+              <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveTo(i, i - 1)} className="p-0.5 disabled:opacity-30 text-cream"><ChevronUp size={18} /></button>
+              <button type="button" aria-label="Move down" disabled={i === rows.length - 1} onClick={() => moveTo(i, i + 1)} className="p-0.5 disabled:opacity-30 text-cream"><ChevronDown size={18} /></button>
+            </div>
             {rows.length > MIN_PICKS && (
               <button
                 type="button"
                 onClick={() => removeRow(r.key)}
                 aria-label={`Remove ${ordinal(i + 1)} place`}
-                className="px-2 text-cream-faint"
+                className="px-1 text-cream-faint"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
