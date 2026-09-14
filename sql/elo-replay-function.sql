@@ -80,7 +80,10 @@ BEGIN
   UPDATE public.bottle_variants SET elo_global = 1500 WHERE COALESCE(elo_global, 1500) <> 1500;
   UPDATE public.user_bottles     SET elo        = 1500 WHERE COALESCE(elo, 1500)        <> 1500;
 
-  DELETE FROM public.tasting_results;
+  -- WHERE true is for pg_safeupdate: Supabase loads it for the API roles, and a bare DELETE is
+  -- refused with "DELETE requires a WHERE clause". Purge / merge ran this from psql, where the
+  -- extension is not loaded; Admin > Blinds (#129) calls it through PostgREST and hit it.
+  DELETE FROM public.tasting_results WHERE true;
 
   FOR s IN
     SELECT DISTINCT tasting_session_id, session_at
