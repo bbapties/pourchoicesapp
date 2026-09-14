@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Toaster } from "@/components/ui/sonner";
 import UsersTab from "./UsersTab";
 import BottlesTab from "./BottlesTab";
 import VariantsTab from "./VariantsTab";
@@ -64,6 +65,8 @@ export default function AdminClient({
         {tab === "feedback" && <FeedbackTab publicUserId={publicUserId} />}
         {tab === "notify"   && <NotifyTab publicUserId={publicUserId} />}
       </div>
+      {/* Every tab toasts its errors; without a Toaster mounted here they were all invisible (found via #129). */}
+      <Toaster position="top-center" style={{ top: "132px" }} />
     </div>
   );
 }

@@ -96,6 +96,7 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
   const nextKey = useRef(MIN_PICKS);
   const [pickingKey, setPickingKey] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSave, setLastSave] = useState<{
     user: string; tastedOn: string; bottles: number; sessionsReplayed: number; pairsReplayed: number;
   } | null>(null);
@@ -148,6 +149,8 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
     if (!tastedOn) { toast.error("Pick the date."); return; }
     if (!allFilled) { toast.error("Every place needs a bottle."); return; }
     setSaving(true);
+    setSaveError(null);
+    setLastSave(null);
     try {
       const { data, error } = await supabase.rpc("admin_import_blind_tasting", {
         p_user_id: userId,
@@ -155,7 +158,12 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
         p_variant_ids: rows.map((r) => r.pick!.variantId),
         p_name: name.trim() || null,
       });
-      if (error) { toast.error(error.message); return; }
+      if (error) {
+        console.error("admin_import_blind_tasting failed:", error);
+        setSaveError(error.message);
+        toast.error(error.message);
+        return;
+      }
       const out = (Array.isArray(data) ? data[0] : data) as {
         session_id: string; tasted_at: string; pairs: number; sessions_replayed: number; pairs_replayed: number;
       };
@@ -173,6 +181,11 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
       });
       toast.success(`Saved ${rows.length} bottles for ${user} — ${out.sessions_replayed} sessions re-scored.`);
       reset();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("admin_import_blind_tasting threw:", e);
+      setSaveError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -295,6 +308,12 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
           {saving ? "Saving + re-scoring…" : "Save"}
         </Button>
       </div>
+
+      {saveError && (
+        <div className="pc-inset rounded-lg p-3 text-xs text-cream border border-brass-line" role="alert">
+          <span className="pc-brass-text font-semibold">Not saved.</span> {saveError}
+        </div>
+      )}
 
       {lastSave && (
         <div className="pc-inset rounded-lg p-3 text-xs text-cream-mute">
