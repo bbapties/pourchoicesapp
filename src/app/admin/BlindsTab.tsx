@@ -5,10 +5,10 @@ import { toast } from "sonner";
 import { Plus, Search, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
-import { MAX_PICKS, MIN_PICKS } from "@/lib/tastings";
+import { MIN_PICKS } from "@/lib/tastings";
+import { insertDefaultVariant } from "@/lib/variants";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import ProvisionalSheet from "@/components/ProvisionalSheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 
 /**
@@ -23,8 +23,13 @@ import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
  *
  * Picking a bottle is a sheet over the form, not a hop to /search: the form is state, and a
  * route change would lose it. The sheet searches the same view Search does; when nothing
- * matches, the same ProvisionalSheet the Search FAB opens adds the bottle, and the new SKU's
- * default variant drops straight into the row that asked for it.
+ * matches, "Add <what you typed>" inserts a bare provisional bottle (name only, no photo - Brian
+ * never has one at this stage; the verify lane fills the rest in) plus its default variant, and
+ * that variant drops straight into the row that asked for it.
+ *
+ * No upper cap on places (Brian, 2026-09-14): MAX_PICKS is the app's UI number; this form is
+ * exactly where the 15-20 bottle YouTuber blinds get entered. The function rejects the same
+ * user + day + finishing order as "already submitted".
  */
 
 type UserRow = { id: string; username: string };
@@ -119,7 +124,6 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
 
   /** "Add Nth place": a new blank row, and straight into the picker for it. */
   const addRow = () => {
-    if (rows.length >= MAX_PICKS) return;
     const key = nextKey.current++;
     setRows((prev) => [...prev, { key, pick: null }]);
     setPickingKey(key);
@@ -259,14 +263,9 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
       </ol>
 
       <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={addRow}
-          disabled={rows.length >= MAX_PICKS || saving}
-          className="flex-1"
-        >
+        <Button variant="outline" onClick={addRow} disabled={saving} className="flex-1">
           <Plus className="w-4 h-4 mr-1" />
-          {rows.length >= MAX_PICKS ? `Max ${MAX_PICKS}` : `Add ${ordinal(rows.length + 1)} place`}
+          Add {ordinal(rows.length + 1)} place
         </Button>
         <Button variant="brass" onClick={save} disabled={!allFilled || !userId || saving} className="flex-1">
           {saving ? "Saving + re-scoring…" : "Save"}
@@ -301,8 +300,7 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
 /**
  * The picker. Searches `all_variant_details` the way Search does (same fields, same
  * PostgREST quoting) but shows only what a placement needs: the bottle, its version, whether it
- * has been verified. "Not in the list?" opens ProvisionalSheet; its callback returns the new
- * bottle row, so we look up the default variant it created and hand that back as the pick.
+ * has been verified. "Add <typed name>" inserts the bottle as-is (see the note on the tab).
  */
 function BottlePickerSheet({
   open, place, taken, publicUserId, onClose, onPick,
@@ -318,7 +316,7 @@ function BottlePickerSheet({
   const [results, setResults] = useState<Catalog[]>([]);
   const [loading, setLoading] = useState(false);
   const [answered, setAnswered] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
+  const [adding, setAdding] = useState(false);
   const seq = useRef(0);
 
   useEffect(() => {
@@ -356,24 +354,36 @@ function BottlePickerSheet({
     return () => clearTimeout(id);
   }, [query, search]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleAdded = async (newBottle?: any) => {
-    if (!newBottle?.id) return;
-    const { data } = await supabase
-      .from("bottle_variants")
-      .select("id, frontimage_url, verified")
-      .eq("bottles_id", newBottle.id)
-      .eq("is_default", true)
-      .maybeSingle();
-    if (!data) { toast.error("Bottle added, but its variant did not come back — search for it."); return; }
-    onPick({
-      variantId: data.id,
-      bottleId: newBottle.id,
-      name: newBottle.name,
-      subtitle: newBottle.distillery ?? null,
-      imageUrl: (newBottle.frontimage_url ?? data.frontimage_url) ?? null,
-      verified: Boolean(data.verified),
-    });
+  /**
+   * Bare provisional insert: name + created_by, everything else null, exactly the columns
+   * ProvisionalSheet writes minus the photo. `trg_log_bottle_added` posts the added_to_db
+   * activity. verify-bottle enriches it later.
+   */
+  const quickAdd = async () => {
+    const bottleName = query.trim();
+    if (!bottleName || adding) return;
+    setAdding(true);
+    try {
+      const { data: bottle, error } = await supabase
+        .from("bottles")
+        .insert([{ name: bottleName, distillery: null, category: null, barcode: null, verified: false, elo_global: 1500, created_by: publicUserId }])
+        .select("id, name")
+        .single();
+      if (error || !bottle) { toast.error(`Couldn't add the bottle: ${error?.message ?? "unknown"}`); return; }
+      const variantId = await insertDefaultVariant({ bottleId: bottle.id, createdBy: publicUserId, eloGlobal: 1500, verified: false });
+      if (!variantId) { toast.error("Bottle added, but its variant did not come back — search for it."); return; }
+      logEvent({
+        eventType: "bottle_submitted",
+        surface: "admin_blinds",
+        targetType: "bottle",
+        targetId: bottle.id,
+        metadata: { from_scan: false, has_barcode: false, has_image: false, special: "none" },
+      });
+      toast.success(`Added "${bottle.name}" as provisional.`);
+      onPick({ variantId, bottleId: bottle.id, name: bottle.name, subtitle: null, imageUrl: null, verified: false });
+    } finally {
+      setAdding(false);
+    }
   };
 
   const nothing = answered && !loading && results.length === 0;
@@ -443,18 +453,14 @@ function BottlePickerSheet({
           </div>
 
           {query.trim() && (
-            <Button variant="outline" onClick={() => setShowAdd(true)} className="mt-2">
-              <Plus className="w-4 h-4 mr-1" /> Not in the list? Add it
+            <Button variant="outline" onClick={quickAdd} disabled={adding} className="mt-2">
+              <Plus className="w-4 h-4 mr-1" />
+              {adding ? "Adding…" : `Not in the list? Add "${query.trim()}"`}
             </Button>
           )}
         </SheetContent>
       </Sheet>
 
-      <ProvisionalSheet
-        open={showAdd}
-        onOpenChange={setShowAdd}
-        onBottleAdded={handleAdded}
-      />
     </>
   );
 }

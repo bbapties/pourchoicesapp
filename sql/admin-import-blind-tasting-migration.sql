@@ -66,9 +66,11 @@ BEGIN
     RAISE EXCEPTION 'admin_import_blind_tasting: date must be today or earlier';
   END IF;
 
+  -- No upper cap (Brian, 2026-09-14): the app's MAX_PICKS is a UI number; YouTubers run 15-20
+  -- bottle blinds and those are exactly what this form exists to enter.
   v_n := COALESCE(array_length(p_variant_ids, 1), 0);
-  IF v_n < 2 OR v_n > 10 THEN
-    RAISE EXCEPTION 'admin_import_blind_tasting: need 2 to 10 bottles, got %', v_n;
+  IF v_n < 2 THEN
+    RAISE EXCEPTION 'admin_import_blind_tasting: need at least 2 bottles, got %', v_n;
   END IF;
   IF (SELECT count(DISTINCT v) FROM unnest(p_variant_ids) v) <> v_n THEN
     RAISE EXCEPTION 'admin_import_blind_tasting: the same bottle appears twice';
@@ -84,6 +86,19 @@ BEGIN
 
   -- noon that day, then +N seconds so same-day entries keep save order
   v_noon := (p_tasted_on::text || ' 12:00')::timestamp AT TIME ZONE 'America/Chicago';
+
+  -- Duplicate guard (Brian, 2026-09-14): the same user, the same day, the same bottles in the
+  -- same finishing order is the same blind entered twice, whether the first copy came from this
+  -- form or from the app. Whole calendar day in Chicago, not just the noon window.
+  IF EXISTS (
+    SELECT 1 FROM public.tasting_sessions s
+     WHERE s.user_id = p_user_id
+       AND s.created_at >= v_noon - interval '12 hours'
+       AND s.created_at <  v_noon + interval '12 hours'
+       AND s.variant_ids = p_variant_ids
+  ) THEN
+    RAISE EXCEPTION 'That blind has already been submitted.';
+  END IF;
   SELECT count(*) INTO v_same_day
     FROM public.tasting_sessions s
    WHERE s.created_at >= v_noon AND s.created_at < v_noon + interval '1 hour';
@@ -142,6 +157,6 @@ REVOKE ALL ON FUNCTION public.admin_import_blind_tasting(uuid, date, uuid[], tex
 GRANT EXECUTE ON FUNCTION public.admin_import_blind_tasting(uuid, date, uuid[], text) TO authenticated;
 
 COMMENT ON FUNCTION public.admin_import_blind_tasting(uuid, date, uuid[], text) IS
-  'Admin > Blinds (#129): writes a backdated blind tasting for any user (session, details, all pairs at noon on the given day, star-guess cleanup, one tasted activity, provenance event) and then replay_elo_history(). Admins only. One transaction.';
+  'Admin > Blinds (#129): writes a backdated blind tasting for any user (session, details, all pairs at noon on the given day, star-guess cleanup, one tasted activity, provenance event) and then replay_elo_history(). Rejects an identical user+day+order as already submitted. No upper bottle cap. Admins only. One transaction.';
 
 COMMIT;
