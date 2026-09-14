@@ -1,6 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
--- Regenerated from the live prod DB on 2026-09-13 via scripts/_psql.mjs against information_schema/pg_catalog.
+-- Regenerated from the live prod DB on 2026-09-14 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
 
 CREATE TABLE public.activities (
@@ -270,6 +270,7 @@ CREATE TABLE public.wishlists (
 
 -- Functions
 --   actor_muted_by_post_owner(p_activity_id uuid, p_actor_id uuid)  SECURITY DEFINER
+--   admin_import_blind_tasting(p_user_id uuid, p_tasted_on date, p_variant_ids uuid[], p_name text)  SECURITY DEFINER
 --   bottle_delete_impact(p_bottle uuid)  SECURITY DEFINER
 --   commit_bottle_import(payload jsonb)  SECURITY DEFINER
 --   current_public_user_id()

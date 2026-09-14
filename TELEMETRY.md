@@ -304,6 +304,14 @@ there would be no way to tell them apart, and any later "how often do people act
 tasting?" number would be quietly inflated by Brian's bulk entry. Filter it out of usage
 analysis; keep it in Elo analysis, where the tasting is entirely real.
 
+**Shipped 2026-09-14 — Admin > Blinds (#129)** reuses `tasting_imported` with surface
+`admin_blinds` (metadata: `source: admin_blinds_form`, `by_admin`, `bottles`, `pairs`,
+`tasted_on`, `backdated: true`), written by `admin_import_blind_tasting()` so it is in the same
+transaction as the session. The same filter-it-out-of-usage rule applies. The client also emits
+**`admin_blind_entered`** (surface `admin_blinds`, target = the `tasting_session`; metadata
+`for_user`, `bottles`, `tasted_on`, `sessions_replayed`) — the admin's own action, attributed to
+the admin, where `tasting_imported` is attributed to the user who tasted.
+
 The same skill emits `bottle_submitted` with surface `agent_import` (rather than
 `provisional_sheet`) when a bottle named in an import has to be created before the tasting can
 be written.

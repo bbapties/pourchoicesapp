@@ -7,14 +7,16 @@ import VariantsTab from "./VariantsTab";
 import FeedbackTab from "./FeedbackTab";
 import NotifyTab from "./NotifyTab";
 import ImagesTab from "./ImagesTab";
+import BlindsTab from "./BlindsTab";
 
-type TabId = "users" | "bottles" | "variants" | "images" | "feedback" | "notify";
+type TabId = "users" | "bottles" | "variants" | "images" | "blinds" | "feedback" | "notify";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "users",    label: "Users" },
   { id: "bottles",  label: "Bottles" },
   { id: "variants", label: "Variants" },
   { id: "images",   label: "Images" },
+  { id: "blinds",   label: "Blinds" },
   { id: "feedback", label: "Feedback" },
   { id: "notify",   label: "Notify" },
 ];
@@ -58,6 +60,7 @@ export default function AdminClient({
         {tab === "bottles"  && <BottlesTab publicUserId={publicUserId} />}
         {tab === "variants" && <VariantsTab publicUserId={publicUserId} />}
         {tab === "images"   && <ImagesTab publicUserId={publicUserId} />}
+        {tab === "blinds"   && <BlindsTab publicUserId={publicUserId} />}
         {tab === "feedback" && <FeedbackTab publicUserId={publicUserId} />}
         {tab === "notify"   && <NotifyTab publicUserId={publicUserId} />}
       </div>
