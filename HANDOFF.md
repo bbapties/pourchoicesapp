@@ -9,7 +9,22 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `4322954` + doc commits (this one last). All on origin/MVP-v3 and live on prod.
+- **Tip:** `ef061b1` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Latest (2026-09-14, Claude): Admin > Blinds shipped (#129).** Brian enters a past blind
+  tasting for ANY user: date (stored as noon America/Chicago; same-day entries get +N seconds so
+  they replay in save order), user, places 1st..Nth (no cap - 15-20 bottle YouTuber blinds are the
+  point), drag/chevron reorder before saving, a picker sheet over the form that searches
+  `all_variant_details` and can insert a **name-only provisional bottle** (no photo, default
+  variant) straight into the row. Save = `admin_import_blind_tasting()`
+  (`sql/admin-import-blind-tasting-migration.sql`, SECURITY DEFINER, admins only): session +
+  details + all pairs dated that day, B-47 star-guess delete, B-51 `tasted` activity,
+  `tasting_imported` event, then `replay_elo_history()`; rejects the same user + day + finishing
+  order with "That blind has already been submitted." **Two landmines found on the way:**
+  (1) the admin page had NO `<Toaster>` - every `toast.error` on every admin tab was invisible;
+  mounted in `AdminClient` now. (2) `pg_safeupdate` is loaded for the API roles, so the replay's
+  bare `DELETE FROM tasting_results` was refused through PostgREST ("DELETE requires a WHERE
+  clause") - now `WHERE true`. Any future function called via RPC needs a WHERE on every
+  UPDATE/DELETE. First real entry: Right_Blind, 5 ryes, 2026-09-11.
 - **Last session (2026-09-13, later, Claude): six bugs cleared off the board in six commits.**
   Brian said "clear the next 6 bugs" and gave the explicit go for the two behind the auth /
   security guardrail. All six closed; then one ask on top (feedback -> admin push):
@@ -1744,6 +1759,15 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-14 (Claude) - Admin > Blinds (#129)
+- `eb8942d` function + tab; `f81a98d` no cap, duplicate guard, name-only quick add; `d9d2175`
+  reorder (useDragReorder + chevrons); `479432f` Toaster on the admin page + inline "Not saved."
+  box; `ef061b1` replay DELETE gets WHERE true (pg_safeupdate). Board #129 closed.
+- Also on the board at START SESSION: **#128** (track pours; rename Tasted -> Blind) sits in
+  *Next Items per Brian* - it folds the #119 open decision into a rename. **Next step:** take #128
+  (read it with #119), or whatever Brian moves into In Progress.
+
 
 ### 2026-09-12 (later) - Claude (Phase 5: design on the canvas, then the whole app restyled and shipped)
 
