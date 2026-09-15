@@ -9,108 +9,57 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `ef061b1` + this doc commit. All on origin/MVP-v3 and live on prod.
-- **Latest (2026-09-14, Claude): Admin > Blinds shipped (#129).** Brian enters a past blind
-  tasting for ANY user: date (stored as noon America/Chicago; same-day entries get +N seconds so
-  they replay in save order), user, places 1st..Nth (no cap - 15-20 bottle YouTuber blinds are the
-  point), drag/chevron reorder before saving, a picker sheet over the form that searches
-  `all_variant_details` and can insert a **name-only provisional bottle** (no photo, default
-  variant) straight into the row. Save = `admin_import_blind_tasting()`
-  (`sql/admin-import-blind-tasting-migration.sql`, SECURITY DEFINER, admins only): session +
-  details + all pairs dated that day, B-47 star-guess delete, B-51 `tasted` activity,
-  `tasting_imported` event, then `replay_elo_history()`; rejects the same user + day + finishing
-  order with "That blind has already been submitted." **Two landmines found on the way:**
-  (1) the admin page had NO `<Toaster>` - every `toast.error` on every admin tab was invisible;
-  mounted in `AdminClient` now. (2) `pg_safeupdate` is loaded for the API roles, so the replay's
-  bare `DELETE FROM tasting_results` was refused through PostgREST ("DELETE requires a WHERE
-  clause") - now `WHERE true`. Any future function called via RPC needs a WHERE on every
-  UPDATE/DELETE. First real entry: Right_Blind, 5 ryes, 2026-09-11.
-- **Last session (2026-09-13, later, Claude): six bugs cleared off the board in six commits.**
-  Brian said "clear the next 6 bugs" and gave the explicit go for the two behind the auth /
-  security guardrail. All six closed; then one ask on top (feedback -> admin push):
-  - **#7** `1d1a84e` Admin UsersTab "N bottles" = distinct bottles with `currently_owned OR
-    times_had >= 1` (was every `user_bottles` row, one per variant, tasting rows included).
-  - **#12** `23f2f7b` `sql/b56-user-bottles-variant-not-null-migration.sql`. Prod census was
-    0 NULL-variant rows / 0 with a sibling, so the merge steps are no-ops. **`variant_id` is NOT
-    NULL on prod now** (applied after Brian allowed `Bash(node scripts/_psql.mjs:*)` in
-    `.claude/settings.local.json` - the auto-mode classifier had refused `ALTER` until then).
-    Closed. Schema dump `a088fb4`.
-  - **Feedback -> admin push** (Brian's ask, same session): every report now buzzes every admin
-    (`kind: "feedback"` in `/api/social/notify`, fired from `submitFeedback` before the screenshot
-    upload). Deep-links to `/admin?tab=feedback` (`AdminPage` reads `searchParams.tab`, passes
-    `initialTab`). Verified: QA report -> `{"sent":3,"failed":0,"recipients":1}` = Brian's 3
-    devices. **The push arrived but tapping it did NOT open the Feedback tab** - filed as
-    **#122** (Coming Soon, S): `sw.js` `notificationclick` relies on `WindowClient.navigate()`,
-    which iOS does not implement and the handler swallows; **every push's link is affected**,
-    not just feedback. Brian's words: the report is what triggered the push, so it must land there.
-  - **#14** `7c6976f` feedback message capped at 4000 chars + 5 reports / 10 min on the client;
-    `guard_feedback_insert` trigger (truncate + 20 / user / hour, RAISE) **is applied to prod**
-    (`sql/b68-feedback-limits-migration.sql`). Events were already bounded (B-60 + Phase 10 A1).
-  - **#42** `3e0da30` `src/lib/useDismissKeyboard.ts`, mounted once in `AppShell`: a
-    `touchstart` outside any editable blurs the active one; Search / My Bar bars get
-    `enterKeyHint="search"` + Enter blurs. **Touch only** so desktop selection/drag is untouched.
-    This is the keyboard seam for a future Capacitor plugin. **Verified by simulated touch in
-    the pane only - Brian, tap-test on the phone.**
-  - **#15** `c46724e` `next.config.ts` `headers()`: HSTS, nosniff, X-Frame-Options SAMEORIGIN,
-    Referrer-Policy, Permissions-Policy (camera + mic self) **enforced**; **CSP is
-    `Content-Security-Policy-Report-Only`** on purpose. Report-only on prod shows exactly one
-    notice: an `'unsafe-eval'` from something in the page (not our code - possibly a library or the
-    pane's own instrumentation). **Identify it before ever renaming the header to enforce**, and add
-    `upgrade-insecure-requests` back at that point (report-only ignores it).
-  - **#5** `dfbee6b` `src/middleware.ts` is on the @supabase/ssr **getAll/setAll** pattern: a
-    refreshed token is written onto the REQUEST as well as the response, so the RSC render of the
-    same request reads the fresh cookie instead of re-refreshing and having its write swallowed
-    (`supabase-server.ts` comment explains why the swallow is now safe). **`/api/*` is in the
-    matcher** with a JSON **401 floor** - no redirect, no cookie purge - so a future route that
-    forgets `getUser()` is still gated; all five existing routes keep their own check. Verified
-    locally: expired-cookie page load rotated the token and kept the session; prod: signed-out
-    `/api` -> 401, page -> 307 `/`, manifest + sw.js still 200.
-- **Brian tested #42 and the feedback trigger on his phone: pass.** Still owed: the
-  carry-over from the previous session (wake lock through a helper pour, the reveal's shake, the
-  swap flow mid-pour, the admin push on a data-account add). Also a signed-in prod pass (the pane
-  cannot sign in to prod - passwords are Brian's to type).
-- **THE BOARD WAS CLEANED UP (2026-09-13, late).** Every open card now has a plain-English title,
-  an "In plain English" summary and a "To do" checklist (originals folded into `<details>`).
-  12 cards closed as done or merged (#97 images complete, #27/#28 barcodes 111/112, #32, #37,
-  #105 epic, #26 into #98, #17 into #38, #57 into #53, #30+#50 into #20, #117 into #118).
-  **New lane: "Brian to test"** between In Progress and Done - Brian's, with numbered steps on
-  every card (#123 blind-tasting flow, #124 stay-signed-in). **END SESSION now has a step 3**:
-  add a card there for anything you shipped but could not prove on a phone. `docs/BOARD.md` has
-  the lane, the card format, and two traps: **paginate** the board query (`first:100` hid #120/#121
-  and an agent reported the lane empty), and **never rewrite the Status options** without a dump
-  (adding the lane wiped every card's Status; restored from the dump).
-- **#120 + #121 shipped (2026-09-13, late).** `e490f2f`: **Grain_of_Truth is Grok's data bot and
-  inserts bottles by SQL**, so the app's add flow (the only caller of the admin push) never ran.
-  Now DB trigger `log_bottle_added` (AFTER INSERT on `bottles`, SECURITY DEFINER) writes the
-  `added_to_db` activity for any insert with a `created_by`; `logActivity()` reuses that row;
-  **`scripts/notify_admin_adds.mjs` sends the admin push from this machine** (VAPID + service role
-  are in `.env.local`; the project has no `pg_net`) and marks `details.admin_notified`. **It is
-  step 7 of the verify-bottle skill - GROK: run it after every data-account insert.** The three
-  missed adds were backfilled and sent (9 pushes / 0 failed). `a6d5456`: Admin Import tab removed
-  (it was a stub). Test card **#125** in *Brian to test*.
-- **#122 shipped** `1e7bd47`: a tapped push opens its screen. `sw.js` `notificationclick` now
-  focuses the client and posts `{type:'pc:navigate', url}` with a reply port;
-  `ServiceWorkerRegistrar` does `router.push` (same-origin only) and acks; no ack in 1.5s ->
-  `navigate()` where it exists -> `openWindow()`. iOS never implemented `WindowClient.navigate`,
-  which is why every push link was dead there. **SW cache is `pc-v4`.** Test card **#126**.
-- **#118 shipped** `4322954`: Search no longer flickers. `resultsFor` (which query `bottles`
-  answers) + `searchPending`; the previous list stays at half opacity with "..." in the banner
-  until the new one lands; skeleton only on a first search; the empty state needs the CURRENT
-  query to have answered; `searchSeq` drops stale responses. Test card **#127**.
-- **Next step per the board** (read right to left, 2026-09-13): *In Progress* EMPTY. *Next Items
-  per Brian* EMPTY. *Top Priority* EMPTY. *Brian to test* has four cards (#123, #125-#127) - his lane,
-  not yours; #124 (stay signed in) he already passed. **A card Brian drags to Done stays an
-  OPEN issue** unless the board's "item closed -> Done" workflow is on; at START SESSION, close any
-  open issue sitting in Done. *Coming Soon*, in order: **#119** Have a drink not reaching My Bar > Tasted, **#33**
-  '+' on My Bar, **#20** past tastings.
-- **OPEN DECISION blocking #119 (asked, not yet answered):** what does the My Bar **Tasted** tab
-  mean - *any bottle you have had a drink of* (Have a drink sets `tasted_at`, `times_had` 0,
-  `currently_owned` false) or *only bottles you blind-tasted* (`blind_tasted_at`)? Today it shows
-  neither for a plain pour. Get Brian's answer before touching `src/app/mybar/page.tsx`; the
-  2026-09-13 "ranked = blind_tasted_at" rule must not be what Tasted accidentally uses. *Top Priority* is **#97** (48
-  rejected bottle images, each needs a fresh source). Then *Coming Soon*: **#122** push tap must
-  open the link (small, and Brian just hit it), **#33** My Bar FAB -> add flow, **#27** barcode
-  census, **#32** My Bar edit bottle, **#20** ranked results view.
+- **Tip:** `d8fd31a` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Last session (2026-09-14 -> 15, Claude). Three things shipped, one bot, one board decision:**
+  1. **Admin > Blinds (#129, closed).** Enter a past blind for ANY user: date (noon
+     America/Chicago, +N s per same-day entry so save order = replay order), user, unlimited
+     places, drag/chevron reorder, picker sheet over the form that searches `all_variant_details`
+     and can insert a **name-only provisional bottle**. Save = `admin_import_blind_tasting()`
+     (session + details + all pairs, B-47 guess delete, B-51 activity, `tasting_imported` event,
+     then `replay_elo_history()`); rejects the same user + day + order. First real entries are in
+     (Right_Blind; one Hard Truth swap done by SQL at Brian's ask).
+  2. **Admin > Review (#130, closed; hands-on card #132).** Bottles / Variants / Images tabs are
+     GONE. One queue (unverified OR pending submission) with chips; one case file per bottle:
+     submissions as the full form with word-level red/green diffs + per-field untick + Approve
+     all / Reject; editable form; "What is this record?" (Standalone / Parent+axis / "This is
+     really X" -> "exactly the same, or a version?" over merge_bottle); the current image on the
+     checker shelf between two verified neighbours with Reject-with-reasons; sticky bar + ONE
+     **Verify** = `admin_verify_bottle()` (bottle + variants verified, default image shelf_ready
+     if present and not rejected, refuses while submissions pend). Design record: the #130
+     body + the 2026-09-15 conversation. **Do not re-open the settled design.**
+  3. **Verified != complete (Brian).** `bottles.dq_checked_at` is the only stored thing; view
+     `bottle_dq_gaps` derives what is missing; view `bottle_dq_recheck` = gaps + not looked at in
+     6 months. Review shows a "missing: ..." chip and a Recheck funnel; Verify stamps the clock.
+     Rules in AGENTS.md. Never add a "complete" flag or a per-attribute status table.
+  - **The bot: `clean-up-one-bottle`** is THE bottle-data skill (verify-bottle + shelf-image are
+    pointers; scripts moved to `.claude/skills/clean-up-one-bottle/scripts/`, incl. new
+    `read_barcode.py` (zxing-cpp) that decodes a UPC off any photo/URL). It runs as the
+    **desktop app's LOCAL scheduled task "clean up one bottle" every 4h** on Brian's machine
+    (auto permission mode - Brian set it in the Routines UI; a Manual-mode task stalls on every
+    tool). Pick order: live queue (unverified, `dq_checked_at IS NULL`, nothing pending) then the
+    funnel; ends with `notify_admin_cleanup.mjs` (push to admins -> `/admin?tab=review`) and the
+    `dq_checked_at` stamp. Barcode is a REQUIRED output with a 5-rung ladder (producer shop JSON,
+    retailers with gtin, state price lists, barcode DBs, decode a back-label photo). Two runs done
+    (Striped Rye, Old Line 51 - both approved by Brian; neither has a public UPC, both stamped).
+    A disabled CLOUD routine of the same name exists at claude.ai/code/routines
+    (trig_01LXXLQQ1UUgHd5E2smL5Cjf) - it cannot reach .env.local; delete it or leave it off.
+  - **Landmines found this session:** (a) the admin page had NO `<Toaster>` - every admin
+    `toast.error` was invisible until 479432f; (b) `pg_safeupdate` is loaded for the API roles:
+    any function called through RPC needs a WHERE on every UPDATE/DELETE (replay's DELETE got
+    `WHERE true`); (c) `tasting_results`' unique key was per BOTTLE pair from the pre-variant era
+    - two batches of one bottle in a sitting collided (Blinds raised, the app's saveTasting
+    silently dropped pairs). Now `UNIQUE (session, winner_variant_id, loser_variant_id)`
+    (`sql/tasting-results-unique-by-variant-*`), client + import skill updated.
+  - **Data work at Brian's ask:** Stagg (renamed "Stagg" by Brian) inserted split on `batch`
+    with 34 verified variants (Unknown default, Jr 1-18, 22A/B, 23A-C, 24A-D, 25A-D, 26A/B) and
+    UPC 088004018580; a wrong Hard Truth swapped for the BIB in Right_Blind's 2026-09-14 session.
+- **Next step per the board** (right to left): *In Progress* EMPTY. *Next Items per Brian*:
+  **#128** track/display pours + rename Tasted -> Blind (folds the #119 decision into a rename;
+  read #119 with it). *Brian to test*: #123, #125-#127, **#132 (Review tab)**. *Coming Soon*:
+  #119, #20, #33. North Star gained **#131** (ask users in-hand to fill a bottle's known gaps).
+- **Brian tested this session:** Blinds end to end on localhost and prod (pass); approved the
+  bot's first two submissions in the OLD Bottles tab before Review replaced it. **Review itself
+  is untested by a human** - #132.
 - **Previous session (2026-09-13, Claude): 29 commits of Brian's own asks, none from the board.**
   He used the app all evening and fed back live. Everything below is on prod; the log entry has
   the detail. Headlines a cold agent needs:
@@ -1759,6 +1708,16 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-15 (Claude) - Review tab, clean-up bot, verified != complete
+- Blinds: `eb8942d` `f81a98d` `d9d2175` `479432f` `ef061b1` (#129). Replay/unique-key fixes:
+  `ef061b1` `fe4a3b8`. Skills: `e3fd95d` `a84a192` `db78dc9` `288164d` `0b9e7ca`. Review:
+  `0e6bd62`. DQ gaps: `d8fd31a`. Grok's `2ab21ac` (glass letters on ranking rows) landed mid-session.
+- Migrations applied to prod: `admin-import-blind-tasting`, `elo-replay-function` (WHERE true),
+  `tasting-results-unique-by-variant` (+ CSV snapshot), `admin-verify-bottle`, `dq-gaps`. Schema
+  dump regenerated.
+- Board: #129 #130 closed; #131 (North Star), #132 (Brian to test) filed. Next: #128.
+
 
 ### 2026-09-14 (Claude) - Admin > Blinds (#129)
 - `eb8942d` function + tab; `f81a98d` no cap, duplicate guard, name-only quick add; `d9d2175`
