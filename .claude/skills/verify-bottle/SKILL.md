@@ -75,6 +75,27 @@ Find duplicate/near-duplicate rows (same name, or same distillery + overlapping 
 3. Upload: `node .claude/skills/verify-bottle/scripts/upload_image.mjs <out.webp> bottle-images variants/<variant_id>/front.webp` (from repo root). Bucket `bottle-images` exists (public). Prints the public URL. (Uploading is harmless even if the suggestion is later rejected — worst case an orphan file.)
 4. Emit a `frontimage_url` suggestion pointing at that URL.
 
+### 4b. The image bar (Brian, 2026-09-12 — folded in from the Grok copy of this skill, 2026-09-15)
+Brian reviews once; an image that needs reject → rework burns a second pass. So:
+- **Finish the final image offline BEFORE any image row is filed.** Research + cutout + crop first,
+  then ONE `frontimage_url` suggestion on the default variant. Never a draft, never "for now".
+- **Framing:** the bottle fills **90–97% of the image height**, small even margins, cap and base
+  intact, no stretch. `clean_image.py` trims to the alpha box, which is this by construction.
+- **Accept, in order:** true transparent cutout of this exact product → isolated pack shot on plain
+  white that meets the bar after cutout → official distillery photo after cutout. If nothing
+  qualifies, **file no image and say so** — better than a reject cycle.
+- **Never file:** the user's add-photo (identity evidence only), busy/lifestyle backgrounds, padded
+  or zoomed-out CDN URLs, logos, thumbnails, label-only crops, a sibling expression, or more than
+  one image row per group. Images live on the **variant**; do not also file `bottles.frontimage_url`.
+- **Age:** always file it — years (convert months: 18 months → `1.5 years`), or `NAS` when no
+  statement exists after a real search. Never blank.
+- **Nose / palate / finish:** always research official or producer notes; file all three when a
+  reliable source exists. Skipping them because they were not on the label is a miss. Single
+  barrels and store picks are the exception (see landmines) — no brand-level notes there.
+- **Identity first:** when the bottle was added through the app with a photo and/or barcode, those
+  are the evidence of WHAT it is; the typed name is a hint. If photo and barcode disagree, stop and
+  report — do not guess.
+
 ### 5. Height — the shelf scale
 
 **Canonical doc: [docs/IMAGE_PIPELINE.md](../../../docs/IMAGE_PIPELINE.md). Read it before filing a height.**
