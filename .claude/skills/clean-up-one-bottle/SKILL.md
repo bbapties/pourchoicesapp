@@ -45,23 +45,40 @@ Never print `DATABASE_URL`, the service role, or VAPID private key anywhere.
 
 ## Step 1 — Pick the bottle
 
+Two sources, in order. **Live work first**: the oldest unverified bottle nobody has looked at.
+**Then the funnel**: `bottle_dq_recheck` — verified or not, something is still missing and no
+quality pass has looked in 6 months (or ever). `verified` is Brian's judgement that the bottle is
+real and what we have is right; `bottle_dq_gaps` is what is still missing. Both matter.
+
 ```sql
-SELECT b.id, b.name, b.barcode, b.created_at, u.username, u.account_type
+-- 1a. live: never checked, unverified, nothing pending, not Test_User
+SELECT b.id, b.name, b.barcode, b.created_at, u.username, u.account_type, g.gaps
   FROM public.bottles b
   LEFT JOIN public.users u ON u.id = b.created_by
- WHERE b.verified = false
-   AND NOT EXISTS (SELECT 1 FROM public.suggested_edits se
-                    WHERE se.bottle_id = b.id AND se.status = 'pending')
+  JOIN public.bottle_dq_gaps g ON g.bottle_id = b.id
+ WHERE b.verified = false AND b.dq_checked_at IS NULL
+   AND NOT EXISTS (SELECT 1 FROM public.suggested_edits se WHERE se.bottle_id = b.id AND se.status = 'pending')
    AND COALESCE(u.username, '') <> 'Test_User'
- ORDER BY b.created_at
+ ORDER BY b.created_at LIMIT 1;
+
+-- 1b. the funnel, when 1a is empty
+SELECT r.bottle_id AS id, r.name, r.gaps, r.dq_checked_at, r.verified
+  FROM public.bottle_dq_recheck r
+ WHERE NOT EXISTS (SELECT 1 FROM public.suggested_edits se WHERE se.bottle_id = r.bottle_id AND se.status = 'pending')
  LIMIT 1;
 ```
 
-Oldest first; a bottle with pending suggestions is already in Brian's queue and is skipped
-until he clears it. **If nothing comes back, report "queue empty" and stop.** Load the bottle
-row and every variant (`bottle_variants WHERE bottles_id = <id>`), and the creator's own
-add-photo if there is one (`bottles.frontimage_url` / the default variant's `frontimage_url`
-pointing at `bottle-images/...`).
+**If both come back empty, report "queue empty" and stop.** On a funnel bottle, work the
+listed gaps (that is what the 6 months bought: a fresh look for a barcode that may now be
+registered, an image that may now exist, an age someone has since published) — do not re-litigate
+fields that are filled and verified. Load the bottle row and every variant, and the creator's own
+add-photo if there is one.
+
+**Last thing every run does, whatever it found**: stamp the clock, so the funnel moves on.
+```sql
+UPDATE public.bottles SET dq_checked_at = now() WHERE id = '<bottle_id>';
+```
+(Bookkeeping, not bottle data — the one direct write besides image uploads. Verify stamps it too.)
 
 ## Ownership / ids
 
@@ -151,18 +168,12 @@ walk this ladder IN ORDER and stop at the first confirmed hit:
 Validate whatever you find (check digit + name + 750ml), then file it. The ladder is exhausted
 only when rung 5 has been tried on real photos, not just rungs 1-4.
 
-**When the ladder is exhausted, say so IN THE DATA, not just the report.** Many of Brian's adds
-are bottles he saw on social media, not bottles he owns, so nobody can scan them; and small
-releases (a March-2026 craft rye, a Maryland-only collab) are simply not registered anywhere
-public yet. File an `extras` suggestion that merges this key into the existing JSON:
-`"barcode_search": {"result": "none", "checked": ["producer shop", "retailers", "state lists",
-"barcode dbs", "photos"], "on": "<date>"}`. A later run treats a note older than 6 months as
-"worth another look" and anything newer as settled - so the hunt is not repeated every cycle,
-and an empty barcode reads as "searched, not registered" instead of "nobody tried".
- **Batch and allocated
-releases share one UPC across batches by design** (Elijah Craig BP `096749002368` on 4 batches;
-Stagg `088004018580` on every batch) — not an error, do not invent a unique code. Every report
-states: barcode, check-digit pass/fail, source URL — or the rung-by-rung list of misses.
+**When the ladder is exhausted**, the `dq_checked_at` stamp (end of run) is what records that a
+real search happened: the gap stays visible in `bottle_dq_gaps`, the funnel brings it back in 6
+months, and an empty barcode reads as "searched, not registered" rather than "nobody tried".
+Optionally add the WHY to `extras` (`"barcode_note": "March-2026 release, producer shows a
+mockup only"`) when it would save the next pass time. Many of Brian's adds are bottles he saw on
+social media, not bottles he owns, so nobody can scan them.
 
 ## Step 4 — The pack shot (finish it BEFORE filing anything)
 

@@ -11,9 +11,9 @@ import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import { approveSuggestion, rejectSuggestion, adminUpdateBottleFields, type EditableField } from "@/lib/suggestedEdits";
 import { fetchRejectReasons, rejectImage, addRejectReason, type RejectReason } from "@/lib/imageReview";
 import {
-  fetchReviewQueue, fetchCaseFile, fetchNeighbours, wordDiff, verifyBottle, setTriage, splitOnAxis,
-  searchBottles, mergeAsDuplicate, mergeAsVersion, deleteImpact, purgeBottle,
-  FORM_FIELD_ORDER, type QueueRow, type CaseFile, type Submission, type Neighbour, type FormField,
+  fetchReviewQueue, fetchCaseFile, fetchNeighbours, fetchRecheckFunnel, wordDiff, verifyBottle, setTriage, splitOnAxis,
+  searchBottles, mergeAsDuplicate, mergeAsVersion, deleteImpact, purgeBottle, GAP_LABEL,
+  FORM_FIELD_ORDER, type QueueRow, type CaseFile, type Submission, type Neighbour, type FormField, type RecheckRow,
 } from "@/lib/adminReview";
 
 /**
@@ -53,15 +53,20 @@ const ago = (iso: string) => {
 
 export default function ReviewTab({ publicUserId }: { publicUserId: string }) {
   const [queue, setQueue] = useState<QueueRow[]>([]);
+  const [funnel, setFunnel] = useState<RecheckRow[]>([]);
+  const [showFunnel, setShowFunnel] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { rows, error } = await fetchReviewQueue();
+    const [{ rows, error }, f] = await Promise.all([fetchReviewQueue(), fetchRecheckFunnel()]);
     if (error) toast.error(`Could not load the queue: ${error}`);
     setQueue(rows);
+    // the funnel is the long tail: leave out anything already in the live queue
+    const live = new Set(rows.map((r) => r.bottleId));
+    setFunnel(f.filter((r) => !live.has(r.bottleId)));
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -111,6 +116,7 @@ export default function ReviewTab({ publicUserId }: { publicUserId: string }) {
                     {r.work.imageState === "flagged" && <Chip tone="warn">image flagged</Chip>}
                     {r.work.imageState === "none" && <Chip>no image</Chip>}
                     {r.work.unverified && <Chip tone="unv">unverified</Chip>}
+                    {r.gaps.length > 0 && <Chip>missing: {r.gaps.map((g) => GAP_LABEL[g] ?? g).join(" · ")}</Chip>}
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-cream-faint shrink-0" />
@@ -118,6 +124,29 @@ export default function ReviewTab({ publicUserId }: { publicUserId: string }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* the long-term funnel: verified or not, something is missing and nobody has looked in 6 months */}
+      {!loading && funnel.length > 0 && (
+        <div className="pt-2">
+          <button type="button" onClick={() => setShowFunnel((v) => !v)} className="w-full flex items-center justify-between text-xs text-cream-mute py-2">
+            <span>Recheck funnel · {funnel.length} bottle{funnel.length === 1 ? "" : "s"} with gaps nobody has looked at in 6 months</span>
+            <ChevronRight className={`w-4 h-4 transition-transform ${showFunnel ? "rotate-90" : ""}`} />
+          </button>
+          {showFunnel && (
+            <ul className="space-y-1">
+              {funnel.filter((r) => !search.trim() || r.name.toLowerCase().includes(search.trim().toLowerCase())).map((r) => (
+                <li key={r.bottleId}>
+                  <button type="button" onClick={() => setOpenId(r.bottleId)} className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-left pc-inset">
+                    <span className="text-xs text-cream truncate flex-1">{r.name}</span>
+                    <span className="text-[10px] text-cream-faint truncate">{r.gaps.map((g) => GAP_LABEL[g] ?? g).join(" · ")}</span>
+                    <span className="text-[10px] text-cream-faint shrink-0">{r.dqCheckedAt ? ago(r.dqCheckedAt) : "never"}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       <CaseFileSheet bottleId={openId} publicUserId={publicUserId} onClose={() => setOpenId(null)} onChanged={load} />
@@ -197,6 +226,8 @@ function CaseFileSheet({ bottleId, publicUserId, onClose, onChanged }: { bottleI
                   <div className="mt-1 flex gap-1 flex-wrap">
                     {file.verified ? <Chip tone="brass">verified</Chip> : <Chip tone="unv">unverified</Chip>}
                     <Chip>added by {file.addedBy} · {ago(file.createdAt)}</Chip>
+                    {file.gaps.length > 0 && <Chip>missing: {file.gaps.map((g) => GAP_LABEL[g] ?? g).join(" · ")}</Chip>}
+                    {file.dqCheckedAt && <Chip>checked {ago(file.dqCheckedAt)} ago</Chip>}
                   </div>
                 </div>
                 <div className="relative">
@@ -241,6 +272,9 @@ function CaseFileSheet({ bottleId, publicUserId, onClose, onChanged }: { bottleI
                 <Tick ok={pendingCount === 0}>{pendingCount === 0 ? "no submissions waiting" : `${pendingCount} change${pendingCount === 1 ? "" : "s"} to decide`}</Tick>
                 <Tick ok={architectureDone}>{architectureDone ? (file.triage === "split" ? `parent · ${axisLabel(file.axis)}` : file.triage === "single" ? "standalone" : "needs merge") : "architecture not answered"}</Tick>
                 <Tick ok={!imageRejected} warn={!def?.frontimageUrl || imageFlagged}>{!def?.frontimageUrl ? "no image (verify anyway)" : imageRejected ? "image rejected — blocks verify" : imageFlagged ? "image flagged — look before you verify" : def?.shelfReady ? "image on the shelf" : "image will go on the shelf"}</Tick>
+              </div>
+              <div className="text-[10px] text-cream-faint shrink-0 max-w-[7rem] leading-tight">
+                {file.gaps.length > 0 ? `Still missing ${file.gaps.map((g) => GAP_LABEL[g] ?? g).join(", ")} - verify if it's full enough; the funnel keeps chasing the rest.` : "Complete."}
               </div>
               <Button variant="brass" disabled={!canVerify || busy} onClick={doVerify} className="shrink-0">
                 {file.verified ? "Verified" : busy ? "Verifying…" : "Verify"}

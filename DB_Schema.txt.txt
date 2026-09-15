@@ -1,6 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
--- Regenerated from the live prod DB on 2026-09-14 via scripts/_psql.mjs against information_schema/pg_catalog.
+-- Regenerated from the live prod DB on 2026-09-15 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
 
 CREATE TABLE public.activities (
@@ -84,7 +84,8 @@ CREATE TABLE public.bottles (
   variant_axis text,
   variant_triage text,
   variant_triaged_at timestamp with time zone,
-  variant_triaged_by uuid);
+  variant_triaged_by uuid,
+  dq_checked_at timestamp with time zone);
 
 CREATE TABLE public.events (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -264,6 +265,8 @@ CREATE TABLE public.wishlists (
 -- Views
 --   all_bottle_details  [security_invoker=true]
 --   all_variant_details  [security_invoker=true]
+--   bottle_dq_gaps  [security_invoker=true]
+--   bottle_dq_recheck  [security_invoker=true]
 --   bottle_scores  [runs as owner]
 --   my_variant_scores  [security_invoker=true]
 --   variant_scores  [runs as owner]
@@ -271,6 +274,7 @@ CREATE TABLE public.wishlists (
 -- Functions
 --   actor_muted_by_post_owner(p_activity_id uuid, p_actor_id uuid)  SECURITY DEFINER
 --   admin_import_blind_tasting(p_user_id uuid, p_tasted_on date, p_variant_ids uuid[], p_name text)  SECURITY DEFINER
+--   admin_verify_bottle(p_bottle uuid)  SECURITY DEFINER
 --   bottle_delete_impact(p_bottle uuid)  SECURITY DEFINER
 --   commit_bottle_import(payload jsonb)  SECURITY DEFINER
 --   current_public_user_id()

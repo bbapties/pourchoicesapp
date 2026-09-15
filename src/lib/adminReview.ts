@@ -23,6 +23,9 @@ export type OpenWork = {
 
 export type QueueRow = {
   bottleId: string;
+  /** derived by bottle_dq_gaps: barcode / image / image_rejected / age / proof / notes / height / distillery / architecture */
+  gaps: string[];
+  dqCheckedAt: string | null;
   name: string;
   distillery: string | null;
   imageUrl: string | null;
@@ -80,6 +83,8 @@ export type Submission = {
 
 export type CaseFile = {
   bottleId: string;
+  gaps: string[];
+  dqCheckedAt: string | null;
   name: string;
   verified: boolean;
   addedBy: string;
@@ -121,7 +126,7 @@ export async function fetchReviewQueue(): Promise<{ rows: QueueRow[]; error?: st
   if (!ids.size) return { rows: [] };
 
   const idList = [...ids];
-  const [bot, vars] = await Promise.all([
+  const [bot, vars, gapRows] = await Promise.all([
     supabase
       .from("bottles")
       .select("id, name, distillery, verified, created_at, updated_at, variant_triage, users:created_by ( username )")
@@ -131,8 +136,11 @@ export async function fetchReviewQueue(): Promise<{ rows: QueueRow[]; error?: st
       .select("bottles_id, is_default, frontimage_url, shelf_ready, image_reject_reason_ids, image_reviewed_at, image_flagged_at, updated_at")
       .in("bottles_id", idList)
       .eq("is_default", true),
+    supabase.from("bottle_dq_gaps").select("bottle_id, gaps, dq_checked_at").in("bottle_id", idList),
   ]);
   if (bot.error) return { rows: [], error: bot.error.message };
+  const gapsOf = new Map<string, { gaps: string[]; at: string | null }>();
+  for (const g of gapRows.data || []) gapsOf.set(g.bottle_id, { gaps: g.gaps || [], at: g.dq_checked_at });
 
   const defaults = new Map<string, NonNullable<typeof vars.data>[number]>();
   for (const v of vars.data || []) defaults.set(v.bottles_id, v);
@@ -155,6 +163,8 @@ export async function fetchReviewQueue(): Promise<{ rows: QueueRow[]; error?: st
     const touched = [b.updated_at, b.created_at, d?.updated_at, lastSub.get(b.id)].filter(Boolean).sort().pop() as string;
     return {
       bottleId: b.id,
+      gaps: gapsOf.get(b.id)?.gaps ?? [],
+      dqCheckedAt: gapsOf.get(b.id)?.at ?? null,
       name: b.name,
       distillery: b.distillery,
       imageUrl: d?.frontimage_url ?? null,
@@ -176,7 +186,7 @@ export async function fetchReviewQueue(): Promise<{ rows: QueueRow[]; error?: st
 /* ------------------------------------------------------------------------- */
 
 export async function fetchCaseFile(bottleId: string): Promise<{ file?: CaseFile; error?: string }> {
-  const [b, v, s] = await Promise.all([
+  const [b, v, s, g] = await Promise.all([
     supabase
       .from("bottles")
       .select("id, name, distillery, category, style, volume, barcode, extras, proof, age, nose, palate, finish, verified, created_at, variant_axis, variant_triage, users:created_by ( username )")
@@ -194,6 +204,7 @@ export async function fetchCaseFile(bottleId: string): Promise<{ file?: CaseFile
       .eq("bottle_id", bottleId)
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
+    supabase.from("bottle_dq_gaps").select("gaps, dq_checked_at").eq("bottle_id", bottleId).maybeSingle(),
   ]);
   if (b.error || !b.data) return { error: b.error?.message ?? "Bottle not found" };
   if (v.error) return { error: v.error.message };
@@ -264,6 +275,8 @@ export async function fetchCaseFile(bottleId: string): Promise<{ file?: CaseFile
   return {
     file: {
       bottleId: bottle.id,
+      gaps: g.data?.gaps ?? [],
+      dqCheckedAt: g.data?.dq_checked_at ?? null,
       name: bottle.name,
       verified: bottle.verified,
       addedBy: creator?.username ?? "—",
@@ -276,6 +289,24 @@ export async function fetchCaseFile(bottleId: string): Promise<{ file?: CaseFile
       submissions,
     },
   };
+}
+
+/** Plain words for a gap slug, for chips. */
+export const GAP_LABEL: Record<string, string> = {
+  barcode: "barcode", image: "image", image_rejected: "image rejected", age: "age", proof: "proof",
+  notes: "tasting notes", height: "height (est.)", distillery: "distillery", architecture: "architecture",
+};
+
+/**
+ * The long-term funnel (Brian, 2026-09-15): bottles with something missing that nobody has looked
+ * at in 6 months (or ever). Verified or not - "verified" is his judgement that the bottle is real
+ * and what we have is right; "complete" is a fact about the data. The bot feeds from this after
+ * the live queue is empty; here it is shown so the shape of the backlog is visible.
+ */
+export type RecheckRow = { bottleId: string; name: string; gaps: string[]; dqCheckedAt: string | null; verified: boolean };
+export async function fetchRecheckFunnel(limit = 200): Promise<RecheckRow[]> {
+  const { data } = await supabase.from("bottle_dq_recheck").select("bottle_id, name, gaps, dq_checked_at, verified").limit(limit);
+  return (data || []).map((r) => ({ bottleId: r.bottle_id, name: r.name, gaps: r.gaps || [], dqCheckedAt: r.dq_checked_at, verified: r.verified }));
 }
 
 /** Two shelf-ready verified bottles to stand either side of the one under review. */
