@@ -876,9 +876,15 @@ export default function DrinkClient({
                       <span className="text-sm text-cream-mute">Glass {b.glassLetter}</span>
                     </span>
                   ) : (
-                    <span className="flex-1">
-                      <span className="block text-sm font-medium text-cream">{b.name}</span>
-                      <span className="block text-xs text-cream-mute">{b.distillery}</span>
+                    // Self mode: the taster poured into lettered glasses on the label step, so the
+                    // row carries that letter beside the name (Brian, 2026-09-14: the list read as
+                    // "1 2 3", not the A B C on the glasses). The number is still the rank position.
+                    <span className="flex-1 min-w-0 flex items-center gap-2">
+                      <span className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full text-cream font-bold" style={{ backgroundColor: "#bd9436" }}>{b.glassLetter}</span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-cream truncate">{b.name}</span>
+                        <span className="block text-xs text-cream-mute truncate">{b.distillery}</span>
+                      </span>
                     </span>
                   )}
                   <div className="flex flex-col">
@@ -930,7 +936,7 @@ export default function DrinkClient({
               {result.map((b, i) => (
                 <div key={b.variantId} className="flex items-center gap-3 rounded-lg border border-edge p-3">
                   <span className="w-6 text-center font-bold text-cream">{i + 1}</span>
-                  {mode === "helper" && (
+                  {b.glassLetter && (
                     <span className="w-7 h-7 flex items-center justify-center rounded-full text-cream text-xs font-bold flex-shrink-0" style={{ backgroundColor: "#bd9436" }}>{b.glassLetter}</span>
                   )}
                   <span className="text-sm font-medium text-cream">{b.name}</span>
