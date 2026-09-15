@@ -89,7 +89,8 @@ WebFetch): proof + ABV, age, mashbill, volume, distillery, category/style, offic
 notes (distillery's own site first, then the brand's sell sheet or a reputable retailer's copy
 for this exact expression). Mashbill etc. go in `extras` (JSON-as-text).
 
-- **Age (`bottle_variants.age`): always file it.** Years, never months (18 months → `1.5 years`).
+- **Age (`bottle_variants.age`): always file it.** Years as a number, never months and never
+  "N years, M months" (18 months → `1.5 years`; 2 years 4 months → `2.3 years`).
   No statement after a real search → `NAS`. Never blank.
 - **Nose / palate / finish: always research; file all three when a reliable source exists.**
   Skipping them because they were not on the label is a miss. **Exception:** single barrels and
@@ -113,12 +114,32 @@ keeper = the row with a valid barcode and/or in a real user's `user_bottles`). P
 `field='__delete__'`, `new_value` = reason. Never delete rows yourself. Judgement pairs live on:
 Blanton's Original vs Single Barrel; Wild Turkey 101 vs 101 8-Year.
 
-**Barcode:** present → validate UPC-A(12) / EAN-13(13) + check digit, confirm by research it maps
-to THIS product and size, enforce uniqueness across `bottles`; wrong → file a `barcode` row.
-Missing → research the real 750ml UPC and file it. **Batch and allocated releases share one UPC
-across batches by design** (Elijah Craig BP `096749002368` on 4 batches; Stagg `088004018580`
-on every batch) — not an error, do not invent a unique code. Every report states: barcode,
-check-digit pass/fail, source URL.
+**Barcode — REQUIRED OUTPUT.** Every run ends with either a `barcode` suggestion or a report line
+listing every source below that was checked with no hit. "None found" after Total Wine and a web
+search is not an answer (the first two runs, 2026-09-15, both stopped there). Small-distillery
+bottles are the ones that need the ladder.
+
+Present → validate UPC-A(12) / EAN-13(13) check digit, confirm by research it maps to THIS
+product and size, enforce uniqueness across `bottles`; wrong → file a `barcode` row. Missing →
+walk this ladder IN ORDER and stop at the first confirmed hit:
+
+1. **The producer's own web shop.** Most craft distilleries are on Shopify: fetch
+   `https://<shop>/products/<handle>.json` — `product.variants[].barcode` is the UPC, and
+   `/products.json` lists every handle. Non-Shopify shops often print the UPC/SKU on the product page.
+2. **Retailers that expose the UPC in the page:** Total Wine (JSON-LD `gtin`), Wine.com, Drizly /
+   Uber Eats, ReserveBar, Caskers, Seelbach's, Flaviar. Search `"<bottle name>" upc` and open the
+   product page; look for `gtin`, `upc`, `barcode`, or a 12/13-digit number near the SKU.
+3. **State control boards publish UPCs:** Virginia ABC product search, Pennsylvania (FWGS)
+   product code page, North Carolina ABC pricing, Ohio OHLQ, Michigan price book, Utah DABS,
+   New Hampshire NHLC, Oregon OLCC price list — any one is a confirmed UPC for the 750ml.
+4. **Barcode databases:** upcitemdb.com, barcodelookup.com, go-upc.com, upcindex.com — search by
+   name; confirm the listing's name + size match.
+5. **The creator's add-photo.** If the back label is visible, read the barcode digits off it.
+
+Validate whatever you find (check digit + name + 750ml), then file it. **Batch and allocated
+releases share one UPC across batches by design** (Elijah Craig BP `096749002368` on 4 batches;
+Stagg `088004018580` on every batch) — not an error, do not invent a unique code. Every report
+states: barcode, check-digit pass/fail, source URL — or the rung-by-rung list of misses.
 
 ## Step 4 — The pack shot (finish it BEFORE filing anything)
 
