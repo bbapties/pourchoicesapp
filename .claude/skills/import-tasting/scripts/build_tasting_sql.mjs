@@ -5,7 +5,7 @@
 //
 // Writes nothing to the database -- it only emits SQL, which you read and then
 // run with the verify-bottle helper:
-//   node .claude/skills/verify-bottle/scripts/run_sql_file.mjs <out.sql>
+//   node .claude/skills/clean-up-one-bottle/scripts/run_sql_file.mjs <out.sql>
 //
 // WHY A FILE, NOT DIRECT INSERTS: the whole point of this skill is to skip the
 // UI, not to skip review. A generated file can be read in full before it runs,
@@ -214,4 +214,4 @@ console.log(`  bottles  ${picks.length}`);
 console.log(`  pairs    ${pairs.length}`);
 console.log(`  dated    ${at || "now()"}`);
 console.log(`\nReview it, then run:`);
-console.log(`  node .claude/skills/verify-bottle/scripts/run_sql_file.mjs ${outPath}`);
+console.log(`  node .claude/skills/clean-up-one-bottle/scripts/run_sql_file.mjs ${outPath}`);

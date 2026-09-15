@@ -69,7 +69,7 @@ for (const [id, url, name] of list) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     fs.writeFileSync(raw, Buffer.from(await res.arrayBuffer()));
 
-    execFileSync("python", [".claude/skills/verify-bottle/scripts/clean_image.py", raw, out],
+    execFileSync("python", [".claude/skills/clean-up-one-bottle/scripts/clean_image.py", raw, out],
       { encoding: "utf8", stdio: "pipe" });
 
     // GATE: reject rembg's own failures before they reach Brian's queue. A bottle is a narrow
@@ -89,7 +89,7 @@ for (const [id, url, name] of list) {
 
     const kb = (fs.statSync(out).size / 1024) | 0;
     const publicUrl = execFileSync("node",
-      [".claude/skills/verify-bottle/scripts/upload_image.mjs", out, "bottle-images",
+      [".claude/skills/clean-up-one-bottle/scripts/upload_image.mjs", out, "bottle-images",
        `variants/${id}/front.webp`], { encoding: "utf8" }).trim().split("\n").pop();
 
     ok++;

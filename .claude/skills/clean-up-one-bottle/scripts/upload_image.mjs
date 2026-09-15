@@ -1,6 +1,6 @@
 // Upload one image to a public Supabase Storage bucket. Prints only the public URL.
 // Reads NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE from ./.env.local (repo root).
-// Usage (from repo root): node .claude/skills/verify-bottle/scripts/upload_image.mjs <localFile> <bucket> <destPath>
+// Usage (from repo root): node .claude/skills/clean-up-one-bottle/scripts/upload_image.mjs <localFile> <bucket> <destPath>
 import { readFileSync } from "fs";
 import { createRequire } from "module";
 import { resolve } from "path";

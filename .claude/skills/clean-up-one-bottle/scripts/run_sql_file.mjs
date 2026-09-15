@@ -1,6 +1,6 @@
 // Run a .sql file transactionally against DATABASE_URL from ./.env.local (repo root).
 // Splits userinfo on the LAST ':' and passes -h/-U/PGPASSWORD (see AGENTS.md psql note).
-// Usage (from repo root): node .claude/skills/verify-bottle/scripts/run_sql_file.mjs <file.sql>
+// Usage (from repo root): node .claude/skills/clean-up-one-bottle/scripts/run_sql_file.mjs <file.sql>
 import { readFileSync } from "fs";
 import { spawnSync } from "child_process";
 import { resolve } from "path";

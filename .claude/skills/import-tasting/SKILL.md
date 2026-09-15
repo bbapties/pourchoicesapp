@@ -115,15 +115,15 @@ Do the research the same way `verify-bottle` does — it is the reference for al
    resolve to this bottle forever.
 3. **Image** — source the official brand asset, then:
    ```
-   python .claude/skills/verify-bottle/scripts/clean_image.py <in> <out.webp> [--crop L,T,R,B]
-   node  .claude/skills/verify-bottle/scripts/upload_image.mjs <out.webp> bottle-images bottles/<slug>/front.webp
+   python .claude/skills/clean-up-one-bottle/scripts/clean_image.py <in> <out.webp> [--crop L,T,R,B]
+   node  .claude/skills/clean-up-one-bottle/scripts/upload_image.mjs <out.webp> bottle-images bottles/<slug>/front.webp
    ```
    Always `.webp` — Supabase Storage is metered and the project is on the free tier. Expect
    40–150 KB. Never hotlink a brand URL.
 4. **Insert** — write a `bottle.json` (shape documented at the top of the script) and:
    ```
    node .claude/skills/import-tasting/scripts/build_new_bottle_sql.mjs <bottle.json> <out.sql>
-   node .claude/skills/verify-bottle/scripts/run_sql_file.mjs <out.sql>
+   node .claude/skills/clean-up-one-bottle/scripts/run_sql_file.mjs <out.sql>
    ```
    It creates the bottle **and its default variant** (`is_default = true`, without which
    `elo_global_target()` cannot resolve and the bottle can never be scored), plus the
@@ -175,7 +175,7 @@ statement says why it is there.
 ### 5. Run it
 
 ```
-node .claude/skills/verify-bottle/scripts/run_sql_file.mjs <out.sql>
+node .claude/skills/clean-up-one-bottle/scripts/run_sql_file.mjs <out.sql>
 ```
 
 One transaction. It ends by printing the session id and the resulting personal + global Elo for

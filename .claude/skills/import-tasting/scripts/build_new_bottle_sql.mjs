@@ -155,4 +155,4 @@ console.log(`  ${b.name}`);
 console.log(`  barcode ${b.barcode || "(none)"}   image ${b.frontimage_url ? "yes" : "MISSING"}`);
 if (!b.frontimage_url) console.log(`  ! no image -- clean and upload one first, the confirmation sheet needs it`);
 console.log(`\nReview it, then run:`);
-console.log(`  node .claude/skills/verify-bottle/scripts/run_sql_file.mjs ${outPath}`);
+console.log(`  node .claude/skills/clean-up-one-bottle/scripts/run_sql_file.mjs ${outPath}`);

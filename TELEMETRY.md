@@ -312,6 +312,12 @@ transaction as the session. The same filter-it-out-of-usage rule applies. The cl
 `for_user`, `bottles`, `tasted_on`, `sessions_replayed`) — the admin's own action, attributed to
 the admin, where `tasting_imported` is attributed to the user who tasted.
 
+**Shipped 2026-09-15 — `bottle_cleanup_notified`** (surface `clean_up_one_bottle`, target =
+the `submission_group`; metadata `bottle_id`, `suggestions`, `sent`, `failed`): the scheduled
+clean-up-one-bottle run filed its suggestions and pushed the admins. Written by
+`scripts/notify_admin_cleanup.mjs`, which also uses it as the idempotency check so a retried run
+cannot buzz twice. One row per cleaned-up bottle = the run log of the routine.
+
 The same skill emits `bottle_submitted` with surface `agent_import` (rather than
 `provisional_sheet`) when a bottle named in an import has to be created before the tasting can
 be written.
