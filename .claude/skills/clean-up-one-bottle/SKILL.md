@@ -134,9 +134,22 @@ walk this ladder IN ORDER and stop at the first confirmed hit:
    New Hampshire NHLC, Oregon OLCC price list — any one is a confirmed UPC for the 750ml.
 4. **Barcode databases:** upcitemdb.com, barcodelookup.com, go-upc.com, upcindex.com — search by
    name; confirm the listing's name + size match.
-5. **The creator's add-photo.** If the back label is visible, read the barcode digits off it.
+5. **Read it off a photo yourself.** Any photo that shows the back label is a source:
+   the creator's add-photo, retailer gallery shots (Total Wine, Caskers, Seelbach's often have a
+   back-label image), auction listings (Unicorn Auctions, Whisky Auctioneer, Whisky Hammer),
+   eBay / Mercari listings, reddit r/bourbon "back label" posts, the producer's press kit.
+   Search `"<bottle name>" back label` and `"<bottle name>" barcode` in images, download the
+   candidates, and decode them:
+   ```
+   python .claude/skills/clean-up-one-bottle/scripts/read_barcode.py <image-or-url> [more...]
+   ```
+   It tries rotations, upscales and crops, prints `UPCA <digits> check=ok` for anything it
+   reads, and exits 1 if nothing decodes. A decoded code still needs the sanity check: prefix
+   matches the producer's other bottles where known, size is 750ml, and it is not already on a
+   different bottle in `bottles`. Two independent photos agreeing is a confirmed barcode.
 
-Validate whatever you find (check digit + name + 750ml), then file it. **Batch and allocated
+Validate whatever you find (check digit + name + 750ml), then file it. The ladder is exhausted
+only when rung 5 has been tried on real photos, not just rungs 1-4. **Batch and allocated
 releases share one UPC across batches by design** (Elijah Craig BP `096749002368` on 4 batches;
 Stagg `088004018580` on every batch) — not an error, do not invent a unique code. Every report
 states: barcode, check-digit pass/fail, source URL — or the rung-by-rung list of misses.
