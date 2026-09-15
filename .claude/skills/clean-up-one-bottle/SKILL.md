@@ -149,7 +149,17 @@ walk this ladder IN ORDER and stop at the first confirmed hit:
    different bottle in `bottles`. Two independent photos agreeing is a confirmed barcode.
 
 Validate whatever you find (check digit + name + 750ml), then file it. The ladder is exhausted
-only when rung 5 has been tried on real photos, not just rungs 1-4. **Batch and allocated
+only when rung 5 has been tried on real photos, not just rungs 1-4.
+
+**When the ladder is exhausted, say so IN THE DATA, not just the report.** Many of Brian's adds
+are bottles he saw on social media, not bottles he owns, so nobody can scan them; and small
+releases (a March-2026 craft rye, a Maryland-only collab) are simply not registered anywhere
+public yet. File an `extras` suggestion that merges this key into the existing JSON:
+`"barcode_search": {"result": "none", "checked": ["producer shop", "retailers", "state lists",
+"barcode dbs", "photos"], "on": "<date>"}`. A later run treats a note older than 6 months as
+"worth another look" and anything newer as settled - so the hunt is not repeated every cycle,
+and an empty barcode reads as "searched, not registered" instead of "nobody tried".
+ **Batch and allocated
 releases share one UPC across batches by design** (Elijah Craig BP `096749002368` on 4 batches;
 Stagg `088004018580` on every batch) — not an error, do not invent a unique code. Every report
 states: barcode, check-digit pass/fail, source URL — or the rung-by-rung list of misses.
