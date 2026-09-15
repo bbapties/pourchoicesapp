@@ -43,7 +43,7 @@ const submitter = edits[0].submitted_by;
 
 const { data: admins } = await db.from("users").select("id").eq("role", "admin");
 const recipients = (admins || []).map((a) => a.id).filter((id) => id !== submitter);
-const msg = { title: `Cleaned up ${bottle?.name ?? "a bottle"}`, body: `${n} suggestion${n === 1 ? "" : "s"} waiting for your review`, url: "/admin?tab=bottles" };
+const msg = { title: `Cleaned up ${bottle?.name ?? "a bottle"}`, body: `${n} suggestion${n === 1 ? "" : "s"} waiting for your review`, url: "/admin?tab=review" };
 console.log(`${dryRun ? "[dry] " : ""}${msg.title} - ${msg.body} -> ${recipients.length} admin(s)`);
 if (dryRun) process.exit(0);
 

@@ -3,20 +3,17 @@
 import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import UsersTab from "./UsersTab";
-import BottlesTab from "./BottlesTab";
-import VariantsTab from "./VariantsTab";
+import ReviewTab from "./ReviewTab";
 import FeedbackTab from "./FeedbackTab";
 import NotifyTab from "./NotifyTab";
-import ImagesTab from "./ImagesTab";
 import BlindsTab from "./BlindsTab";
 
-type TabId = "users" | "bottles" | "variants" | "images" | "blinds" | "feedback" | "notify";
+type TabId = "users" | "review" | "blinds" | "feedback" | "notify";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "users",    label: "Users" },
-  { id: "bottles",  label: "Bottles" },
-  { id: "variants", label: "Variants" },
-  { id: "images",   label: "Images" },
+  // #130: Bottles / Variants / Images were three queues over the same rows; Review is the one queue.
+  { id: "review",   label: "Review" },
   { id: "blinds",   label: "Blinds" },
   { id: "feedback", label: "Feedback" },
   { id: "notify",   label: "Notify" },
@@ -58,9 +55,7 @@ export default function AdminClient({
 
       <div className="flex-1 overflow-y-auto p-4">
         {tab === "users"    && <UsersTab currentPublicUserId={publicUserId} />}
-        {tab === "bottles"  && <BottlesTab publicUserId={publicUserId} />}
-        {tab === "variants" && <VariantsTab publicUserId={publicUserId} />}
-        {tab === "images"   && <ImagesTab publicUserId={publicUserId} />}
+        {tab === "review"   && <ReviewTab publicUserId={publicUserId} />}
         {tab === "blinds"   && <BlindsTab publicUserId={publicUserId} />}
         {tab === "feedback" && <FeedbackTab publicUserId={publicUserId} />}
         {tab === "notify"   && <NotifyTab publicUserId={publicUserId} />}

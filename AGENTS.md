@@ -94,7 +94,7 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
   real shelf, never straight from a table.
 - **Bottle data clean-up is ONE skill: `.claude/skills/clean-up-one-bottle/`** (2026-09-15) — research,
   dedupe, barcode, pack shot + height, filed as pending `suggested_edits`, then a push to the admins.
-  `verify-bottle` and `shelf-image` are pointers to it. It also runs as the cloud routine
+  `verify-bottle` and `shelf-image` are pointers to it. It also runs as the desktop app's local scheduled task
   **"clean up one bottle"** every 4 hours (one bottle per run, oldest unverified first).
 - **Every new user-facing surface** adds one row to the coach catalog (`src/lib/coaches.ts`) — `announce: true` plus a short `tour[]` if Show me should work. Do not re-audit the whole catalog. Set `core: true` only when the main loop actually changed. Quiet (`announce: false`) only for Admin / tiny fixes.
 - **Instrument as you build** — every new/reworked user-facing action emits an event (fail-open, append-only). Bottle actions → `activities`; broader usage → the generic events table once it exists. See **[TELEMETRY.md](TELEMETRY.md)**; record new event types there.

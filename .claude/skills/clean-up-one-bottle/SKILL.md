@@ -6,7 +6,8 @@ description: >-
   transparent pack shot with a real height, file it all as pending suggested_edits for Brian's
   in-app review, then push the admins that it is waiting. One bottle per run, then stop. This
   is THE bottle data skill: it replaces verify-bottle + shelf-image (both now point here). Runs
-  as the scheduled cloud routine "clean up one bottle" every 4 hours, and by hand when Brian
+  as the desktop app's local scheduled task "clean up one bottle" every 4 hours (on Brian's
+  machine, so .env.local is already there), and by hand when Brian
   says "clean up <bottle>", "verify <bottle>", or "do the next bottle".
 ---
 
@@ -14,7 +15,7 @@ description: >-
 
 One unverified bottle in, one reviewable clean-up out. **Review-gated, not direct**: every
 change is a `status='pending'` row in `public.suggested_edits`, one `submission_group` per
-bottle, and Brian approves in **Admin › Bottles**. The only direct writes are image files into
+bottle, and Brian approves in **Admin › Review**. The only direct writes are image files into
 the `bottle-images` bucket. Never write `bottles` / `bottle_variants`, never flip `verified`
 or `shelf_ready`. Read `AGENTS.md` guardrails first.
 
@@ -202,7 +203,7 @@ node scripts/notify_admin_cleanup.mjs <bottle_id> <submission_group>
 ```
 
 Pushes every admin "Cleaned up <bottle>: N suggestions waiting for your review", deep-linked to
-Admin › Bottles; idempotent per group (an `events` row `bottle_cleanup_notified`). If you
+Admin › Review; idempotent per group (an `events` row `bottle_cleanup_notified`). If you
 inserted a bottle (rare — a missing sibling), also run `node scripts/notify_admin_adds.mjs`.
 
 ## Step 8 — Report
@@ -210,7 +211,7 @@ inserted a bottle (rare — a missing sibling), also run `node scripts/notify_ad
 Finish with a plain summary: bottle name + id · identity evidence used (photo / barcode / name
 only) · `submission_group` · each field old → new · barcode + check-digit result + source ·
 image (cut-out / white / **none**) and fill % · height + source · merge/delete recommended, if
-any · anything unresolved. **Do not commit or push anything.** Brian approves in Admin › Bottles
+any · anything unresolved. **Do not commit or push anything.** Brian approves in Admin › Review
 and flips `verified` himself as sign-off.
 
 ## Landmines (from the sweeps)
