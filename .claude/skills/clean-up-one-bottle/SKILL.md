@@ -109,10 +109,14 @@ for this exact expression). Mashbill etc. go in `extras` (JSON-as-text).
 - **Age (`bottle_variants.age`): always file it.** Years as a number, never months and never
   "N years, M months" (18 months → `1.5 years`; 2 years 4 months → `2.3 years`).
   No statement after a real search → `NAS`. Never blank.
-- **Nose / palate / finish: always research; file all three when a reliable source exists.**
-  Skipping them because they were not on the label is a miss. **Exception:** single barrels and
-  store picks get NO brand-level notes — every barrel differs, so copied notes are fabrication;
-  empty is the honest outcome there.
+- **Nose / palate / finish: ALWAYS file all three.** Brian, 2026-09-16, overriding the old
+  "single barrels get no notes" rule: a bottle with empty notes reads as unfinished. Order of
+  preference: the producer's official notes for the expression; else the brand's sell-sheet /
+  reputable retailer copy; else a **consensus** of 2-3 reputable reviews (Breaking Bourbon,
+  Whiskey Shelf, Dramface, Whiskey Fool) distilled into the house style - one line each, comma
+  lists, no reviewer's name, no scores. For a single barrel or store pick these are the LINE's
+  typical profile, not this barrel's: say so in `extras` (`"notes_scope": "line profile; barrels
+  vary"`). Never leave them blank.
 - Correct name / distillery / category / style / volume as identity → `bottles`.
 
 ### Field → table routing (matches `src/lib/suggestedEdits.ts`)
