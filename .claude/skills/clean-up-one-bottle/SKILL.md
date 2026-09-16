@@ -232,9 +232,17 @@ from the image's aspect ratio** — it put Knob Creek at 230mm when it is wide A
 
 | class | default | e.g. |
 |---|---|---|
-| squat decanter | 230mm | Blanton's |
-| standard 750ml | 290mm | most bourbon |
-| tall / slim | 315mm | many single malts |
+| squat decanter | 230mm | Blanton's, Dickel single barrel |
+| short / wide | 250-270mm | Maker's, Elijah Craig (all), 1792, Bulleit, Willett FE (240), Bib & Tucker (260), Booker's (270) |
+| standard 750ml | 285-300mm | Jim Beam, Knob Creek, Larceny, Old Grand-Dad, Rittenhouse, Wild Turkey, Buffalo Trace / Weller / Stagg (300), Old Forester (298) |
+| tall | 305-310mm | Woodford, Eagle Rare, Michter's, Old Elk, Horse Soldier |
+| tallest | 315-320mm | E.H. Taylor, Four Roses, New Riff, Bowman, Russell's Reserve, Blade and Bow, Blue Run, Barrell, Frey Ranch, Pikesville, Angel's Envy, Basil Hayden |
+
+**Use the brand's glass, not a flat 290.** The whole shelf is scaled from this number; a flat
+default makes every bottle the same height and gives the illusion away (2026-09-16 pass: 145
+variants re-judged by shape). Same bottle line = same height across its variants. Distributor
+spec sheets (Sazerac / Heaven Hill / Beam / Brown-Forman trade portals) are the only real
+`published` source and are not on the open web - do not burn a run searching for them.
 
 ## Step 6 — File it
 
