@@ -270,7 +270,10 @@ node scripts/notify_admin_cleanup.mjs <bottle_id> <submission_group>
 ```
 
 Pushes every admin "<bottle> was cleaned up - tap to review and approve it", deep-linked into that bottle's case file in
-Admin › Review; idempotent per group (an `events` row `bottle_cleanup_notified`). If you
+Admin › Review; idempotent per group (an `events` row `bottle_cleanup_notified`). **So: anything filed later for
+the same bottle - a follow-up, a correction, rows Brian asked for after the fact - gets a NEW
+`submission_group` and its own push.** Adding rows to an already-notified group is silent, and
+Brian only learns about it by accident (2026-09-16). If you
 inserted a bottle (rare — a missing sibling), also run `node scripts/notify_admin_adds.mjs`.
 
 ## Step 8 — Report
