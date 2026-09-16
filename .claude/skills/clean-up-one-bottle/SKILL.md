@@ -265,7 +265,7 @@ instead of finding it days later. **Last step of every run that filed something:
 node scripts/notify_admin_cleanup.mjs <bottle_id> <submission_group>
 ```
 
-Pushes every admin "Cleaned up <bottle>: N suggestions waiting for your review", deep-linked to
+Pushes every admin "<bottle> was cleaned up - tap to review and approve it", deep-linked into that bottle's case file in
 Admin › Review; idempotent per group (an `events` row `bottle_cleanup_notified`). If you
 inserted a bottle (rare — a missing sibling), also run `node scripts/notify_admin_adds.mjs`.
 

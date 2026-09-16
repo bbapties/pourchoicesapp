@@ -52,13 +52,14 @@ const ago = (iso: string) => {
 
 /* ========================================================================= */
 
-export default function ReviewTab({ publicUserId }: { publicUserId: string }) {
+export default function ReviewTab({ publicUserId, initialBottle }: { publicUserId: string; initialBottle?: string }) {
   const [queue, setQueue] = useState<QueueRow[]>([]);
   const [funnel, setFunnel] = useState<RecheckRow[]>([]);
   const [showFunnel, setShowFunnel] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
+  // A push ("<bottle> was cleaned up") deep-links straight into that bottle's case file.
+  const [openId, setOpenId] = useState<string | null>(initialBottle ?? null);
 
   const load = useCallback(async () => {
     setLoading(true);

@@ -43,7 +43,9 @@ const submitter = edits[0].submitted_by;
 
 const { data: admins } = await db.from("users").select("id").eq("role", "admin");
 const recipients = (admins || []).map((a) => a.id).filter((id) => id !== submitter);
-const msg = { title: `Cleaned up ${bottle?.name ?? "a bottle"}`, body: `${n} suggestion${n === 1 ? "" : "s"} waiting for your review`, url: "/admin?tab=review" };
+// One push per bottle, worded at the bottle level (Brian, 2026-09-16: "12 items" is noise - the
+// unit he approves is the bottle). The link opens that bottle's case file directly.
+const msg = { title: `${bottle?.name ?? "A bottle"} was cleaned up`, body: "Tap to review and approve it", url: `/admin?tab=review&bottle=${bottleId}` };
 console.log(`${dryRun ? "[dry] " : ""}${msg.title} - ${msg.body} -> ${recipients.length} admin(s)`);
 if (dryRun) process.exit(0);
 

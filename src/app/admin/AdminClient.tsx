@@ -23,10 +23,13 @@ export default function AdminClient({
   publicUserId,
   username,
   initialTab,
+  initialBottle,
 }: {
   publicUserId: string;
   username: string;
   initialTab?: string;
+  /** /admin?tab=review&bottle=<id> - a push about one bottle opens that bottle's case file. */
+  initialBottle?: string;
 }) {
   // A push about new feedback deep-links to /admin?tab=feedback; anything unknown falls back to Users.
   const [tab, setTab] = useState<TabId>(TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : "users");
@@ -55,7 +58,7 @@ export default function AdminClient({
 
       <div className="flex-1 overflow-y-auto p-4">
         {tab === "users"    && <UsersTab currentPublicUserId={publicUserId} />}
-        {tab === "review"   && <ReviewTab publicUserId={publicUserId} />}
+        {tab === "review"   && <ReviewTab publicUserId={publicUserId} initialBottle={initialBottle} />}
         {tab === "blinds"   && <BlindsTab publicUserId={publicUserId} />}
         {tab === "feedback" && <FeedbackTab publicUserId={publicUserId} />}
         {tab === "notify"   && <NotifyTab publicUserId={publicUserId} />}
