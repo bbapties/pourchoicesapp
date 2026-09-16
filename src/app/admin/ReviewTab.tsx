@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Check, ChevronRight, MoreHorizontal, Search, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
+import { notify } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
@@ -199,6 +200,7 @@ function CaseFileSheet({ bottleId, publicUserId, onClose, onChanged }: { bottleI
     setBusy(false);
     if (r.error) { toast.error(r.error); return; }
     logEvent({ eventType: "bottle_verified", surface: "admin_review", targetType: "bottle", targetId: file.bottleId, metadata: { variants: r.variantsVerified, shelf_ready: r.shelfReady } });
+    notify({ kind: "bottle_verified", bottleId: file.bottleId }); // the human who added it hears it is on the shelf
     toast.success(`${file.name} verified${r.shelfReady ? " and on the shelf" : ""}.`);
     onChanged();
     onClose();
@@ -332,6 +334,8 @@ function SubmissionCard({ sub, file, neighbours, publicUserId, onDone }: { sub: 
     setBusy(null);
     logEvent({ eventType: "submission_reviewed", surface: "admin_review", targetType: "submission_group", targetId: sub.group, metadata: { approved: toApprove.length - failed, held: held.size, by: sub.byId } });
     if (!failed) toast.success(`Approved ${toApprove.length} change${toApprove.length === 1 ? "" : "s"} from ${sub.by}.`);
+    // Held-back rows stay pending, so the push says "N approved" only for what was decided.
+    notify({ kind: "edit_reviewed", submissionGroup: sub.group, decision: held.size ? "partial" : "approved", note });
     await onDone();
   };
   const rejectAll = async () => {
@@ -340,6 +344,7 @@ function SubmissionCard({ sub, file, neighbours, publicUserId, onDone }: { sub: 
     setBusy(null);
     logEvent({ eventType: "submission_reviewed", surface: "admin_review", targetType: "submission_group", targetId: sub.group, metadata: { rejected: sub.rows.length, by: sub.byId } });
     toast.success(`Rejected ${sub.by}'s submission.`);
+    notify({ kind: "edit_reviewed", submissionGroup: sub.group, decision: "rejected", note });
     await onDone();
   };
   const toggle = (id: string) => setHeld((h) => { const n = new Set(h); if (n.has(id)) n.delete(id); else n.add(id); return n; });

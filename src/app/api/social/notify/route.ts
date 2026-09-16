@@ -16,16 +16,25 @@ export const dynamic = "force-dynamic";
 //                               'data'); Brian wants to see each bottle those accounts put in.
 //   feedback                 -> every admin, for every report (Brian, 2026-09-13); deep-links to
 //                               Admin > Feedback.
+//   bottle_verified          -> the HUMAN who added the bottle, when an admin verifies it
+//                               (Brian, 2026-09-16): "your add is on the shelf". Admin caller only.
+//   edit_reviewed            -> the HUMAN submitter(s) of a suggestion group, when an admin
+//                               approves or rejects it; bot submissions stay silent. Admin caller only.
 // Every recipient still passes the master switch (users.notify_push) inside sendPushTo, and a
 // muted person can never reach the muter: muting deleted the follow row, so there is no bell.
 // Fail-open end to end: the caller's action already happened; this only decides whether phones buzz.
 
 type Body = {
-  kind: "cheer" | "comment" | "reply" | "follow" | "activity" | "feedback";
+  kind: "cheer" | "comment" | "reply" | "follow" | "activity" | "feedback" | "bottle_verified" | "edit_reviewed";
   activityId?: string;
   commentId?: string;
   targetUserId?: string;
   feedbackId?: string;
+  bottleId?: string;
+  submissionGroup?: string;
+  /** edit_reviewed: what the admin did to the group, and the note they left (if any). */
+  decision?: "approved" | "rejected" | "partial";
+  note?: string;
 };
 
 const NOTIFY_ACTIONS = new Set(["drank", "tasted", "added_to_collection", "wishlisted"]);
@@ -53,7 +62,7 @@ export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  const { data: caller } = await supabase.from("users").select("id, username, account_type").eq("auth_id", user.id).maybeSingle();
+  const { data: caller } = await supabase.from("users").select("id, username, account_type, role").eq("auth_id", user.id).maybeSingle();
   if (!caller) return NextResponse.json({ error: "No profile" }, { status: 403 });
 
   let body: Body;
@@ -153,6 +162,43 @@ export async function POST(request: Request) {
       body: String(fb.message ?? "").replace(/\s+/g, " ").slice(0, 200),
       url: "/admin?tab=feedback",
     };
+  } else if (body.kind === "bottle_verified") {
+    if (caller.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
+    if (!body.bottleId) return NextResponse.json({ error: "bottleId required" }, { status: 400 });
+    // Only a bottle that IS verified buzzes its adder, and only a human adder (a data bot has no phone).
+    const { data: b } = await admin
+      .from("bottles")
+      .select("id, name, verified, created_by, users:created_by ( id, account_type )")
+      .eq("id", body.bottleId)
+      .maybeSingle();
+    if (!b || !b.verified || !b.created_by) return NextResponse.json({ sent: 0 });
+    const adder = Array.isArray(b.users) ? b.users[0] : b.users;
+    if (!adder || adder.account_type !== "human") return NextResponse.json({ sent: 0 });
+    recipients = [b.created_by].filter((id) => id !== caller.id);
+    msg = { title: `${b.name} is verified`, body: "The bottle you added is cleaned up and on the shelf. Thanks for adding it.", url: "/search" };
+  } else if (body.kind === "edit_reviewed") {
+    if (caller.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
+    if (!body.submissionGroup) return NextResponse.json({ error: "submissionGroup required" }, { status: 400 });
+    // The group's rows say who submitted and what happened; the client only names the group.
+    const { data: rows } = await admin
+      .from("suggested_edits")
+      .select("submitted_by, status, review_note, bottles ( name ), users:submitted_by ( account_type )")
+      .eq("submission_group", body.submissionGroup);
+    if (!rows || !rows.length) return NextResponse.json({ sent: 0 });
+    const decided = rows.filter((r) => r.status === "approved" || r.status === "rejected");
+    if (!decided.length) return NextResponse.json({ sent: 0 });
+    const approved = decided.filter((r) => r.status === "approved").length;
+    const rejected = decided.length - approved;
+    const bottle = (Array.isArray(rows[0].bottles) ? rows[0].bottles[0] : rows[0].bottles)?.name ?? "a bottle";
+    const humans = new Set<string>();
+    for (const r of rows) {
+      const u = Array.isArray(r.users) ? r.users[0] : r.users;
+      if (r.submitted_by && u?.account_type === "human") humans.add(r.submitted_by);
+    }
+    recipients = [...humans].filter((id) => id !== caller.id);
+    const note = (body.note ?? decided.find((r) => r.review_note)?.review_note ?? "").toString().replace(/\s+/g, " ").trim();
+    const title = rejected === 0 ? `Your edit to ${bottle} was approved` : approved === 0 ? `Your edit to ${bottle} wasn't taken` : `Your edit to ${bottle}: ${approved} approved, ${rejected} not`;
+    msg = { title: title.slice(0, 80), body: (note ? `Note from the admin: ${note}` : rejected === 0 ? "It's live in the catalog now. Thanks." : "Open the bottle to see what it reads now.").slice(0, 200), url: "/search" };
   } else {
     return NextResponse.json({ error: "Unknown kind" }, { status: 400 });
   }
