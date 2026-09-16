@@ -2,7 +2,20 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+/**
+ * Scanner paths. A public domain is probed thousands of times a day for WordPress, PHP, dotfiles
+ * and the like. None of it is ours, so it gets a 404 here before Supabase is even constructed --
+ * every one of those hits used to be a full function invocation with a getUser() round-trip
+ * (Vercel's 75%-of-Fluid-CPU warning, 2026-09-16, with four real users).
+ */
+const SCANNER =
+  /(\.php|\.asp|\.aspx|\.jsp|\.cgi|\.env|\.git|\.svn|\.htaccess|\.DS_Store|\.sql|\.bak|\.zip)($|[?/])|^\/(wp-|wordpress|xmlrpc|phpmyadmin|pma|cgi-bin|vendor\/|\.well-known\/(?!assetlinks|apple-app-site))/i
+
 export async function middleware(request: NextRequest) {
+  if (SCANNER.test(request.nextUrl.pathname)) {
+    return new NextResponse(null, { status: 404 })
+  }
+
   let response = NextResponse.next({ request })
 
   // #5 (B-64/B-65): when Supabase refreshes the token here, the new cookie has to reach TWO
@@ -91,5 +104,9 @@ export const config = {
   // `/api` is deliberately NOT excluded any more (#5) -- see the 401 branch above.
   matcher:
     '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|_error|error|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest).*)',
-  runtime: 'nodejs'
+  // No `runtime: 'nodejs'` -- deliberately. It was added in a Nov-2025 "test" commit with no
+  // reason recorded, and it made every matched request (every page, RSC navigation, /api call
+  // and 404) a Fluid Node invocation that loaded supabase-js. This file only uses @supabase/ssr,
+  // NextResponse and cookies, all of which the Edge runtime supports; Edge middleware is metered
+  // separately from Fluid Active CPU. Do not put it back without a reason written here.
 }
