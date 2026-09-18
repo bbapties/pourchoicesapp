@@ -14,6 +14,7 @@ import { useDragReorder, arrayMove } from "@/lib/useDragReorder";
 import { fetchUserRatingState } from "@/lib/ratings";
 import PourSheet, { type PourSubmission } from "@/components/PourSheet";
 import { recordPour } from "@/lib/pours";
+import { loadTastingDraft, saveTastingDraft, flushTastingDraft, clearTastingDraft } from "@/lib/tastingDraft";
 
 type Step = "home" | "pourPick" | "source" | "count" | "mode" | "pick" | "label" | "handoff" | "helperSetup" | "handback" | "rank" | "done";
 type Mode = "self" | "helper";
@@ -29,6 +30,8 @@ type CatalogBottle = {
   imageUrl?: string | null;
 };
 type RankItem = CatalogBottle & { glassLetter: string };
+// A bottle the helper could not pour, swapped for another from the shelf (see the swap flow).
+type Swap = { letter: string; from: CatalogBottle; to: CatalogBottle; reason: string };
 
 const letter = (i: number) => String.fromCharCode(65 + i); // 0 -> A
 const hasNote = (n?: GlassNote) => !!(n && (n.nose?.trim() || n.palate?.trim() || n.finish?.trim()));
@@ -78,7 +81,6 @@ export default function DrinkClient({
   // A bottle the helper could not pour, swapped for another from the shelf. Shown as a
   // footnote on the reveal so Brian can tell a My Bar data problem from a cork that would
   // not budge. Lives in state only; the event row is the durable record.
-  type Swap = { letter: string; from: CatalogBottle; to: CatalogBottle; reason: string };
   const [swaps, setSwaps] = useState<Swap[]>([]);
   const [swapping, setSwapping] = useState(false);
   const [swapReason, setSwapReason] = useState<string>("");
@@ -126,6 +128,60 @@ export default function DrinkClient({
       void lock?.release().catch(() => {});
     };
   }, [inTasting]);
+
+  // #134: the flow survives a reload. Everything a tasting IS - lineup, glass letters, swaps,
+  // notes, ranking, which step - goes to tasting_drafts on every change (debounced); on mount a
+  // fresh draft is offered back as "Resume?". Brian, 2026-09-17, after a phone reload dropped a
+  // real tasting mid-pour: "If it's an app, a URL refresh shouldn't screw up the flow."
+  type DraftState = {
+    mode: Mode; picks: CatalogBottle[]; glassAssignment: { letter: string; pick: CatalogBottle }[];
+    pourIndex: number; swaps: Swap[]; rankOrder: RankItem[]; glassNotes: Record<string, GlassNote>;
+    random: boolean; randomCount: number; pendingSessionId: string | null;
+  };
+  const [draftOffer, setDraftOffer] = useState<{ step: Step; state: DraftState; at: string } | null>(null);
+  const draftChecked = useRef(false);
+  useEffect(() => {
+    if (draftChecked.current || !publicUserId) return;
+    draftChecked.current = true;
+    loadTastingDraft<DraftState>(publicUserId).then((d) => {
+      // Only a tasting that had actually started is worth offering; "home" / "pourPick" drafts
+      // are noise. A seeded start from a bottle card wins over an old draft.
+      if (!d || !d.state?.picks?.length || d.step === "home" || d.step === "pourPick" || d.step === "done" || seedBottleId) return;
+      setDraftOffer({ step: d.step as Step, state: d.state, at: d.updatedAt });
+    });
+  }, [publicUserId, seedBottleId]);
+
+  useEffect(() => {
+    if (!inTasting || draftOffer) return;
+    saveTastingDraft(publicUserId, step, {
+      mode, picks, glassAssignment, pourIndex, swaps, rankOrder, glassNotes, random, randomCount,
+      pendingSessionId: pendingSessionRef.current,
+    } satisfies DraftState);
+  }, [inTasting, draftOffer, publicUserId, step, mode, picks, glassAssignment, pourIndex, swaps, rankOrder, glassNotes, random, randomCount]);
+
+  // The browser gives no warning before it discards a background tab; send what is queued.
+  useEffect(() => {
+    const flush = () => { if (document.visibilityState === "hidden") flushTastingDraft(); };
+    document.addEventListener("visibilitychange", flush);
+    window.addEventListener("pagehide", flushTastingDraft);
+    return () => { document.removeEventListener("visibilitychange", flush); window.removeEventListener("pagehide", flushTastingDraft); };
+  }, []);
+
+  const resumeDraft = () => {
+    if (!draftOffer) return;
+    const d = draftOffer.state;
+    setMode(d.mode); setPicks(d.picks); setGlassAssignment(d.glassAssignment); setPourIndex(d.pourIndex ?? 0);
+    setSwaps(d.swaps ?? []); setRankOrder(d.rankOrder ?? []); setGlassNotes(d.glassNotes ?? {});
+    setRandom(!!d.random); setRandomCount(d.randomCount ?? MIN_PICKS);
+    pendingSessionRef.current = d.pendingSessionId ?? null;
+    setStep(draftOffer.step);
+    setDraftOffer(null);
+    logEvent({ eventType: "tasting_draft_resumed", surface: "taste", targetType: "tasting_draft", targetId: publicUserId, metadata: { step: draftOffer.step, bottles: d.picks.length, mode: d.mode } });
+  };
+  const discardDraft = () => {
+    setDraftOffer(null);
+    void clearTastingDraft(publicUserId, "discarded");
+  };
 
   // 7.9 store-pick scoping: global variants + only the viewer's own store picks.
   // B-74: `created_by` is a public.users.id, enforced by a foreign key.
@@ -432,6 +488,7 @@ export default function DrinkClient({
       if (res.sessionId) pendingSessionRef.current = res.sessionId;
       if (res.error) { toast.error("Could not save the tasting"); return; }
       pendingSessionRef.current = null;
+      void clearTastingDraft(publicUserId, "saved"); // the real rows exist now; the draft has done its job
       setResult([...rankOrder]);
       setConfirming(false);
       setRevealing(true);
@@ -443,6 +500,7 @@ export default function DrinkClient({
   };
 
   const reset = () => {
+    void clearTastingDraft(publicUserId, "done");
     pendingSessionRef.current = null;
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
     setRandom(false); setRandomCount(MIN_PICKS); setSwaps([]); setSwapping(false);
@@ -567,6 +625,26 @@ export default function DrinkClient({
       </header>
 
       <div className="p-4">
+        {/* #134: a tasting in progress from before a reload */}
+        {draftOffer && step === "home" && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center">
+            <div className="pc-leather w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-3" style={{ color: "#f6ecd9" }}>
+              <h2 className="font-display text-lg pc-brass-text">Pick up where you left off?</h2>
+              <p className="text-sm text-cream-mute">
+                You had a {draftOffer.state.mode === "helper" ? "helper-poured" : "self-guided"} blind going with {draftOffer.state.picks.length} bottles
+                {draftOffer.step === "rank" ? ", mid-ranking" : draftOffer.step === "handoff" || draftOffer.step === "helperSetup" ? ", with the helper" : ""} — last touched {new Date(draftOffer.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.
+              </p>
+              <ul className="text-sm text-cream space-y-0.5">
+                {draftOffer.state.picks.slice(0, 10).map((b) => <li key={b.variantId} className="truncate">· {b.name}{b.label ? ` (${b.label})` : ""}</li>)}
+              </ul>
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={discardDraft} className={secondaryBtn}>Start over</button>
+                <button type="button" onClick={resumeDraft} className={primaryBtn} style={{ backgroundColor: "#bd9436" }}>Resume</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* HOME */}
         {step === "home" && (
           <div className="flex flex-col items-center text-center pt-10 gap-4">

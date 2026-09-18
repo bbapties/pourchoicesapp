@@ -1,6 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
--- Regenerated from the live prod DB on 2026-09-15 via scripts/_psql.mjs against information_schema/pg_catalog.
+-- Regenerated from the live prod DB on 2026-09-18 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
 
 CREATE TABLE public.activities (
@@ -186,6 +186,13 @@ CREATE TABLE public.tasting_details (
   glass_letter text,
   rank integer);
 
+CREATE TABLE public.tasting_drafts (
+  user_id uuid NOT NULL,
+  step text NOT NULL,
+  state jsonb NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now());
+
 CREATE TABLE public.tasting_results (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   tasting_session_id uuid NOT NULL,
@@ -369,6 +376,10 @@ CREATE TABLE public.wishlists (
 --   suggested_edits: suggested_edits_update (UPDATE)
 --   tasting_details: Users can manage their own tasting details (ALL)
 --   tasting_details: admins read all tasting_details (SELECT)
+--   tasting_drafts: tasting_drafts_delete (DELETE)
+--   tasting_drafts: tasting_drafts_insert (INSERT)
+--   tasting_drafts: tasting_drafts_select (SELECT)
+--   tasting_drafts: tasting_drafts_update (UPDATE)
 --   tasting_results: Users insert own tasting results (INSERT)
 --   tasting_results: Users read own tasting results (SELECT)
 --   tasting_results: admins read all tasting_results (SELECT)

@@ -318,6 +318,12 @@ clean-up-one-bottle run filed its suggestions and pushed the admins. Written by
 `scripts/notify_admin_cleanup.mjs`, which also uses it as the idempotency check so a retried run
 cannot buzz twice. One row per cleaned-up bottle = the run log of the routine.
 
+**Shipped 2026-09-17 — tasting drafts (#134):** `tasting_draft_resumed` (surface `taste`, target =
+the user; metadata `step`, `bottles`, `mode`) and `tasting_draft_discarded` when a person chooses
+Start over. The draft itself lives in `tasting_drafts` (one row per user, deleted on save) and is
+not an event. A high resumed count means phones are reloading `/taste` a lot - worth knowing
+before the native shells, where the OS kills webviews freely.
+
 The same skill emits `bottle_submitted` with surface `agent_import` (rather than
 `provisional_sheet`) when a bottle named in an import has to be created before the tasting can
 be written.
