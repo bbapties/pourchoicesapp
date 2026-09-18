@@ -265,6 +265,10 @@ client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
   `metadata = { matched: boolean }`, `target_id` = matched bottle id when found. Feeds scan-usage
   and catalog-coverage insights (how often a scan finds nothing → add-flow).
 - `click` → `mybar_add_fab` — the '+' on My Bar that jumps to Search with the box focused (#33).
+- `click` → `past_tasting_open` — a row in the past-tastings list (Profile / My Bar > Blind) opened
+  its post (#20). `target_id` = activity id, `surface` = where the list was.
+- `click` → `reveal_full_ranking` — "See the full ranking" on the reveal screen (#20). `target_id` =
+  the new `tasted` activity.
 
 Add more events freely as you build (see the standing rule). Not yet wired: filters/sorts,
 coach/tour interactions, add-to-bar click (its success is already in `activities`).

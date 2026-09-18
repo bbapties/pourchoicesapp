@@ -21,6 +21,7 @@ import { logClick, logEvent } from "@/lib/events";
 import { fetchUserFeed, splitGroup, toggleCheer, type FeedItem } from "@/lib/social";
 import { notify } from "@/lib/notify";
 import type { ShelfBottle, ShelfDef } from "@/lib/shelves";
+import PastTastings from "@/components/PastTastings";
 import {
   fetchTop3,
   fetchUserById,
@@ -328,6 +329,14 @@ export default function UserPage({ own = false, username }: Props) {
         <>
           <SectionHead title="Wishlist" />
           <UserShelf def={shelves.wishlist} count={counts[shelves.wishlist.id]} viewerId={publicUserId ?? null} reloadKey={reloadKey} onPick={setPicked} surface={surface} />
+        </>
+      )}
+
+      {/* #20: every blind tasting, newest first; a row opens the post with the full ranking */}
+      {user && (
+        <>
+          <SectionHead title="Blind tastings" hint="Newest first" />
+          <PastTastings userId={user.id} viewerId={publicUserId ?? null} surface={surface} emptyText={own ? "Your blind tastings will be listed here." : "No blind tastings yet."} />
         </>
       )}
 

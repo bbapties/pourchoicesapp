@@ -47,7 +47,17 @@ function pourIndexFromLetter(glassLetter: string | undefined): number | null {
   return i >= 0 && i < 26 ? i : null;
 }
 
-export type GlassNote = { nose?: string; palate?: string; finish?: string };
+export type GlassNote = {
+  nose?: string;
+  palate?: string;
+  finish?: string;
+  /**
+   * #20: the helper could not pour what was dealt for this glass and swapped it. Lives on the
+   * glass's own tasting_details.notes so the footnote survives with the tasting (the draft was
+   * the only place it existed before). `from` is the name of the bottle that was dealt.
+   */
+  swap?: { from: string; reason: string };
+};
 
 /**
  * Persist a completed blind tasting and let the DB Elo trigger score it.
@@ -67,7 +77,7 @@ export async function saveTasting(opts: {
   notes?: Record<string, GlassNote>; // keyed by variantId (optional)
   name?: string | null;
   sessionId?: string | null; // reuse an already-created session on retry (B-07 idempotency)
-}): Promise<{ sessionId?: string; error?: string }> {
+}): Promise<{ sessionId?: string; activityId?: string; error?: string }> {
   const picks = opts.picks;
   if (picks.length < 2) return { error: "Need at least 2 bottles" };
 
@@ -159,10 +169,11 @@ export async function saveTasting(opts: {
   // B-51: post ONE `tasted` activity per session (anchored on the winner bottle) so the tasting
   //   shows on the Social feed + per-variant history. Only on first creation (a reused sessionId
   //   is a retry) so it never double-posts.
+  let activityId: string | undefined;
   if (!opts.sessionId) {
     // #106/#109: session_id lets the feed card open the ranked results; details.count is the
     // "Blind-tasted N bottles" headline without a second query.
-    await logActivity({
+    const act = await logActivity({
       userId: opts.userId,
       bottleId: picks[0].bottleId,
       action: "tasted",
@@ -170,7 +181,43 @@ export async function saveTasting(opts: {
       sessionId,
       details: { count: picks.length },
     });
+    activityId = act.id;
   }
 
-  return { sessionId };
+  return { sessionId, activityId };
+}
+
+// ---------------------------------------------------------------- past tastings (#20)
+
+export type PastTasting = {
+  activityId: string;
+  sessionId: string | null;
+  createdAt: string;
+  count: number;
+  winnerName: string;
+};
+
+/**
+ * Someone's blind tastings, newest first, from their `tasted` posts. Each post is anchored on
+ * the winner (B-51) and carries `details.count`, so no per-session round trip is needed; the
+ * post itself is the detail screen. Fail-open: an empty list on any error.
+ */
+export async function fetchPastTastings(userId: string): Promise<PastTasting[]> {
+  const { data, error } = await supabase
+    .from("activities")
+    .select("id, session_id, created_at, details, bottles ( name )")
+    .eq("user_id", userId)
+    .eq("action", "tasted")
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as any[]).map((r) => {
+    const b = Array.isArray(r.bottles) ? r.bottles[0] : r.bottles;
+    return {
+      activityId: r.id,
+      sessionId: r.session_id ?? null,
+      createdAt: r.created_at,
+      count: Number(r.details?.count ?? 0) || 0,
+      winnerName: b?.name ?? "Unknown bottle",
+    };
+  });
 }

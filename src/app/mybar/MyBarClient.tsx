@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import { logEvent, logClick } from "@/lib/events";
 import BottleCardMedium from "@/components/BottleCardMedium";
+import PastTastings from "@/components/PastTastings";
 import BottleDetailView from "@/components/BottleDetailView";
 import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
@@ -629,6 +630,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
         {(['owned', 'empty', 'tasted', 'wishlist'] as TabOption[]).map(tab => (
           <button
             key={tab}
+            data-coach={tab === 'tasted' ? 'mybar.tab.blind' : undefined}
             onClick={() => { setActiveTab(tab); setSearchQuery(''); }}
             className={`flex-1 text-xs px-1 py-2 border-b-2 transition-colors truncate
               ${activeTab === tab ? 'border-brass-line font-semibold text-cream' : 'border-transparent text-cream-faint'}`}
@@ -646,6 +648,18 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
 
       {/* Scrollable content — AppShell already applies marginTop: 132px */}
       <div data-coach="mybar.list">
+        {/* #20: the Blind tab is also where your past tastings live - the bottles below are the
+            ones you ranked but do not own; this strip is the sittings themselves. */}
+        {activeTab === 'tasted' && !searchQuery && !filterActive && (
+          <div className="pt-3 pb-1" data-coach="mybar.past_tastings">
+            <div className="px-4 pb-1.5 flex items-baseline justify-between">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[.14em] text-cream">Your blind tastings</h2>
+              <span className="text-xs text-cream-mute">Newest first</span>
+            </div>
+            <PastTastings userId={publicUserId} viewerId={publicUserId} surface="/mybar" />
+            <div className="px-4 pt-3 pb-0.5 text-[11px] font-semibold uppercase tracking-[.14em] text-cream">Bottles you ranked but don&apos;t own</div>
+          </div>
+        )}
         {filteredCards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
             <div className="text-5xl mb-4">🥃</div>

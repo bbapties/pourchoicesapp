@@ -44,7 +44,7 @@ export type PodiumGlass = {
   distillery: string | null;
   imageUrl: string | null;
   glassLetter: string | null;
-  notes: { nose?: string; palate?: string; finish?: string } | null;
+  notes: { nose?: string; palate?: string; finish?: string; swap?: { from: string; reason: string } } | null;
 };
 
 const COLLAPSE_ACTIONS = new Set(["added_to_collection", "wishlisted"]);

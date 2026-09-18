@@ -82,6 +82,8 @@ export default function DrinkClient({
   // footnote on the reveal so Brian can tell a My Bar data problem from a cork that would
   // not budge. Lives in state only; the event row is the durable record.
   const [swaps, setSwaps] = useState<Swap[]>([]);
+  // #20: the `tasted` post this save produced - the reveal links to it as the tasting's record.
+  const [savedActivityId, setSavedActivityId] = useState<string | null>(null);
   const [swapping, setSwapping] = useState(false);
   const [swapReason, setSwapReason] = useState<string>("");
   const [swapOther, setSwapOther] = useState("");
@@ -489,11 +491,18 @@ export default function DrinkClient({
         (["nose", "palate", "finish"] as const).forEach((k) => { const v = n[k]?.trim(); if (v) clean[k] = v; });
         if (Object.keys(clean).length) notes[vid] = clean;
       });
+      // #20: a swap is a fact about the glass that was poured, so it rides on that glass's notes.
+      for (const sw of swaps) {
+        const poured = rankOrder.find((b) => b.glassLetter === sw.letter);
+        if (!poured) continue;
+        notes[poured.variantId] = { ...(notes[poured.variantId] ?? {}), swap: { from: sw.from.name, reason: sw.reason } };
+      }
       const res = await saveTasting({ userId: publicUserId, mode, picks: orderedPicks, notes, sessionId: pendingSessionRef.current });
       // Remember the session even on failure so a retry reuses it (idempotent).
       if (res.sessionId) pendingSessionRef.current = res.sessionId;
       if (res.error) { toast.error("Could not save the tasting"); return; }
       pendingSessionRef.current = null;
+      if (res.activityId) setSavedActivityId(res.activityId);
       void clearTastingDraft(publicUserId, "saved"); // the real rows exist now; the draft has done its job
       setResult([...rankOrder]);
       setConfirming(false);
@@ -509,7 +518,7 @@ export default function DrinkClient({
     void clearTastingDraft(publicUserId, "done");
     pendingSessionRef.current = null;
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
-    setRandom(false); setRandomCount(MIN_PICKS); setSwaps([]); setSwapping(false);
+    setRandom(false); setRandomCount(MIN_PICKS); setSwaps([]); setSwapping(false); setSavedActivityId(null);
     setGlassNotes({}); setNotesOpen(null); setRevealing(false);
     setPourTarget(null); setShowPourSheet(false); setStep("home");
     if (seedBottleId) router.replace("/taste");
@@ -1033,6 +1042,15 @@ export default function DrinkClient({
                   <p key={i}>Glass {sw.letter} was going to be {sw.from.name}; swapped for {sw.to.name} — &ldquo;{sw.reason}&rdquo;.</p>
                 ))}
               </div>
+            )}
+            {savedActivityId && (
+              <button
+                type="button"
+                onClick={() => { const id = savedActivityId; logClick("reveal_full_ranking", { userId: publicUserId, surface: "/taste", targetId: id }); reset(); router.push(`/post/${id}`); }}
+                className={`${secondaryBtn} mb-3`}
+              >
+                See the full ranking
+              </button>
             )}
             <button type="button" onClick={() => { reset(); router.push("/home"); }} className={secondaryBtn}>Done</button>
           </div>

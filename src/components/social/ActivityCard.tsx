@@ -269,6 +269,11 @@ function BlindBody({ item, detail }: { item: FeedItem; detail: boolean }) {
                     {g.notes.finish && <div><span className="text-cream-faint">Finish</span> {g.notes.finish}</div>}
                   </div>
                 )}
+                {g.notes?.swap && (
+                  <div className="text-xs text-cream-faint mt-1 italic">
+                    Swapped in for {g.notes.swap.from} &mdash; &ldquo;{g.notes.swap.reason}&rdquo;
+                  </div>
+                )}
               </div>
               {g.glassLetter && <span className="text-xs text-cream-faint">Glass {g.glassLetter}</span>}
             </li>

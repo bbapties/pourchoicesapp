@@ -502,6 +502,22 @@ export const COACH_CATALOG: CoachItem[] = [
       },
     ],
   },
+  {
+    // #20: the payoff of the blind-tasting loop - you can look back at every sitting.
+    id: "taste.history",
+    title: "Your past blind tastings",
+    body: "Every blind tasting you have done is listed under My Bar > Blind and on your Profile. Open one to see every glass in finishing order, your notes, and any swaps.",
+    route: "/mybar",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/mybar",
+        anchor: "mybar.tab.blind",
+        caption: "The Blind tab lists your blind tastings, newest first. Tap one to see the full ranking with your notes per glass.",
+      },
+    ],
+  },
 ];
 
 /**
