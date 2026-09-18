@@ -9,57 +9,52 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `d8fd31a` + this doc commit. All on origin/MVP-v3 and live on prod.
-- **Last session (2026-09-14 -> 15, Claude). Three things shipped, one bot, one board decision:**
-  1. **Admin > Blinds (#129, closed).** Enter a past blind for ANY user: date (noon
-     America/Chicago, +N s per same-day entry so save order = replay order), user, unlimited
-     places, drag/chevron reorder, picker sheet over the form that searches `all_variant_details`
-     and can insert a **name-only provisional bottle**. Save = `admin_import_blind_tasting()`
-     (session + details + all pairs, B-47 guess delete, B-51 activity, `tasting_imported` event,
-     then `replay_elo_history()`); rejects the same user + day + order. First real entries are in
-     (Right_Blind; one Hard Truth swap done by SQL at Brian's ask).
-  2. **Admin > Review (#130, closed; hands-on card #132).** Bottles / Variants / Images tabs are
-     GONE. One queue (unverified OR pending submission) with chips; one case file per bottle:
-     submissions as the full form with word-level red/green diffs + per-field untick + Approve
-     all / Reject; editable form; "What is this record?" (Standalone / Parent+axis / "This is
-     really X" -> "exactly the same, or a version?" over merge_bottle); the current image on the
-     checker shelf between two verified neighbours with Reject-with-reasons; sticky bar + ONE
-     **Verify** = `admin_verify_bottle()` (bottle + variants verified, default image shelf_ready
-     if present and not rejected, refuses while submissions pend). Design record: the #130
-     body + the 2026-09-15 conversation. **Do not re-open the settled design.**
-  3. **Verified != complete (Brian).** `bottles.dq_checked_at` is the only stored thing; view
-     `bottle_dq_gaps` derives what is missing; view `bottle_dq_recheck` = gaps + not looked at in
-     6 months. Review shows a "missing: ..." chip and a Recheck funnel; Verify stamps the clock.
-     Rules in AGENTS.md. Never add a "complete" flag or a per-attribute status table.
-  - **The bot: `clean-up-one-bottle`** is THE bottle-data skill (verify-bottle + shelf-image are
-    pointers; scripts moved to `.claude/skills/clean-up-one-bottle/scripts/`, incl. new
-    `read_barcode.py` (zxing-cpp) that decodes a UPC off any photo/URL). It runs as the
-    **desktop app's LOCAL scheduled task "clean up one bottle" every 4h** on Brian's machine
-    (auto permission mode - Brian set it in the Routines UI; a Manual-mode task stalls on every
-    tool). Pick order: live queue (unverified, `dq_checked_at IS NULL`, nothing pending) then the
-    funnel; ends with `notify_admin_cleanup.mjs` (push to admins -> `/admin?tab=review`) and the
-    `dq_checked_at` stamp. Barcode is a REQUIRED output with a 5-rung ladder (producer shop JSON,
-    retailers with gtin, state price lists, barcode DBs, decode a back-label photo). Two runs done
-    (Striped Rye, Old Line 51 - both approved by Brian; neither has a public UPC, both stamped).
-    A disabled CLOUD routine of the same name exists at claude.ai/code/routines
-    (trig_01LXXLQQ1UUgHd5E2smL5Cjf) - it cannot reach .env.local; delete it or leave it off.
-  - **Landmines found this session:** (a) the admin page had NO `<Toaster>` - every admin
-    `toast.error` was invisible until 479432f; (b) `pg_safeupdate` is loaded for the API roles:
-    any function called through RPC needs a WHERE on every UPDATE/DELETE (replay's DELETE got
-    `WHERE true`); (c) `tasting_results`' unique key was per BOTTLE pair from the pre-variant era
-    - two batches of one bottle in a sitting collided (Blinds raised, the app's saveTasting
-    silently dropped pairs). Now `UNIQUE (session, winner_variant_id, loser_variant_id)`
-    (`sql/tasting-results-unique-by-variant-*`), client + import skill updated.
-  - **Data work at Brian's ask:** Stagg (renamed "Stagg" by Brian) inserted split on `batch`
-    with 34 verified variants (Unknown default, Jr 1-18, 22A/B, 23A-C, 24A-D, 25A-D, 26A/B) and
-    UPC 088004018580; a wrong Hard Truth swapped for the BIB in Right_Blind's 2026-09-14 session.
-- **Next step per the board** (right to left): *In Progress* EMPTY. *Next Items per Brian*:
-  **#128** track/display pours + rename Tasted -> Blind (folds the #119 decision into a rename;
-  read #119 with it). *Brian to test*: #123, #125-#127, **#132 (Review tab)**. *Coming Soon*:
-  #119, #20, #33. North Star gained **#131** (ask users in-hand to fill a bottle's known gaps).
-- **Brian tested this session:** Blinds end to end on localhost and prod (pass); approved the
-  bot's first two submissions in the OLD Bottles tab before Review replaced it. **Review itself
-  is untested by a human** - #132.
+- **Tip:** `d3c4555` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Last session (2026-09-18, Claude). Five board cards + three closures + a stale baton repaired:**
+  - **The 2026-09-16/17 commits had no END SESSION.** Reconstructed from `git log`: **#134**
+    a blind tasting in progress survives a reload (`tasting_drafts`, one row per user, own-row
+    RLS; "Pick up where you left off?" on `/taste`; `8bcb19c` `7308a21`); **pushes** to a human
+    adder when their bottle is verified and to a human submitter when their edit is reviewed
+    (`3118a67`, kinds `bottle_verified` / `edit_reviewed` on `/api/social/notify`); the bot's
+    clean-up push is one line per bottle -> `/admin?tab=review&bottle=<id>` (`28989a5`);
+    **middleware runs on the Edge** and 404s scanner paths before touching Supabase (`94b28b0` -
+    Vercel had warned at 75% of free Fluid CPU); four `clean-up-one-bottle` SKILL.md rules
+    (`33b4e34` `bb6fdfd` `96d6aaf`: height by the brand's glass, always file nose/palate/finish,
+    follow-up rows get their own submission_group).
+  - **#33** '+' on My Bar -> `/search?focus=1` (`768231e`). Search now reads arrival params
+    `?focus=1` and **`?bottle=<id>`** (opens that bottle's sheet) next to the old `?scan=1`
+    (`e92ce7e`); the two bottle pushes deep-link with it.
+  - **#128 + #119** (`4756180`): **pours are a count on every My Bar card** ("Drank xN · last
+    <day>", from `activities.drank`, bumped live via new `onPourLogged` on `BottleDetailView`) -
+    **Brian's call: counts on the existing cards, NOT a Pours tab.** **Tasted -> Blind**
+    everywhere on My Bar (tab, date label, empty state, coach copy). A pour of a bottle you neither
+    own nor blind-tasted is on Profile > Recent activity, not in My Bar.
+  - **#48** (`f3e48fd`): Filter by > Category lists the categories actually in the bar. The old
+    list was hardcoded Whiskey/Gin/Rum/Vodka/Tequila/Other and never matched the catalog.
+  - **#20** (`d3c4555`): the post page already WAS the tasting detail screen; now it is reachable:
+    `fetchPastTastings` + `PastTastings` list on **Profile > Blind tastings** and atop **My Bar >
+    Blind**; the reveal offers **See the full ranking** (`saveTasting` returns `activityId`); a
+    helper's **swap is saved** in the poured glass's `tasting_details.notes.swap` and footnoted on
+    the post (it only lived in the draft before). Done still goes Home.
+  - **Closed as already shipped:** #44 (edit_reviewed push, `3118a67`), #101 (Review tab, #130),
+    #100 (`merge_bottle`, surfaced in Review). Filed **#137** (rolled-up ActivityCards nest a
+    `<button>` in a `<button>` - hydration error on Profile/Social; pre-existing).
+  - **New helper `scripts/board_add.mjs <issue#> "<Status>" [Size] [Area]`** - adds an issue to
+    the board and sets the three fields; looks up option ids each run.
+  - **Permission prompts (Brian's complaint):** the local clean-up task asked for every website
+    because `.claude/settings.local.json` allows `WebFetch(domain:x)` one domain at a time. The
+    fix is a bare `WebFetch` (all domains) in a checked-in `.claude/settings.json` - **the agent
+    cannot write that file (auto-mode self-modification guard); Brian has the exact JSON from the
+    2026-09-18 chat.** The cloud routine `trig_01LXXLQQ1UUgHd5E2smL5Cjf` is still disabled with
+    ZERO runs: it needs the 7 env vars on the claude.ai Environment AND unrestricted network.
+- **Next step per the board** (right to left): *In Progress* EMPTY. *Next Items per Brian* EMPTY.
+  *Top Priority*: **#133** move the clean-up bot to the cloud - blocked on Brian (env vars +
+  network on the Environment; then enable the routine, fire a run, read its log, pause the local
+  task). *Brian to test*: #123, #125-#127, #132, **#135** (My Bar pass), **#136** (helper swap
+  footnote). *Coming Soon*: **#137** (nested buttons, XS). Then Backlog - #39 (one card per version
+  you own) and #45 (private notes) are the natural next My Bar cards; #16 (delete account) is a
+  store-launch blocker sitting in North Star.
+- **Brian tested this session:** nothing yet - #135 / #136 are the cards.
 - **Previous session (2026-09-13, Claude): 29 commits of Brian's own asks, none from the board.**
   He used the app all evening and fed back live. Everything below is on prod; the log entry has
   the detail. Headlines a cold agent needs:
@@ -1708,6 +1703,18 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-18 (Claude) - five My Bar / tasting cards, baton repair, board hygiene
+- Code: `e92ce7e` (Search `?bottle=` / `?focus=`, push deep-links, #44 #33), `768231e` (#33 FAB),
+  `4756180` (#128 #119 pours on cards, Tasted -> Blind), `f3e48fd` (#48 category list from the
+  bar), `d3c4555` (#20 past tastings list, swap saved on the glass, reveal -> post). No migrations.
+- Verified in the pane as the QA account at 375px: FAB -> Search focused; `?bottle=` opens the
+  sheet; pour -> "Drank x1" live and after reload; Bourbon filter narrows; Blind list -> post; a
+  real 2-bottle self blind -> reveal -> "See the full ranking" -> the new post. `next build` clean.
+- Board: closed #33 #128 #119 #48 #20 #44 #101 #100; filed #135 #136 (Brian to test), #137 (bug).
+- Undocumented 09-16/17 work (`94b28b0` .. `7308a21`) written into "Right now" from git log.
+- Open with Brian: #133 (cloud routine needs env vars + network on the Environment); the
+  `.claude/settings.json` allowlist he has to create himself.
 
 ### 2026-09-15 (Claude) - Review tab, clean-up bot, verified != complete
 - Blinds: `eb8942d` `f81a98d` `d9d2175` `479432f` `ef061b1` (#129). Replay/unique-key fixes:

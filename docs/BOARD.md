@@ -66,6 +66,13 @@ gh api graphql --paginate -f query='query($endCursor:String) { user(login:"bbapt
 `gh issue ...` commands need the repo: run them from the repo directory or set
 `GH_REPO=bbapties/pourchoicesapp`.
 
+**Putting a new issue on the board with its fields set** is one command (2026-09-18):
+
+```
+node scripts/board_add.mjs <issue#> "<Status>" ["<Size>"] ["<Area>"]
+node scripts/board_add.mjs 135 "Brian to test" S "My Bar"
+```
+
 **Never rewrite the Status field's option list** (`updateProjectV2Field` with `singleSelectOptions`)
 without dumping every item's Status first: GitHub re-keys the options and **every card's Status is
 wiped**. Adding the *Brian to test* lane did exactly that; the statuses were restored from the dump.
