@@ -49,6 +49,7 @@ interface SearchClientProps {
 // `bottlesElo` / `variantsElo` used to drive the star scale; the scale is fixed now (eloToStar).
 export default function SearchClient({ totalBottleCount, totalVariantCount }: SearchClientProps) {
   const [query, setQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('bottles');
   const [bottles, setBottles] = useState<any[]>([]);         // search results (active mode)
   const [defaultBottles, setDefaultBottles] = useState<any[]>([]); // browse results (active mode)
@@ -230,17 +231,24 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
     } as any;
   };
 
-  // `?scan=1` — arrive with the scanner already open. Read after mount rather than in the
-  // useState initializer, because the server renders it closed and a client-only initial value
-  // would be a hydration mismatch. The param is then stripped so a back-navigation or a refresh
-  // doesn't reopen the camera.
+  // Arrival params — `?scan=1` opens the scanner, `?focus=1` puts the cursor in the box (My
+  // Bar's '+' , #33), `?bottle=<id>` opens that bottle's sheet (pushes about a bottle, #44).
+  // Read after mount rather than in the useState initializer, because the server renders the
+  // page closed and a client-only initial value would be a hydration mismatch. The params are
+  // then stripped so a back-navigation or a refresh doesn't reopen the camera / the sheet.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("scan") !== "1") return;
-    setShowScanner(true);
-    params.delete("scan");
+    const scan = params.get("scan") === "1";
+    const focus = params.get("focus") === "1";
+    const bottleId = params.get("bottle");
+    if (!scan && !focus && !bottleId) return;
+    if (scan) setShowScanner(true);
+    if (focus) searchInputRef.current?.focus();
+    if (bottleId) void openBottleById(bottleId);
+    params.delete("scan"); params.delete("focus"); params.delete("bottle");
     const qs = params.toString();
     window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch the current user's collection on mount
@@ -953,6 +961,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
         <div className="relative max-w-md mx-auto" data-coach="search.input">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cream w-4 h-4" />
           <Input
+            ref={searchInputRef}
             type="text"
             enterKeyHint="search"
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}

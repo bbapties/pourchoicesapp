@@ -175,14 +175,14 @@ export async function POST(request: Request) {
     const adder = Array.isArray(b.users) ? b.users[0] : b.users;
     if (!adder || adder.account_type !== "human") return NextResponse.json({ sent: 0 });
     recipients = [b.created_by].filter((id) => id !== caller.id);
-    msg = { title: `${b.name} is verified`, body: "The bottle you added is cleaned up and on the shelf. Thanks for adding it.", url: "/search" };
+    msg = { title: `${b.name} is verified`, body: "The bottle you added is cleaned up and on the shelf. Thanks for adding it.", url: `/search?bottle=${b.id}` };
   } else if (body.kind === "edit_reviewed") {
     if (caller.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
     if (!body.submissionGroup) return NextResponse.json({ error: "submissionGroup required" }, { status: 400 });
     // The group's rows say who submitted and what happened; the client only names the group.
     const { data: rows } = await admin
       .from("suggested_edits")
-      .select("submitted_by, status, review_note, bottles ( name ), users:submitted_by ( account_type )")
+      .select("submitted_by, status, review_note, bottle_id, bottles ( name ), users:submitted_by ( account_type )")
       .eq("submission_group", body.submissionGroup);
     if (!rows || !rows.length) return NextResponse.json({ sent: 0 });
     const decided = rows.filter((r) => r.status === "approved" || r.status === "rejected");
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
     recipients = [...humans].filter((id) => id !== caller.id);
     const note = (body.note ?? decided.find((r) => r.review_note)?.review_note ?? "").toString().replace(/\s+/g, " ").trim();
     const title = rejected === 0 ? `Your edit to ${bottle} was approved` : approved === 0 ? `Your edit to ${bottle} wasn't taken` : `Your edit to ${bottle}: ${approved} approved, ${rejected} not`;
-    msg = { title: title.slice(0, 80), body: (note ? `Note from the admin: ${note}` : rejected === 0 ? "It's live in the catalog now. Thanks." : "Open the bottle to see what it reads now.").slice(0, 200), url: "/search" };
+    msg = { title: title.slice(0, 80), body: (note ? `Note from the admin: ${note}` : rejected === 0 ? "It's live in the catalog now. Thanks." : "Open the bottle to see what it reads now.").slice(0, 200), url: rows[0].bottle_id ? `/search?bottle=${rows[0].bottle_id}` : "/search" };
   } else {
     return NextResponse.json({ error: "Unknown kind" }, { status: 400 });
   }
