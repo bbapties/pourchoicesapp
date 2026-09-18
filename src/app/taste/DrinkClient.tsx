@@ -365,7 +365,9 @@ export default function DrinkClient({
       const lineup = shuffle([neglected, ...rest]);
       setPicks(lineup);
       setGlassAssignment([]);
-      logClick("blind_random_lineup", { userId: publicUserId, metadata: { count: lineup.length, mode: m, owned: owned.length, seeded_variant: neglected.variantId, seeded_blinds: fewest } });
+      // #134 follow-up: log the WHOLE lineup. Last night's event carried only the seeded slot, so a
+      // lost tasting could not be rebuilt from the audit trail.
+      logClick("blind_random_lineup", { userId: publicUserId, metadata: { count: lineup.length, mode: m, owned: owned.length, seeded_variant: neglected.variantId, seeded_blinds: fewest, variants: lineup.map((b) => b.variantId) } });
       setStep(m === "helper" ? "handoff" : "label");
       return;
     }
@@ -402,7 +404,11 @@ export default function DrinkClient({
   const helperContinue = () => {
     if (glassAssignment.length === 0) {
       const shuffled = shuffle(picks);
-      setGlassAssignment(shuffled.map((p, i) => ({ letter: letter(i), pick: p })));
+      const dealt = shuffled.map((p, i) => ({ letter: letter(i), pick: p }));
+      setGlassAssignment(dealt);
+      // The letters are the one thing only the helper's screen ever knew; the audit trail needs them
+      // to rebuild a lost tasting (#134). Not shown anywhere the taster can see.
+      logEvent({ eventType: "blind_glasses_dealt", surface: "taste", targetType: "tasting_draft", targetId: publicUserId, metadata: { glasses: dealt.map((g) => ({ letter: g.letter, variant: g.pick.variantId })) } });
     }
     setPourIndex(0);
     setStep("helperSetup");

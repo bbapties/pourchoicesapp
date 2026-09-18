@@ -323,6 +323,10 @@ the user; metadata `step`, `bottles`, `mode`) and `tasting_draft_discarded` when
 Start over. The draft itself lives in `tasting_drafts` (one row per user, deleted on save) and is
 not an event. A high resumed count means phones are reloading `/taste` a lot - worth knowing
 before the native shells, where the OS kills webviews freely.
+Same day: `blind_random_lineup` metadata now carries `variants` (every dealt variant id), and a
+new `blind_glasses_dealt` (surface `taste`, metadata `glasses: [{letter, variant}]`) records the
+helper's secret letter assignment. Together they let a lost tasting be rebuilt from the audit
+trail - last night's could not be, because only the seeded slot was logged.
 
 The same skill emits `bottle_submitted` with surface `agent_import` (rather than
 `provisional_sheet`) when a bottle named in an import has to be created before the tasting can
