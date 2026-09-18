@@ -486,6 +486,22 @@ export const COACH_CATALOG: CoachItem[] = [
       },
     ],
   },
+  {
+    // #33: My Bar had no way to add a bottle; you had to know to go to Search.
+    id: "mybar.add",
+    title: "Add from My Bar",
+    body: "The + on My Bar jumps to Search with the cursor ready - type a name or scan the barcode.",
+    route: "/mybar",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/mybar",
+        anchor: "mybar.add",
+        caption: "Tap + to add a bottle. It takes you to Search with the cursor in the box; the scanner is one tap away.",
+      },
+    ],
+  },
 ];
 
 /**

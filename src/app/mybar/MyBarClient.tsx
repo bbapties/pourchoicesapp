@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect} from "react";
-import { Search, ChevronDown, Check, X, ScanLine } from "lucide-react";
+import { Search, ChevronDown, Check, X, ScanLine, Plus } from "lucide-react";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
-import { logEvent } from "@/lib/events";
+import { logEvent, logClick } from "@/lib/events";
 import BottleCardMedium from "@/components/BottleCardMedium";
 import BottleDetailView from "@/components/BottleDetailView";
 import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
@@ -701,6 +702,22 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
             setSelectedBottle(prev => prev ? { ...prev, variants: updated.variants ?? prev.variants } : prev);
           }}
         />
+      )}
+
+      {/* #33: '+' — My Bar has no add flow of its own; Search does. Sits above the nav (64px +
+          safe area) and right of the thumb so it never covers the Home tab. Hidden while a
+          sheet is open so it doesn't float over the overlay. */}
+      {!selectedBottle && !showScanner && !showAddSheet && (
+        <Link
+          href="/search?focus=1"
+          aria-label="Add a bottle"
+          data-coach="mybar.add"
+          onClick={() => logClick("mybar_add_fab", { userId: publicUserId, surface: "/mybar" })}
+          className="fixed right-4 z-20 w-14 h-14 rounded-full pc-brass flex items-center justify-center"
+          style={{ bottom: "calc(80px + env(safe-area-inset-bottom))" }}
+        >
+          <Plus className="w-7 h-7" strokeWidth={2.5} />
+        </Link>
       )}
 
       {/* Barcode scanner */}

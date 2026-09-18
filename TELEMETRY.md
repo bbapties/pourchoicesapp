@@ -264,6 +264,7 @@ client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
 - `click` → `barcode_scan` — a successful camera scan from the search bar (`SearchClient.handleScan`).
   `metadata = { matched: boolean }`, `target_id` = matched bottle id when found. Feeds scan-usage
   and catalog-coverage insights (how often a scan finds nothing → add-flow).
+- `click` → `mybar_add_fab` — the '+' on My Bar that jumps to Search with the box focused (#33).
 
 Add more events freely as you build (see the standing rule). Not yet wired: filters/sorts,
 coach/tour interactions, add-to-bar click (its success is already in `activities`).
