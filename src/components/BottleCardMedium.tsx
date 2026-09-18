@@ -19,6 +19,9 @@ export interface BottleCardMediumData {
   tasted?: boolean;
   quantity?: number; // B-32: how many (owned on In My Bar, finished on Empty); shown when > 1
   ownedCount?: number; // on hand right now - the digit in the earmark corner
+  /** #128: Have-a-drink pours of this whiskey (any version). Blind tastings are not pours. */
+  pourCount?: number;
+  lastPourAt?: string;
 }
 
 function StarRating({ value }: { value: number }) {
@@ -51,6 +54,10 @@ function ChipTag({ label }: { label: string }) {
       {label}
     </span>
   );
+}
+
+function formatDay(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function formatDate(dateStr?: string): string {
@@ -126,6 +133,13 @@ export default function BottleCardMedium({ bottle }: BottleCardMediumProps) {
         <div className="flex gap-2 px-3 -mt-1">
           <ChipTag label={bottle.style} />
         </div>
+      )}
+
+      {/* #128: pours, bottom-left, opposite the date. "Drank" is the word the sheet uses. */}
+      {(bottle.pourCount ?? 0) > 0 && (
+        <span className="absolute bottom-1.5 left-3 text-xs text-cream-faint">
+          Drank ×{bottle.pourCount}{bottle.lastPourAt ? ` · last ${formatDay(bottle.lastPourAt)}` : ''}
+        </span>
       )}
 
       {/* Added date — anchored bottom-right for visual balance */}

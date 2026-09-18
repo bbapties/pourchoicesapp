@@ -63,6 +63,8 @@ interface BottleDetailViewProps {
   onDeleteFromBar?: (bottleId: string, variantId?: string | null) => Promise<void>;
   onEditSaved?: (updated: Partial<BottleDetails>) => void;
   onActivityLogged?: () => void;
+  /** #128: a Have-a-drink pour was recorded for this bottle - the caller can bump its pour count. */
+  onPourLogged?: (bottleId: string) => void;
   /** Set when this bottle was opened by a barcode scan — enables the "wrong bottle"
    *  report, which only makes sense in the context of a specific scanned code. */
   scannedBarcode?: string | null;
@@ -94,6 +96,7 @@ export default function BottleDetailView({
   onDeleteFromBar,
   onEditSaved,
   onActivityLogged,
+  onPourLogged,
   scannedBarcode,
   autoOpenPour = false,
 }: BottleDetailViewProps) {
@@ -652,6 +655,7 @@ export default function BottleDetailView({
       if (result.warnings.length) toast.warning(`Pour logged - ${result.warnings.join(", ").toLowerCase()}`);
       else toast.success("Pour logged");
       onActivityLogged?.();
+      onPourLogged?.(bottle.id);
     } finally {
       setIsPouring(false);
     }

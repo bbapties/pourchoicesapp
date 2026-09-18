@@ -22,6 +22,8 @@ interface MyBarClientProps {
   ownedCollection: any[];
   emptyCollection: any[];
   tastedCollection: any[];
+  /** #128: Have-a-drink pours by bottle id. */
+  pours: Record<string, { count: number; last: string }>;
   wishlistCollection: any[];
   publicUserId: string;
 }
@@ -87,7 +89,9 @@ function starFor(
   return { value: g?.star ?? null, owned: false };
 }
 
-function mapToCardData(d: any, currentlyOwned: boolean, tasted: boolean, labelOverride?: string, mine: Record<string, MyScore> = {}, global: Record<string, BottleScore> = {}, preferGlobal = false) {
+type PourMap = Record<string, { count: number; last: string }>;
+
+function mapToCardData(d: any, currentlyOwned: boolean, tasted: boolean, labelOverride?: string, mine: Record<string, MyScore> = {}, global: Record<string, BottleScore> = {}, preferGlobal = false, pours: PourMap = {}) {
   return {
     id: tasted ? (d.variant_id || d.bottle_id) : d.bottle_id,
     name: d.bottle_name,
@@ -101,7 +105,10 @@ function mapToCardData(d: any, currentlyOwned: boolean, tasted: boolean, labelOv
     myStar: (d.variant_id ? mine[d.variant_id]?.yourStar : null) ?? null,
     globalStar: (d.bottle_id ? global[d.bottle_id]?.star : null) ?? null,
     addedAt: d.addedAt,
-    dateLabel: labelOverride ?? (tasted ? "Tasted" : "Added"),
+    dateLabel: labelOverride ?? (tasted ? "Blind" : "Added"),
+    // #128: pours are counted per whiskey, shown on every tab's card.
+    pourCount: pours[d.bottle_id]?.count ?? 0,
+    lastPourAt: pours[d.bottle_id]?.last,
     provisional: !d.bottle_verified,
     currentlyOwned,
     tasted,
@@ -113,7 +120,8 @@ function mapToCardData(d: any, currentlyOwned: boolean, tasted: boolean, labelOv
   };
 }
 
-export default function MyBarClient({ ownedCollection: initialOwned, emptyCollection: initialEmpty, tastedCollection: initialTasted, wishlistCollection: initialWishlist, publicUserId }: MyBarClientProps) {
+export default function MyBarClient({ ownedCollection: initialOwned, emptyCollection: initialEmpty, tastedCollection: initialTasted, wishlistCollection: initialWishlist, pours: initialPours, publicUserId }: MyBarClientProps) {
+  const [pours, setPours] = useState<PourMap>(initialPours);
 
   // #80: the viewer's own stars, and the global rollup as the fallback for a bottle they have no
   // opinion on. Both fail open to an empty map -- a missing star renders as a dash, never a wrong
@@ -164,7 +172,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const isOwned = kind === 'owned';
     const variantKeyed = kind === 'tasted' || kind === 'wishlist';
     const label = kind === 'wishlist' ? 'Wishlisted' : undefined;
-    let cards = raw.map(d => mapToCardData(d, isOwned, variantKeyed, label, myScores, bottleScores, sortBy === 'global'));
+    let cards = raw.map(d => mapToCardData(d, isOwned, variantKeyed, label, myScores, bottleScores, sortBy === 'global', pours));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       cards = cards.filter(c =>
@@ -182,7 +190,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       }
     }
     return cards;
-  }, [searchQuery, filter, myScores, bottleScores, sortBy]);
+  }, [searchQuery, filter, myScores, bottleScores, sortBy, pours]);
 
   // Counts for each tab — always reflect active search + filter
   const tabCounts = useMemo(() => ({
@@ -194,7 +202,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
 
   // My Ranks was previously stubbed: it toasted "Taste some bottles" unconditionally and never
   // sorted, so it stayed locked even for someone who had ranked plenty. Checked across every tab,
-  // because the ranked bottles usually live on Tasted while the viewer is looking at In My Bar.
+  // because the ranked bottles usually live on Blind while the viewer is looking at In My Bar.
   const hasPersonalRanks = useMemo(
     () => [rawOwned, rawEmpty, rawTasted, rawWishlist]
       .some(rows => rows.some((r: any) => r?.personal_elo != null)),
@@ -243,7 +251,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       lastActivity: activeTab === "wishlist"
         ? undefined
         : activeTab === "tasted"
-        ? (raw.addedAt ? `Tasted · ${new Date(raw.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : undefined)
+        ? (raw.addedAt ? `Blind tasting · ${new Date(raw.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : undefined)
         : formatLastActivity({
             currently_owned: activeTab === "owned",
             variant_id: raw.variant_id ?? null,
@@ -360,7 +368,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       return;
     }
     // B-16: the bottle is now owned — land on In My Bar so it doesn't just vanish
-    // from the Empty (or Tasted) tab and look like the restock failed.
+    // from the Empty (or Blind) tab and look like the restock failed.
     setActiveTab('owned');
 
     // B-35: key optimistic rows on the variant the DB actually wrote, never a null guess.
@@ -622,7 +630,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
               : tab === 'empty'
               ? `Empty (${tabCounts.empty})`
               : tab === 'tasted'
-              ? `Tasted (${tabCounts.tasted})`
+              ? `Blind (${tabCounts.tasted})`
               : `Wishlist (${tabCounts.wishlist})`}
           </button>
         ))}
@@ -663,10 +671,10 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
             ) : (
               <>
                 <h3 className="text-lg font-semibold text-cream mb-2">
-                  {searchQuery || filterActive ? 'No bottles match' : 'No tastings yet'}
+                  {searchQuery || filterActive ? 'No bottles match' : 'No blind tastings yet'}
                 </h3>
                 <p className="text-cream-mute text-sm">
-                  {searchQuery || filterActive ? 'Try adjusting your search or filters' : 'Complete a blind tasting to see bottles here. Ones you own stay in My Bar.'}
+                  {searchQuery || filterActive ? 'Try adjusting your search or filters' : 'Bottles you ranked blind but do not own land here. A plain pour counts on the bottle card instead.'}
                 </p>
               </>
             )}
@@ -696,6 +704,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}
           onDeleteFromBar={handleDeleteFromBar}
+          onPourLogged={(bottleId) => setPours(prev => ({ ...prev, [bottleId]: { count: (prev[bottleId]?.count ?? 0) + 1, last: new Date().toISOString() } }))}
           onEditSaved={(updated) => {
             // Variant edits only update the variants array on the open detail view
             // Canonical fields (proof, age, volume, images) live on bottles and aren't user-editable

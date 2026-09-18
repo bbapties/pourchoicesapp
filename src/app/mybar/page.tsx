@@ -46,7 +46,7 @@ export default async function MyBarPage() {
   // B-32: owned = any owned_count > 0; empty = any emptied_count > 0. A SKU can be in BOTH.
   // Personal Elo for the "My Ranks" sort. Read across ALL of this user's rows, not just the
   // owned/empty ones: a blind tasting leaves a tasting-only row (times_had 0, not owned),
-  // which is exactly the row carrying the ranking the Tasted tab is showing.
+  // which is exactly the row carrying the ranking the Blind tab is showing.
   // A row still sitting on the 1500 default has never been ranked, so it is skipped rather than
   // sorted as if it were a real opinion.
   //
@@ -59,13 +59,24 @@ export default async function MyBarPage() {
     { data: personalEloRows },
     { data: sessions },
     { data: wishRows },
+    { data: pourRows },
   ] = await Promise.all([
     supabase.from('user_bottles').select(userBottleSelect).eq('user_id', publicUser.id).gt('owned_count', 0),
     supabase.from('user_bottles').select(userBottleSelect).eq('user_id', publicUser.id).gt('emptied_count', 0),
     supabase.from('user_bottles').select('bottle_id, variant_id, elo').eq('user_id', publicUser.id),
     supabase.from("tasting_sessions").select("id").eq("user_id", publicUser.id),
     supabase.from('wishlists').select('variant_id, created_at').eq('user_id', publicUser.id),
+    // #128: pours are a first-class count on every card. A pour is an activities.drank row (Have a
+    // drink); blind tastings are NOT pours - they are the Blind tab. Keyed by bottle, so a pour of
+    // any version counts toward "this whiskey".
+    supabase.from('activities').select('bottle_id, created_at').eq('user_id', publicUser.id).eq('action', 'drank'),
   ]);
+  const pours: Record<string, { count: number; last: string }> = {};
+  for (const r of (pourRows || []) as { bottle_id: string | null; created_at: string }[]) {
+    if (!r.bottle_id) continue;
+    const cur = pours[r.bottle_id];
+    pours[r.bottle_id] = { count: (cur?.count ?? 0) + 1, last: cur && cur.last > r.created_at ? cur.last : r.created_at };
+  }
   const personalEloByVariant = new Map<string, number>();
   const personalEloByBottle = new Map<string, number>();
   for (const r of (personalEloRows || []) as { bottle_id: string; variant_id: string | null; elo: number | null }[]) {
@@ -146,7 +157,7 @@ export default async function MyBarPage() {
   // rating now, from my_variant_scores, and falls back to the shared rollup in bottle_scores -- both
   // scaled in the database, so this screen agrees with Search instead of computing its own number.
 
-  // Tasted = variants this user ranked that they do not own and never finished
+  // Blind (was 'Tasted' until #128) = variants this user ranked that they do not own and never finished
   // (tasting-only). Excludes star-guess placeholders (no tasting_results) and
   // bottles already on Owned / Empty. One card per variant.
   let tastedCollection: any[] = [];
@@ -203,7 +214,7 @@ export default async function MyBarPage() {
         attr_release_year: d.attr_release_year,
         attr_store_pick_name: d.attr_store_pick_name,
         variant_is_default: d.variant_is_default,
-        // Tasted cards are per-VARIANT, so prefer the variant's own ranking before falling back
+        // Blind cards are per-VARIANT, so prefer the variant's own ranking before falling back
         // to the SKU -- this is the tab where a blind tasting's result actually lives.
         personal_elo:
           personalEloByVariant.get(d.variant_id) ??
@@ -260,6 +271,7 @@ export default async function MyBarPage() {
       emptyCollection={emptyCollection}
       tastedCollection={tastedCollection}
       wishlistCollection={wishlistCollection}
+      pours={pours}
       publicUserId={publicUser.id}
     />
   );
