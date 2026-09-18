@@ -43,7 +43,6 @@ interface FilterState {
   value: string | null;
 }
 
-const CATEGORY_VALUES = ['Whiskey', 'Gin', 'Rum', 'Vodka', 'Tequila', 'Other'];
 const VERIFIED_VALUES = ['Verified', 'Community Added'];
 
 const SORT_LABELS: Record<NonNullable<SortOption>, string> = {
@@ -479,7 +478,16 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     setShowSortMenu(false);
   };
 
-  const filterValueOptions = filter.field === 'category' ? CATEGORY_VALUES : VERIFIED_VALUES;
+  // #48: the category list is what YOU actually have, most common first - not a fixed spirits
+  // list. The old hardcoded one (Whiskey / Gin / Rum ...) never matched the catalog, whose
+  // categories are Bourbon / Whiskey / Rye / Scotch, so "just my bourbons" was impossible.
+  const myCategories = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const rows of [rawOwned, rawEmpty, rawTasted, rawWishlist])
+      for (const r of rows) if (r?.bottle_category) n.set(r.bottle_category, (n.get(r.bottle_category) ?? 0) + 1);
+    return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([c]) => c);
+  }, [rawOwned, rawEmpty, rawTasted, rawWishlist]);
+  const filterValueOptions = filter.field === 'category' ? myCategories : VERIFIED_VALUES;
   const sortActive = sortBy !== null;
 
   return (
