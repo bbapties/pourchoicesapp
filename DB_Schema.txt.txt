@@ -49,6 +49,16 @@ CREATE TABLE public.badges (
   sort integer NOT NULL DEFAULT 0,
   active boolean NOT NULL DEFAULT true);
 
+CREATE TABLE public.bot_runs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  started_at timestamp with time zone NOT NULL DEFAULT now(),
+  finished_at timestamp with time zone,
+  mode text NOT NULL,
+  bottle_id uuid,
+  outcome text,
+  note text,
+  runner text);
+
 CREATE TABLE public.bottle_variants (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   bottles_id uuid NOT NULL,
@@ -384,6 +394,7 @@ CREATE TABLE public.wishlists (
 --   badge_grants: badge_grants_select (SELECT)
 --   badge_tiers: badge_tiers_select (SELECT)
 --   badges: badges_select (SELECT)
+--   bot_runs: bot_runs_admin_select (SELECT)
 --   bottle_variants: admins can delete variants (DELETE)
 --   bottle_variants: admins delete variants (DELETE)
 --   bottle_variants: Auth insert variants (INSERT)

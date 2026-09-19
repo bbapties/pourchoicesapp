@@ -6,9 +6,11 @@ description: >-
   transparent pack shot with a real height, file it all as pending suggested_edits for Brian's
   in-app review, then push the admins that it is waiting. One bottle per run, then stop. This
   is THE bottle data skill: it replaces verify-bottle + shelf-image (both now point here). Runs
-  as the desktop app's local scheduled task "clean up one bottle" every 4 hours (on Brian's
-  machine, so .env.local is already there), and by hand when Brian
-  says "clean up <bottle>", "verify <bottle>", or "do the next bottle".
+  as the CLOUD routine "clean up one bottle" every hour at :15 (claude.ai/code/routines; the platform floor is one hour), gated by
+  scripts/bot_gate.mjs so a tick with nothing to do exits in one call: a real user's new bottle
+  is picked up on the next tick, everything else once per 6 idle hours, and an empty queue seeds
+  a common bourbon we do not have. Also by hand when Brian says "clean up <bottle>",
+  "verify <bottle>", or "do the next bottle".
 ---
 
 # clean-up-one-bottle
@@ -24,61 +26,86 @@ whole skill is arranged to **finish the work before filing anything**.
 
 ## Step 0 — Setup (a fresh checkout has none of this)
 
-Every script here reads `.env.local` in the repo root. On this laptop it exists. In a cloud run
-it does not; build it from the environment, one `KEY=value` line each, and **stop and report if
-any is missing**:
+Every script here reads `.env.local` in the repo root. On Brian's laptop it exists. In a cloud
+run it does not; build it from the environment (the claude.ai Environment holds these as
+variables), one `KEY=value` line each, and **stop and report if any is missing**. Do the
+gate (Step 1) BEFORE `npm ci` and the pip install - a `none` tick must not pay for either:
 
 ```
 DATABASE_URL  NEXT_PUBLIC_SUPABASE_URL  NEXT_PUBLIC_SUPABASE_ANON_KEY  SUPABASE_SERVICE_ROLE
 NEXT_PUBLIC_VAPID_PUBLIC_KEY  VAPID_PRIVATE_KEY  VAPID_SUBJECT
 ```
 
-Then:
+Then, in this order:
 ```
-npm ci --ignore-scripts
-python -m pip install rembg onnxruntime pillow     # if this fails, continue without rembg (see 4)
 node scripts/_psql.mjs "SELECT 1 AS ok;"           # if this fails, stop and report the error
+node scripts/bot_gate.mjs                          # Step 1 - on "none", STOP here
+npm ci --ignore-scripts                            # only for urgent / idle / seed
+python -m pip install rembg onnxruntime pillow     # if this fails, continue without rembg (see 4)
 ```
+(`scripts/_psql.mjs` and `bot_gate.mjs` need no npm install - they shell out to `psql`.)
 
 `scripts/_psql.mjs` splits the URI itself — never pass `DATABASE_URL` straight to `psql`.
 Never print `DATABASE_URL`, the service role, or VAPID private key anywhere.
 
-## Step 1 — Pick the bottle
+## Step 1 — Ask the gate what this tick is for
 
-Two sources, in order. **Live work first**: the oldest unverified bottle nobody has looked at.
-**Then the funnel**: `bottle_dq_recheck` — verified or not, something is still missing and no
-quality pass has looked in 6 months (or ever). `verified` is Brian's judgement that the bottle is
-real and what we have is right; `bottle_dq_gaps` is what is still missing. Both matter.
+Do not pick the bottle yourself. Run the gate; it applies Brian's rules (2026-09-19) and opens a
+`bot_runs` row so the 6-hour idle clock works:
 
-```sql
--- 1a. live: never checked, unverified, nothing pending, not Test_User
-SELECT b.id, b.name, b.barcode, b.created_at, u.username, u.account_type, g.gaps
-  FROM public.bottles b
-  LEFT JOIN public.users u ON u.id = b.created_by
-  JOIN public.bottle_dq_gaps g ON g.bottle_id = b.id
- WHERE b.verified = false AND b.dq_checked_at IS NULL
-   AND NOT EXISTS (SELECT 1 FROM public.suggested_edits se WHERE se.bottle_id = b.id AND se.status = 'pending')
-   AND COALESCE(u.username, '') <> 'Test_User'
- ORDER BY b.created_at LIMIT 1;
-
--- 1b. the funnel, when 1a is empty
-SELECT r.bottle_id AS id, r.name, r.gaps, r.dq_checked_at, r.verified
-  FROM public.bottle_dq_recheck r
- WHERE NOT EXISTS (SELECT 1 FROM public.suggested_edits se WHERE se.bottle_id = r.bottle_id AND se.status = 'pending')
- LIMIT 1;
+```
+node scripts/bot_gate.mjs
 ```
 
-**If both come back empty, report "queue empty" and stop.** On a funnel bottle, work the
-listed gaps (that is what the 6 months bought: a fresh look for a barcode that may now be
-registered, an image that may now exist, an age someone has since published) — do not re-litigate
-fields that are filled and verified. Load the bottle row and every variant, and the creator's own
-add-photo if there is one.
+One JSON line. Act on `mode`:
 
-**Last thing every run does, whatever it found**: stamp the clock, so the funnel moves on.
+| `mode` | Meaning | What you do |
+|---|---|---|
+| `none` | A real user added nothing and idle work ran < 6 h ago. | **Stop. Report "nothing to do" in one line.** No other tool calls. |
+| `urgent` | A real user (human, not admin) added `bottle` and nobody has looked at it. | Steps 2–8 on that bottle. This is the run that must be fast - it is what the user is waiting for. |
+| `idle` | Idle work is due: `bottle` is the oldest unverified never-checked bottle (Brian's, a data account's), or a recheck-funnel bottle (`reason` names the gaps). | Steps 2–8 on that bottle. On a funnel bottle, work the listed gaps; do not re-litigate fields that are filled and verified. |
+| `seed` | Idle work is due and the queue is empty. | **Seed mode** below, then Step 8. |
+
+Keep `run_id`: Step 8 closes the row with it. Load the bottle row and every variant, and the
+creator's own add-photo if there is one. Where the gate says `added_by`, that is who to thank in
+the push (Step 7 handles it).
+
+Manual runs ("clean up <bottle>"): skip the gate, work the named bottle, and open the row by hand
+so the audit trail is complete:
+`node scripts/_psql.mjs "INSERT INTO bot_runs (mode, bottle_id, runner, note) VALUES ('idle', '<id>', 'manual', 'Brian asked') RETURNING id;"`
+
+**Last thing every non-seed run does, whatever it found**: stamp the clock, so the funnel moves on.
 ```sql
 UPDATE public.bottles SET dq_checked_at = now() WHERE id = '<bottle_id>';
 ```
 (Bookkeeping, not bottle data — the one direct write besides image uploads. Verify stamps it too.)
+
+## Seed mode — the queue is empty, add a common bourbon
+
+Brian (2026-09-19): if there is nothing to clean at the 6-hour check, add a common bourbon we do
+not have yet, **inserted with all the cleansed data already**. This is the one mode that writes
+`bottles` / `bottle_variants` directly - it is our own new row, no human's data is at stake, and
+Brian's Verify in Review is still the sign-off (`verified = false`).
+
+1. `node .claude/skills/clean-up-one-bottle/scripts/next_seed.mjs` → `{name, distillery}` (the
+   first entry of `seed_bourbons.json` with no matching bottle), or `{"done":true}` - then
+   report "seed list exhausted" and finish the run as `skipped`; extend the list in a later
+   session, never invent a name.
+2. Research it exactly as Steps 2–5 (identity → every field, barcode with the 5-rung ladder,
+   pack shot **finished** and uploaded to `bottle-images/variants/<new uuid>/front.webp` - mint
+   the variant id yourself with `uuidgen`/`crypto.randomUUID()` and use it in the path - height
+   with `bottle_height_source`). Same bar as any other bottle: if you cannot meet the image bar,
+   insert with no image and say so.
+3. Write `bottle.json` in the shape `build_new_bottle_sql.mjs` documents, `created_by` = your
+   account id, plus `bottle_height` / `bottle_height_source`, then:
+   ```
+   node .claude/skills/import-tasting/scripts/build_new_bottle_sql.mjs --unverified bottle.json seed.sql
+   node .claude/skills/clean-up-one-bottle/scripts/run_sql_file.mjs seed.sql
+   ```
+   The builder's guards refuse a duplicate name or barcode - if one fires, the match is the
+   bottle you should have been cleaning; stop and say so.
+4. Stamp `dq_checked_at = now()` on the new bottle, then `node scripts/notify_admin_adds.mjs` so
+   Brian's phone says a bottle was added. No `suggested_edits` - there is nothing to diff.
 
 ## Ownership / ids
 
@@ -283,6 +310,13 @@ only) · `submission_group` · each field old → new · barcode + check-digit r
 image (cut-out / white / **none**) and fill % · height + source · merge/delete recommended, if
 any · anything unresolved. **Do not commit or push anything.** Brian approves in Admin › Review
 and flips `verified` himself as sign-off.
+
+Then close the run row - this is what the 6-hour idle clock reads:
+```
+node scripts/bot_gate.mjs --finish <run_id> filed|seeded|queue_empty|skipped|failed "<one line>"
+```
+A run that dies before this line leaves `finished_at` NULL; the gate still counts its
+`started_at`, so a crash cannot make the bot run idle work every tick.
 
 ## Landmines (from the sweeps)
 - Nov-2025 seed data is corrupt in places: whole notes crammed into `nose` as

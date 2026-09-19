@@ -6,7 +6,10 @@ import { spawnSync } from "child_process";
 //   node scripts/_psql.mjs --file sql/some-migration.sql  -- run a committed migration file
 // The --file mode exists so a migration runs from the reviewed file in the repo rather than as
 // one long opaque argv string. Same connection handling either way.
-const args = process.argv.slice(2);
+//   node scripts/_psql.mjs --json "SELECT ..."       -- rows as a JSON array on stdout (scripts)
+const argv0 = process.argv.slice(2);
+const jsonMode = argv0[0] === "--json";
+const args = jsonMode ? argv0.slice(1) : argv0;
 const fileFlag = args.findIndex((a) => a === "--file" || a === "-f");
 let sql;
 let sourceLabel;
@@ -23,8 +26,15 @@ if (fileFlag >= 0) {
   sourceLabel = "<argv>";
 }
 if (!sql.trim()) {
-  console.error("usage: node scripts/_psql.mjs <sql> | --file <path.sql>");
+  console.error("usage: node scripts/_psql.mjs [--json] <sql> | --file <path.sql>");
   process.exit(1);
+}
+// JSON mode: one statement (SELECT or a RETURNING write), wrapped so psql prints exactly one
+// JSON array and nothing else. A statement without rows prints [].
+if (jsonMode) {
+  const body = sql.trim().replace(/;\s*$/, "");
+  // a CTE, not a subquery, so INSERT/UPDATE ... RETURNING works too
+  sql = `WITH t AS (${body}) SELECT coalesce(json_agg(t), '[]'::json) FROM t;`;
 }
 
 const raw = readFileSync(".env.local", "utf8").replace(/^\uFEFF/, "");
@@ -55,7 +65,7 @@ const db = (slash >= 0 ? rest.slice(slash + 1).split("?")[0] : "postgres") || "p
 const bigFile = fileFlag >= 0 && sql.length > 30000;
 const r = spawnSync(
   "psql",
-  ["-h", host, "-p", port, "-U", user, "-d", db, "-v", "ON_ERROR_STOP=1",
+  ["-h", host, "-p", port, "-U", user, "-d", db, "-v", "ON_ERROR_STOP=1", ...(jsonMode ? ["-At"] : []),
    ...(bigFile ? ["-1", "-f", args[fileFlag + 1]] : ["-c", sql])],
   {
     encoding: "utf8",

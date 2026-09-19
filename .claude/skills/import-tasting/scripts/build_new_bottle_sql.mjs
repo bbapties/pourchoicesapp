@@ -35,7 +35,11 @@
 // }
 import { readFileSync, writeFileSync } from "fs";
 
-const [, , inPath, outPath] = process.argv;
+// --unverified: the clean-up bot's SEED mode (#133) - the row goes in with every field filled
+// but verified = false, so Brian's Verify in Admin > Review is still the judgement. Also accepts
+// bottle_height / bottle_height_source in the JSON (always both, see docs/IMAGE_PIPELINE.md).
+const unverified = process.argv.includes("--unverified");
+const [, , inPath, outPath] = process.argv.filter((a) => a !== "--unverified");
 if (!inPath || !outPath) {
   console.error("usage: build_new_bottle_sql.mjs <bottle.json> <out.sql>");
   process.exit(1);
@@ -118,7 +122,7 @@ w(`WITH ins AS (`);
 w(`  INSERT INTO public.bottles`);
 w(`    (name, distillery, category, style, volume, barcode, extras, verified, created_by, updated_by)`);
 w(`  VALUES (${q(b.name)}, ${q(b.distillery)}, ${q(b.category)}, ${q(b.style)}, ${q(b.volume)},`);
-w(`          ${q(b.barcode)}, ${q(b.extras)}, true, ${q(b.created_by)}, ${q(b.created_by)})`);
+w(`          ${q(b.barcode)}, ${q(b.extras)}, ${unverified ? "false" : "true"}, ${q(b.created_by)}, ${q(b.created_by)})`);
 w(`  RETURNING id`);
 w(`)`);
 w(`SELECT id FROM ins;`);
@@ -127,9 +131,9 @@ w(`-- The default variant. is_default = true is what makes the global Elo rollup
 w(`-- target resolve (see public.elo_global_target) -- a bottle with no default`);
 w(`-- variant cannot be scored.`);
 w(`INSERT INTO public.bottle_variants`);
-w(`  (bottles_id, is_default, verified, proof, age, nose, palate, finish, frontimage_url, created_by, updated_by)`);
-w(`VALUES ((SELECT id FROM _new_bottle), true, true, ${n(b.proof)}, ${q(b.age)},`);
-w(`        ${q(b.nose)}, ${q(b.palate)}, ${q(b.finish)}, ${q(b.frontimage_url)},`);
+w(`  (bottles_id, is_default, verified, proof, age, nose, palate, finish, frontimage_url, bottle_height, bottle_height_source, created_by, updated_by)`);
+w(`VALUES ((SELECT id FROM _new_bottle), true, ${unverified ? "false" : "true"}, ${n(b.proof)}, ${q(b.age)},`);
+w(`        ${q(b.nose)}, ${q(b.palate)}, ${q(b.finish)}, ${q(b.frontimage_url)}, ${n(b.bottle_height)}, ${q(b.bottle_height_source)},`);
 w(`        ${q(b.created_by)}, ${q(b.created_by)});`);
 w();
 w(`-- Feed + telemetry, same as a bottle added through the app.`);
@@ -140,7 +144,7 @@ w();
 w(`INSERT INTO public.events (user_id, event_type, surface, target_type, target_id, metadata)`);
 w(`SELECT ${q(b.created_by)}, 'bottle_submitted', 'agent_import', 'bottle',`);
 w(`       (SELECT id::text FROM _new_bottle),`);
-w(`       ${q(JSON.stringify({ source: "import-tasting-skill", reason: "named in a tasting but not in the catalog", name: b.name }))}::jsonb;`);
+w(`       ${q(JSON.stringify(unverified ? { source: "clean-up-one-bottle seed", reason: "queue empty: a common bourbon we did not have", name: b.name } : { source: "import-tasting-skill", reason: "named in a tasting but not in the catalog", name: b.name }))}::jsonb;`);
 w();
 w(`SELECT 'new bottle' AS what, b.id::text AS bottle_id, v.id::text AS variant_id, b.name, b.verified`);
 w(`  FROM public.bottles b JOIN public.bottle_variants v ON v.bottles_id = b.id`);

@@ -94,8 +94,11 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
   real shelf, never straight from a table.
 - **Bottle data clean-up is ONE skill: `.claude/skills/clean-up-one-bottle/`** (2026-09-15) — research,
   dedupe, barcode, pack shot + height, filed as pending `suggested_edits`, then a push to the admins.
-  `verify-bottle` and `shelf-image` are pointers to it. It also runs as the desktop app's local scheduled task
-  **"clean up one bottle"** every 4 hours (one bottle per run, oldest unverified first).
+  `verify-bottle` and `shelf-image` are pointers to it. It runs as the **cloud routine "clean up one bottle"**
+  (claude.ai/code/routines, hourly at :15, Sonnet 5) gated by `scripts/bot_gate.mjs` (2026-09-19): a real user's
+  new bottle is picked up on the next tick, Brian's / the data accounts' bottles once per 6 idle hours, and an
+  empty queue seeds a common bourbon from `seed_bourbons.json`. `bot_runs` is its memory. The old LOCAL desktop
+  task is retired - pause it if it is still there.
 - **Verified is not complete (Brian, 2026-09-15).** `bottles.verified` is his judgement that a bottle is a
   real product and what we have on it is right. What is still MISSING is derived, never stored:
   view `bottle_dq_gaps` (barcode / image / age / proof / notes / height / distillery / architecture),
