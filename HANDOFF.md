@@ -54,6 +54,12 @@ What is open and in what order now lives on **[the board](https://github.com/use
   footnote). *Coming Soon*: **#137** (nested buttons, XS). Then Backlog - #39 (one card per version
   you own) and #45 (private notes) are the natural next My Bar cards; #16 (delete account) is a
   store-launch blocker sitting in North Star.
+- **Badges are DESIGNED (2026-09-18, later session, no code).** The design record is the **#21
+  body** - tiers Bronze..Diamond (never lowered, `sub_tier` reserved for stars), member level
+  Regular -> Master Distiller from summed tiers (Profile-only for now, #142 parked), 14 feature
+  ladders + one "<Category> Hound" per `bottles.category` + four one-offs, rules read durable
+  tables never `events`. Build order **#138 -> #139 -> #140 -> #141** in Coming Soon. Do not
+  re-open the design; thresholds are rows and are meant to be retuned.
 - **Brian tested this session:** nothing yet - #135 / #136 are the cards.
 - **Previous session (2026-09-13, Claude): 29 commits of Brian's own asks, none from the board.**
   He used the app all evening and fed back live. Everything below is on prod; the log entry has
@@ -1703,6 +1709,12 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-18 (later) - Claude (badges design session, NO CODE)
+- Settled with Brian one question at a time: goal = gamify every feature / constant engagement;
+  medal tiers not age statements; five tiers; level titles Regular/Barback/Bartender/Sommelier/
+  Distiller/Master Distiller; per-category Hound badges on the Profile "tried" definition; title
+  Profile-only for now. Record: #21 body. Cards: #138 #139 #140 #141 (Coming Soon), #142 (Backlog).
 
 ### 2026-09-18 (Claude) - five My Bar / tasting cards, baton repair, board hygiene
 - Code: `e92ce7e` (Search `?bottle=` / `?focus=`, push deep-links, #44 #33), `768231e` (#33 FAB),
