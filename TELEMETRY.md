@@ -269,6 +269,18 @@ client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
   its post (#20). `target_id` = activity id, `surface` = where the list was.
 - `click` → `reveal_full_ranking` — "See the full ranking" on the reveal screen (#20). `target_id` =
   the new `tasted` activity.
+- `badge_tier_up` — the award engine reported a tier going up for this user (#138). `target_id` =
+  badge id, `metadata = { tier, progress, fired }` where `fired` says whether the moment
+  (push) was actually sent - false while `BADGE_MOMENTS_ENABLED` is off in `src/lib/badges.ts`.
+- `click` → `badge_sheet_opened` — a coin on a badge shelf was tapped (#139). `target_id` = badge id,
+  `metadata = { tier, own }`.
+
+**Badges (#138):** `badges`, `badge_tiers`, `user_badges`, `badge_grants`, `level_bands` are the
+reward layer. `user_badges` is derived - `award_badges(user)` recomputes it from `activities`,
+`user_bottles`, `tasting_sessions`, `post_reactions`, `post_comments`, `user_relationships`,
+`wishlists`, `bottles`, `suggested_edits`. Two badges read `events` because nothing durable
+records them: `barcode_bandit` (`click`/`barcode_scan`) and `installed` (`pwa_install_reopened`).
+Keep logging both.
 
 Add more events freely as you build (see the standing rule). Not yet wired: filters/sorts,
 coach/tour interactions, add-to-bar click (its success is already in `activities`).

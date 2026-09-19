@@ -503,6 +503,27 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // #139: badges. Not core - the main loop did not change; this is the reward layer on top.
+    id: "profile.badges",
+    title: "Badges",
+    body: "Every feature has a badge with five tiers - Bronze to Diamond. Earned from what you have already done; the greyed ones show what the app can do.",
+    route: "/profile",
+    core: false,
+    announce: true,
+    tour: [
+      {
+        route: "/profile",
+        anchor: "profile.level",
+        caption: "Your member level - Regular up to Master Distiller - adds up every badge tier you hold.",
+      },
+      {
+        route: "/profile",
+        anchor: "profile.badges",
+        caption: "Your shelf. Tap a coin to see its five rungs and when you earned each. The dull ones are things you have not tried yet.",
+      },
+    ],
+  },
+  {
     // #20: the payoff of the blind-tasting loop - you can look back at every sitting.
     id: "taste.history",
     title: "Your past blind tastings",

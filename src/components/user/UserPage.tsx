@@ -22,6 +22,8 @@ import { fetchUserFeed, splitGroup, toggleCheer, type FeedItem } from "@/lib/soc
 import { notify } from "@/lib/notify";
 import type { ShelfBottle, ShelfDef } from "@/lib/shelves";
 import PastTastings from "@/components/PastTastings";
+import BadgeShelf from "@/components/badges/BadgeShelf";
+import { fetchLevel, levelLine, type Level } from "@/lib/badges";
 import {
   fetchTop3,
   fetchUserById,
@@ -48,6 +50,7 @@ export default function UserPage({ own = false, username }: Props) {
   const { publicUserId, loading: viewerLoading } = useCurrentUser();
   const [user, setUser] = useState<PublicUser | null | undefined>(undefined);
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [level, setLevel] = useState<Level | null>(null); // #139: the member level plate
   const [top3, setTop3] = useState<TopBottle[] | null>(null);
   const [shelves, setShelves] = useState<{ bar: ShelfDef; wishlist: ShelfDef; suggested: ShelfDef } | null>(null);
   const [counts, setCounts] = useState<Record<string, number | null>>({});
@@ -100,6 +103,7 @@ export default function UserPage({ own = false, username }: Props) {
       if (live) setCounts((prev) => ({ ...prev, [def.id]: c ?? 0 }));
     });
     fetchUserStats(user.id).then((s) => live && setStats(s));
+    fetchLevel(user.id).then((l) => live && setLevel(l));
     fetchTop3(user.id).then((t) => live && setTop3(t));
     if (publicUserId && !own) fetchRelationship(publicUserId, user.id).then((r) => live && setRel(r));
     fetchUserFeed({ userId: user.id, offset: 0, limit: ACTIVITY_PAGE, viewerId: publicUserId ?? null }).then((r) => {
@@ -270,6 +274,15 @@ export default function UserPage({ own = false, username }: Props) {
         </div>
       </div>
 
+      {/* #139: the member level - Profile-only for now (Brian, 2026-09-18; #142 takes it wider) */}
+      {level && (
+        <div className="flex justify-center pt-2.5" data-coach="profile.level">
+          <span className="pc-brass rounded px-3 py-[3px] font-display font-semibold text-[13px] tracking-[.06em] uppercase" title={levelLine(level)}>
+            {level.title} · {level.points} pts
+          </span>
+        </div>
+      )}
+
       {/* Their bar */}
       {shelves && (
         <>
@@ -340,9 +353,15 @@ export default function UserPage({ own = false, username }: Props) {
         </>
       )}
 
-      {/* Badges - #21 fills this */}
-      <SectionHead title="Badges" />
-      <Plate dashed>No badges yet</Plate>
+      {/* #139: the badge shelf */}
+      {user && (
+        <>
+          <SectionHead title="Badges" hint={level?.nextTitle && level.nextPoints != null ? `${level.nextPoints - level.points} pts to ${level.nextTitle}` : undefined} />
+          <div data-coach="profile.badges">
+            <BadgeShelf userId={user.id} viewerId={publicUserId ?? null} own={own} surface={surface} reloadKey={reloadKey} />
+          </div>
+        </>
+      )}
 
       {/* Recent activity */}
       <SectionHead title="Recent activity" />
