@@ -9,7 +9,30 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `d3c4555` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `232e604` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **BADGES ARE BUILT (2026-09-18, late session, #138-#141 shipped; #21 epic stays open for the
+  moments).** `efd30b8` engine + migration (applied to prod, backfill run for all 10 accounts,
+  silent), `19a1e41` the medal, `df613ba` the shelf + level plate, `232e604` the push (OFF).
+  What a cold agent needs:
+  - **The database is the engine.** `badge_timeline(user, badge)` -> one timestamp per unit of
+    progress; `award_badges(user)` upserts `user_badges` with `greatest(tier)` (never lowered),
+    `earned_at` = the moment the threshold was crossed, returns what went UP. Thresholds are rows
+    in `badge_tiers`; level bands are rows. `sync_hound_badges()` makes a badge per category.
+  - **Client:** `src/lib/badges.ts` - `runAwards(userId)` after every earning action (logActivity,
+    cheer, comment, follow, scan) and on your own Profile. **`BADGE_MOMENTS_ENABLED = false`**:
+    flip it to start pushing "You earned Gold X" (server kind `badge_earned`, verified against
+    `user_badges`). Brian: "don't send any notifications for back dated badges yet" - review the
+    shelves first, then decide how to announce the ones the 4 real users already hold.
+  - **The medal:** `src/components/badges/Medal.tsx` + `BadgeSprite.tsx`; metal ramps are
+    `--medal-*` on `:root` in globals.css (tune there). Canvas (9 rounds, round 9 approved):
+    https://claude.ai/artifact/6LL1t9YHueeFGscre2RDwa. **Landmine that cost 7 rounds:** a `var()`
+    inside a shared SVG gradient resolves where the gradient is DEFINED, not where it is used, so
+    Medal builds its gradients per instance; and a descendant CSS selector cannot reach inside a
+    `<use>` - the sprite's paints are plain classes fed by custom properties.
+  - **Not done:** the Social post for a badge (#143 - `activities` is bottle-anchored); the nightly
+    cron needs **`CRON_SECRET` on Vercel** (Brian) or `/api/badges/award-all` returns 503 - the
+    per-action client calls cover it meanwhile. Two badges read `events` (barcode_bandit,
+    installed) - documented in TELEMETRY.md. Founder's Reserve is manual: `grant_badge(user, 'founders_reserve')` as admin.
 - **Last session (2026-09-18, Claude). Five board cards + three closures + a stale baton repaired:**
   - **The 2026-09-16/17 commits had no END SESSION.** Reconstructed from `git log`: **#134**
     a blind tasting in progress survives a reload (`tasting_drafts`, one row per user, own-row
@@ -48,6 +71,8 @@ What is open and in what order now lives on **[the board](https://github.com/use
     2026-09-18 chat.** The cloud routine `trig_01LXXLQQ1UUgHd5E2smL5Cjf` is still disabled with
     ZERO runs: it needs the 7 env vars on the claude.ai Environment AND unrestricted network.
 - **Next step per the board** (right to left): *In Progress* EMPTY. *Next Items per Brian* EMPTY.
+  **First: Brian reviews #144 (the badge shelf) in the AM, then the badge moments for the 4 real
+  users (flip `BADGE_MOMENTS_ENABLED`, decide whether to announce backdated tiers).**
   *Top Priority*: **#133** move the clean-up bot to the cloud - blocked on Brian (env vars +
   network on the Environment; then enable the routine, fire a run, read its log, pause the local
   task). *Brian to test*: #123, #125-#127, #132, **#135** (My Bar pass), **#136** (helper swap
@@ -1709,6 +1734,13 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-18 (late) - Claude (badges BUILT: #138 #139 #140 #141)
+- Nine canvas rounds for the medal (Brian's references: a ruthenium/gold proof coin, then a
+  black-faced coin with a brushed ring, stars in an arc, a 3D Glencairn) - round 9 approved.
+  Then the whole feature: `efd30b8` `19a1e41` `df613ba` `232e604`. Migration applied, backfill
+  run (75 tier rows, all dated from history), verified in the pane on /profile and /u/PourChoicesOG.
+- Board: #138-#141 closed; #143 (Social post) Coming Soon; #144 Brian to test. `next build` clean.
 
 ### 2026-09-18 (later) - Claude (badges design session, NO CODE)
 - Settled with Brian one question at a time: goal = gamify every feature / constant engagement;
