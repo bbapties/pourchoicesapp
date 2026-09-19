@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { runAwards } from "@/lib/badges";
 
 // Follow / mute / bells (#111, step 6 of #105). The relationship model from 2026-09-12:
 //   Follow is one-way and ungated. Friend = follow rows both ways (never stored).
@@ -44,6 +45,7 @@ export async function follow(viewerId: string, targetId: string, notifyKinds: No
   const { error } = await supabase
     .from("user_relationships")
     .upsert({ from_user_id: viewerId, to_user_id: targetId, kind: "follow", notify_kinds: notifyKinds }, { onConflict: "from_user_id,to_user_id,kind" });
+  if (!error) void runAwards(targetId); // #138: the FOLLOWED person's Crowd badge
   return error ? { error: error.message } : {};
 }
 

@@ -19,6 +19,7 @@ import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
 import { addOrRestockUserBottle, formatLastActivity, removeUserBottle, markVariantEmpty, type UserBottleRow } from "@/lib/userBottles";
 import { logEvent, logClick } from "@/lib/events";
+import { runAwards } from "@/lib/badges";
 import { fetchBottleScores, fetchVariantScores, type BottleScore, type VariantScore } from "@/lib/scores";
 
 const DEFAULT_PAGE_SIZE = 30;
@@ -671,6 +672,7 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
       targetId: match?.id,
       metadata: { matched: !!match },
     });
+    void runAwards(publicUserId); // #138: Barcode Bandit reads this event
     if (match) {
       // A.1 two-zone: fetch the SKU (default id + per-variant labels) so we can single out the
       // NON-default versions the viewer owns. Owning only the default (or nothing) opens the

@@ -1,6 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
--- Regenerated from the live prod DB on 2026-09-18 via scripts/_psql.mjs against information_schema/pg_catalog.
+-- Regenerated from the live prod DB on 2026-09-19 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
 
 CREATE TABLE public.activities (
@@ -24,6 +24,30 @@ CREATE TABLE public.announcements (
   created_by uuid,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   published_at timestamp with time zone);
+
+CREATE TABLE public.badge_grants (
+  user_id uuid NOT NULL,
+  badge_id text NOT NULL,
+  granted_at timestamp with time zone NOT NULL DEFAULT now(),
+  granted_by uuid,
+  note text);
+
+CREATE TABLE public.badge_tiers (
+  badge_id text NOT NULL,
+  tier smallint NOT NULL,
+  threshold integer NOT NULL);
+
+CREATE TABLE public.badges (
+  id text NOT NULL,
+  family text NOT NULL,
+  name text NOT NULL,
+  glyph text NOT NULL,
+  feature text,
+  hint text,
+  one_off boolean NOT NULL DEFAULT false,
+  category text,
+  sort integer NOT NULL DEFAULT 0,
+  active boolean NOT NULL DEFAULT true);
 
 CREATE TABLE public.bottle_variants (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -123,6 +147,11 @@ CREATE TABLE public.image_reject_reasons (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   created_by uuid);
 
+CREATE TABLE public.level_bands (
+  title text NOT NULL,
+  min_points integer NOT NULL,
+  sort integer NOT NULL);
+
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   created_by uuid,
@@ -212,6 +241,15 @@ CREATE TABLE public.tasting_sessions (
   variant_ids ARRAY NOT NULL DEFAULT '{}'::uuid[],
   mode text);
 
+CREATE TABLE public.user_badges (
+  user_id uuid NOT NULL,
+  badge_id text NOT NULL,
+  tier smallint NOT NULL DEFAULT 0,
+  sub_tier smallint NOT NULL DEFAULT 0,
+  progress integer NOT NULL DEFAULT 0,
+  earned_at timestamp with time zone,
+  updated_at timestamp with time zone NOT NULL DEFAULT now());
+
 CREATE TABLE public.user_bottles (
   user_id uuid NOT NULL,
   bottle_id uuid NOT NULL,
@@ -282,6 +320,9 @@ CREATE TABLE public.wishlists (
 --   actor_muted_by_post_owner(p_activity_id uuid, p_actor_id uuid)  SECURITY DEFINER
 --   admin_import_blind_tasting(p_user_id uuid, p_tasted_on date, p_variant_ids uuid[], p_name text)  SECURITY DEFINER
 --   admin_verify_bottle(p_bottle uuid)  SECURITY DEFINER
+--   award_badges(p_user uuid)  SECURITY DEFINER
+--   award_badges_all()  SECURITY DEFINER
+--   badge_timeline(p_user uuid, p_badge text)  SECURITY DEFINER
 --   bottle_delete_impact(p_bottle uuid)  SECURITY DEFINER
 --   commit_bottle_import(payload jsonb)  SECURITY DEFINER
 --   current_public_user_id()
@@ -292,6 +333,7 @@ CREATE TABLE public.wishlists (
 --   elo_star(p_elo numeric)
 --   email_exists(p_email text)  SECURITY DEFINER
 --   flag_variant_image(p_variant uuid, p_note text)  SECURITY DEFINER
+--   grant_badge(p_user uuid, p_badge text, p_note text)  SECURITY DEFINER
 --   guard_event_insert()
 --   guard_feedback_insert()
 --   is_admin()  SECURITY DEFINER
@@ -307,10 +349,12 @@ CREATE TABLE public.wishlists (
 --   split_bottle_into_variants(p_bottle uuid, p_axis text)
 --   stamp_blind_tasted_for_session()
 --   stamp_tasted_for_pour()
+--   sync_hound_badges()  SECURITY DEFINER
 --   tasting_podium(p_session_id uuid)  SECURITY DEFINER
 --   update_elo_after_result()
 --   update_elo_for_session()
 --   update_timestamp()  SECURITY DEFINER
+--   user_level(p_user uuid)  SECURITY DEFINER
 --   variant_delete_impact(p_variant uuid)  SECURITY DEFINER
 --   variant_guess_avg(variant_ids uuid[])  SECURITY DEFINER
 
@@ -337,6 +381,9 @@ CREATE TABLE public.wishlists (
 --   activities: activities_select_authenticated (SELECT)
 --   announcements: Admin manage announcements (ALL)
 --   announcements: Read published announcements (SELECT)
+--   badge_grants: badge_grants_select (SELECT)
+--   badge_tiers: badge_tiers_select (SELECT)
+--   badges: badges_select (SELECT)
 --   bottle_variants: admins can delete variants (DELETE)
 --   bottle_variants: admins delete variants (DELETE)
 --   bottle_variants: Auth insert variants (INSERT)
@@ -360,6 +407,7 @@ CREATE TABLE public.wishlists (
 --   feedback: feedback_update (UPDATE)
 --   image_reject_reasons: admins write reasons (ALL)
 --   image_reject_reasons: read reject reasons (SELECT)
+--   level_bands: level_bands_select (SELECT)
 --   notifications: Admin read notifications (SELECT)
 --   post_comments: post_comments_insert_own (INSERT)
 --   post_comments: post_comments_select (SELECT)
@@ -385,6 +433,7 @@ CREATE TABLE public.wishlists (
 --   tasting_results: admins read all tasting_results (SELECT)
 --   tasting_sessions: Users can manage their own tasting sessions (ALL)
 --   tasting_sessions: admins read all tasting_sessions (SELECT)
+--   user_badges: user_badges_select (SELECT)
 --   user_bottles: Users can manage their own bottle data (ALL)
 --   user_bottles: admins read all user_bottles (SELECT)
 --   user_bottles: user_bottles_select_authenticated (SELECT)

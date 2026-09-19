@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { runAwards } from "@/lib/badges";
 import {
   FEED_SELECT,
   FEED_HIDDEN_FILTER,
@@ -188,6 +189,7 @@ export async function toggleCheer(activityId: string, userId: string, on: boolea
   // A duplicate insert (double tap) is not an error worth showing; RLS refusals (muted) are silent
   // by design - the mute contract says the muted person is never told.
   if (error && !/duplicate|row-level security/i.test(error.message)) return { error: error.message };
+  if (on && !error) void runAwards(userId); // #138: Cheers badge
   return {};
 }
 
@@ -244,6 +246,7 @@ export async function addComment(opts: {
     if (/row-level security/i.test(error.message)) return { muted: true };
     return { error: error.message };
   }
+  void runAwards(opts.userId); // #138: Barstool badge
   return { id: data.id };
 }
 

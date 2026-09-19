@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { notify } from "@/lib/notify";
+import { runAwards } from "@/lib/badges";
 
 // Policy: every user/admin action on a bottle writes an activities row
 // until Brian explicitly excludes it. Fail-open — never block the parent action.
@@ -187,7 +188,19 @@ export async function logActivity(opts: {
   }
   // #114: followers who rang the bell for this kind of moment get a push. Server-side decides who.
   if (data?.id && NOTIFIED_ACTIONS.has(opts.action)) notify({ kind: "activity", activityId: data.id });
+  // #138: every bottle action can earn a badge - re-run the engine for this person (fail-open).
+  void runAwards(opts.userId);
   return { id: data?.id };
+}
+
+/**
+ * #141: the moment a tier goes up. Today that is a push (self + followers with the badge bell);
+ * the Social post is a follow-up card because `activities` is bottle-anchored (bottle_id NOT NULL,
+ * a CHECK on action) and a badge has no bottle. Called only when BADGE_MOMENTS_ENABLED.
+ */
+export async function logBadgeEarned(userId: string, badgeId: string, tier: number): Promise<void> {
+  void userId; void tier;
+  notify({ kind: "badge_earned", badgeId });
 }
 
 /** Actions a follower can ask to be pushed about (the bell's list, minus badges which have no row yet). */
