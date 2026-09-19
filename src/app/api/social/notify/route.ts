@@ -25,8 +25,9 @@ export const dynamic = "force-dynamic";
 // Fail-open end to end: the caller's action already happened; this only decides whether phones buzz.
 
 type Body = {
-  kind: "cheer" | "comment" | "reply" | "follow" | "activity" | "feedback" | "bottle_verified" | "edit_reviewed";
+  kind: "cheer" | "comment" | "reply" | "follow" | "activity" | "feedback" | "bottle_verified" | "edit_reviewed" | "badge_earned";
   activityId?: string;
+  badgeId?: string;
   commentId?: string;
   targetUserId?: string;
   feedbackId?: string;
@@ -199,6 +200,35 @@ export async function POST(request: Request) {
     const note = (body.note ?? decided.find((r) => r.review_note)?.review_note ?? "").toString().replace(/\s+/g, " ").trim();
     const title = rejected === 0 ? `Your edit to ${bottle} was approved` : approved === 0 ? `Your edit to ${bottle} wasn't taken` : `Your edit to ${bottle}: ${approved} approved, ${rejected} not`;
     msg = { title: title.slice(0, 80), body: (note ? `Note from the admin: ${note}` : rejected === 0 ? "It's live in the catalog now. Thanks." : "Open the bottle to see what it reads now.").slice(0, 200), url: rows[0].bottle_id ? `/search?bottle=${rows[0].bottle_id}` : "/search" };
+  } else if (body.kind === "badge_earned") {
+    // #141: the caller says which badge; the database says whether they really hold it (no faking
+    // a Diamond push). Recipients: the earner, plus followers who rang the "Earns a badge" bell.
+    if (!body.badgeId) return NextResponse.json({ error: "badgeId required" }, { status: 400 });
+    const { data: ub } = await admin
+      .from("user_badges")
+      .select("tier, badges ( name )")
+      .eq("user_id", caller.id)
+      .eq("badge_id", body.badgeId)
+      .maybeSingle();
+    if (!ub || !ub.tier) return NextResponse.json({ sent: 0 });
+    const tierName = ["", "Bronze", "Silver", "Gold", "Platinum", "Diamond"][ub.tier] ?? "";
+    const badgeName = (Array.isArray(ub.badges) ? ub.badges[0] : ub.badges)?.name ?? "a badge";
+    const { data: followers } = await admin
+      .from("user_relationships")
+      .select("from_user_id")
+      .eq("to_user_id", caller.id)
+      .eq("kind", "follow")
+      .contains("notify_kinds", ["badge"]);
+    recipients = [caller.id, ...(followers || []).map((f: { from_user_id: string }) => f.from_user_id)];
+    const label = tierName ? `${tierName} ${badgeName}` : badgeName;
+    msg = { title: `${me} earned ${label}`, body: "See it on their shelf", url: `/u/${encodeURIComponent(caller.username)}` };
+    // the earner gets their own wording
+    const own = { title: `You earned ${label}`, body: "It's on your shelf. Tap to see the ladder.", url: "/profile" };
+    const [selfResult, otherResult] = await Promise.all([
+      sendPushTo(admin, [caller.id], own),
+      recipients.length > 1 ? sendPushTo(admin, recipients.slice(1), msg) : Promise.resolve({ sent: 0 }),
+    ]);
+    return NextResponse.json({ sent: (selfResult.sent ?? 0) + (otherResult.sent ?? 0), recipients: recipients.length });
   } else {
     return NextResponse.json({ error: "Unknown kind" }, { status: 400 });
   }
