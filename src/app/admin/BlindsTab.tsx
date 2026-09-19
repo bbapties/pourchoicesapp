@@ -72,6 +72,32 @@ const todayIso = () => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
+/**
+ * Plain-English readout of the picked date, year first, plus a nudge when the year looks
+ * untouched. Seven blinds from 2026-09-14 went in with the right month and day but the current
+ * year: the phone's date wheel starts on today and it is easy to spin month/day and never the
+ * year. Nothing downstream can catch that (the function only rejects the future), so the form
+ * says it back before Save. "Untouched" = current year but the month/day are more than 30 days
+ * behind today, which is exactly what a spun-month-not-year slip produces.
+ */
+function describeTastedOn(iso: string): { text: string; suspicious: boolean } {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return { text: "", suspicious: false };
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysAgo = Math.round((today.getTime() - d.getTime()) / 86_400_000);
+  const when =
+    daysAgo === 0 ? "today" :
+    daysAgo === 1 ? "yesterday" :
+    daysAgo < 60 ? `${daysAgo} days ago` :
+    daysAgo < 730 ? `${Math.round(daysAgo / 30)} months ago` :
+    `${Math.floor(daysAgo / 365)} years ago`;
+  const long = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  const suspicious = d.getFullYear() === today.getFullYear() && daysAgo > 30;
+  return { text: `${d.getFullYear()} — ${long} (${when})`, suspicious };
+}
+
 function toPick(c: Catalog): Pick {
   const bits = [c.bottle_distillery, c.attr_age, c.attr_batch, c.attr_store_pick_name].filter(Boolean);
   return {
@@ -211,6 +237,16 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
             onChange={(e) => setTastedOn(e.target.value)}
             className="mt-1 w-full rounded px-3 py-2 text-sm"
           />
+          {(() => {
+            const { text, suspicious } = describeTastedOn(tastedOn);
+            if (!text) return null;
+            return (
+              <span className={`block mt-1 text-[11px] ${suspicious ? "pc-brass-text font-semibold" : "text-cream-faint"}`}>
+                {text}
+                {suspicious && " — check the year"}
+              </span>
+            );
+          })()}
         </label>
         <label className="text-xs text-cream-mute">
           User
