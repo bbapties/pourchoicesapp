@@ -53,6 +53,37 @@
   --font-display: var(--font-display), Georgia, "Times New Roman", serif;
 }
 
+/* ============================================================================
+   BADGE MEDALS (#140, settled on the design canvas 2026-09-18, round 9). The one place a colour
+   outside the room is allowed: these are the METALS, not the furniture. Read by
+   src/components/badges/Medal.tsx as SVG gradient stops (var() on a stop resolves against :root,
+   which is why they live here and not on the element). hi = polished highlight, mid = body,
+   lo = shadow, ink = the dark line. Retune here, never in the component.
+   ============================================================================ */
+:root {
+  --medal-bronze-hi:#f0b27a;   --medal-bronze:#b9743c;   --medal-bronze-lo:#6e3f1a;   --medal-bronze-ink:#3a2009;
+  --medal-silver-hi:#f8f8f6;   --medal-silver:#c8c9c7;   --medal-silver-lo:#8e9294;   --medal-silver-ink:#3a3d3f;
+  --medal-gold-hi:#f5d98d;     --medal-gold:#cda24a;     --medal-gold-lo:#8b6522;     --medal-gold-ink:#4a340c;
+  --medal-platinum-hi:#ffffff; --medal-platinum:#e6eaed; --medal-platinum-lo:#a6b0b8; --medal-platinum-ink:#48545c;
+  --medal-diamond-hi:#ffffff;  --medal-diamond:#eef7ff;  --medal-diamond-lo:#a9cbe3;  --medal-diamond-ink:#3d6f93;
+  --medal-locked-hi:#3d3630;   --medal-locked:#2a2521;   --medal-locked-lo:#171412;   --medal-locked-ink:#0d0b0a;
+  --medal-face-hi:#2b2b2c; --medal-face:#161617; --medal-face-lo:#060606;
+  --medal-amber-hi:#f6c15a; --medal-amber:#c77d16; --medal-amber-lo:#6f3f05;
+  --medal-pave-base:#cfd6da; --medal-pave-edge:#8d9599; --medal-pave-seat:#5f6a70;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pc-medal-spark { animation: pcTwinkle 2.8s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  .pc-medal-flash { animation: pcSweep 6s ease-in-out infinite; }
+}
+/* the glyph paints inside the sprite: plain classes, fed by custom properties the Medal sets */
+.pc-g-fill { fill: var(--gfill); }
+.pc-g-line { stroke: var(--ghi); fill: none; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; opacity: .95; }
+.pc-g-dot { fill: var(--ghi); }
+.pc-g-liquid { fill: url(#pc-amberG); }
+.pc-g-glass { fill: url(#pc-glassG); }
+@keyframes pcTwinkle { 0%, 100% { opacity: .1; transform: scale(.5); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes pcSweep { 0%, 55% { transform: translateX(-160px); } 85%, 100% { transform: translateX(160px); } }
+
 /* shadcn/ui primitives read these. They were the light greyscale; now they are the room. */
 :root {
   --radius: 0.5rem;
