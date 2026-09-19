@@ -70,6 +70,16 @@ What is open and in what order now lives on **[the board](https://github.com/use
     cannot write that file (auto-mode self-modification guard); Brian has the exact JSON from the
     2026-09-18 chat.** The cloud routine `trig_01LXXLQQ1UUgHd5E2smL5Cjf` is still disabled with
     ZERO runs: it needs the 7 env vars on the claude.ai Environment AND unrestricted network.
+- **THE CLEAN-UP BOT IS IN THE CLOUD, GATED (2026-09-19, `be6b5cb`, #133).** Routine
+  `trig_01LXXLQQ1UUgHd5E2smL5Cjf`, hourly at :15 (platform floor is 1h), Sonnet 5, ENABLED.
+  `scripts/bot_gate.mjs` runs first: `urgent` (a real user - human, not admin - added a bottle),
+  `idle` (6h since the last idle/seed run: oldest unverified, then the recheck funnel), `seed`
+  (queue empty: next of `seed_bourbons.json` via `next_seed.mjs` + `build_new_bottle_sql.mjs
+  --unverified`), `none` (exit in one call). `bot_runs` is the clock + audit. One routine, not a
+  Haiku/Sonnet split: a run cannot hand off, so the gate IS the token saving. **Blocked on
+  Brian:** the first live run (cse_01PdiZtE3x7xDF4Dn1Qb5ee9) found ALL 7 env vars missing on
+  the claude.ai Environment - add them, and pause the LOCAL desktop task. The cloud checkout
+  lands on `main`; the prompt now checks out MVP-v3 first.
 - **Next step per the board** (right to left): *In Progress* EMPTY. *Next Items per Brian* EMPTY.
   **First: Brian reviews #144 (the badge shelf) in the AM, then the badge moments for the 4 real
   users (flip `BADGE_MOMENTS_ENABLED`, decide whether to announce backdated tiers).**
