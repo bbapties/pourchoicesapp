@@ -7,6 +7,7 @@ import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 import { EarmarkCorner } from "@/components/BottleCard";
 import { formatFeedTime, type ActivityRow } from "@/lib/activities";
 import { fetchPodium, type FeedItem, type PodiumGlass } from "@/lib/social";
+import { logClick } from "@/lib/events";
 
 // The big activity card (#109). One shared frame - who · verb · when on top, Cheers · Comment
 // underneath, the whole thing opening the post - and a different body per action. The card
@@ -162,6 +163,41 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
 
 // ---------------------------------------------------------------- bodies
 
+/** Open the full-screen photo viewer (<PhotoViewer /> is mounted once, in AppShell). */
+function openPhoto(e: React.MouseEvent, url: string, item: FeedItem) {
+  e.preventDefault();
+  e.stopPropagation();
+  logClick("post_photo_opened", { targetId: item.id, surface: "social" });
+  window.dispatchEvent(new CustomEvent("pc:photo", { detail: { url, caption: `${item.username} · ${item.bottleName}` } }));
+}
+
+/**
+ * Full-screen photo (Brian, 2026-09-20). Listens for pc:photo; tap anywhere, the X or Esc to
+ * close. Mounted ONCE, in AppShell, so every screen that shows a card (Social, a post, a user
+ * page, Home's shelf) shares one overlay.
+ */
+export function PhotoViewer() {
+  const [shot, setShot] = useState<{ url: string; caption: string } | null>(null);
+  useEffect(() => {
+    const on = (ev: Event) => setShot((ev as CustomEvent).detail);
+    const esc = (ev: KeyboardEvent) => { if (ev.key === "Escape") setShot(null); };
+    window.addEventListener("pc:photo", on);
+    window.addEventListener("keydown", esc);
+    return () => { window.removeEventListener("pc:photo", on); window.removeEventListener("keydown", esc); };
+  }, []);
+  if (!shot) return null;
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center p-3" onClick={() => setShot(null)} role="dialog" aria-label="Photo">
+      <button type="button" onClick={(e) => { e.stopPropagation(); setShot(null); }} aria-label="Close" className="absolute top-3 right-3 z-[70] w-10 h-10 rounded-full bg-panel text-cream flex items-center justify-center" style={{ top: "calc(12px + env(safe-area-inset-top))" }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </button>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={shot.url} alt={shot.caption} className="max-w-full max-h-[85vh] object-contain rounded-md" onClick={(e) => e.stopPropagation()} />
+      <div className="mt-3 text-sm text-cream-mute">{shot.caption}</div>
+    </div>
+  );
+}
+
 function PourBody({ item, detail, onOpenBottle }: { item: FeedItem; detail: boolean; onOpenBottle: (e: React.MouseEvent, row: ActivityRow) => void }) {
   const photo = item.details?.photo_url ?? null;
   const note = item.details?.note ?? null;
@@ -172,8 +208,10 @@ function PourBody({ item, detail, onOpenBottle }: { item: FeedItem; detail: bool
     return (
       <div className="px-3.5 pb-3">
         {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} alt="" className="w-full max-h-[320px] object-cover rounded-md border border-edge mb-3" />
+          <button type="button" onClick={(e) => openPhoto(e, photo, item)} className="block w-full mb-3" aria-label="See the photo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photo} alt="" className="w-full max-h-[320px] object-cover rounded-md border border-edge" />
+          </button>
         ) : null}
         <BottleLine item={item} onOpenBottle={onOpenBottle} big />
         <div className="flex items-center gap-2 mt-2">
@@ -187,11 +225,13 @@ function PourBody({ item, detail, onOpenBottle }: { item: FeedItem; detail: bool
 
   return (
     <div className="flex gap-3.5 px-3.5 pb-3">
+      {/* Brian, 2026-09-20: someone's photo opens the PHOTO, full screen; the bottle line and a
+          bottle image (no photo) still open the bottle. */}
       <button
         type="button"
-        onClick={(e) => onOpenBottle(e, item)}
+        onClick={(e) => (photo ? openPhoto(e, photo, item) : onOpenBottle(e, item))}
         className="w-[104px] h-[104px] rounded-md pc-brick shadow-[inset_0_0_0_1px_rgba(0,0,0,.6),inset_0_0_18px_rgba(0,0,0,.6)] overflow-hidden shrink-0 flex items-center justify-center"
-        aria-label={item.bottleName}
+        aria-label={photo ? "See the photo" : item.bottleName}
       >
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element

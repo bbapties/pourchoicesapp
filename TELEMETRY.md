@@ -276,6 +276,8 @@ client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
 - `badge_tier_up` — the award engine reported a tier going up for this user (#138). `target_id` =
   badge id, `metadata = { tier, progress, fired }` where `fired` says whether the moment
   (push) was actually sent - false while `BADGE_MOMENTS_ENABLED` is off in `src/lib/badges.ts`.
+- `click` → `post_photo_opened` — a pour photo on a Social / post / user-page card was opened full
+  screen (2026-09-20). `target_id` = activity id.
 - `click` → `badge_sheet_opened` — a coin on a badge shelf was tapped (#139). `target_id` = badge id,
   `metadata = { tier, own }`.
 

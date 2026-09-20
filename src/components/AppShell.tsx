@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PhotoViewer } from "@/components/social/ActivityCard";
 import { Search, Users, GlassWater, LayoutGrid, User as UserIcon, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -65,6 +66,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
+      {!isAuthPage && <PhotoViewer />}
       {!isAuthPage && (
         <nav className="fixed bottom-0 left-0 right-0 pc-wood pc-rail-top z-20 flex flex-col text-cream shadow-[0_-8px_18px_rgba(0,0,0,.6)]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
