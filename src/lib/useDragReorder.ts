@@ -23,6 +23,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *      off-screen is impossible without it -- the reason this matters more at 10 bottles than at 6.
  *   5. Live rects, re-measured on every move. Rows shift under the finger as the list reorders, so
  *      anything cached from pointerdown points at the wrong row within one swap.
+ *   6. The move itself kills pointer capture. Reordering re-inserts the dragged row's DOM node,
+ *      and a node that moves in the DOM loses its capture (spec) -- so listening on the handle
+ *      alone gets exactly ONE step per drag, then `lostpointercapture`. Found on the Blinds form
+ *      (Brian, 2026-09-20: "only allows 1 space at a time"). The moves and the release are
+ *      therefore tracked on `window` for the life of the drag; capture is still requested for
+ *      the first move, but losing it is not the end of anything.
  *
  * Reorder is an array MOVE (remove + insert), not a swap: dragging the last item to the top should
  * carry it past the others, not trade places with whatever happens to be there.
@@ -113,14 +119,27 @@ export function useDragReorder(opts: {
     rafRef.current = requestAnimationFrame(tickAutoScroll);
   }, [applyAt, stopAutoScroll]);
 
+  // The window listeners live for exactly one drag (pitfall 6). Kept in refs so `end` can
+  // remove the same functions it added.
+  const winMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const winEndRef = useRef<(() => void) | null>(null);
+
   const end = useCallback(() => {
     dragIndexRef.current = null;
     setDragIndex(null);
     stopAutoScroll();
+    if (winMoveRef.current) window.removeEventListener("pointermove", winMoveRef.current);
+    if (winEndRef.current) {
+      window.removeEventListener("pointerup", winEndRef.current);
+      window.removeEventListener("pointercancel", winEndRef.current);
+    }
+    winMoveRef.current = null;
+    winEndRef.current = null;
   }, [stopAutoScroll]);
 
-  // Safety net: if the component unmounts mid-drag the rAF loop must not outlive it.
-  useEffect(() => stopAutoScroll, [stopAutoScroll]);
+  // Safety net: if the component unmounts mid-drag neither the rAF loop nor the window
+  // listeners may outlive it.
+  useEffect(() => end, [end]);
 
   const handleProps = useCallback((i: number) => ({
     onPointerDown: (e: React.PointerEvent) => {
@@ -131,21 +150,25 @@ export function useDragReorder(opts: {
       // if the pointer is already gone, and Safari has historically been picky here -- a failed
       // capture must degrade to a normal drag, never abort it.
       try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* non-fatal */ }
+      end(); // anything a previous drag left behind (listeners, rAF) goes before this one starts
       dragIndexRef.current = i;
       pointerYRef.current = e.clientY;
       setDragIndex(i);
-      stopAutoScroll();
+      // Pitfall 6: the handle stops hearing the pointer the moment its row moves, so the
+      // drag is followed from the window instead.
+      const move = (ev: PointerEvent) => {
+        if (dragIndexRef.current === null) return;
+        ev.preventDefault();
+        pointerYRef.current = ev.clientY;
+        applyAt(ev.clientY);
+      };
+      winMoveRef.current = move;
+      winEndRef.current = end;
+      window.addEventListener("pointermove", move, { passive: false });
+      window.addEventListener("pointerup", end);
+      window.addEventListener("pointercancel", end);
       rafRef.current = requestAnimationFrame(tickAutoScroll);
     },
-    onPointerMove: (e: React.PointerEvent) => {
-      if (dragIndexRef.current === null) return;
-      e.preventDefault();
-      pointerYRef.current = e.clientY;
-      applyAt(e.clientY);
-    },
-    onPointerUp: end,
-    onPointerCancel: end,
-    onLostPointerCapture: end,
     onKeyDown: (e: React.KeyboardEvent) => {
       // Keyboard equivalent, so the handle is not a mouse-only control.
       if (e.key === "ArrowUp" && i > 0) { e.preventDefault(); onMove(i, i - 1); }
@@ -153,7 +176,7 @@ export function useDragReorder(opts: {
     },
     // See pitfall 2 -- without this the browser scrolls instead of dragging.
     style: { touchAction: "none" as const },
-  }), [applyAt, count, end, onMove, stopAutoScroll, tickAutoScroll]);
+  }), [applyAt, count, end, onMove, tickAutoScroll]);
 
   return { dragIndex, setRowRef, handleProps };
 }
