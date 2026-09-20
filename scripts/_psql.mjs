@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 import { spawnSync } from "child_process";
+import { execBatch, lastRows, render, splitStatements } from "./_db_http.mjs";
 
 // Two modes:
 //   node scripts/_psql.mjs "SELECT 1;"                 -- ad-hoc SQL on argv
@@ -31,10 +32,24 @@ if (!sql.trim()) {
 }
 // JSON mode: one statement (SELECT or a RETURNING write), wrapped so psql prints exactly one
 // JSON array and nothing else. A statement without rows prints [].
+const unwrappedSql = sql; // the HTTPS path sends this; exec_sql_batch does its own row capture
 if (jsonMode) {
   const body = sql.trim().replace(/;\s*$/, "");
   // a CTE, not a subquery, so INSERT/UPDATE ... RETURNING works too
   sql = `WITH t AS (${body}) SELECT coalesce(json_agg(t), '[]'::json) FROM t;`;
+}
+
+// ---- HTTPS transport (#133): forced with PC_DB_TRANSPORT=http, or used automatically below
+// when psql cannot reach the pooler (the cloud sandbox refuses raw TCP).
+const rawSql = unwrappedSql;
+async function overHttp() {
+  const results = await execBatch(splitStatements(rawSql));
+  if (jsonMode) process.stdout.write(JSON.stringify(lastRows(results)) + "\n");
+  else process.stdout.write(render(results));
+  if (fileFlag >= 0) console.error(`-- ran ${sourceLabel} (https)`);
+}
+if (process.env.PC_DB_TRANSPORT === "http") {
+  try { await overHttp(); process.exit(0); } catch (e) { console.error(String(e.message || e)); process.exit(1); }
 }
 
 const raw = readFileSync(".env.local", "utf8").replace(/^\uFEFF/, "");
@@ -73,6 +88,12 @@ const r = spawnSync(
     env: { ...process.env, PGPASSWORD: password, PGSSLMODE: "require" },
   }
 );
+const cantConnect = r.status === null || /could not connect|Connection timed out|timeout expired|Network is unreachable|Connection refused|could not translate host name/i.test(r.stderr || "");
+if (cantConnect) {
+  // psql could not reach the database - the cloud sandbox case. Same statements, over HTTPS.
+  try { await overHttp(); process.exit(0); }
+  catch (e) { process.stderr.write((r.stderr || "").replaceAll(password, "***")); console.error(`https fallback failed: ${String(e.message || e)}`); process.exit(1); }
+}
 if (fileFlag >= 0) console.error(`-- ran ${sourceLabel}`);
 if (r.stdout) process.stdout.write(r.stdout);
 if (r.stderr) process.stderr.write(r.stderr.replaceAll(password, "***"));
