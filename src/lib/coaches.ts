@@ -503,6 +503,17 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // Brian, 2026-09-20: swipe right from the left edge = back, like Reddit. Quiet: a gesture
+    // is discovered by hand, and a tour step cannot demonstrate one.
+    id: "nav.swipe_back",
+    title: "Swipe back",
+    body: "Swipe right from the left edge of the screen to go back - it closes a bottle or a photo first, then the page.",
+    route: "/social",
+    core: false,
+    announce: true,
+    tour: [],
+  },
+  {
     // #139: badges. Not core - the main loop did not change; this is the reward layer on top.
     id: "profile.badges",
     title: "Badges",

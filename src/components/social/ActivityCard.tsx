@@ -185,6 +185,13 @@ export function PhotoViewer() {
     window.addEventListener("keydown", esc);
     return () => { window.removeEventListener("pc:photo", on); window.removeEventListener("keydown", esc); };
   }, []);
+  // swipe-back closes the photo before anything else (useSwipeBack step 1)
+  useEffect(() => {
+    if (!shot) return;
+    const back = (ev: Event) => { ev.preventDefault(); setShot(null); };
+    window.addEventListener("pc:back", back);
+    return () => window.removeEventListener("pc:back", back);
+  }, [shot]);
   if (!shot) return null;
   return (
     <div className="fixed inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center p-3" onClick={() => setShot(null)} role="dialog" aria-label="Photo">

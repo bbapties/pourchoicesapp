@@ -707,6 +707,17 @@ export default function BottleDetailView({
     }
   };
 
+  // Swipe-back (useSwipeBack): the sheet is an overlay, not a route, so it closes itself first.
+  // The zoom closes before the sheet does.
+  useEffect(() => {
+    const back = (ev: Event) => {
+      ev.preventDefault();
+      if (showZoom) setShowZoom(false); else onClose();
+    };
+    window.addEventListener("pc:back", back);
+    return () => window.removeEventListener("pc:back", back);
+  }, [showZoom, onClose]);
+
   return (
     <div
       className="fixed inset-0 bg-wall/90 z-50 overflow-y-auto p-4"

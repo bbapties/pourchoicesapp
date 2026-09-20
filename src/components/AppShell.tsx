@@ -10,6 +10,7 @@ import CoachHost, { unseenAnnounceRoutes } from "@/components/CoachHost";
 import EventTracker from "@/components/EventTracker";
 import NotificationNudge from "@/components/NotificationNudge";
 import { useDismissKeyboard } from "@/lib/useDismissKeyboard";
+import { useSwipeBack } from "@/lib/useSwipeBack";
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
   const { authId, isAdmin, loading } = useCurrentUser();
@@ -23,6 +24,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isAuthPage = pathname === "/";
   useDismissKeyboard(); // #42: a tap outside a text field puts the phone keyboard away
+  useSwipeBack(!isAuthPage); // swipe right from the left edge = back (Brian, 2026-09-20)
 
   useEffect(() => {
     if (!loading && !authId && !isAuthPage) {
