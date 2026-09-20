@@ -19,10 +19,22 @@ export function adminClient(): SupabaseClient | null {
   return createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-/** Send one message to every registered device of the given users. Returns counts; never throws. */
-export async function sendPushTo(admin: SupabaseClient, userIds: string[], msg: PushMessage): Promise<{ sent: number; failed: number }> {
-  const ids = [...new Set(userIds)].filter(Boolean);
+/**
+ * Send one message to every registered device of the given users. Returns counts; never throws.
+ *
+ * `actorId` is the person whose action this is about. They are never a recipient, and neither
+ * is any DEVICE that also holds a subscription for them: Brian runs two accounts on one phone,
+ * and a pour as one account buzzed the same phone as the other (2026-09-20). A device is the
+ * push endpoint - one endpoint per browser profile, shared by whichever accounts signed in there.
+ */
+export async function sendPushTo(admin: SupabaseClient, userIds: string[], msg: PushMessage, actorId?: string | null): Promise<{ sent: number; failed: number }> {
+  const ids = [...new Set(userIds)].filter((id) => id && id !== actorId);
   if (!ids.length || !pushConfigured()) return { sent: 0, failed: 0 };
+  let ownEndpoints = new Set<string>();
+  if (actorId) {
+    const { data: own } = await admin.from("push_subscriptions").select("endpoint").eq("user_id", actorId);
+    ownEndpoints = new Set((own || []).map((r: { endpoint: string }) => r.endpoint));
+  }
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || "mailto:admin@pourchoicesapp.com",
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
@@ -33,14 +45,15 @@ export async function sendPushTo(admin: SupabaseClient, userIds: string[], msg: 
     .select("id, endpoint, p256dh, auth, user_id, users!inner(notify_push)")
     .eq("users.notify_push", true)
     .in("user_id", ids);
-  if (!subs?.length) return { sent: 0, failed: 0 };
+  const targets = (subs || []).filter((s: any) => !ownEndpoints.has(s.endpoint));
+  if (!targets.length) return { sent: 0, failed: 0 };
 
   const message = JSON.stringify({ title: msg.title.slice(0, 80), body: msg.body.slice(0, 200), url: msg.url.slice(0, 300) });
   let sent = 0;
   let failed = 0;
   const expired: string[] = [];
   await Promise.all(
-    subs.map(async (s: any) => {
+    targets.map(async (s: any) => {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, message);
         sent += 1;
