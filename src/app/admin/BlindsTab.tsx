@@ -24,9 +24,12 @@ import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
  *
  * Picking a bottle is a sheet over the form, not a hop to /search: the form is state, and a
  * route change would lose it. The sheet searches the same view Search does; when nothing
- * matches, "Add <what you typed>" inserts a bare provisional bottle (name only, no photo - Brian
- * never has one at this stage; the verify lane fills the rest in) plus its default variant, and
- * that variant drops straight into the row that asked for it.
+ * matches, "Add <what you typed>" puts a NEW pick in the row - name only, nothing written yet.
+ * The bottle (bare provisional: name, no photo - Brian never has one at this stage; the verify
+ * lane fills the rest in) and its default variant are inserted by Save, in place order, right
+ * before the session. Until then the card says "new" and tapping it reopens the picker with the
+ * name typed, so a typo or a bad search is fixed in the form, not in Admin > Review afterwards
+ * (Brian, 2026-09-20: the eager insert was where most junk bottles came from).
  *
  * No upper cap on places (Brian, 2026-09-14): MAX_PICKS is the app's UI number; this form is
  * exactly where the 15-20 bottle YouTuber blinds get entered. The function rejects the same
@@ -36,12 +39,15 @@ import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
 type UserRow = { id: string; username: string };
 
 type Pick = {
+  /** Empty while `isNew`: the bottle does not exist until Save inserts it. */
   variantId: string;
   bottleId: string;
   name: string;
   subtitle: string | null;
   imageUrl: string | null;
   verified: boolean;
+  /** Typed in the picker, not found in the catalog; inserted on Save. */
+  isNew?: boolean;
 };
 
 /** A row in the form. `pick` is null until a bottle has been chosen. */
@@ -140,7 +146,7 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
   const pickingRow = rows.find((r) => r.key === pickingKey) ?? null;
   const pickingPlace = pickingRow ? rows.indexOf(pickingRow) + 1 : 0;
   const takenVariantIds = useMemo(
-    () => new Set(rows.filter((r) => r.pick && r.key !== pickingKey).map((r) => r.pick!.variantId)),
+    () => new Set(rows.filter((r) => r.pick && !r.pick.isNew && r.key !== pickingKey).map((r) => r.pick!.variantId)),
     [rows, pickingKey],
   );
 
@@ -174,14 +180,28 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
     if (!userId) { toast.error("Pick the user who tasted."); return; }
     if (!tastedOn) { toast.error("Pick the date."); return; }
     if (!allFilled) { toast.error("Every place needs a bottle."); return; }
+    const newNames = rows.filter((r) => r.pick?.isNew).map((r) => r.pick!.name.trim().toLowerCase());
+    if (new Set(newNames).size !== newNames.length) { toast.error("Two new bottles have the same name - one of them is a typo."); return; }
     setSaving(true);
     setSaveError(null);
     setLastSave(null);
     try {
+      // New bottles go in now, in place order, and the rows are swapped to the real ids
+      // BEFORE the session call - so if that call fails, a retry reuses them instead of
+      // inserting a second copy.
+      let resolved = rows;
+      for (const r of rows) {
+        if (!r.pick?.isNew) continue;
+        const created = await insertProvisionalBottle(r.pick.name, publicUserId);
+        if ("error" in created) { setSaveError(created.error); toast.error(created.error); return; }
+        const real: Pick = { ...r.pick, ...created, isNew: false };
+        resolved = resolved.map((x) => (x.key === r.key ? { ...x, pick: real } : x));
+        setRows(resolved);
+      }
       const { data, error } = await supabase.rpc("admin_import_blind_tasting", {
         p_user_id: userId,
         p_tasted_on: tastedOn,
-        p_variant_ids: rows.map((r) => r.pick!.variantId),
+        p_variant_ids: resolved.map((r) => r.pick!.variantId),
         p_name: name.trim() || null,
       });
       if (error) {
@@ -308,7 +328,11 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
                   <div className="min-w-0">
                     <div className="text-sm text-cream truncate">{r.pick.name}</div>
                     {r.pick.subtitle && <div className="text-xs text-cream-mute truncate">{r.pick.subtitle}</div>}
-                    {!r.pick.verified && <div className="text-[10px] text-unverified">unverified</div>}
+                    {r.pick.isNew ? (
+                      <div className="text-[10px] pc-brass-text">new - added when you save · tap to fix</div>
+                    ) : !r.pick.verified ? (
+                      <div className="text-[10px] text-unverified">unverified</div>
+                    ) : null}
                   </div>
                 </>
               ) : (
@@ -362,6 +386,7 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
       <BottlePickerSheet
         open={pickingKey !== null}
         place={pickingPlace}
+        current={pickingRow?.pick ?? null}
         taken={takenVariantIds}
         publicUserId={publicUserId}
         onClose={() => setPickingKey(null)}
@@ -374,18 +399,47 @@ export default function BlindsTab({ publicUserId }: { publicUserId: string }) {
   );
 }
 
+
+/**
+ * Bare provisional insert: name + created_by, everything else null, exactly the columns
+ * ProvisionalSheet writes minus the photo. `trg_log_bottle_added` posts the added_to_db
+ * activity. verify-bottle enriches it later. Called from Save, never from the picker.
+ */
+async function insertProvisionalBottle(
+  bottleName: string, publicUserId: string,
+): Promise<{ bottleId: string; variantId: string; name: string } | { error: string }> {
+  const { data: bottle, error } = await supabase
+    .from("bottles")
+    .insert([{ name: bottleName, distillery: null, category: null, barcode: null, verified: false, elo_global: 1500, created_by: publicUserId }])
+    .select("id, name")
+    .single();
+  if (error || !bottle) return { error: `Couldn't add "${bottleName}": ${error?.message ?? "unknown"}` };
+  const variantId = await insertDefaultVariant({ bottleId: bottle.id, createdBy: publicUserId, eloGlobal: 1500, verified: false });
+  if (!variantId) return { error: `"${bottleName}" was added but its variant did not come back - search for it.` };
+  logEvent({
+    eventType: "bottle_submitted",
+    surface: "admin_blinds",
+    targetType: "bottle",
+    targetId: bottle.id,
+    metadata: { from_scan: false, has_barcode: false, has_image: false, special: "none" },
+  });
+  return { bottleId: bottle.id, variantId, name: bottle.name };
+}
+
 /* ------------------------------------------------------------------------- */
 
 /**
  * The picker. Searches `all_variant_details` the way Search does (same fields, same
  * PostgREST quoting) but shows only what a placement needs: the bottle, its version, whether it
- * has been verified. "Add <typed name>" inserts the bottle as-is (see the note on the tab).
+ * has been verified. "Add <typed name>" makes a NEW pick; Save inserts it (see the note on the tab).
  */
 function BottlePickerSheet({
-  open, place, taken, publicUserId, onClose, onPick,
+  open, place, current, taken, publicUserId, onClose, onPick,
 }: {
   open: boolean;
   place: number;
+  /** What the row holds now; the search opens with its name typed so it can be corrected. */
+  current: Pick | null;
   taken: Set<string>;
   publicUserId: string;
   onClose: () => void;
@@ -395,11 +449,12 @@ function BottlePickerSheet({
   const [results, setResults] = useState<Catalog[]>([]);
   const [loading, setLoading] = useState(false);
   const [answered, setAnswered] = useState("");
-  const [adding, setAdding] = useState(false);
   const seq = useRef(0);
 
   useEffect(() => {
-    if (open) { setQuery(""); setResults([]); setAnswered(""); }
+    if (open) { setQuery(current?.name ?? ""); setResults([]); setAnswered(""); }
+    // `current` is read once, when the sheet opens; retyping must not reset the query.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const search = useCallback(async (term: string) => {
@@ -433,36 +488,11 @@ function BottlePickerSheet({
     return () => clearTimeout(id);
   }, [query, search]);
 
-  /**
-   * Bare provisional insert: name + created_by, everything else null, exactly the columns
-   * ProvisionalSheet writes minus the photo. `trg_log_bottle_added` posts the added_to_db
-   * activity. verify-bottle enriches it later.
-   */
-  const quickAdd = async () => {
+  /** "Add <typed>": a NEW pick, nothing written. Save inserts it (see the note on the tab). */
+  const quickAdd = () => {
     const bottleName = query.trim();
-    if (!bottleName || adding) return;
-    setAdding(true);
-    try {
-      const { data: bottle, error } = await supabase
-        .from("bottles")
-        .insert([{ name: bottleName, distillery: null, category: null, barcode: null, verified: false, elo_global: 1500, created_by: publicUserId }])
-        .select("id, name")
-        .single();
-      if (error || !bottle) { toast.error(`Couldn't add the bottle: ${error?.message ?? "unknown"}`); return; }
-      const variantId = await insertDefaultVariant({ bottleId: bottle.id, createdBy: publicUserId, eloGlobal: 1500, verified: false });
-      if (!variantId) { toast.error("Bottle added, but its variant did not come back — search for it."); return; }
-      logEvent({
-        eventType: "bottle_submitted",
-        surface: "admin_blinds",
-        targetType: "bottle",
-        targetId: bottle.id,
-        metadata: { from_scan: false, has_barcode: false, has_image: false, special: "none" },
-      });
-      toast.success(`Added "${bottle.name}" as provisional.`);
-      onPick({ variantId, bottleId: bottle.id, name: bottle.name, subtitle: null, imageUrl: null, verified: false });
-    } finally {
-      setAdding(false);
-    }
+    if (!bottleName) return;
+    onPick({ variantId: "", bottleId: "", name: bottleName, subtitle: null, imageUrl: null, verified: false, isNew: true });
   };
 
   const nothing = answered && !loading && results.length === 0;
@@ -532,9 +562,9 @@ function BottlePickerSheet({
           </div>
 
           {query.trim() && (
-            <Button variant="outline" onClick={quickAdd} disabled={adding} className="mt-2">
+            <Button variant="outline" onClick={quickAdd} className="mt-2">
               <Plus className="w-4 h-4 mr-1" />
-              {adding ? "Adding…" : `Not in the list? Add "${query.trim()}"`}
+              {`Not in the list? Add "${query.trim()}" as new`}
             </Button>
           )}
         </SheetContent>
