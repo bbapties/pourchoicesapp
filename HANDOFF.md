@@ -76,10 +76,16 @@ What is open and in what order now lives on **[the board](https://github.com/use
   `idle` (6h since the last idle/seed run: oldest unverified, then the recheck funnel), `seed`
   (queue empty: next of `seed_bourbons.json` via `next_seed.mjs` + `build_new_bottle_sql.mjs
   --unverified`), `none` (exit in one call). `bot_runs` is the clock + audit. One routine, not a
-  Haiku/Sonnet split: a run cannot hand off, so the gate IS the token saving. **Blocked on
-  Brian:** the first live run (cse_01PdiZtE3x7xDF4Dn1Qb5ee9) found ALL 7 env vars missing on
-  the claude.ai Environment - add them, and pause the LOCAL desktop task. The cloud checkout
-  lands on `main`; the prompt now checks out MVP-v3 first.
+  Haiku/Sonnet split: a run cannot hand off, so the gate IS the token saving. **LIVE since
+  2026-09-20 01:06Z** (first cloud run cse_01BtLvE5yi1kEprakDnfFVwE: urgent on Jack Daniel's
+  12yo). Two landmines on the way: (a) the Environment's variables are set at
+  claude.ai Settings > Claude Code > Environments > Default (not anywhere in the sidebar);
+  (b) **the cloud sandbox refuses raw-TCP Postgres** - only HTTPS through its proxy - so
+  `exec_sql_batch` (service_role only, one transaction per call; Brian applied it, an agent is
+  not allowed to create it) + `scripts/_db_http.mjs` give `_psql.mjs` / `run_sql_file.mjs` an
+  HTTPS fallback (auto when psql cannot connect, forced with `PC_DB_TRANSPORT=http`). The
+  cloud checkout lands on `main`; the prompt checks out MVP-v3 first. The LOCAL desktop task
+  should be paused (Brian).
 - **Next step per the board** (right to left): *In Progress* EMPTY. *Next Items per Brian* EMPTY.
   **First: Brian reviews #144 (the badge shelf) in the AM, then the badge moments for the 4 real
   users (flip `BADGE_MOMENTS_ENABLED`, decide whether to announce backdated tiers).**
