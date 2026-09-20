@@ -9,7 +9,20 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `232e604` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `bed4031` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Last session (2026-09-19 -> 20, Claude): the cloud bot went live; four small fixes; the
+  bot did four bottles on its own.** `be6b5cb` `b29a621` `de737f7` (#133, CLOSED - the block below
+  has the shape), `c06d450` no self-push (the actor's own devices are excluded even under another
+  account), `cafbf8f` every social push logs a `push_send` event (title, kind, recipient ids -
+  Brian got a push he could not place; next time it is one query), `1395976` a pour photo on a
+  card opens full screen (PhotoViewer, mounted once in AppShell, `pc:photo` event), `bed4031`
+  **swipe right from the left edge = back** (`useSwipeBack`: `pc:back` for non-route overlays ->
+  Escape for Radix dialogs -> `router.back()`). Also on the branch from Brian's own session
+  (`09b1904` `558cd82`): Blinds says the date back year-first; a data-quality audit SQL.
+  **Untracked landmine:** `.claude/settings.json.txt` - Brian created the permission allowlist
+  from the 2026-09-18 chat but Notepad added `.txt`; it does nothing until renamed to
+  `.claude/settings.json` (an agent may not write that file). Cards: #146 (fire the bot on
+  insert, Backlog), #147 (Brian to test: photo / swipe / no self-push).
 - **BADGES ARE BUILT (2026-09-18, late session, #138-#141 shipped; #21 epic stays open for the
   moments).** `efd30b8` engine + migration (applied to prod, backfill run for all 10 accounts,
   silent), `19a1e41` the medal, `df613ba` the shelf + level plate, `232e604` the push (OFF).
@@ -87,9 +100,12 @@ What is open and in what order now lives on **[the board](https://github.com/use
   cloud checkout lands on `main`; the prompt checks out MVP-v3 first. The LOCAL desktop task
   should be paused (Brian).
 - **Next step per the board** (right to left): *In Progress* EMPTY. *Next Items per Brian* EMPTY.
-  **First: Brian reviews #144 (the badge shelf) in the AM, then the badge moments for the 4 real
-  users (flip `BADGE_MOMENTS_ENABLED`, decide whether to announce backdated tiers).**
-  *Top Priority*: **#133** move the clean-up bot to the cloud - blocked on Brian (env vars +
+  *Top Priority* EMPTY (#133 closed). **First: Brian tests #144 (badge shelf) and #147 (photo /
+  swipe / self-push), then decides the badge moments for the 4 real users (flip
+  `BADGE_MOMENTS_ENABLED`, whether to announce backdated tiers). Brian also owes: pause the LOCAL
+  desktop task; rename `.claude/settings.json.txt`.** Then *Coming Soon*: #143 (badge Social post,
+  needs Brian's ok on the activities schema change), #137 (nested buttons, XS). Then Backlog.
+  *(old, resolved:)* #133 move the clean-up bot to the cloud - blocked on Brian (env vars +
   network on the Environment; then enable the routine, fire a run, read its log, pause the local
   task). *Brian to test*: #123, #125-#127, #132, **#135** (My Bar pass), **#136** (helper swap
   footnote). *Coming Soon*: **#137** (nested buttons, XS). Then Backlog - #39 (one card per version
@@ -1750,6 +1766,16 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-19 -> 20 - Claude (the cloud bot live over HTTPS; photo viewer; swipe back; push fixes)
+- #133: gate (`bot_gate.mjs`: urgent / idle / seed / none), `bot_runs`, seed mode (60 bourbons),
+  routine hourly at :15 (30-min was refused - platform floor). Two blockers found by running it:
+  env vars live at claude.ai Settings > Claude Code > Environments; the sandbox refuses raw-TCP
+  Postgres, hence `exec_sql_batch` (service_role only; Brian applied it - an agent is refused) and
+  the HTTPS fallback in `_psql.mjs` / `run_sql_file.mjs` (`scripts/_db_http.mjs`). First cloud
+  run 01:06Z; by 09:16Z it had done 3 urgent (MasterMUF's adds) + 1 idle bottle unattended.
+- `c06d450` `cafbf8f` push hygiene; `1395976` photo viewer; `bed4031` swipe back. Board: #133
+  closed, #146 Backlog, #147 Brian to test. Pane-verified everything; real-phone gestures are #147.
 
 ### 2026-09-18 (late) - Claude (badges BUILT: #138 #139 #140 #141)
 - Nine canvas rounds for the medal (Brian's references: a ruthenium/gold proof coin, then a
