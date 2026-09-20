@@ -66,6 +66,11 @@ One JSON line. Act on `mode`:
 | `idle` | Idle work is due: `bottle` is the oldest unverified never-checked bottle (Brian's, a data account's), or a recheck-funnel bottle (`reason` names the gaps). | Steps 2–8 on that bottle. On a funnel bottle, work the listed gaps; do not re-litigate fields that are filled and verified. |
 | `seed` | Idle work is due and the queue is empty. | **Seed mode** below, then Step 8. |
 
+**Urgent ticks keep going.** A real user who adds three bottles at once should not wait three
+hours. After Step 8 closes an `urgent` run, run the gate again; if it answers `urgent` again, do
+that bottle too - up to **3 bottles per tick**, then stop and say how many are still waiting.
+`idle` and `seed` are strictly one per tick.
+
 Keep `run_id`: Step 8 closes the row with it. Load the bottle row and every variant, and the
 creator's own add-photo if there is one. Where the gate says `added_by`, that is who to thank in
 the push (Step 7 handles it).
