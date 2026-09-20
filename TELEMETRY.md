@@ -130,6 +130,7 @@ Variant model (#70), from the admin triage queue:
 | `variant_triage` | an admin decided a bottle is `single` or `needs_merge` (metadata: `bottleId`, `triage`) |
 | `variant_split` | a bottle became a rollup parent (metadata: `bottleId`, `axis`) |
 | `bottle_purge` | an admin deleted a bottle AND its history, rebuilding every Elo (metadata: `bottleId`, `impact`) |
+| `bottle_junked` | an admin removed an erroneous add (bug / bad search) from the Review case file - one tap, no name typed, only allowed when nobody has tasted, poured, emptied or rated it; the adder is not told (metadata: `name`, `added_by`, `impact`) |
 | `bottle_merge` | a duplicate was folded into another bottle (metadata: `source`, `target`, `map`) |
 
 `variant_split` is the interesting one to watch: it is irreversible in practice, it changes what

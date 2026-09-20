@@ -266,6 +266,8 @@ function CaseFileSheet({ bottleId, publicUserId, onClose, onChanged }: { bottleI
               <Section n={4} title="On the shelf" hint={!def?.frontimageUrl ? "no image" : imageRejected ? "rejected" : imageFlagged ? "flagged by a user" : def?.shelfReady ? "approved" : "unreviewed"}>
                 <ShelfCheck file={file} neighbours={neighbours} reasons={reasons} setReasons={setReasons} publicUserId={publicUserId} onDone={changed} />
               </Section>
+
+              <JunkRow file={file} onDone={() => { onChanged(); onClose(); }} />
               <div className="h-24" />
             </div>
 
@@ -729,6 +731,63 @@ function ShelfRow({ bottles }: { bottles: { key: string; url: string | null; h: 
       <div className="flex justify-around text-[10px] text-cream-faint px-2 py-1 bg-panel">
         {bottles.map((b) => <span key={b.key} className={`truncate max-w-[25%] ${b.hi ? "text-brass" : ""}`}>{b.label}</span>)}
       </div>
+    </div>
+  );
+}
+
+/* ========================================================================= */
+/* junk: an erroneous add (a bug, a bad search) that nobody has actually used  */
+
+/**
+ * Brian (2026-09-20): most bad bottles are not real-world mistakes, they are bugs or bad
+ * searching at add time, and the delete behind the "…" menu is the wrong shape for that: the
+ * moment a bottle is added it sits in the adder's bar with a feed post, so the menu says
+ * "referenced 2x, type the name". This row is the one-tap version, and it stays honest about
+ * when it may not be used: anything tasted, poured, emptied or star-rated is real usage and
+ * goes through the typed purge instead. The adder is not told; it just vanishes.
+ */
+const USAGE_KEYS = ["tasted", "blind_tastings", "head_to_head_pairs", "pours", "emptied", "star_ratings"] as const;
+
+function JunkRow({ file, onDone }: { file: CaseFile; onDone: () => void }) {
+  const [impact, setImpact] = useState<{ total: number; detail: Record<string, number> } | null>(null);
+  const [arm, setArm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setArm(false); deleteImpact(file.bottleId).then(setImpact); }, [file.bottleId]);
+
+  const used = impact ? USAGE_KEYS.reduce((n, k) => n + (Number(impact.detail[k]) || 0), 0) : 0;
+  const bars = Number(impact?.detail.in_bars) || 0;
+
+  const junk = async () => {
+    setBusy(true);
+    // purge_bottle wants the name typed; for junk the row itself supplies it. The guard here is
+    // the two taps plus the usage check above.
+    const r = await purgeBottle(file.bottleId, file.name);
+    setBusy(false);
+    if (r.error) return toast.error(r.error);
+    logEvent({ eventType: "bottle_junked", surface: "admin_review", targetType: "bottle", targetId: file.bottleId, metadata: { name: file.name, added_by: file.addedBy, impact: impact?.detail } });
+    toast.success(`${file.name} is gone.`);
+    onDone();
+  };
+
+  if (!impact) return null;
+  return (
+    <div className="pt-3 border-t border-brass-line text-xs">
+      {used > 0 ? (
+        <p className="text-cream-faint">Someone has tasted, poured or rated this, so it is not junk. Use the … menu to purge it, name typed.</p>
+      ) : !arm ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-cream-faint">Not a real bottle? A bug or a bad search at add time.</p>
+          <Button variant="outline" size="sm" onClick={() => setArm(true)} className="shrink-0">Junk — delete</Button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-cream-mute">Delete <span className="text-cream">{file.name}</span>?{bars > 0 ? ` Removes it from ${bars} bar${bars === 1 ? "" : "s"}.` : ""} Nobody is told.</p>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => setArm(false)} disabled={busy}>Keep</Button>
+            <Button variant="brass" size="sm" onClick={junk} disabled={busy}>{busy ? "…" : "Delete"}</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
