@@ -225,8 +225,8 @@ export async function POST(request: Request) {
     // the earner gets their own wording
     const own = { title: `You earned ${label}`, body: "It's on your shelf. Tap to see the ladder.", url: "/profile" };
     const [selfResult, otherResult] = await Promise.all([
-      sendPushTo(admin, [caller.id], own),
-      recipients.length > 1 ? sendPushTo(admin, recipients.slice(1), msg, caller.id) : Promise.resolve({ sent: 0 }),
+      sendPushTo(admin, [caller.id], { ...own, kind: "badge_earned_self" }),
+      recipients.length > 1 ? sendPushTo(admin, recipients.slice(1), { ...msg, kind: "badge_earned" }, caller.id) : Promise.resolve({ sent: 0 }),
     ]);
     return NextResponse.json({ sent: (selfResult.sent ?? 0) + (otherResult.sent ?? 0), recipients: recipients.length });
   } else {
@@ -235,6 +235,6 @@ export async function POST(request: Request) {
 
   if (!msg || !recipients.length) return NextResponse.json({ sent: 0 });
   // The caller's own devices never hear about the caller's own action - not even under another account.
-  const result = await sendPushTo(admin, recipients, msg, caller.id);
+  const result = await sendPushTo(admin, recipients, { ...msg, kind: body.kind }, caller.id);
   return NextResponse.json({ ...result, recipients: recipients.length });
 }

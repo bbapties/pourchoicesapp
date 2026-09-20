@@ -269,6 +269,10 @@ client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
   its post (#20). `target_id` = activity id, `surface` = where the list was.
 - `click` → `reveal_full_ranking` — "See the full ranking" on the reveal screen (#20). `target_id` =
   the new `tasted` activity.
+- `push_send` (surface `social`) — one row per social push sent by `sendPushTo` (#114): `user_id` =
+  the actor, `target_type` = the notify kind (`activity`, `cheer`, `badge_earned` ...), `metadata =
+  { title, url, recipients: [user ids], devices, sent, failed }`. Added 2026-09-20 so "who got
+  what" is answerable after the fact. The admin composer logs its own `push_send` without a surface.
 - `badge_tier_up` — the award engine reported a tier going up for this user (#138). `target_id` =
   badge id, `metadata = { tier, progress, fired }` where `fired` says whether the moment
   (push) was actually sent - false while `BADGE_MOMENTS_ENABLED` is off in `src/lib/badges.ts`.

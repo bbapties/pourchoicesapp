@@ -6,7 +6,9 @@ import webpush from "web-push";
 // VAPID from env, the master switch users.notify_push on the subscription join, dead endpoints
 // pruned. Never import from a client component - the private key lives here.
 
-export type PushMessage = { title: string; body: string; url: string };
+export type PushMessage = {
+  /** which notify kind produced it (social route); for the log */
+  kind?: string; title: string; body: string; url: string };
 
 export function pushConfigured(): boolean {
   return !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
@@ -65,5 +67,16 @@ export async function sendPushTo(admin: SupabaseClient, userIds: string[], msg: 
     }),
   );
   if (expired.length) await admin.from("push_subscriptions").delete().in("id", expired);
+  // Every send leaves a trail (2026-09-20: Brian got a push he could not place, and nothing
+  // recorded who was sent what). Ids only; the title is what the phone showed.
+  try {
+    await admin.from("events").insert({
+      user_id: actorId ?? null,
+      event_type: "push_send",
+      surface: "social",
+      target_type: msg.kind ?? null,
+      metadata: { title: msg.title.slice(0, 80), url: msg.url, recipients: [...new Set(targets.map((s: any) => s.user_id))], devices: targets.length, sent, failed },
+    });
+  } catch { /* fail-open */ }
   return { sent, failed };
 }
