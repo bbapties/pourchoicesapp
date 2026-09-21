@@ -29,6 +29,15 @@ const LADDER_FRAME: Record<MedalTier, MedalFrame> = {
 /** One-offs that ship on the stained-wood + onyx plate. Everyone else one-off is wood. */
 const LIMITED_IDS = new Set(["founders_reserve"]);
 
+/**
+ * Badges whose 3D object cutout exists at public/badges/objects/<id>.webp. Medal draws that
+ * image OVER the plate instead of the SVG glyph (the FR eagle's wings cross the inner ring, so
+ * the object sits in front, not behind). Built by scripts/founders_reserve_medal.mjs and its
+ * successors; one id per shipped object, never the whole catalog at once (docs/BADGE_ART.md).
+ */
+const OBJECT_IDS = new Set(["founders_reserve"]);
+export const hasObject = (badgeId: string) => OBJECT_IDS.has(badgeId);
+
 export function frameFor(tier: MedalTier, oneOff: boolean, badgeId: string): MedalFrame {
   if (tier === 0) return "locked";
   if (oneOff) return LIMITED_IDS.has(badgeId) ? "limited" : "wood";

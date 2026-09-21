@@ -5,6 +5,7 @@ import { GLYPH_KEYS } from "@/components/badges/BadgeSprite";
 import {
   TIER_NAME,
   frameFor,
+  hasObject,
   type MedalFrame,
   type MedalTier,
 } from "@/lib/badgeArt";
@@ -15,7 +16,7 @@ export { TIER_NAME };
 /**
  * The badge coin (#150): a photoreal plate (public/badges/frames) with the badge's SVG glyph
  * inlaid in the well and 0–4 stars drawn on top. The glyph is the interim object layer - each
- * badge's 3D cutout replaces it one at a time. The all-SVG coin (#140) only draws now if the
+ * badge's 3D cutout (public/badges/objects, `hasObject`) replaces it one at a time. The all-SVG coin (#140) only draws now if the
  * plate image fails to load, so the shelf never blanks.
  *
  * Sizes that hold: 38 (ladder), 66 (toast / feed card), 100 (shelf), 124 (sheet).
@@ -131,6 +132,8 @@ function GlyphOverlay({ glyph, frame, size, initial }: { glyph: string; frame: M
 export default function Medal({ tier, glyph, stars = 0, initial, size = 100, className, title, badgeId, oneOff }: Props) {
   const frame = frameFor(tier, !!oneOff, badgeId ?? "");
   const [plateFailed, setPlateFailed] = useState(false);
+  const [objectFailed, setObjectFailed] = useState(false);
+  const object = !!badgeId && hasObject(badgeId) && !objectFailed;
   if (plateFailed) {
     return <SvgMedal tier={tier} glyph={glyph} stars={stars} initial={initial} size={size} className={className} title={title} />;
   }
@@ -150,7 +153,20 @@ export default function Medal({ tier, glyph, stars = 0, initial, size = 100, cla
         onError={() => setPlateFailed(true)}
         style={{ position: "absolute", inset: 0, display: "block" }}
       />
-      <GlyphOverlay glyph={glyph} frame={frame} size={size} initial={initial} />
+      {object ? (
+        // the badge's 3D object, in front of the plate; dimmed on the locked plate like the glyph
+        <img
+          src={`/badges/objects/${badgeId}.webp`}
+          alt=""
+          width={size}
+          height={size}
+          draggable={false}
+          onError={() => setObjectFailed(true)}
+          style={{ position: "absolute", inset: 0, display: "block", pointerEvents: "none", opacity: frame === "locked" ? 0.45 : 1 }}
+        />
+      ) : (
+        <GlyphOverlay glyph={glyph} frame={frame} size={size} initial={initial} />
+      )}
       <StarOverlay count={stars} size={size} frame={frame} />
     </div>
   );

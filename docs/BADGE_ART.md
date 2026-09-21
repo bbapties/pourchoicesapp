@@ -10,7 +10,24 @@ plates, then seen Founder's Reserve on the real Profile shelf at 100px and the 3
 
 ---
 
-## Right now (2026-09-21, evening)
+## Right now (2026-09-21, night)
+
+**Founder's Reserve has its object** (Brian's design, 2026-09-21): a gold eagle, wings spread
+across the inner ring, a Glencairn of whiskey in front with **"Pour / Choices"** etched on the bowl
+just above the liquid. Built by `scripts/founders_reserve_medal.mjs` from Brian's three cut-out
+parts (`masters/parts/`: eagle with a rectangular hole for the glass, glass, bowl - the bowl part is
+the liquid already inside the glass part and is unused; `fr-mockup.webp` is his composite). The
+hole is filled with the chest feathers flipped down so the body reads through the glass. Every
+layout number is a constant at the top of the script; re-run it, never hand-edit the WebP.
+
+`Medal` draws it via `OBJECT_IDS` / `hasObject()` in `src/lib/badgeArt.ts`: the object image sits
+**in front of** the plate (the wings cross the ring), dimmed on Locked, glyph fallback if the image
+fails. Reviewed on the real Profile shelf at 100, the 250 sheet and the 38 ladder (temporary local
+release, reverted). Still under "Coming soon" on prod until Brian releases it.
+
+**Next object:** one at a time, Brian supplies the parts or a mockup; same stacking script pattern.
+
+## Earlier (2026-09-21, evening)
 
 **The seven empty plates are signed** (Brian, 2026-09-21 - the labeled dock is what he sent back
 as "the background base of all the medals") **and wired in.** `frames/` serves all seven at 512;
@@ -114,7 +131,7 @@ Judge every plate at **38px first**, then 100px. Sizes that must hold: 38 (ladde
 | **Diamond** | **Signed** | `masters/diamond-signed.jpg` | Nothing - `diamond.webp` is the crop of the finished still (2026-09-21). |
 | Wood | **Signed** | `masters/plates-1024/wood.webp` | Nothing. |
 | Locked / Bronze / Silver | **Signed** | `masters/plates-1024/` | Nothing. |
-| Objects | **Frozen** | `objects/founders_reserve.webp` exists | Brian rejected the FR composite (bottle on Limited). Do not iterate the bottle until plates sign off. |
+| Objects | FR **signed** | `objects/founders_reserve.webp` (eagle + glass) | The rejected bottle cutout is `masters/fr-bottle-rejected.webp`. |
 
 `public/badges/review/` is the **abandoned overlay dock** (barrel hoop visible around the metal).
 Do not copy those into `frames/`. The labeled contact sheet there is history, not the signed set.
@@ -214,7 +231,7 @@ plate.
 
 | `badge_id` | Object in the well |
 |---|---|
-| `founders_reserve` | Miniature amber bottle, red wax `FR` (cutout already at `objects/founders_reserve.webp`) |
+| `founders_reserve` | **Shipped:** gold eagle + Glencairn etched "Pour / Choices" (`objects/founders_reserve.webp`, built by `scripts/founders_reserve_medal.mjs`) |
 | `regular_pour` | Glencairn of amber whiskey |
 | `night_owl` | Short glass under a crescent moon, or a candle — first pass is cheap to reject |
 | `blindfold` | Silk blindfold draped over a Glencairn |
@@ -247,7 +264,11 @@ localhost if the shelf still shows pewter.
 
 ```
 public/badges/frames/{locked,wood,bronze,silver,gold,diamond,limited}.webp
-public/badges/objects/{badgeId}.webp          # only founders_reserve today
+public/badges/objects/{badgeId}.webp          # only founders_reserve today (eagle + glass)
+public/badges/masters/founders_reserve-1024.webp  # the FR object at 1024 (parts are ~400px, so an upscale)
+public/badges/masters/parts/                  # Brian's FR cut-outs + mockup - the script's inputs
+public/badges/masters/fr-bottle-rejected.webp # the first FR object (bottle), rejected
+scripts/founders_reserve_medal.mjs            # stacks the parts, etches the glass, writes previews
 public/badges/masters/limited-signed.jpg      # Brian signed this look
 public/badges/masters/diamond-signed.jpg      # the finished Diamond still (cropped to frames/)
 public/badges/masters/diamond-rings.jpg       # earlier Diamond: rings right, honey well
@@ -255,7 +276,7 @@ public/badges/masters/diamond-well-ref.png    # pale oak reference used for the 
 public/badges/masters/plates-1024/*.webp      # the seven plates at 1024; frames/ is the 512 downsize
 public/badges/masters/gold-geometry.png       # magenta-outside check of the gold master
 public/badges/review/                         # abandoned overlay comps — do not ship
-src/lib/badgeArt.ts                           # frameFor, TIER_NAME, LIMITED_IDS
+src/lib/badgeArt.ts                           # frameFor, TIER_NAME, LIMITED_IDS, OBJECT_IDS
 src/components/badges/Medal.tsx               # photoreal path + SVG fallback
 src/components/badges/BadgeShelf.tsx          # labels via TIER_NAME
 src/lib/coaches.ts                            # "Wood to Diamond"
