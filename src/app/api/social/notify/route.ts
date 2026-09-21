@@ -38,7 +38,7 @@ type Body = {
   note?: string;
 };
 
-const NOTIFY_ACTIONS = new Set(["drank", "tasted", "added_to_collection", "wishlisted"]);
+const NOTIFY_ACTIONS = new Set(["drank", "tasted", "added_to_collection", "wishlisted", "posted"]);
 
 function verb(action: string, pourType: string | null, bottle: string): string {
   switch (action) {
@@ -50,6 +50,8 @@ function verb(action: string, pourType: string | null, bottle: string): string {
       return `added ${bottle} to their bar`;
     case "wishlisted":
       return `wants ${bottle}`;
+    case "posted":
+      return "posted about a pour choice";
     default:
       return action.replace(/_/g, " ");
   }

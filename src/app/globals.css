@@ -56,6 +56,7 @@
   --color-act-pour: #d6b565;
   --color-act-blind: #9d7ce6;
   --color-act-wish: #4fb3d9;
+  --color-act-post: #f6ecd9;
 
   --font-sans: var(--font-body), "Segoe UI", system-ui, sans-serif;
   --font-display: var(--font-display), Georgia, "Times New Roman", serif;

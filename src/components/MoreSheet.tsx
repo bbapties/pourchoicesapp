@@ -20,6 +20,8 @@ interface MoreSheetProps {
   onBlindTasting?: () => void;
   /** Hard delete — removes all rows + history. Owned + empty states. */
   onRemove?: () => void;
+  /** Write a Social post with this bottle tagged (Brian, 2026-09-21). */
+  onPost?: () => void;
 }
 
 type Row = {
@@ -40,12 +42,14 @@ export default function MoreSheet({
   onHaveADrink,
   onBlindTasting,
   onRemove,
+  onPost,
 }: MoreSheetProps) {
   const rows: Row[] = [];
   if (onAddVariant) rows.push({ label: "Add a variant", hint: "A batch, release, or your store pick", onClick: onAddVariant });
   if (onAddAnother) rows.push({ label: "Add another", hint: "You bought another bottle of this", onClick: onAddAnother });
   if (onHaveADrink) rows.push({ label: "Have a drink", hint: "Neat, rocks, mixed, or start a blind tasting", onClick: onHaveADrink });
   if (onBlindTasting) rows.push({ label: "Blind tasting", hint: `Rank this against up to ${MAX_PICKS - 1} others`, onClick: onBlindTasting });
+  if (onPost) rows.push({ label: "Post about this", hint: "A few words and a photo, on the Social feed", onClick: onPost });
   if (onMarkEmpty) rows.push({ label: "Mark as Empty", hint: "Moves to Empty Bottles, kept in your history", onClick: onMarkEmpty });
   if (onRemove) rows.push({ label: "Remove from collection", hint: "Only if added by mistake — a tasting keeps its rating", onClick: onRemove, danger: true });
 

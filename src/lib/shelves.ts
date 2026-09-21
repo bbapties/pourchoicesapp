@@ -314,6 +314,8 @@ async function fetchSocial({ viewerId, cursor, limit = SHELF_PAGE_SIZE, onlyUser
     // Same exclusion as the Social tab -- the shelf is that tab seen from across the room, so a
     // bottle that only ever got verified must not appear on it either.
     .not("action", "in", FEED_HIDDEN_FILTER)
+    // A free-text post with no bottle tagged has nothing to stand on a shelf (Brian, 2026-09-21).
+    .not("bottle_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(window);
   if (cursor) q = q.lt("created_at", cursor);
@@ -434,6 +436,7 @@ async function countSocial() {
       .select("bottle_id, users!activities_user_id_fkey!inner(account_type)")
       .eq("users.account_type", "human")
       .not("action", "in", FEED_HIDDEN_FILTER)
+      .not("bottle_id", "is", null)
   );
 }
 

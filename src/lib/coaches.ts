@@ -242,6 +242,18 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // 2026-09-21: a free-text post, from the Post button on Social, a bottle's More sheet, or Profile.
+    id: "social.compose",
+    title: "Write a post",
+    body: "Say something on the Social feed that is not about logging a bottle - a few words, a photo, and a tagged bottle if you like. The Post button sits over the feed; a bottle's More sheet has Post about this.",
+    route: "/social",
+    core: false,
+    announce: true,
+    tour: [
+      { route: "/social", anchor: "social.compose", caption: "Tap Post to write one. Tag a bottle and it also shows on the Home shelf." },
+    ],
+  },
+  {
     // The cabinet's top trim carries the scanner, so scanning no longer starts in Search.
     id: "home.scan",
     title: "Drink and scan from Home",

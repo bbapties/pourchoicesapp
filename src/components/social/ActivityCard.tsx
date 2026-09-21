@@ -53,6 +53,8 @@ export function verbFor(row: ActivityRow, groupSize = 1): string {
       return groupSize > 1 ? `added ${groupSize} bottles to their bar` : "added a bottle to their bar";
     case "wishlisted":
       return groupSize > 1 ? `wants ${groupSize} bottles` : "wants a bottle";
+    case "posted":
+      return "posted about a pour choice";
     default:
       return row.action.replace(/_/g, " ");
   }
@@ -71,6 +73,7 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
 
   // A rolled card's body is one <button> that splits it, so nothing inside may be a button too.
   const openBottle = rolled || !onOpenBottle ? undefined : (e: React.MouseEvent, row: ActivityRow) => {
+    if (!row.bottleId) return;
     e.preventDefault();
     e.stopPropagation();
     onOpenBottle(row.bottleId, row.variantId ?? null);
@@ -97,6 +100,8 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
         return photo ? <PourBody item={item} detail={detail} onOpenBottle={openBottle} /> : <ShelfBody rows={group} onOpenBottle={openBottle} />;
       case "wishlisted":
         return photo ? <PourBody item={item} detail={detail} onOpenBottle={openBottle} /> : <ShelfBody rows={group} onOpenBottle={openBottle} />;
+      case "posted":
+        return <PostBody item={item} detail={detail} onOpenBottle={openBottle} />;
       default:
         return <ShelfBody rows={[item]} onOpenBottle={openBottle} />;
     }
@@ -302,6 +307,51 @@ function ShelfBody({ rows, onOpenBottle }: { rows: FeedItem[]; onOpenBottle: Ope
 }
 
 /**
+ * A free-text post (Brian, 2026-09-21): the words first, then the tagged bottle as the same
+ * compact row a pour uses (if one is tagged), then the photo under everything.
+ */
+function PostBody({ item, detail, onOpenBottle }: { item: FeedItem; detail: boolean; onOpenBottle: OpenBottle }) {
+  const photo = item.details?.photo_url ?? null;
+  const note = item.details?.note ?? null;
+  const stars = item.details?.stars ?? item.posterStars ?? null;
+  return (
+    <div className={photo ? "" : "pb-3"}>
+      {note && (
+        detail ? (
+          <p className="text-[15px] leading-relaxed text-cream px-3.5 whitespace-pre-wrap">{note}</p>
+        ) : (
+          <p className="text-[15px] leading-snug text-cream px-3.5" style={{ display: "-webkit-box", WebkitLineClamp: 6, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {note}
+          </p>
+        )
+      )}
+      {item.bottleId && (
+        <div className={`flex items-center gap-3 px-3.5 ${note ? "mt-3" : ""}`}>
+          <BottleTap row={item} onOpenBottle={onOpenBottle} className="w-11 h-14 shrink-0 flex items-end justify-center">
+            {item.bottleImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={item.bottleImageUrl} alt="" className="max-h-14 max-w-full object-contain" />
+            ) : (
+              <BottlePlaceholderImage />
+            )}
+          </BottleTap>
+          <div className="min-w-0 flex-1">
+            <BottleLine item={item} onOpenBottle={onOpenBottle} />
+            {stars != null && <div className="mt-1"><Stars value={stars} size={12} /></div>}
+          </div>
+        </div>
+      )}
+      {photo && (
+        <button type="button" onClick={(e) => openPhoto(e, photo, item)} className="block w-full mt-3" aria-label="See the photo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo} alt="" className={`w-full object-cover border-t border-black/50 ${detail ? "max-h-[70vh]" : "aspect-[4/5] max-h-[460px]"}`} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
  * Tier 4 - a pour with no photo. Compact: pours happen all the time, so one quiet row - the
  * bottle, the stars, how they took it in small type, and the first line of the note.
  */
@@ -353,7 +403,7 @@ function openPhoto(e: React.MouseEvent, url: string, item: FeedItem) {
   e.preventDefault();
   e.stopPropagation();
   logClick("post_photo_opened", { targetId: item.id, surface: "social" });
-  window.dispatchEvent(new CustomEvent("pc:photo", { detail: { url, caption: `${item.username} · ${item.bottleName}` } }));
+  window.dispatchEvent(new CustomEvent("pc:photo", { detail: { url, caption: item.bottleName ? `${item.username} · ${item.bottleName}` : `@${item.username}` } }));
 }
 
 /**

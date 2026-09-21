@@ -71,7 +71,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
     }
     setItem(item);
     setComments(await fetchComments(activityId));
-    if (item.action === "drank" || item.action === "finished") {
+    if ((item.action === "drank" || item.action === "finished") && item.bottleId) {
       fetchPersonalRank(item.userId, item.bottleId).then(setRank);
     }
   }, [activityId, publicUserId]);
@@ -138,14 +138,14 @@ export default function PostClient({ activityId }: { activityId: string }) {
   };
 
   const addToBar = async () => {
-    if (!publicUserId || !item) return;
+    if (!publicUserId || !item?.bottleId) return;
     const res = await addOrRestockUserBottle({ userId: publicUserId, bottleId: item.bottleId, variantId: item.variantId ?? null });
     if ("error" in res) toast.error("Couldn't add it");
     else toast.success("Added to My Bar");
   };
 
   const joinWithDrink = async () => {
-    if (!publicUserId || !item) return;
+    if (!publicUserId || !item?.bottleId) return;
     logClick("join_drink", { userId: publicUserId, targetId: item.id, surface: "/post", metadata: { choice: "pour", bottle_id: item.bottleId } });
     const [details, { data: rows }] = await Promise.all([
       loadBottleDetails(item.bottleId, publicUserId),
@@ -157,7 +157,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
   };
 
   const joinWithBlind = () => {
-    if (!publicUserId || !item) return;
+    if (!publicUserId || !item?.bottleId) return;
     logClick("join_drink", { userId: publicUserId, targetId: item.id, surface: "/post", metadata: { choice: "blind", bottle_id: item.bottleId } });
     const params = new URLSearchParams({ bottle: item.bottleId });
     if (item.variantId) params.set("variant", item.variantId);
@@ -165,7 +165,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
   };
 
   const wishlist = async () => {
-    if (!publicUserId || !item) return;
+    if (!publicUserId || !item?.bottleId) return;
     const variantId = item.variantId ?? (await resolveDefaultVariantId(item.bottleId));
     if (!variantId) { toast.error("Couldn't wishlist it"); return; }
     const res = await addToWishlist(publicUserId, item.bottleId, variantId);
@@ -241,7 +241,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
               </div>
             )}
 
-            {publicUserId && publicUserId !== item.userId && item.action !== "tasted" && (
+            {publicUserId && publicUserId !== item.userId && item.action !== "tasted" && item.bottleId && (
               <div className="px-4 pt-2">
                 {joining ? (
                   <div className="flex gap-2.5">
@@ -257,7 +257,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
               </div>
             )}
 
-            {publicUserId && publicUserId !== item.userId && item.action !== "tasted" && (
+            {publicUserId && publicUserId !== item.userId && item.action !== "tasted" && item.bottleId && (
               <div className="flex gap-2.5 px-4 py-2">
                 <button type="button" onClick={addToBar} className="flex-1 h-11 rounded-lg border border-edge bg-panel text-sm font-semibold text-cream">Add to my bar</button>
                 <button type="button" onClick={wishlist} className="flex-1 h-11 rounded-lg border border-edge bg-panel text-sm font-semibold text-cream">Wishlist</button>

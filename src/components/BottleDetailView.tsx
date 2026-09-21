@@ -13,6 +13,7 @@ import PourSheet, { type PourSubmission } from "@/components/PourSheet";
 import { EarmarkCorner } from "@/components/BottleCard";
 import { recordPour } from "@/lib/pours";
 import MoreSheet from "@/components/MoreSheet";
+import { openComposer } from "@/components/social/PostComposer";
 import HistoryModal from "@/components/HistoryModal";
 import RatePromptSheet from "@/components/RatePromptSheet";
 import { fetchUserRatingState, setRatingStars } from "@/lib/ratings";
@@ -1399,6 +1400,13 @@ export default function BottleDetailView({
           onBlindTasting={() => startBlindTasting("more")}
           onMarkEmpty={collectionState === 'owned' ? handleMarkEmpty : undefined}
           onRemove={() => { setShowMoreSheet(false); setShowDeleteConfirm(true); }}
+          onPost={() => {
+            setShowMoreSheet(false);
+            openComposer({
+              surface: "bottle",
+              bottle: { bottleId: bottle.id, variantId: currentVariant?.variantId ?? null, name: localBottle.name, distillery: localBottle.distillery ?? null, imageUrl: shown.frontImageUrl ?? null },
+            });
+          }}
         />
       )}
 

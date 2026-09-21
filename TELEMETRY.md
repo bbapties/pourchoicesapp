@@ -282,6 +282,9 @@ client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
 - `post_photo_set` / `post_photo_removed` — a photo was put on, or taken off, one of your own posts
   after the fact (2026-09-21). `surface` = `showoff` (the nudge right after an add / empty) or `/post`
   (Edit on your own post); `target_id` = activity id. The photo itself is `activities.details.photo_url`.
+- `post_written` — a free-text Social post (2026-09-21). `surface` = `/social` / `bottle` / `/profile`
+  (where the composer was opened), `target_id` = activity id, `metadata = { has_photo, has_bottle, chars }`.
+- `click` → `compose_opened` — the composer sheet opened; `metadata = { pretagged }`.
 - `click` → `showoff_opened` / `showoff_dismissed` — the Show it off bar after an add / empty: they
   opened the picker, or tapped Not now (letting it time out logs nothing). `metadata = { action }`.
 - `click` → `badge_sheet_opened` — a coin on a badge shelf was tapped (#139). `target_id` = badge id,

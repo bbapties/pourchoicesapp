@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
 import ActivityCard from "@/components/social/ActivityCard";
+import { openComposer } from "@/components/social/PostComposer";
 import { fetchFeedPage, splitGroup, toggleCheer, type FeedItem } from "@/lib/social";
 import { notify } from "@/lib/notify";
 import PeopleSheet from "@/components/user/PeopleSheet";
@@ -134,6 +135,14 @@ export default function SocialClient() {
     if (publicUserId) saveFeedDefault(publicUserId, next);
     load(true, { scope: next });
   };
+
+  // A post just written from anywhere: the feed starts over so it is at the top.
+  useEffect(() => {
+    const on = () => load(true);
+    window.addEventListener("pc:posted", on);
+    return () => window.removeEventListener("pc:posted", on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, graph]);
 
   // The graph and the remembered scope arrive together, then the first page.
   const boot = useCallback(async () => {
@@ -355,6 +364,21 @@ export default function SocialClient() {
       </div>
 
       <Toaster position="top-center" style={{ top: "calc(56px + env(safe-area-inset-top))" }} />
+
+      {/* Write a post - a floating button over the feed (Brian, 2026-09-21: not a tiny pencil in a corner). */}
+      {publicUserId && (
+        <button
+          type="button"
+          onClick={() => openComposer({ surface: "/social" })}
+          className="fixed right-4 z-30 h-14 pl-4 pr-5 rounded-full pc-brass text-engrave font-bold text-sm tracking-wide flex items-center gap-2 shadow-[0_8px_20px_rgba(0,0,0,.6)]"
+          style={{ bottom: "calc(80px + env(safe-area-inset-bottom))" }}
+          aria-label="Write a post"
+          data-coach="social.compose"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+          Post
+        </button>
+      )}
 
       <PeopleSheet
         open={searchOpen}

@@ -6,7 +6,7 @@ import { avatarInitials } from "@/lib/avatar";
 // a brass ring, the same on Home's Social shelf (floating under a bottle) and in a Social card's
 // header (standing inline). Seeing it in both places is how the glyphs teach themselves. Each
 // action wears a colour so a scroll reads at a glance: green added, red emptied, brass poured,
-// plum blind, blue wishlisted. The colours are tokens in globals.css (--color-act-*).
+// plum blind, blue wishlisted, cream posted. The colours are tokens in globals.css (--color-act-*).
 
 /** The CSS colour var for an action; anything else falls back to brass. */
 export function actionColor(action: string): string {
@@ -16,6 +16,7 @@ export function actionColor(action: string): string {
     case "drank": return "var(--color-act-pour)";
     case "tasted": return "var(--color-act-blind)";
     case "wishlisted": return "var(--color-act-wish)";
+    case "posted": return "var(--color-act-post)";
     default: return "var(--color-brass-hi)";
   }
 }
@@ -33,6 +34,9 @@ export function ActionGlyph({ action, size = 19 }: { action: string; size?: numb
       return <svg {...common}><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z" /><path d="M4 4l16 16" /></svg>;
     case "wishlisted":
       return <svg {...common}><path d="M6 3h12v18l-6-4-6 4z" /></svg>;
+    case "posted":
+      // a speech bubble: they said something
+      return <svg {...common}><path d="M21 12a8 8 0 0 1-8 8H6l-3 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" /><path d="M9 11h6M9 14h3" /></svg>;
     default:
       return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>;
   }

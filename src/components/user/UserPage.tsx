@@ -10,6 +10,7 @@ import ShelfRun from "@/components/home/ShelfRun";
 import PickedUpBottle from "@/components/home/PickedUpBottle";
 import ActivityCard from "@/components/social/ActivityCard";
 import { Stars, Chip } from "@/components/social/ActivityCard";
+import { openComposer } from "@/components/social/PostComposer";
 import ProfileSettingsSheet from "@/components/ProfileSettingsSheet";
 import PeopleSheet, { type PeopleMode } from "@/components/user/PeopleSheet";
 import BellSheet from "@/components/user/BellSheet";
@@ -59,6 +60,12 @@ export default function UserPage({ own = false, username }: Props) {
   const [hasMore, setHasMore] = useState(false);
   const [picked, setPicked] = useState<ShelfBottle | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // A post written from here (or anywhere) reloads the page's feed.
+  useEffect(() => {
+    const on = () => setReloadKey((k) => k + 1);
+    window.addEventListener("pc:posted", on);
+    return () => window.removeEventListener("pc:posted", on);
+  }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   // #111 relationship state, from the viewer's side.
@@ -364,7 +371,14 @@ export default function UserPage({ own = false, username }: Props) {
       )}
 
       {/* Recent activity */}
-      <SectionHead title="Recent activity" />
+      <div className="flex items-center justify-between pr-4">
+        <SectionHead title="Recent activity" />
+        {own && (
+          <button type="button" onClick={() => openComposer({ surface: "/profile" })} className="h-8 px-3 rounded-full pc-brass text-engrave text-xs font-bold tracking-wide" aria-label="Write a post">
+            + Post
+          </button>
+        )}
+      </div>
       {feed.length === 0 ? (
         <Plate>{own ? "Your pours and tastings will show up here." : "Nothing yet."}</Plate>
       ) : (

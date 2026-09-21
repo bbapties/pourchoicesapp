@@ -13,6 +13,7 @@ export const NOTIFY_KINDS = [
   { id: "tasted", label: "Finishes a blind tasting" },
   { id: "added_to_collection", label: "Adds to their bar" },
   { id: "wishlisted", label: "Adds to their wishlist" },
+  { id: "posted", label: "Writes a post" },
   { id: "badge", label: "Earns a badge" },
 ] as const;
 export type NotifyKind = (typeof NOTIFY_KINDS)[number]["id"];

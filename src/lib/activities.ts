@@ -16,7 +16,9 @@ export type ActivityAction =
   | "verified"
   | "removed_from_collection"
   | "wishlisted"
-  | "tasted";
+  | "tasted"
+  /** A free-text Social post (Brian, 2026-09-21). The ONE action with no bottle unless one is tagged. */
+  | "posted";
 
 export type PourType = "neat" | "rocks" | "mixed" | "blind";
 
@@ -45,7 +47,8 @@ export type ActivityRow = {
   action: ActivityAction;
   pourType: PourType | null;
   createdAt: string;
-  bottleId: string;
+  /** Null only on a `posted` row with no bottle tagged. */
+  bottleId: string | null;
   userId: string;
   username: string;
   avatarUrl?: string | null;
@@ -94,6 +97,8 @@ export function formatActivityLine(row: {
       return `Wishlisted · ${date}`;
     case "tasted":
       return `Blind tasting · ${date}`;
+    case "posted":
+      return `Posted · ${date}`;
     default:
       return date;
   }
@@ -116,6 +121,7 @@ export function formatFeedAction(action: ActivityAction, pourType?: PourType | n
   if (action === "removed_from_collection") return "removed it from their collection";
   if (action === "wishlisted") return "added it to their wishlist";
   if (action === "tasted") return "did a blind tasting with it";
+  if (action === "posted") return "posted about it";
   return action;
 }
 
@@ -136,7 +142,8 @@ export function formatFeedTime(iso: string): string {
 /** Insert an activity. Fail-open: never throws, never blocks the parent action. */
 export async function logActivity(opts: {
   userId: string;
-  bottleId: string;
+  /** Null only for `posted` with no bottle tagged - the DB refuses it on any other action. */
+  bottleId: string | null;
   action: ActivityAction;
   pourType?: PourType | null;
   variantId?: string | null;
@@ -205,7 +212,7 @@ export async function logBadgeEarned(userId: string, badgeId: string, tier: numb
 
 /** Actions a follower can ask to be pushed about (the bell's list, minus badges which have no row yet). */
 // `added_to_db` is feed-hidden, but the server still hears it: a data account adding a bottle pushes the admins.
-const NOTIFIED_ACTIONS = new Set<ActivityAction>(["drank", "tasted", "added_to_collection", "wishlisted", "added_to_db"]);
+const NOTIFIED_ACTIONS = new Set<ActivityAction>(["drank", "tasted", "added_to_collection", "wishlisted", "added_to_db", "posted"]);
 
 /**
  * B.4: delete one of the viewer's own hand-logged activities (a pour / add / finished), which
@@ -333,14 +340,14 @@ export function mapFeedRow(raw: any, defaultImages: Map<string, string | null> =
       action: raw.action as ActivityAction,
       pourType: (raw.pour_type as PourType | null) ?? null,
       createdAt: raw.created_at,
-      bottleId: raw.bottle_id,
+      bottleId: raw.bottle_id ?? null,
       userId: raw.user_id,
       username: user?.username ?? "Someone",
       avatarUrl: user?.avatar_url ?? null,
       details: raw.details ?? null,
       sessionId: raw.session_id ?? null,
       variantId: raw.variant_id ?? null,
-      bottleName: bottle?.name ?? "Unknown bottle",
+      bottleName: bottle?.name ?? (raw.action === "posted" ? "" : "Unknown bottle"),
       bottleDistillery: bottle?.distillery ?? null,
       bottleVerified: bottle?.verified ?? true,
       // The version the post was actually about, when it names one -- a store pick or a specific

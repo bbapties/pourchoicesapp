@@ -57,14 +57,14 @@ const COLLAPSE_WINDOW_MS = 60 * 60 * 1000;
 /** Attach reaction / comment counts, the viewer's cheer, and the viewer's bottle status to a page. */
 export async function enrichRows(rows: ActivityRow[], viewerId: string | null): Promise<FeedItem[]> {
   const ids = rows.map((r) => r.id);
-  const bottleIds = [...new Set(rows.map((r) => r.bottleId).filter(Boolean))];
+  const bottleIds = [...new Set(rows.map((r) => r.bottleId).filter((b): b is string => !!b))];
   const cheers = new Map<string, number>();
   const mine = new Set<string>();
   const comments = new Map<string, number>();
   const had = new Set<string>();
   const owned = new Map<string, number>();
   const stars = new Map<string, number>(); // "<user>:<bottle>" -> the poster's rating
-  const needStars = rows.filter((r) => (r.action === "added_to_collection" || r.action === "finished" || r.action === "wishlisted") && r.details?.stars == null);
+  const needStars = rows.filter((r) => r.bottleId && (r.action === "added_to_collection" || r.action === "finished" || r.action === "wishlisted" || r.action === "posted") && r.details?.stars == null);
   if (ids.length) {
     const [{ data: re }, { data: co }, { data: ub }, { data: dr }, { data: ur }] = await Promise.all([
       supabase.from("post_reactions").select("activity_id, user_id").in("activity_id", ids),
@@ -76,7 +76,7 @@ export async function enrichRows(rows: ActivityRow[], viewerId: string | null): 
         ? supabase.from("activities").select("bottle_id").eq("user_id", viewerId).eq("action", "drank").in("bottle_id", bottleIds)
         : Promise.resolve({ data: [] as any[] }),
       needStars.length
-        ? supabase.from("user_ratings").select("user_id, bottle_id, stars").in("user_id", [...new Set(needStars.map((r) => r.userId))]).in("bottle_id", [...new Set(needStars.map((r) => r.bottleId))])
+        ? supabase.from("user_ratings").select("user_id, bottle_id, stars").in("user_id", [...new Set(needStars.map((r) => r.userId))]).in("bottle_id", [...new Set(needStars.map((r) => r.bottleId as string))])
         : Promise.resolve({ data: [] as any[] }),
     ]);
     (ur || []).forEach((r: any) => { if (typeof r.stars === "number" || typeof r.stars === "string") stars.set(`${r.user_id}:${r.bottle_id}`, Number(r.stars)); });
@@ -99,8 +99,8 @@ export async function enrichRows(rows: ActivityRow[], viewerId: string | null): 
     cheers: cheers.get(r.id) ?? 0,
     comments: comments.get(r.id) ?? 0,
     viewerCheered: mine.has(r.id),
-    viewerHadIt: had.has(r.bottleId),
-    viewerOwnedCount: owned.get(r.bottleId) ?? 0,
+    viewerHadIt: !!r.bottleId && had.has(r.bottleId),
+    viewerOwnedCount: (r.bottleId && owned.get(r.bottleId)) || 0,
     posterStars: stars.get(`${r.userId}:${r.bottleId}`) ?? null,
   }));
 }
