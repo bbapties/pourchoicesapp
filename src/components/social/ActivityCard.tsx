@@ -110,7 +110,7 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
       ) : (
         <span className="pc-rivet" style={{ top: 5, right: 5 }} />
       )}
-      <div className="flex items-center gap-2.5 px-3.5 py-3 pr-8">
+      <div className="flex items-center gap-3 px-3.5 py-2.5 pr-8">
         {/* who · what as the same pill Home wears under a shelf bottle, so the glyphs teach themselves */}
         <WhoWhatPill username={item.username} avatarUrl={item.avatarUrl ?? null} action={item.action} inline onUser={() => onOpenUser?.(item.userId, item.username)} />
         <button
@@ -119,8 +119,8 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
           className="min-w-0 text-left"
           aria-label={`@${item.username}`}
         >
-          <div className="text-sm font-semibold text-cream truncate">@{item.username}</div>
-          <div className="text-[13px] text-cream-mute truncate">{verbFor(item, group.length)}</div>
+          <div className="text-[16px] font-semibold text-cream truncate">@{item.username}</div>
+          <div className="text-[15px] text-cream-mute truncate">{verbFor(item, group.length)}</div>
         </button>
         <span className="ml-auto text-xs text-cream-faint shrink-0">{formatFeedTime(item.createdAt)}</span>
       </div>
