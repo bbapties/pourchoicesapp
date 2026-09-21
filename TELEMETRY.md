@@ -277,6 +277,12 @@ client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
 - `badge_tier_up` — the award engine reported a tier going up for this user (#138). `target_id` =
   badge id, `metadata = { tier, progress, fired }` where `fired` says whether the moment
   (push) was actually sent - false while `BADGE_MOMENTS_ENABLED` is off in `src/lib/badges.ts`.
+- `badge_revealed` — the person was SHOWN a badge (the reveal overlay, 2026-09-21; runbook
+  [docs/BADGE_RELEASE.md](docs/BADGE_RELEASE.md)). One row per badge, `surface = reveal`,
+  `target_id` = badge id, `metadata = { tier, from (the revealed_tier before), upgrade, mode:
+  animated | reveal_all | dismissed, queued (how many were in the queue) }`. `dismissed` = closed
+  before the medal showed. Clicks on the same surface: `badge_reveal_close` `{ at, of, phase }`,
+  `badge_reveal_all` `{ at, of }`, `badge_reveal_details`.
 - `click` → `post_photo_opened` — a pour photo on a Social / post / user-page card was opened full
   screen (2026-09-20). `target_id` = activity id.
 - `post_photo_set` / `post_photo_removed` — a photo was put on, or taken off, one of your own posts

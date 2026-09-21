@@ -195,6 +195,7 @@ node scripts/_psql.mjs "SELECT 1 AS ok;"
 | `docs/archive/` | **Frozen 2026-09-05.** ROADMAP / BUGS / BACKLOG / PHASE8-10 — research only, never status. See its README. |
 | [docs/IMAGE_PIPELINE.md](docs/IMAGE_PIPELINE.md) | **Bottle images — canonical.** Shelf-ready review states and transitions, who may write them, the prepare-an-image script, and the 12in scale contract with `bottle_height_source`. Read before touching any bottle image. |
 | [docs/BADGE_ART.md](docs/BADGE_ART.md) | **Badge medals — photoreal art (#150).** Locked look, the seven plates, signed vs in-flight, generation rules, failed approaches. Read before generating, cropping, or compositing any badge image. |
+| [docs/BADGE_RELEASE.md](docs/BADGE_RELEASE.md) | **Releasing a badge + the reveal.** `badge_releases` (per badge, per person or everyone) is the switch; `user_badges.revealed_tier` is what has been shown. Exact psql steps: Brian first, then a few, then everyone. |
 | `TELEMETRY.md` | Instrumentation policy — event/activity/usage tracking; what's logged, the proposed generic events table |
 | `DB_Schema.txt.txt` | Supabase schema dump — tables, views (owner vs invoker), functions (SECURITY DEFINER), triggers, RLS policies. **Regenerate after any migration: `node scripts/dump_schema.mjs`** |
 

@@ -37,6 +37,8 @@ export type UserBadge = {
   subTier: number;
   progress: number;
   earnedAt: string | null;
+  /** the highest tier this person has been SHOWN the reveal for (0 = never); see badgeReveal.ts */
+  revealedTier: MedalTier;
 };
 
 export type ShelfItem = {
@@ -47,6 +49,7 @@ export type ShelfItem = {
   earnedAt: string | null;
   /** the next rung, or null on the top one */
   next: { tier: number; threshold: number } | null;
+  revealedTier: MedalTier;
 };
 
 export type Level = { points: number; title: string; nextTitle: string | null; nextPoints: number | null };
@@ -76,17 +79,17 @@ export async function fetchBadgeCatalog(force = false): Promise<BadgeDef[]> {
 export async function fetchShelf(userId: string): Promise<ShelfItem[]> {
   const [catalog, { data: mine }] = await Promise.all([
     fetchBadgeCatalog(),
-    supabase.from("user_badges").select("badge_id, tier, sub_tier, progress, earned_at").eq("user_id", userId),
+    supabase.from("user_badges").select("badge_id, tier, sub_tier, progress, earned_at, revealed_tier").eq("user_id", userId),
   ]);
   const have = new Map<string, UserBadge>();
-  (mine || []).forEach((r: any) => have.set(r.badge_id, { badgeId: r.badge_id, tier: r.tier as MedalTier, subTier: r.sub_tier ?? 0, progress: r.progress ?? 0, earnedAt: r.earned_at ?? null }));
+  (mine || []).forEach((r: any) => have.set(r.badge_id, { badgeId: r.badge_id, tier: r.tier as MedalTier, subTier: r.sub_tier ?? 0, progress: r.progress ?? 0, earnedAt: r.earned_at ?? null, revealedTier: (r.revealed_tier ?? 0) as MedalTier }));
   return catalog
     .filter((def) => def.family !== "hound" || have.has(def.id)) // a Hound you have never started is noise, not a hint
     .map((def) => {
       const ub = have.get(def.id);
       const tier = (ub?.tier ?? 0) as MedalTier;
       const next = def.tiers.find((t) => t.tier === tier + 1) ?? null;
-      return { def, tier, subTier: ub?.subTier ?? 0, progress: ub?.progress ?? 0, earnedAt: ub?.earnedAt ?? null, next };
+      return { def, tier, subTier: ub?.subTier ?? 0, progress: ub?.progress ?? 0, earnedAt: ub?.earnedAt ?? null, next, revealedTier: ub?.revealedTier ?? 0 };
     });
 }
 
@@ -111,7 +114,11 @@ export async function runAwards(userId: string | null | undefined): Promise<Awar
     if (error || !data) return [];
     const rows: Awarded[] = (data as any[]).map((r) => ({ badgeId: r.badge_id, tier: r.tier as MedalTier, earnedAt: r.earned_at ?? null, progress: r.progress ?? 0, wentUp: !!r.went_up }));
     const up = rows.filter((r) => r.wentUp);
-    if (up.length) void celebrate(userId, up);
+    if (up.length) {
+      void celebrate(userId, up);
+      // a badge earned mid-session reveals right now if it is released (BadgeReveal listens)
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("pc:badge-check"));
+    }
     return rows;
   } catch {
     return [];

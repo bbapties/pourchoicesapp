@@ -32,6 +32,13 @@ CREATE TABLE public.badge_grants (
   granted_by uuid,
   note text);
 
+CREATE TABLE public.badge_releases (
+  badge_id text NOT NULL,
+  user_id uuid,
+  released_at timestamp with time zone NOT NULL DEFAULT now(),
+  released_by uuid,
+  note text);
+
 CREATE TABLE public.badge_tiers (
   badge_id text NOT NULL,
   tier smallint NOT NULL,
@@ -258,7 +265,8 @@ CREATE TABLE public.user_badges (
   sub_tier smallint NOT NULL DEFAULT 0,
   progress integer NOT NULL DEFAULT 0,
   earned_at timestamp with time zone,
-  updated_at timestamp with time zone NOT NULL DEFAULT now());
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  revealed_tier smallint NOT NULL DEFAULT 0);
 
 CREATE TABLE public.user_bottles (
   user_id uuid NOT NULL,
@@ -357,7 +365,9 @@ CREATE TABLE public.wishlists (
 --   protect_submission_update()  SECURITY DEFINER
 --   protect_user_role()  SECURITY DEFINER
 --   purge_bottle(p_bottle uuid, p_confirm_name text)  SECURITY DEFINER
+--   released_badges(p_user uuid)  SECURITY DEFINER
 --   replay_elo_history()  SECURITY DEFINER
+--   reveal_badges(p_badges text[])  SECURITY DEFINER
 --   split_bottle_into_variants(p_bottle uuid, p_axis text)
 --   stamp_blind_tasted_for_session()
 --   stamp_tasted_for_pour()
@@ -396,6 +406,7 @@ CREATE TABLE public.wishlists (
 --   announcements: Admin manage announcements (ALL)
 --   announcements: Read published announcements (SELECT)
 --   badge_grants: badge_grants_select (SELECT)
+--   badge_releases: badge_releases_select (SELECT)
 --   badge_tiers: badge_tiers_select (SELECT)
 --   badges: badges_select (SELECT)
 --   bot_runs: bot_runs_admin_select (SELECT)

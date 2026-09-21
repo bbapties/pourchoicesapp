@@ -230,6 +230,17 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    id: "badges.reveal",
+    title: "Badge reveals",
+    body: "When you earn a badge - or move up a tier - the next time you open the app it is revealed: the plate shakes, bursts, and there is your medal. More details takes you to the badge on your Profile.",
+    route: "/profile",
+    core: false,
+    announce: true,
+    tour: [
+      { route: "/profile", anchor: "profile.badges", caption: "Every badge you have been shown lives here. Tap one for how it is earned and the ladder." },
+    ],
+  },
+  {
     // 2026-09-21: a photo on any post, the cards reworked so the eye lands on the photo first.
     id: "social.showoff",
     title: "Show it off",

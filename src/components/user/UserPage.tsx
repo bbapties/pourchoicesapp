@@ -25,7 +25,7 @@ import type { ShelfBottle, ShelfDef } from "@/lib/shelves";
 import PastTastings from "@/components/PastTastings";
 import BadgeShelf from "@/components/badges/BadgeShelf";
 import { fetchLevel, levelLine, type Level } from "@/lib/badges";
-import { RELEASED_BADGES } from "@/lib/badgeRelease";
+import { fetchReleased } from "@/lib/badgeRelease";
 import {
   fetchTop3,
   fetchUserById,
@@ -53,6 +53,7 @@ export default function UserPage({ own = false, username }: Props) {
   const [user, setUser] = useState<PublicUser | null | undefined>(undefined);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [level, setLevel] = useState<Level | null>(null); // #139: the member level plate
+  const [anyReleased, setAnyReleased] = useState(false); // is any badge live for THIS person
   const [top3, setTop3] = useState<TopBottle[] | null>(null);
   const [shelves, setShelves] = useState<{ bar: ShelfDef; wishlist: ShelfDef; suggested: ShelfDef } | null>(null);
   const [counts, setCounts] = useState<Record<string, number | null>>({});
@@ -112,6 +113,7 @@ export default function UserPage({ own = false, username }: Props) {
     });
     fetchUserStats(user.id).then((s) => live && setStats(s));
     fetchLevel(user.id).then((l) => live && setLevel(l));
+    fetchReleased(user.id).then((r) => live && setAnyReleased(r.size > 0));
     fetchTop3(user.id).then((t) => live && setTop3(t));
     if (publicUserId && !own) fetchRelationship(publicUserId, user.id).then((r) => live && setRel(r));
     fetchUserFeed({ userId: user.id, offset: 0, limit: ACTIVITY_PAGE, viewerId: publicUserId ?? null }).then((r) => {
@@ -283,10 +285,9 @@ export default function UserPage({ own = false, username }: Props) {
       </div>
 
       {/* #139: the member level - Profile-only for now (Brian, 2026-09-18; #142 takes it wider).
-          Hidden while no badge is released (2026-09-21): points sum every tier held, released or
-          not, so the plate would contradict a shelf that is all "Coming soon". When badges start
-          releasing, user_level() should count released ids only - that is a SQL change, ask Brian. */}
-      {level && RELEASED_BADGES.size > 0 && (
+          Hidden while nothing is released to this person (2026-09-21); user_level() counts
+          released badges only, so the plate never contradicts a shelf that is all "Coming soon". */}
+      {level && anyReleased && (
         <div className="flex justify-center pt-2.5" data-coach="profile.level">
           <span className="pc-brass rounded px-3 py-[3px] font-display font-semibold text-[13px] tracking-[.06em] uppercase" title={levelLine(level)}>
             {level.title} · {level.points} pts
@@ -367,7 +368,7 @@ export default function UserPage({ own = false, username }: Props) {
       {/* #139: the badge shelf */}
       {user && (
         <>
-          <SectionHead title="Badges" hint={RELEASED_BADGES.size > 0 && level?.nextTitle && level.nextPoints != null ? `${level.nextPoints - level.points} pts to ${level.nextTitle}` : undefined} />
+          <SectionHead title="Badges" hint={anyReleased && level?.nextTitle && level.nextPoints != null ? `${level.nextPoints - level.points} pts to ${level.nextTitle}` : undefined} />
           <div data-coach="profile.badges">
             <BadgeShelf userId={user.id} viewerId={publicUserId ?? null} own={own} surface={surface} reloadKey={reloadKey} />
           </div>

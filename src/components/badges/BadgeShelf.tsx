@@ -7,7 +7,7 @@ import BadgeSprite from "@/components/badges/BadgeSprite";
 import { fetchShelf, runAwards, type ShelfItem } from "@/lib/badges";
 import { logClick } from "@/lib/events";
 import { howToEarn } from "@/lib/badgeCopy";
-import { isReleased, RELEASED_BADGES } from "@/lib/badgeRelease";
+import { fetchReleased } from "@/lib/badgeRelease";
 
 /**
  * The badge shelf on a user page (#139). Earned first (highest tier first) with the distance to
@@ -23,23 +23,43 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
   reloadKey?: number;
 }) {
   const [items, setItems] = useState<ShelfItem[] | null>(null);
+  const [released, setReleased] = useState<Set<string>>(() => new Set());
   const [open, setOpen] = useState<ShelfItem | null>(null);
+  // `/profile?badge=<id>` opens that badge's sheet - the reveal's "More details" lands here.
+  // Read once from the URL (no useSearchParams: that needs a Suspense boundary at build time).
+  const [wantBadge, setWantBadge] = useState<string | null>(null);
+  useEffect(() => {
+    if (!own) return;
+    const id = new URLSearchParams(window.location.search).get("badge");
+    if (id) setWantBadge(id);
+  }, [own]);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       // your own page re-runs the engine first, so a badge you just earned is already there
       if (own) await runAwards(userId);
-      const shelf = await fetchShelf(userId);
-      if (alive) setItems(shelf);
+      const [shelf, rel] = await Promise.all([fetchShelf(userId), fetchReleased(userId)]);
+      if (!alive) return;
+      setItems(shelf);
+      setReleased(rel);
     })();
     return () => { alive = false; };
   }, [userId, own, reloadKey]);
 
+  useEffect(() => {
+    if (!wantBadge || !items) return;
+    const it = items.find((i) => i.def.id === wantBadge);
+    if (it) setOpen(it);
+    setWantBadge(null);
+    window.history.replaceState(null, "", window.location.pathname); // one-shot: a refresh does not reopen it
+  }, [wantBadge, items]);
+
   if (items === null) return <div className="mx-4 h-[120px]" />;
 
-  // Unreleased badges (src/lib/badgeRelease.ts) sit under "Coming soon" whatever the user holds;
-  // the engine keeps counting behind the scenes so credit is there the day each one is released.
+  // Unreleased badges (badge_releases via src/lib/badgeRelease.ts) sit under "Coming soon" whatever
+  // the user holds; the engine keeps counting behind the scenes so credit is there on release day.
+  const isReleased = (id: string) => released.has(id);
   const live = items.filter((i) => isReleased(i.def.id));
   const soon = items.filter((i) => !isReleased(i.def.id));
   const earned = live.filter((i) => i.tier > 0).sort((a, b) => b.tier - a.tier || (b.earnedAt ?? "").localeCompare(a.earnedAt ?? ""));
@@ -53,7 +73,7 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
   return (
     <>
       <BadgeSprite />
-      {RELEASED_BADGES.size > 0 && earned.length === 0 && started.length === 0 ? (
+      {released.size > 0 && earned.length === 0 && started.length === 0 ? (
         <p className="mx-4 rounded-lg px-4 py-[18px] text-center text-xs text-cream-mute border border-dashed border-edge bg-panel">
           {own ? "Nothing yet - pour something, scan something, blind something." : "No badges yet."}
         </p>
@@ -107,7 +127,7 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
         </>
       )}
 
-      <BadgeSheet item={open} onClose={() => setOpen(null)} />
+      <BadgeSheet item={open} released={!!open && isReleased(open.def.id)} onClose={() => setOpen(null)} />
     </>
   );
 }
@@ -152,9 +172,8 @@ function Progress({ item }: { item: ShelfItem }) {
 /** Sheet medal: 2.5x the 100px shelf coin, capped so it clears the ladder on a short phone. */
 const MEDAL_SHEET = 250;
 
-function BadgeSheet({ item, onClose }: { item: ShelfItem | null; onClose: () => void }) {
+export function BadgeSheet({ item, released, onClose }: { item: ShelfItem | null; released: boolean; onClose: () => void }) {
   const d = item?.def;
-  const released = !!d && isReleased(d.id);
   return (
     <Sheet open={!!item} onOpenChange={(o) => { if (!o) onClose(); }}>
       <SheetContent side="bottom" className="pc-leather max-h-[92dvh] overflow-y-auto">

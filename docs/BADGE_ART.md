@@ -26,6 +26,8 @@ fails. Reviewed on the real Profile shelf at 100, the 250 sheet and the 38 ladde
 release, reverted). Still under "Coming soon" on prod until Brian releases it.
 
 **Next object:** one at a time, Brian supplies the parts or a mockup; same stacking script pattern.
+**Releasing a finished badge** (to Brian first, then everyone) and the reveal it triggers are in
+[BADGE_RELEASE.md](BADGE_RELEASE.md) - `badge_releases` in the DB is the switch, not code.
 
 ## Earlier (2026-09-21, evening)
 
