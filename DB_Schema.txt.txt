@@ -1,6 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
--- Regenerated from the live prod DB on 2026-09-20 via scripts/_psql.mjs against information_schema/pg_catalog.
+-- Regenerated from the live prod DB on 2026-09-21 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
 
 CREATE TABLE public.activities (
@@ -345,6 +345,7 @@ CREATE TABLE public.wishlists (
 --   exec_sql_batch(p_statements text[])  SECURITY DEFINER
 --   flag_variant_image(p_variant uuid, p_note text)  SECURITY DEFINER
 --   grant_badge(p_user uuid, p_badge text, p_note text)  SECURITY DEFINER
+--   guard_activity_edit()
 --   guard_event_insert()
 --   guard_feedback_insert()
 --   is_admin()  SECURITY DEFINER
@@ -370,6 +371,7 @@ CREATE TABLE public.wishlists (
 --   variant_guess_avg(variant_ids uuid[])  SECURITY DEFINER
 
 -- Triggers
+--   trig_guard_activity_edit on activities
 --   trig_stamp_tasted_after_pour on activities
 --   trg_default_to_admin_bottle_attr on bottle_variants
 --   trg_protect_image_review on bottle_variants
@@ -390,6 +392,7 @@ CREATE TABLE public.wishlists (
 --   activities: activities_delete_own (DELETE)
 --   activities: activities_insert_own (INSERT)
 --   activities: activities_select_authenticated (SELECT)
+--   activities: activities_update_own (UPDATE)
 --   announcements: Admin manage announcements (ALL)
 --   announcements: Read published announcements (SELECT)
 --   badge_grants: badge_grants_select (SELECT)
