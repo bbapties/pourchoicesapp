@@ -88,6 +88,7 @@ Supabase (auth + Postgres). `npm run dev` → http://localhost:3000.
   Social shelf); per-bottle history and admin screens still show it. **Hide there, do not stop
   logging** — `activities` is the audit trail of what happened to a bottle.
 - **Never touch a bottle image without reading [docs/IMAGE_PIPELINE.md](docs/IMAGE_PIPELINE.md).**
+- **Never generate, crop, or composite a badge medal without reading [docs/BADGE_ART.md](docs/BADGE_ART.md).** Empty plates first; do not push until Brian has signed the set.
   An image only reaches the Home shelf when it is a real transparent cut-out, trimmed tight, and
   carries a `bottle_height` **with** a `bottle_height_source`. Prepare images with
   `node scripts/shelf_image.mjs`; approving one is a judgement and happens in Admin > Images, on a
@@ -193,6 +194,7 @@ node scripts/_psql.mjs "SELECT 1 AS ok;"
 | `docs/board-import-preview.md` | Record of the 2026-09-05 import: what became an issue, what was skipped, why |
 | `docs/archive/` | **Frozen 2026-09-05.** ROADMAP / BUGS / BACKLOG / PHASE8-10 — research only, never status. See its README. |
 | [docs/IMAGE_PIPELINE.md](docs/IMAGE_PIPELINE.md) | **Bottle images — canonical.** Shelf-ready review states and transitions, who may write them, the prepare-an-image script, and the 12in scale contract with `bottle_height_source`. Read before touching any bottle image. |
+| [docs/BADGE_ART.md](docs/BADGE_ART.md) | **Badge medals — photoreal art (#150).** Locked look, the seven plates, signed vs in-flight, generation rules, failed approaches. Read before generating, cropping, or compositing any badge image. |
 | `TELEMETRY.md` | Instrumentation policy — event/activity/usage tracking; what's logged, the proposed generic events table |
 | `DB_Schema.txt.txt` | Supabase schema dump — tables, views (owner vs invoker), functions (SECURITY DEFINER), triggers, RLS policies. **Regenerate after any migration: `node scripts/dump_schema.mjs`** |
 
