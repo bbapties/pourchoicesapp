@@ -76,8 +76,12 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
     onOpenBottle(row.bottleId, row.variantId ?? null);
   };
 
+  const earmark = group.length === 1 && (item.viewerHadIt || !(item.bottleVerified ?? true));
+
+  // A pour keeps its own row and hangs the photo UNDER it (Brian, 2026-09-21); every other action
+  // with a photo leads with the photo.
   const photo = !rolled ? item.details?.photo_url ?? null : null;
-  const body = photo ? (
+  const body = photo && item.action !== "drank" ? (
     <PhotoBody item={item} photo={photo} detail={detail} onOpenBottle={openBottle} />
   ) : (() => {
     switch (item.action) {
@@ -96,12 +100,15 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
   })();
 
   return (
-    <article className="relative pc-leather rounded-lg mx-4 mb-3 overflow-hidden" data-coach="social.card">
+    <article className="relative pc-leather mb-6 overflow-hidden" data-coach="social.card">
       <span className="pc-rivet" style={{ top: 5, left: 5 }} /><span className="pc-rivet" style={{ bottom: 5, left: 5 }} /><span className="pc-rivet" style={{ bottom: 5, right: 5 }} />
       {/* The viewer's own relationship to this bottle, in the same corner every card wears.
-          Grouped adds carry several bottles; the corner speaks for the first. */}
-      {group.length === 1 && (
+          Grouped adds carry several bottles; the corner speaks for the first. No earmark to
+          show - the fourth rivet takes the corner instead (Brian, 2026-09-21). */}
+      {earmark ? (
         <EarmarkCorner hadIt={item.viewerHadIt} provisional={!(item.bottleVerified ?? true)} ownedCount={item.viewerOwnedCount} />
+      ) : (
+        <span className="pc-rivet" style={{ top: 5, right: 5 }} />
       )}
       <div className="flex items-center gap-2.5 px-3.5 py-3 pr-8">
         <button
@@ -186,7 +193,7 @@ function BottleTap({ row, onOpenBottle, className, children }: { row: ActivityRo
 }
 
 function howOf(item: FeedItem): string | null {
-  return item.pourType === "neat" ? "Neat" : item.pourType === "rocks" ? "Rocks" : item.pourType === "mixed" ? "Mixed" : null;
+  return item.pourType === "neat" ? "Neat" : item.pourType === "rocks" ? "On the rocks" : item.pourType === "mixed" ? "Mixed" : null;
 }
 
 /**
@@ -298,12 +305,13 @@ function ShelfBody({ rows, empty = false, onOpenBottle }: { rows: FeedItem[]; em
  * bottle, the stars, how they took it in small type, and the first line of the note.
  */
 function PourBody({ item, detail, onOpenBottle }: { item: FeedItem; detail: boolean; onOpenBottle: OpenBottle }) {
+  const photo = item.details?.photo_url ?? null;
   const note = item.details?.note ?? null;
   const stars = item.details?.stars ?? null;
   const how = howOf(item);
   return (
-    <div className="px-3.5 pb-3">
-      <div className="flex items-center gap-3">
+    <div className={photo ? "" : "pb-3"}>
+      <div className="flex items-center gap-3 px-3.5">
         <BottleTap row={item} onOpenBottle={onOpenBottle} className="w-11 h-14 shrink-0 flex items-end justify-center">
           {item.bottleImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -322,12 +330,18 @@ function PourBody({ item, detail, onOpenBottle }: { item: FeedItem; detail: bool
       </div>
       {note && (
         detail ? (
-          <p className="text-sm leading-relaxed text-cream mt-2.5 whitespace-pre-wrap">{note}</p>
+          <p className="text-sm leading-relaxed text-cream mt-2.5 px-3.5 whitespace-pre-wrap">{note}</p>
         ) : (
-          <p className="text-[13px] leading-snug text-cream-mute mt-2" style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <p className="text-[13px] leading-snug text-cream-mute mt-2 px-3.5" style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {note}
           </p>
         )
+      )}
+      {photo && (
+        <button type="button" onClick={(e) => openPhoto(e, photo, item)} className="block w-full mt-3" aria-label="See the photo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo} alt="" className={`w-full object-cover border-t border-black/50 ${detail ? "max-h-[70vh]" : "aspect-[4/5] max-h-[460px]"}`} />
+        </button>
       )}
     </div>
   );
