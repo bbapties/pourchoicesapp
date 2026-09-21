@@ -49,10 +49,32 @@ What is open and in what order now lives on **[the board](https://github.com/use
   `guard_activity_edit` that pins every column but `details` (`sql/activities-update-own-*.sql`,
   applied to prod, schema dump refreshed). Events in TELEMETRY.md. Coach `social.showoff`.
   **Push mechanics:** these commits went to origin from a throwaway worktree (cherry-picked onto
-  origin/MVP-v3) so Grok's local `fe06429` stayed off prod; the local branch was then rebased so
-  `fe06429` sits on top of them again and Grok's uncommitted frames were stashed / restored.
+  origin/MVP-v3) so Grok's local `336f9c6` stayed off prod; the local branch was then rebased so
+  `336f9c6` sits on top of them again and Grok's uncommitted frames were stashed / restored.
+- **PHOTOREAL BADGE PLATES SHIPPED + EVERY BADGE IS "COMING SOON" (2026-09-21 evening, Claude) -
+  origin/MVP-v3 `e48bf28`, live.** Brian signed the seven empty plates (the labeled dock). Record:
+  **[docs/BADGE_ART.md](docs/BADGE_ART.md)**. `dbfc58e` the plates (Diamond / Limited cropped from
+  the signed stills onto Gold's circle; `frames/` serves 512 WebP, 1024s in `masters/plates-1024`);
+  `183919b` `Medal` = plate `<img>` + the badge's SVG glyph inlaid in the well (frame's `--medal-*`
+  ramp, `pc-pop3d`) + stars - `hasPhotoreal()` is gone, the SVG coin draws only if a plate fails
+  to load; `1e020c0` the sheet leads with a 250px medal, name, **how-to-earn copy**
+  (`src/lib/badgeCopy.ts`, written from `badge_timeline`'s rules - Hounds share a template) and
+  the progress line, ladder under, sheet scrolls at 92dvh; `e48bf28` **`RELEASED_BADGES` in
+  `src/lib/badgeRelease.ts` is EMPTY** - every badge sits under a "Coming soon" divider on the
+  locked plate with no tier / stars / progress whatever the user holds, the sheet says "what you do
+  now still counts", the level pill and the "pts to" hint are hidden while nothing is released.
+  Grok's `336f9c6` (ladder rename Wood→Diamond, Platinum gone, one-off frame rule) rode along.
+  **The engine is untouched and still awards everything** - credit is waiting in `user_badges`.
+  **Brian's plan:** the 3D objects land one badge at a time; each release = add the id to
+  `RELEASED_BADGES` **plus a reward strategy for people who already hold credit** (his call per
+  badge) **plus** `user_level()` must then count released ids only (SQL change, ask first).
+  Moments still off. The QA account was seeded one badge per frame for review (regular_pour 5,
+  blindfold 4, contributor 3, dead_soldiers 2, founders_reserve via `badge_grants`) - leave it.
+  #159 Brian to test (prod walk). #150 stays In Progress for the objects: next object is Founder's
+  Reserve re-shown on the SIGNED Limited plate (first composite was rejected), then one at a time
+  from the FR bottle, same camera - never batch the catalog.
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** origin/MVP-v3 = `368785c` (Claude, 2026-09-21) + this doc commit, live on prod.
+- **Tip:** origin/MVP-v3 = `e48bf28` (Claude, 2026-09-21 evening, photoreal plates + Coming soon) + this doc commit, live on prod.
 - **Data repair in that same parallel session (2026-09-20, no code) - a cold agent should know
   the DB was hand-edited:** (1) 28 `tasting_details.rank` NULLs backfilled from pair wins - all
   helper-mode sessions from before `eb57f9d`, not a live bug; (2) six Right_Blind imports dated
@@ -166,11 +188,15 @@ What is open and in what order now lives on **[the board](https://github.com/use
   HTTPS fallback (auto when psql cannot connect, forced with `PC_DB_TRANSPORT=http`). The
   cloud checkout lands on `main`; the prompt checks out MVP-v3 first. The LOCAL desktop task
   should be paused (Brian).
-- **Next step per the board** (right to left): *In Progress* EMPTY. *Next Items per Brian* EMPTY.
-  *Top Priority* EMPTY (#133 closed). **First: Brian tests #144 (badge shelf) and #147 (photo /
+- **Next step per the board** (right to left): *In Progress* is **#150** (photoreal medals - the
+  OBJECTS now; plates are live. [docs/BADGE_ART.md](docs/BADGE_ART.md); FR on the signed Limited
+  first, show Brian at 100 / 38 before it replaces the glyph). *Next Items per Brian* EMPTY.
+  *Top Priority* EMPTY. *Backlog* gained #155 (pour does not move My Bar counts - a real bug,
+  worth pulling forward), #156 (rye search returns bourbons), #157 (skeleton loading), #158
+  (bottle images as WebP/AVIF). Brian tests #159 / #144 / #147 (photo /
   swipe / self-push), then decides the badge moments for the 4 real users (flip
   `BADGE_MOMENTS_ENABLED`, whether to announce backdated tiers). Brian also owes: pause the LOCAL
-  desktop task; rename `.claude/settings.json.txt`.** Then *Coming Soon*: #143 (badge Social post,
+  desktop task; rename `.claude/settings.json.txt`. Then *Coming Soon*: #143 (badge Social post,
   needs Brian's ok on the activities schema change), #137 (nested buttons, XS). Then Backlog.
   *(old, resolved:)* #133 move the clean-up bot to the cloud - blocked on Brian (env vars +
   network on the Environment; then enable the routine, fire a run, read its log, pause the local
@@ -1862,6 +1888,33 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
   `button button` in the DOM). The phone camera / gallery picker is #152 (Brian to test).
 - Next: nothing new opened. Board right to left: *In Progress* #150 (Grok's medals, do not push
   the art) -> Brian tests #152 / #144 / #147 / #145 / #148 / #149 -> *Coming Soon* #143.
+
+### 2026-09-21 evening - Claude (photoreal plates live, every badge "Coming soon", #155-#159 filed)
+- Brian signed the seven plates. Diamond cropped from Grok's finished still (`masters/diamond-signed.jpg`),
+  Limited from `masters/limited-signed.jpg`, both onto Gold's 1022px disc; `frames/` downsized to
+  512 (~330KB for seven, was ~1.1MB). `dbfc58e`.
+- `Medal`: plate + SVG glyph inlay (`GlyphOverlay`, same 72/140 geometry, frame's metal ramp) +
+  stars; SVG coin is the onError fallback only. `183919b`.
+- Badge sheet: 250px medal centered, how-to-earn per badge (`src/lib/badgeCopy.ts`), progress
+  line, ladder; 92dvh + scroll. `1e020c0`.
+- `RELEASED_BADGES` (empty) gates the shelf: all badges under "Coming soon", locked plate, no
+  progress; sheet keeps the how-to; level pill + "pts to" hidden while empty. Engine untouched.
+  `e48bf28`. Pushed with Grok's `336f9c6`. Prod confirmed serving the new plates.
+- Board: #150 ticked (plates, 3-layer Medal, rename, one-off rule) and stays In Progress for the
+  objects; #159 Brian to test; Backlog #155 (pour → My Bar counts stay 0), #156 (rye search mixes
+  bourbons), #157 (skeleton loading), #158 (WebP/AVIF bottle images).
+- Next: #150 objects, one at a time, FR on the signed Limited first. When one releases: id into
+  `RELEASED_BADGES`, reward plan for existing credit (Brian), `user_level()` counts released only.
+
+### 2026-09-21 - Grok (photoreal badge medals, #150 — art in flight, not pushed)
+- Replacing the #140 SVG coins with studio-lit barrel-top medals. Locked look: gold geometry
+  master, wood barrel as the base plate, metal double-rings on tinted oak, Limited = onyx + four
+  compass diamonds + cherry well (no wood ring), Platinum gone (Wood→Diamond rename in place).
+- `336f9c6` local: `Medal` composites, `badgeArt.ts` frame pick, ladder copy. Working tree on top
+  of it has newer frames and currently draws **empty plates only** (object layer pulled after
+  Brian rejected FR on Limited).
+- Canonical record: `docs/BADGE_ART.md`. Signed masters copied to `public/badges/masters/`.
+  Next agent: Diamond well swap, crop signed Limited, dock the seven, no app code, no push.
 
 ### 2026-09-20 -> 21 - Claude (Brian's other window: tasting data repair; Junk; deferred adds; drag)
 - Data: rank backfill x28; six imports redated to March 2022; 3 QA tastings deleted; Elo
