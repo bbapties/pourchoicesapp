@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ShelfBottle } from "@/lib/shelves";
-import { avatarInitials } from "@/lib/avatar";
+import WhoWhatPill from "@/components/social/WhoWhatPill";
 
 /**
  * One bottle standing on a shelf (#87, part of #82).
@@ -177,41 +177,14 @@ export default function BottleOnShelf({
           the person opens them; tapping the bottle opens the post - the slot's onClick handles
           both via onPickUser, so the pill sits on the slot, never on the shelf image. */}
       {bottle.post ? (
-        <span className="pc-pill">
-          <span
-            className="pc-pill-who"
-            role="button"
-            aria-label={`@${bottle.post.username}`}
-            onClick={(e) => { e.stopPropagation(); onPickUser?.(bottle); }}
-          >
-            {bottle.post.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={bottle.post.avatarUrl} alt="" />
-            ) : (
-              avatarInitials(bottle.post.username)
-            )}
-          </span>
-          <span className="pc-pill-what" aria-hidden="true">
-            <ActionGlyph action={bottle.post.action} />
-          </span>
-        </span>
+        <WhoWhatPill
+          username={bottle.post.username}
+          avatarUrl={bottle.post.avatarUrl}
+          action={bottle.post.action}
+          onUser={() => onPickUser?.(bottle)}
+        />
       ) : null}
     </button>
   );
 }
 
-/** The four glyphs: glass = poured, crossed eye = blind, plus = added, bookmark = wishlisted. */
-function ActionGlyph({ action }: { action: string }) {
-  const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "#f6ecd9", strokeWidth: 2.2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  switch (action) {
-    case "drank":
-    case "finished":
-      return <svg {...common}><path d="M7 3h10l-1 10a4 4 0 0 1-8 0z" /><path d="M12 17v4M9 21h6" /></svg>;
-    case "tasted":
-      return <svg {...common}><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z" /><path d="M4 4l16 16" /></svg>;
-    case "wishlisted":
-      return <svg {...common}><path d="M6 3h12v18l-6-4-6 4z" /></svg>;
-    default:
-      return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>;
-  }
-}
