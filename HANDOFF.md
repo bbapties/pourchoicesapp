@@ -8,6 +8,25 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **Social cards reworked + a photo on an add / empty (2026-09-21, Claude; #151 DONE, #137 DONE,
+  #152 Brian to test). On origin/MVP-v3 and prod as `fac6661` `2c1d001` `4bccf82` + doc commit.**
+  What the eye lands on, in order: a PHOTO on any action (edge to edge, 4:5, `PhotoBody`), an ADD
+  or EMPTY (pack shot big on a lit brick shelf, `ShelfBody`; faded + Empty tag for an empty; up to
+  four across for a rolled-up add), a BLIND (podium), a plain POUR (one compact row). The header
+  says the action - "added a bottle" / "emptied a bottle" / "blind-tasted 3 bottles" / "had a
+  pour" - neat / rocks is a small `Tag` in the body, never the verb. **The photo comes AFTER the
+  tap:** `userBottles.logShelfMove` logs the add / empty then fires `pc:showoff`; the one
+  `<ShowOffNudge />` in AppShell slides a bar over the nav (Add a photo? / Not now, gone in 9s);
+  a pick goes through `src/lib/postPhoto.ts` (`uploadPostPhoto` -> `bottle-images/posts/<user>/`,
+  `setPostPhoto` merges `details.photo_url`) and `pc:post-updated` redraws the card in any open
+  feed. A bottle YOU submitted (unverified, `created_by` you, has `frontimage_url`) gets the photo
+  on the add for free, no nudge. On your own post: Add / Change / Remove photo. **DB:** policy
+  `activities_update_own` (own drank / added_to_collection / finished rows) + trigger
+  `guard_activity_edit` that pins every column but `details` (`sql/activities-update-own-*.sql`,
+  applied to prod, schema dump refreshed). Events in TELEMETRY.md. Coach `social.showoff`.
+  **Push mechanics:** these commits went to origin from a throwaway worktree (cherry-picked onto
+  origin/MVP-v3) so Grok's local `fe06429` stayed off prod; the local branch was then rebased so
+  `fe06429` sits on top of them again and Grok's uncommitted frames were stashed / restored.
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
 - **Tip:** `e690313` + this doc commit. All on origin/MVP-v3 and live on prod.
 - **Data repair in that same parallel session (2026-09-20, no code) - a cold agent should know
@@ -1790,6 +1809,20 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-21 - Claude (Social cards: photo first; Show it off photo on add / empty; #151 #137 #152)
+- Brian: the cards focused on HOW a pour was taken, not THAT something happened; a photo should be
+  the post, then adds, empties, blinds, and pours last. Both agreed and built; he also asked for a
+  photo on an add / empty ("free when the bottle is new to the DB") and Edit on your own post.
+- `fac6661` RLS update-own + details-only trigger (approved, applied). `2c1d001` postPhoto lib,
+  ShowOffNudge (AppShell), Edit photo on /post, feed redraw on `pc:post-updated`, free photo on an
+  own-submitted bottle. `4bccf82` ActivityCard bodies rewritten (PhotoBody / ShelfBody / BlindBody
+  / PourBody), verbs are the action, nested-button fix (#137 closed), coach row, TELEMETRY.
+- Verified on localhost as the Claude QA account (5c833926 is the test add: nudge -> upload -> RLS
+  write -> card; Remove / Change on the post; empty card f21e2bca; rolled 10-bottle card; zero
+  `button button` in the DOM). The phone camera / gallery picker is #152 (Brian to test).
+- Next: nothing new opened. Board right to left: *In Progress* #150 (Grok's medals, do not push
+  the art) -> Brian tests #152 / #144 / #147 / #145 / #148 / #149 -> *Coming Soon* #143.
 
 ### 2026-09-20 -> 21 - Claude (Brian's other window: tasting data repair; Junk; deferred adds; drag)
 - Data: rank backfill x28; six imports redated to March 2022; 3 QA tastings deleted; Elo
