@@ -13,9 +13,11 @@ import { logClick } from "@/lib/events";
 /**
  * The badge reveal (Brian, 2026-09-21). Next time the app is in front with a session - an organic
  * open, a notification tap, a tab coming back - anything released and not yet revealed plays:
- * a plate sits there ("New badge earned" on the grey locked plate; "Badge upgraded" on the old
- * metal), shakes, bursts, and the earned medal drops in. Close, or More details (the badge sheet
- * on Profile). More than one: "1 of X", Next, and Reveal all (no animation, a scrollable list).
+ * the screen behind darkens like picking a bottle off the Home shelf, a plate sits in focus ("New
+ * badge earned" on the grey locked plate; "Badge upgraded" on the old metal), holds, shakes,
+ * bursts, and the earned medal drops in; a leather tray below carries the name, the copy and the
+ * buttons - Close, or More details (the badge sheet on Profile). More than one: "1 of X", Next,
+ * and Reveal all (no animation, a scrollable list in the tray).
  * Mounted ONCE, in AppShell. `pc:badge-check` (runAwards) re-asks the moment something is earned.
  *
  * Seen-state is `user_badges.revealed_tier` in the DB (badgeReveal.ts) - never the device.
@@ -23,7 +25,8 @@ import { logClick } from "@/lib/events";
  * Never over a tasting, and never on the auth page. Reduced motion: no shake, no burst.
  */
 
-const HOLD_MS = 900; // the plate sits before it shakes
+const HOLD_MS = 3000; // the plate sits in your hand a few seconds before it shakes (Brian)
+const MEDAL = 260; // 30% up from the first cut (Brian, 2026-09-21)
 const SHAKE_MS = 1600; // pc-shake-long
 const BLOCKED_ROUTES = ["/", "/taste"];
 
@@ -107,66 +110,86 @@ export default function BadgeReveal() {
 
   const label = (it: RevealItem) => (it.def.oneOff ? "One-off" : TIER_NAME[it.tier]);
 
+  const tray = "absolute inset-x-0 bottom-0 pc-leather rounded-t-2xl px-4 pt-4 pb-[calc(16px+env(safe-area-inset-bottom))]";
+
   return (
-    <div className="fixed inset-0 z-50 pc-leather flex flex-col" role="dialog" aria-modal="true" aria-label="New badge">
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="New badge">
       <BadgeSprite />
-      <div className="flex items-center justify-between px-4 pt-[calc(12px+env(safe-area-inset-top))]">
-        <span className="text-[11px] uppercase tracking-[.2em] text-cream-mute tabular-nums">
+      {/* the room goes dark behind it, like taking a bottle down off the shelf */}
+      <button type="button" className="absolute inset-0 w-full h-full bg-black/70" aria-label="Close" onClick={close} />
+
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between px-4 pt-[calc(12px+env(safe-area-inset-top))] pointer-events-none">
+        <span className="text-[11px] uppercase tracking-[.2em] text-cream tabular-nums drop-shadow">
           {phase === "list" ? `${queue.length - i} new` : queue.length > 1 ? `${i + 1} of ${queue.length}` : ""}
         </span>
-        <button type="button" onClick={close} aria-label="Close" className="w-9 h-9 rounded-md pc-brass flex items-center justify-center">
+        <button type="button" onClick={close} aria-label="Close" className="pointer-events-auto w-9 h-9 rounded-md pc-brass flex items-center justify-center">
           <X size={18} />
         </button>
       </div>
 
       {phase === "list" ? (
-        <RevealList items={queue.slice(i)} onDetails={details} onDone={() => finish(queue.slice(i), "reveal_all")} label={label} />
+        <div className={`${tray} max-h-[80dvh] flex flex-col`}>
+          <RevealList items={queue.slice(i)} onDetails={details} onDone={() => finish(queue.slice(i), "reveal_all")} label={label} />
+        </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pb-8">
-          <p className="text-xs uppercase tracking-[.2em] text-cream-mute mb-6 min-h-4">
-            {phase === "burst" ? label(item) : item.upgrade ? "Badge upgraded" : "New badge earned"}
-          </p>
+        <>
+          {/* the medal, in focus, in the upper half of the room */}
+          <div className="absolute inset-x-0 top-0 flex flex-col items-center justify-center pointer-events-none" style={{ height: "62%", paddingTop: 24 }}>
+            <p className="text-xs uppercase tracking-[.2em] text-cream mb-6 min-h-4 drop-shadow">
+              {phase === "burst" ? label(item) : item.upgrade ? "Badge upgraded" : "New badge earned"}
+            </p>
+            <button type="button" onClick={() => phase !== "burst" && setPhase("burst")} className="relative pointer-events-auto" aria-label={phase === "burst" ? item.def.name : "Reveal"}>
+              {phase !== "burst" ? (
+                <div className={phase === "shake" ? "pc-shake-long" : ""}>
+                  <Medal tier={item.revealedTier} glyph={item.def.glyph} initial={item.def.category} size={MEDAL} badgeId={item.def.id} oneOff={item.def.oneOff} mystery={!item.upgrade} />
+                </div>
+              ) : (
+                <div className={reduced ? "" : "pc-pop"}>
+                  <Medal tier={item.tier} glyph={item.def.glyph} stars={item.subTier} initial={item.def.category} size={MEDAL} badgeId={item.def.id} oneOff={item.def.oneOff} title={item.def.name} />
+                </div>
+              )}
+            </button>
+            {phase !== "burst" && <p className="mt-5 text-[11px] text-cream-mute drop-shadow">Tap to skip</p>}
+          </div>
 
-          {/* the plate: what they last saw (grey, or the old metal), then the earned medal */}
-          <button type="button" onClick={() => phase !== "burst" && setPhase("burst")} className="relative" aria-label={phase === "burst" ? item.def.name : "Reveal"}>
-            {phase !== "burst" ? (
-              <div className={phase === "shake" ? "pc-shake-long" : ""}>
-                <Medal tier={item.revealedTier} glyph={item.def.glyph} initial={item.def.category} size={200} badgeId={item.def.id} oneOff={item.def.oneOff} />
-              </div>
-            ) : (
-              <div className={reduced ? "" : "pc-pop"}>
-                <Medal tier={item.tier} glyph={item.def.glyph} stars={item.subTier} initial={item.def.category} size={200} badgeId={item.def.id} oneOff={item.def.oneOff} title={item.def.name} />
-              </div>
-            )}
-          </button>
-
-          {phase === "burst" ? (
-            <div className="pc-pop flex flex-col items-center mt-6">
-              <h2 className="font-display text-2xl font-bold text-cream">{item.def.name}</h2>
-              <p className="text-cream text-[14px] leading-snug max-w-[34ch] mt-1.5">{howToEarn(item.def)}</p>
-              <div className="flex gap-2.5 mt-7">
-                <button type="button" onClick={() => details(item)} className="h-11 px-5 rounded-md pc-inset text-cream font-display font-semibold">More details</button>
-                {left > 1 ? (
-                  <button type="button" onClick={next} className="h-11 px-5 rounded-md pc-brass font-display font-semibold">Next</button>
-                ) : (
-                  <button type="button" onClick={close} className="h-11 px-5 rounded-md pc-brass font-display font-semibold">Close</button>
+          {/* the tray: name, how it is earned, the buttons */}
+          <div className={tray}>
+            {phase === "burst" ? (
+              <div className="pc-pop">
+                <h2 className="font-display text-2xl font-bold text-cream text-center">{item.def.name}</h2>
+                <p className="text-cream text-[14px] leading-snug max-w-[34ch] mx-auto text-center mt-1.5">{howToEarn(item.def)}</p>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {left > 1 ? (
+                    <button type="button" onClick={next} className="col-span-2 py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm">Next</button>
+                  ) : (
+                    <button type="button" onClick={close} className="col-span-2 py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm">Close</button>
+                  )}
+                  <button type="button" onClick={() => details(item)} className={`${left > 1 ? "" : "col-span-2"} py-3 rounded-lg border border-brass-line text-cream font-semibold text-sm`}>More details</button>
+                  {left > 1 && (
+                    <button type="button" onClick={revealAll} className="py-3 rounded-lg border border-brass-line text-cream font-semibold text-sm">Reveal all {left}</button>
+                  )}
+                </div>
+                {left > 1 && (
+                  <button type="button" onClick={close} className="w-full mt-3 py-2 text-sm text-cream-mute">Close</button>
                 )}
               </div>
-              {left > 1 && (
-                <button type="button" onClick={revealAll} className="mt-4 text-[13px] text-brass-hi underline underline-offset-4">Reveal all {left}</button>
-              )}
-            </div>
-          ) : (
-            <div className="mt-6 min-h-[120px] flex flex-col items-center">
-              <p className="text-[11px] text-cream-faint">Tap to skip</p>
-              {left > 1 && (
-                <button type="button" onClick={revealAll} className="mt-4 text-[13px] text-brass-hi underline underline-offset-4">Reveal all {left}</button>
-              )}
-            </div>
-          )}
+            ) : (
+              <div>
+                <h2 className="font-display text-2xl font-bold text-cream-mute text-center">{item.upgrade ? "Badge upgraded" : "New badge earned"}</h2>
+                <p className="text-cream-mute text-[14px] text-center mt-1.5">{item.upgrade ? "Your badge just moved up a tier." : "You earned something."}</p>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <button type="button" onClick={() => setPhase("burst")} className="col-span-2 py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm">Reveal</button>
+                  {left > 1 && (
+                    <button type="button" onClick={revealAll} className="col-span-2 py-3 rounded-lg border border-brass-line text-cream font-semibold text-sm">Reveal all {left}</button>
+                  )}
+                </div>
+                <button type="button" onClick={close} className="w-full mt-3 py-2 text-sm text-cream-mute">Not now</button>
+              </div>
+            )}
+          </div>
 
           {phase === "burst" && !reduced && <Burst />}
-        </div>
+        </>
       )}
     </div>
   );
@@ -176,7 +199,7 @@ export default function BadgeReveal() {
 function RevealList({ items, onDetails, onDone, label }: { items: RevealItem[]; onDetails: (it: RevealItem) => void; onDone: () => void; label: (it: RevealItem) => string }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <ul className="flex-1 overflow-y-auto px-4 pt-2 pb-4 flex flex-col gap-2">
+      <ul className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pb-3">
         {items.map((it) => (
           <li key={it.def.id} className="pc-inset rounded-xl px-3 py-2.5 flex items-center gap-3">
             <Medal tier={it.tier} glyph={it.def.glyph} stars={it.subTier} initial={it.def.category} size={66} badgeId={it.def.id} oneOff={it.def.oneOff} />
@@ -188,9 +211,7 @@ function RevealList({ items, onDetails, onDone, label }: { items: RevealItem[]; 
           </li>
         ))}
       </ul>
-      <div className="px-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
-        <button type="button" onClick={onDone} className="w-full h-11 rounded-md pc-brass font-display font-semibold">Close</button>
-      </div>
+      <button type="button" onClick={onDone} className="w-full py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm">Close</button>
     </div>
   );
 }

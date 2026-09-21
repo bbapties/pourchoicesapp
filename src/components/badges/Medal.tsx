@@ -45,6 +45,8 @@ type Props = {
   title?: string;
   badgeId?: string;
   oneOff?: boolean;
+  /** the plate alone - no object, no glyph. The reveal's "something is under here" state. */
+  mystery?: boolean;
 };
 
 const POLAR = (r: number, deg: number) => [70 + r * Math.cos((deg * Math.PI) / 180), 70 + r * Math.sin((deg * Math.PI) / 180)] as const;
@@ -129,7 +131,7 @@ function GlyphOverlay({ glyph, frame, size, initial }: { glyph: string; frame: M
   );
 }
 
-export default function Medal({ tier, glyph, stars = 0, initial, size = 100, className, title, badgeId, oneOff }: Props) {
+export default function Medal({ tier, glyph, stars = 0, initial, size = 100, className, title, badgeId, oneOff, mystery }: Props) {
   const frame = frameFor(tier, !!oneOff, badgeId ?? "");
   const [plateFailed, setPlateFailed] = useState(false);
   const [objectFailed, setObjectFailed] = useState(false);
@@ -153,7 +155,7 @@ export default function Medal({ tier, glyph, stars = 0, initial, size = 100, cla
         onError={() => setPlateFailed(true)}
         style={{ position: "absolute", inset: 0, display: "block" }}
       />
-      {object ? (
+      {mystery ? null : object ? (
         // the badge's 3D object, in front of the plate; dimmed on the locked plate like the glyph
         <img
           src={`/badges/objects/${badgeId}.webp`}
