@@ -1,6 +1,7 @@
 /**
- * Photoreal medals (#150). The coin is three layers: object behind a holed
- * ring plate, stars on top. Frame is NOT `tier === 1` — one-offs pick wood or
+ * Photoreal medals (#150). The coin is three layers: a plate from
+ * public/badges/frames, the badge's glyph (SVG today, a 3D object cutout later)
+ * in the well, stars on top. Frame is NOT `tier === 1` — one-offs pick wood or
  * limited from an allow-list so Founder's Reserve is never Bronze.
  */
 
@@ -28,15 +29,8 @@ const LADDER_FRAME: Record<MedalTier, MedalFrame> = {
 /** One-offs that ship on the stained-wood + onyx plate. Everyone else one-off is wood. */
 const LIMITED_IDS = new Set(["founders_reserve"]);
 
-/** Badge ids that have a cutout in public/badges/objects. SVG fallback otherwise. */
-export const PHOTO_OBJECTS = new Set(["founders_reserve"]);
-
 export function frameFor(tier: MedalTier, oneOff: boolean, badgeId: string): MedalFrame {
   if (tier === 0) return "locked";
   if (oneOff) return LIMITED_IDS.has(badgeId) ? "limited" : "wood";
   return LADDER_FRAME[tier];
-}
-
-export function hasPhotoreal(badgeId: string): boolean {
-  return PHOTO_OBJECTS.has(badgeId);
 }

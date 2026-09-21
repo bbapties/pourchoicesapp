@@ -1,11 +1,10 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import { GLYPH_KEYS } from "@/components/badges/BadgeSprite";
 import {
   TIER_NAME,
   frameFor,
-  hasPhotoreal,
   type MedalFrame,
   type MedalTier,
 } from "@/lib/badgeArt";
@@ -14,11 +13,13 @@ export type { MedalTier, MedalFrame };
 export { TIER_NAME };
 
 /**
- * The badge coin. Photoreal path (#150): object behind a holed ring plate, 0–4
- * stars drawn on top. SVG path (#140) is the fallback until a badge has a cutout.
+ * The badge coin (#150): a photoreal plate (public/badges/frames) with the badge's SVG glyph
+ * inlaid in the well and 0–4 stars drawn on top. The glyph is the interim object layer - each
+ * badge's 3D cutout replaces it one at a time. The all-SVG coin (#140) only draws now if the
+ * plate image fails to load, so the shelf never blanks.
  *
  * Sizes that hold: 38 (ladder), 66 (toast / feed card), 100 (shelf), 124 (sheet).
- * SVG fallback still needs <BadgeSprite /> mounted once on the page.
+ * Glyphs need <BadgeSprite /> mounted once on the page.
  */
 
 /** SVG-only metal ramps. Wood has no old ramp so it borrows bronze. */
@@ -89,50 +90,70 @@ function StarOverlay({ count, size, frame }: { count: number; size: number; fram
   );
 }
 
+/**
+ * The glyph, drawn in the well of a photoreal plate. Same <use> geometry as the SVG coin
+ * (72/140 of the disc) so it sits inside every well, wood's included. Paints come from the
+ * frame's metal ramp, so the glyph reads as an inlay in that metal. Interim until each badge
+ * has a 3D object cutout (#150) - then this layer is swapped for the object image.
+ */
+function GlyphOverlay({ glyph, frame, size, initial }: { glyph: string; frame: MedalFrame; size: number; initial?: string | null }) {
+  const id = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const v = (part: "hi" | "" | "lo") => `var(--medal-${frame}${part ? "-" + part : ""})`;
+  const g = GLYPH_KEYS.has(glyph) ? glyph : "g-pour";
+  const locked = frame === "locked";
+  const rel = `${id}rel`;
+  return (
+    <svg
+      viewBox="0 0 140 140"
+      width={size}
+      height={size}
+      className="absolute inset-0 pointer-events-none"
+      style={{ overflow: "visible", ["--gfill" as string]: `url(#${rel})`, ["--ghi" as string]: v("hi") }}
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={rel} x1="0" y1="0" x2=".35" y2="1">
+          <stop offset="0" stopColor={v("hi")} /><stop offset=".5" stopColor={v("")} /><stop offset="1" stopColor={v("lo")} />
+        </linearGradient>
+      </defs>
+      <g filter={locked ? undefined : "url(#pc-pop3d)"} opacity={locked ? 0.45 : 1}>
+        <use href={`#${g}`} x="34" y="35" width="72" height="72" />
+        {g === "g-hound" && initial && (
+          <text x="70" y="82.5" textAnchor="middle" fontFamily="var(--font-display), Georgia, serif" fontWeight="700" fontSize="16" fill={v("hi")}>
+            {initial.slice(0, 1).toUpperCase()}
+          </text>
+        )}
+      </g>
+    </svg>
+  );
+}
+
 export default function Medal({ tier, glyph, stars = 0, initial, size = 100, className, title, badgeId, oneOff }: Props) {
   const frame = frameFor(tier, !!oneOff, badgeId ?? "");
-  if (badgeId && hasPhotoreal(badgeId)) {
-    return (
-      <div
-        className={className}
-        style={{ position: "relative", width: size, height: size, display: "block" }}
-        role="img"
-        aria-label={title}
-      >
-        <img
-          src={`/badges/objects/${badgeId}.webp`}
-          alt=""
-          width={size}
-          height={size}
-          draggable={false}
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "block",
-            filter: frame === "locked" ? "brightness(0.42) saturate(0.3)" : undefined,
-          }}
-        />
-        <img
-          src={`/badges/frames/${frame}.webp`}
-          alt=""
-          width={size}
-          height={size}
-          draggable={false}
-          style={{ position: "absolute", inset: 0, display: "block" }}
-        />
-        <StarOverlay count={stars} size={size} frame={frame} />
-        {initial && (
-          <span
-            className="absolute font-display font-semibold text-cream pointer-events-none"
-            style={{ left: "50%", top: "58%", transform: "translate(-50%, -50%)", fontSize: size * 0.14 }}
-          >
-            {initial.slice(0, 1).toUpperCase()}
-          </span>
-        )}
-      </div>
-    );
+  const [plateFailed, setPlateFailed] = useState(false);
+  if (plateFailed) {
+    return <SvgMedal tier={tier} glyph={glyph} stars={stars} initial={initial} size={size} className={className} title={title} />;
   }
-  return <SvgMedal tier={tier} glyph={glyph} stars={stars} initial={initial} size={size} className={className} title={title} />;
+  return (
+    <div
+      className={className}
+      style={{ position: "relative", width: size, height: size, display: "block" }}
+      role="img"
+      aria-label={title}
+    >
+      <img
+        src={`/badges/frames/${frame}.webp`}
+        alt=""
+        width={size}
+        height={size}
+        draggable={false}
+        onError={() => setPlateFailed(true)}
+        style={{ position: "absolute", inset: 0, display: "block" }}
+      />
+      <GlyphOverlay glyph={glyph} frame={frame} size={size} initial={initial} />
+      <StarOverlay count={stars} size={size} frame={frame} />
+    </div>
+  );
 }
 
 function SvgMedal({ tier, glyph, stars = 0, initial, size = 100, className, title }: Omit<Props, "badgeId" | "oneOff">) {
