@@ -10,6 +10,22 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
 - **Tip:** `e690313` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Data repair in that same parallel session (2026-09-20, no code) - a cold agent should know
+  the DB was hand-edited:** (1) 28 `tasting_details.rank` NULLs backfilled from pair wins - all
+  helper-mode sessions from before `eb57f9d`, not a live bug; (2) six Right_Blind imports dated
+  2026-09-06 were really March 2022 - redated to the 10th/14th/17th (two each, +1s for same-day
+  order); their `tasting_imported` events were LEFT at 09-06 on purpose, that is the honest
+  insert date; (3) the 3 Claude Code Agent QA tastings hard-deleted with Brian's explicit yes,
+  activities included; (4) `replay_elo_history()` after each. **Trick:** the replay checks
+  `auth.uid()` for admin, so from psql wrap it in `set_config('request.jwt.claims',
+  '{"sub":"<The_Lake_House auth_id>"}', true)` inside the same transaction. The reusable
+  audit is `sql/reports/blind_results_audit.sql` (`558cd82`): blinds as the base, FULL OUTER
+  JOIN to details/pairs, placements + variant label, `insert_date` from the `admin_blind_entered`
+  event, `issues[]` naming every failed check - run it before trusting the Elo history.
+  **Brian to test:** #145 (date read-back), #148 (Junk), #149 (save-time insert + tap-to-fix),
+  each with numbered steps. Bot checked 09:05 CT 09-20: healthy, 4 filed, all approved, 0
+  pending; the 28 unverified are all Brian's so it runs on the idle clock (one per 6h,
+  `IDLE_HOURS` in `bot_gate.mjs` - he declined a faster setting).
 - **Three commits from a parallel session on 2026-09-20 (Brian's other window), after the last
   END SESSION - none had a baton entry until now:** `ac07dc1` Admin > Review gets a two-tap
   **Junk** row (purge_bottle RPC; refuses once anyone has tasted / poured / emptied / rated it;
@@ -1774,6 +1790,14 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-20 -> 21 - Claude (Brian's other window: tasting data repair; Junk; deferred adds; drag)
+- Data: rank backfill x28; six imports redated to March 2022; 3 QA tastings deleted; Elo
+  replayed each time (admin claim via `set_config` in the transaction).
+  `sql/reports/blind_results_audit.sql` is the audit that found all of it.
+- `09b1904` #145 · `ac07dc1` #148 · `6c35e99` #149 · `e690313` drag (root cause: a moved DOM
+  node drops pointer capture) - pane-verified 5 -> 1 in one gesture on /taste.
+- Bot's first 24h clean: 4 filed, all approved. Next idle pick: Knob Creek 12.
 
 ### 2026-09-20 (parallel session, reconstructed from git log at the 09-21 END SESSION)
 - `ac07dc1` Review: Junk row. `6c35e99` Blinds: new bottles inserted on Save. `e690313` drag
