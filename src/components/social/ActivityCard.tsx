@@ -81,7 +81,7 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
   // A pour, and an add, keep their own row and hang the photo UNDER it (Brian, 2026-09-21 - the
   // same block of info with and without a picture); the rest lead with the photo.
   const photo = !rolled ? item.details?.photo_url ?? null : null;
-  const rowThenPhoto = item.action === "drank" || item.action === "added_to_collection";
+  const rowThenPhoto = item.action === "drank" || item.action === "added_to_collection" || item.action === "finished";
   const body = photo && !rowThenPhoto ? (
     <PhotoBody item={item} photo={photo} detail={detail} onOpenBottle={openBottle} />
   ) : (() => {
@@ -91,7 +91,7 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
       case "tasted":
         return <BlindBody item={item} detail={detail} />;
       case "finished":
-        return <ShelfBody rows={[item]} empty onOpenBottle={openBottle} />;
+        return photo ? <PourBody item={item} detail={detail} onOpenBottle={openBottle} /> : <ShelfBody rows={[item]} empty onOpenBottle={openBottle} />;
       case "added_to_collection":
         return photo ? <PourBody item={item} detail={detail} onOpenBottle={openBottle} /> : <ShelfBody rows={group} onOpenBottle={openBottle} />;
       case "wishlisted":
@@ -309,7 +309,7 @@ function PourBody({ item, detail, onOpenBottle }: { item: FeedItem; detail: bool
   const photo = item.details?.photo_url ?? null;
   const note = item.details?.note ?? null;
   const stars = item.details?.stars ?? item.posterStars ?? null;
-  const how = howOf(item);
+  const how = item.action === "finished" ? "Empty" : howOf(item);
   return (
     <div className={photo ? "" : "pb-3"}>
       <div className="flex items-center gap-3 px-3.5">
