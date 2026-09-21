@@ -6,6 +6,7 @@ import Medal, { TIER_NAME, type MedalTier } from "@/components/badges/Medal";
 import BadgeSprite from "@/components/badges/BadgeSprite";
 import { fetchShelf, runAwards, type ShelfItem } from "@/lib/badges";
 import { logClick } from "@/lib/events";
+import { howToEarn } from "@/lib/badgeCopy";
 
 /**
  * The badge shelf on a user page (#139). Earned first (highest tier first) with the distance to
@@ -130,23 +131,24 @@ function Progress({ item }: { item: ShelfItem }) {
   );
 }
 
+/** Sheet medal: 2.5x the 100px shelf coin, capped so it clears the ladder on a short phone. */
+const MEDAL_SHEET = 250;
+
 function BadgeSheet({ item, onClose }: { item: ShelfItem | null; onClose: () => void }) {
   const d = item?.def;
   return (
     <Sheet open={!!item} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <SheetContent side="bottom" className="pc-leather">
+      <SheetContent side="bottom" className="pc-leather max-h-[92dvh] overflow-y-auto">
         {item && d && (
           <>
-            <SheetHeader>
-              <div className="flex items-center gap-3.5">
-                <Medal tier={item.tier} glyph={d.glyph} stars={item.subTier} initial={d.category} size={124} badgeId={d.id} oneOff={d.oneOff} />
-                <div className="min-w-0">
-                  <SheetTitle className="font-display text-xl text-cream">{d.name}</SheetTitle>
-                  <SheetDescription className="text-cream-mute text-[13px]">
-                    {describe(item)}
-                  </SheetDescription>
-                </div>
-              </div>
+            <SheetHeader className="items-center text-center">
+              {/* the medal is the point of the sheet - 2.5x the shelf coin (Brian, 2026-09-21) */}
+              <Medal tier={item.tier} glyph={d.glyph} stars={item.subTier} initial={d.category} size={MEDAL_SHEET} badgeId={d.id} oneOff={d.oneOff} className="mx-auto" />
+              <SheetTitle className="font-display text-2xl text-cream mt-1">{d.name}</SheetTitle>
+              <SheetDescription className="text-cream text-[14px] leading-snug max-w-[34ch] mx-auto">
+                {howToEarn(d)}
+              </SheetDescription>
+              <p className="text-cream-mute text-[13px] mt-1">{describe(item)}</p>
             </SheetHeader>
             <ol className="mt-3.5 flex flex-col">
               {d.tiers.map((t) => {
@@ -173,12 +175,10 @@ function BadgeSheet({ item, onClose }: { item: ShelfItem | null; onClose: () => 
 
 function describe(it: ShelfItem): string {
   const d = it.def;
-  const what = d.family === "hound" ? `Distinct ${d.category ?? ""} bottles tried.` : d.feature ? `${d.feature}.` : "";
-  if (d.oneOff) return it.tier ? `${what} Earned${it.earnedAt ? ` ${formatDay(it.earnedAt)}` : ""}.` : `${what} ${d.hint ? cap(d.hint) + "." : ""}`;
-  if (!it.tier) return `${what} ${it.progress} so far${it.next ? ` - ${TIER_NAME[it.next.tier as MedalTier]} at ${it.next.threshold}` : ""}.`;
-  return `${what} You are on ${TIER_NAME[it.tier]} - ${it.progress} so far${it.next ? `, ${TIER_NAME[it.next.tier as MedalTier]} at ${it.next.threshold}` : ", the top"}.`;
+  if (d.oneOff) return it.tier ? `Earned${it.earnedAt ? ` ${formatDay(it.earnedAt)}` : ""}.` : "Not yet.";
+  if (!it.tier) return `${it.progress} so far${it.next ? ` - ${TIER_NAME[it.next.tier as MedalTier]} at ${it.next.threshold}` : ""}.`;
+  return `You are on ${TIER_NAME[it.tier]} - ${it.progress} so far${it.next ? `, ${TIER_NAME[it.next.tier as MedalTier]} at ${it.next.threshold}` : ", the top"}.`;
 }
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 function formatDay(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
