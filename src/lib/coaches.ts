@@ -230,6 +230,18 @@ export const COACH_CATALOG: CoachItem[] = [
     ],
   },
   {
+    // 2026-09-21: a photo on any post, the cards reworked so the eye lands on the photo first.
+    id: "social.showoff",
+    title: "Show it off",
+    body: "Add a bottle or empty one and you can put a photo on the post right after - it fills the card, edge to edge. Change or remove the photo any time from your own post.",
+    route: "/social",
+    core: false,
+    announce: true,
+    tour: [
+      { route: "/social", anchor: "social.card", caption: "A post with a photo is the photo. Adds and empties put the bottle big on a shelf; a plain pour stays small." },
+    ],
+  },
+  {
     // The cabinet's top trim carries the scanner, so scanning no longer starts in Search.
     id: "home.scan",
     title: "Drink and scan from Home",

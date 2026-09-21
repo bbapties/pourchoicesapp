@@ -279,6 +279,11 @@ client limit. Purged 2026-09-05 (65,215 -> 655 rows). See PHASE10.md A1.
   (push) was actually sent - false while `BADGE_MOMENTS_ENABLED` is off in `src/lib/badges.ts`.
 - `click` → `post_photo_opened` — a pour photo on a Social / post / user-page card was opened full
   screen (2026-09-20). `target_id` = activity id.
+- `post_photo_set` / `post_photo_removed` — a photo was put on, or taken off, one of your own posts
+  after the fact (2026-09-21). `surface` = `showoff` (the nudge right after an add / empty) or `/post`
+  (Edit on your own post); `target_id` = activity id. The photo itself is `activities.details.photo_url`.
+- `click` → `showoff_opened` / `showoff_dismissed` — the Show it off bar after an add / empty: they
+  opened the picker, or tapped Not now (letting it time out logs nothing). `metadata = { action }`.
 - `click` → `badge_sheet_opened` — a coin on a badge shelf was tapped (#139). `target_id` = badge id,
   `metadata = { tier, own }`.
 
