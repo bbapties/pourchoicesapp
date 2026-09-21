@@ -20,6 +20,9 @@ export type FeedItem = ActivityRow & {
   /** The VIEWER's relationship to the card's bottle - the same earmark the cards wear. */
   viewerHadIt: boolean;
   viewerOwnedCount: number;
+  /** The POSTER's stars for this bottle when the row itself carries none (an add / empty logs no
+   *  snapshot; the card still shows what they think of it). Null when they never rated it. */
+  posterStars: number | null;
   /** Adds / wishlists by the same person within an hour collapse into one card. Each member keeps
    *  its own counts; the rolled-up card shows the sums and splits back into these on a tap. */
   group?: FeedItem[];
@@ -60,8 +63,10 @@ export async function enrichRows(rows: ActivityRow[], viewerId: string | null): 
   const comments = new Map<string, number>();
   const had = new Set<string>();
   const owned = new Map<string, number>();
+  const stars = new Map<string, number>(); // "<user>:<bottle>" -> the poster's rating
+  const needStars = rows.filter((r) => (r.action === "added_to_collection" || r.action === "finished") && r.details?.stars == null);
   if (ids.length) {
-    const [{ data: re }, { data: co }, { data: ub }, { data: dr }] = await Promise.all([
+    const [{ data: re }, { data: co }, { data: ub }, { data: dr }, { data: ur }] = await Promise.all([
       supabase.from("post_reactions").select("activity_id, user_id").in("activity_id", ids),
       supabase.from("post_comments").select("activity_id").in("activity_id", ids).is("deleted_at", null),
       viewerId && bottleIds.length
@@ -70,7 +75,11 @@ export async function enrichRows(rows: ActivityRow[], viewerId: string | null): 
       viewerId && bottleIds.length
         ? supabase.from("activities").select("bottle_id").eq("user_id", viewerId).eq("action", "drank").in("bottle_id", bottleIds)
         : Promise.resolve({ data: [] as any[] }),
+      needStars.length
+        ? supabase.from("user_ratings").select("user_id, bottle_id, stars").in("user_id", [...new Set(needStars.map((r) => r.userId))]).in("bottle_id", [...new Set(needStars.map((r) => r.bottleId))])
+        : Promise.resolve({ data: [] as any[] }),
     ]);
+    (ur || []).forEach((r: any) => { if (typeof r.stars === "number" || typeof r.stars === "string") stars.set(`${r.user_id}:${r.bottle_id}`, Number(r.stars)); });
     // The B-31 "had it" set: owned now or ever, poured, or blind-tasted.
     (ub || []).forEach((r: any) => {
       if (r.currently_owned || (r.times_had ?? 0) >= 1 || r.tasted_at || r.blind_tasted_at) had.add(r.bottle_id);
@@ -92,6 +101,7 @@ export async function enrichRows(rows: ActivityRow[], viewerId: string | null): 
     viewerCheered: mine.has(r.id),
     viewerHadIt: had.has(r.bottleId),
     viewerOwnedCount: owned.get(r.bottleId) ?? 0,
+    posterStars: stars.get(`${r.userId}:${r.bottleId}`) ?? null,
   }));
 }
 

@@ -50,7 +50,7 @@ export function verbFor(row: ActivityRow, groupSize = 1): string {
     case "finished":
       return "emptied a bottle";
     case "added_to_collection":
-      return groupSize > 1 ? `added ${groupSize} bottles` : "added a bottle";
+      return groupSize > 1 ? `added ${groupSize} bottles to their bar` : "added a bottle to their bar";
     case "wishlisted":
       return groupSize > 1 ? `wants ${groupSize} bottles` : "wants a bottle";
     default:
@@ -78,10 +78,11 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
 
   const earmark = group.length === 1 && (item.viewerHadIt || !(item.bottleVerified ?? true));
 
-  // A pour keeps its own row and hangs the photo UNDER it (Brian, 2026-09-21); every other action
-  // with a photo leads with the photo.
+  // A pour, and an add, keep their own row and hang the photo UNDER it (Brian, 2026-09-21 - the
+  // same block of info with and without a picture); the rest lead with the photo.
   const photo = !rolled ? item.details?.photo_url ?? null : null;
-  const body = photo && item.action !== "drank" ? (
+  const rowThenPhoto = item.action === "drank" || item.action === "added_to_collection";
+  const body = photo && !rowThenPhoto ? (
     <PhotoBody item={item} photo={photo} detail={detail} onOpenBottle={openBottle} />
   ) : (() => {
     switch (item.action) {
@@ -92,6 +93,7 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
       case "finished":
         return <ShelfBody rows={[item]} empty onOpenBottle={openBottle} />;
       case "added_to_collection":
+        return photo ? <PourBody item={item} detail={detail} onOpenBottle={openBottle} /> : <ShelfBody rows={group} onOpenBottle={openBottle} />;
       case "wishlisted":
         return <ShelfBody rows={group} onOpenBottle={openBottle} />;
       default:
@@ -120,7 +122,7 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
           aria-label={`@${item.username}`}
         >
           <div className="text-[16px] font-semibold text-cream truncate">@{item.username}</div>
-          <div className="text-[15px] text-cream-mute truncate">{verbFor(item, group.length)}</div>
+          <div className="text-[15px] leading-tight text-cream-mute" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{verbFor(item, group.length)}</div>
         </button>
         <span className="ml-auto text-xs text-cream-faint shrink-0">{formatFeedTime(item.createdAt)}</span>
       </div>
@@ -252,7 +254,7 @@ function ShelfBody({ rows, empty = false, onOpenBottle }: { rows: FeedItem[]; em
   const shown = rows.slice(0, 4);
   const one = shown.length === 1;
   const first = shown[0];
-  const stars = empty ? first?.details?.stars ?? null : null;
+  const stars = first?.details?.stars ?? first?.posterStars ?? null;
   const h = one ? 150 : shown.length === 2 ? 130 : 112;
   return (
     <div className="pb-3">
@@ -284,10 +286,10 @@ function ShelfBody({ rows, empty = false, onOpenBottle }: { rows: FeedItem[]; em
       </div>
       <div className="px-3.5 pt-2.5">
         {one ? (
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1"><BottleLine item={first} onOpenBottle={onOpenBottle} big /></div>
-            {stars != null && <span className="shrink-0 pt-1"><Stars value={stars} /></span>}
-          </div>
+          <>
+            <BottleLine item={first} onOpenBottle={onOpenBottle} big />
+            {stars != null && <div className="mt-1.5"><Stars value={stars} /></div>}
+          </>
         ) : (
           <div className="text-[13px] leading-snug text-cream" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {shown.map((r) => r.bottleName).join(" · ")}
@@ -306,7 +308,7 @@ function ShelfBody({ rows, empty = false, onOpenBottle }: { rows: FeedItem[]; em
 function PourBody({ item, detail, onOpenBottle }: { item: FeedItem; detail: boolean; onOpenBottle: OpenBottle }) {
   const photo = item.details?.photo_url ?? null;
   const note = item.details?.note ?? null;
-  const stars = item.details?.stars ?? null;
+  const stars = item.details?.stars ?? item.posterStars ?? null;
   const how = howOf(item);
   return (
     <div className={photo ? "" : "pb-3"}>
