@@ -7,6 +7,7 @@ import BadgeSprite from "@/components/badges/BadgeSprite";
 import { fetchShelf, runAwards, type ShelfItem } from "@/lib/badges";
 import { logClick } from "@/lib/events";
 import { howToEarn } from "@/lib/badgeCopy";
+import { isReleased, RELEASED_BADGES } from "@/lib/badgeRelease";
 
 /**
  * The badge shelf on a user page (#139). Earned first (highest tier first) with the distance to
@@ -37,9 +38,13 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
 
   if (items === null) return <div className="mx-4 h-[120px]" />;
 
-  const earned = items.filter((i) => i.tier > 0).sort((a, b) => b.tier - a.tier || (b.earnedAt ?? "").localeCompare(a.earnedAt ?? ""));
-  const started = items.filter((i) => i.tier === 0 && i.progress > 0).sort((a, b) => ratio(b) - ratio(a));
-  const locked = items.filter((i) => i.tier === 0 && i.progress === 0);
+  // Unreleased badges (src/lib/badgeRelease.ts) sit under "Coming soon" whatever the user holds;
+  // the engine keeps counting behind the scenes so credit is there the day each one is released.
+  const live = items.filter((i) => isReleased(i.def.id));
+  const soon = items.filter((i) => !isReleased(i.def.id));
+  const earned = live.filter((i) => i.tier > 0).sort((a, b) => b.tier - a.tier || (b.earnedAt ?? "").localeCompare(a.earnedAt ?? ""));
+  const started = live.filter((i) => i.tier === 0 && i.progress > 0).sort((a, b) => ratio(b) - ratio(a));
+  const locked = live.filter((i) => i.tier === 0 && i.progress === 0);
   const openSheet = (it: ShelfItem) => {
     setOpen(it);
     logClick("badge_sheet_opened", { userId: viewerId, surface, targetId: it.def.id, metadata: { tier: it.tier, own } });
@@ -48,7 +53,7 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
   return (
     <>
       <BadgeSprite />
-      {earned.length === 0 && started.length === 0 ? (
+      {RELEASED_BADGES.size > 0 && earned.length === 0 && started.length === 0 ? (
         <p className="mx-4 rounded-lg px-4 py-[18px] text-center text-xs text-cream-mute border border-dashed border-edge bg-panel">
           {own ? "Nothing yet - pour something, scan something, blind something." : "No badges yet."}
         </p>
@@ -83,6 +88,19 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
             {locked.map((it) => (
               <Cell key={it.def.id} item={it} onOpen={openSheet} dim>
                 <div className="text-[10.5px] text-cream-faint">{it.def.hint ?? ""}</div>
+              </Cell>
+            ))}
+          </Grid>
+        </>
+      )}
+
+      {soon.length > 0 && (
+        <>
+          <Divider>Coming soon</Divider>
+          <Grid>
+            {soon.map((it) => (
+              <Cell key={it.def.id} item={{ ...it, tier: 0, subTier: 0 }} onOpen={openSheet} dim>
+                <div className="text-[10.5px] text-brass-hi tracking-[.06em] uppercase">Coming soon</div>
               </Cell>
             ))}
           </Grid>
@@ -136,6 +154,7 @@ const MEDAL_SHEET = 250;
 
 function BadgeSheet({ item, onClose }: { item: ShelfItem | null; onClose: () => void }) {
   const d = item?.def;
+  const released = !!d && isReleased(d.id);
   return (
     <Sheet open={!!item} onOpenChange={(o) => { if (!o) onClose(); }}>
       <SheetContent side="bottom" className="pc-leather max-h-[92dvh] overflow-y-auto">
@@ -143,14 +162,16 @@ function BadgeSheet({ item, onClose }: { item: ShelfItem | null; onClose: () => 
           <>
             <SheetHeader className="items-center text-center">
               {/* the medal is the point of the sheet - 2.5x the shelf coin (Brian, 2026-09-21) */}
-              <Medal tier={item.tier} glyph={d.glyph} stars={item.subTier} initial={d.category} size={MEDAL_SHEET} badgeId={d.id} oneOff={d.oneOff} className="mx-auto" />
+              <Medal tier={released ? item.tier : 0} glyph={d.glyph} stars={released ? item.subTier : 0} initial={d.category} size={MEDAL_SHEET} badgeId={d.id} oneOff={d.oneOff} className="mx-auto" />
               <SheetTitle className="font-display text-2xl text-cream mt-1">{d.name}</SheetTitle>
               <SheetDescription className="text-cream text-[14px] leading-snug max-w-[34ch] mx-auto">
                 {howToEarn(d)}
               </SheetDescription>
-              <p className="text-cream-mute text-[13px] mt-1">{describe(item)}</p>
+              <p className="text-cream-mute text-[13px] mt-1">
+                {released ? describe(item) : "Coming soon. What you do now still counts toward it."}
+              </p>
             </SheetHeader>
-            <ol className="mt-3.5 flex flex-col">
+            {released && <ol className="mt-3.5 flex flex-col">
               {d.tiers.map((t) => {
                 const got = item.tier >= t.tier;
                 const isNext = item.next?.tier === t.tier;
@@ -165,7 +186,7 @@ function BadgeSheet({ item, onClose }: { item: ShelfItem | null; onClose: () => 
                   </li>
                 );
               })}
-            </ol>
+            </ol>}
           </>
         )}
       </SheetContent>

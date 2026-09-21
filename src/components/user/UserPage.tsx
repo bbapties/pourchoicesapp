@@ -25,6 +25,7 @@ import type { ShelfBottle, ShelfDef } from "@/lib/shelves";
 import PastTastings from "@/components/PastTastings";
 import BadgeShelf from "@/components/badges/BadgeShelf";
 import { fetchLevel, levelLine, type Level } from "@/lib/badges";
+import { RELEASED_BADGES } from "@/lib/badgeRelease";
 import {
   fetchTop3,
   fetchUserById,
@@ -281,8 +282,11 @@ export default function UserPage({ own = false, username }: Props) {
         </div>
       </div>
 
-      {/* #139: the member level - Profile-only for now (Brian, 2026-09-18; #142 takes it wider) */}
-      {level && (
+      {/* #139: the member level - Profile-only for now (Brian, 2026-09-18; #142 takes it wider).
+          Hidden while no badge is released (2026-09-21): points sum every tier held, released or
+          not, so the plate would contradict a shelf that is all "Coming soon". When badges start
+          releasing, user_level() should count released ids only - that is a SQL change, ask Brian. */}
+      {level && RELEASED_BADGES.size > 0 && (
         <div className="flex justify-center pt-2.5" data-coach="profile.level">
           <span className="pc-brass rounded px-3 py-[3px] font-display font-semibold text-[13px] tracking-[.06em] uppercase" title={levelLine(level)}>
             {level.title} · {level.points} pts
@@ -363,7 +367,7 @@ export default function UserPage({ own = false, username }: Props) {
       {/* #139: the badge shelf */}
       {user && (
         <>
-          <SectionHead title="Badges" hint={level?.nextTitle && level.nextPoints != null ? `${level.nextPoints - level.points} pts to ${level.nextTitle}` : undefined} />
+          <SectionHead title="Badges" hint={RELEASED_BADGES.size > 0 && level?.nextTitle && level.nextPoints != null ? `${level.nextPoints - level.points} pts to ${level.nextTitle}` : undefined} />
           <div data-coach="profile.badges">
             <BadgeShelf userId={user.id} viewerId={publicUserId ?? null} own={own} surface={surface} reloadKey={reloadKey} />
           </div>
