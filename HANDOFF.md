@@ -8,6 +8,30 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **SOCIAL ROUND TWO SHIPPED (2026-09-21 afternoon, Claude) - origin/MVP-v3 `368785c`, live.
+  #151 #137 #153 DONE; #152 and #154 in Brian to test (numbered steps).** In order: full-width
+  cards, 2x gap, a fourth rivet where there is no earmark (`57887ba`); the who-what pill from
+  Home heads every card and each action wears a colour - tokens `--color-act-*` in globals.css,
+  shared `WhoWhatPill` / `ActionGlyph` in `src/components/social/WhoWhatPill.tsx`, Home's shelf
+  uses the same (`5adec29`, sized `bd5f91e`); add / empty / wishlist cards = shelf when no photo,
+  the pour's compact row + picture under when there is one (`060f8a5` `6220566` `757e350`);
+  no fade / no Empty tag anywhere - the header says it; a post with a photo NEVER folds into a
+  run (`collapseRuns`); wishlists get the Show it off nudge; a blind gets **Add a photo of the
+  lineup** on Tasting complete and hangs the photo under the podium; `suggested_edit` +
+  `removed_from_collection` are feed-hidden (`024b83a`). **NEW ACTION `posted`** - a free-text
+  Social post (`71ff9bc` schema, `6616abc` code): `activities.bottle_id` is NULLABLE now but the
+  CHECK `activities_bottle_required` keeps it mandatory for every other action; text =
+  `details.note`, picture = `details.photo_url`, tagged bottle = `bottle_id`. Composer
+  `PostComposer` (AppShell, `pc:compose`), `lib/posts.ts`; entry points: floating **Post** on
+  Social, **Post about this** in a bottle's More sheet (pre-tagged), **+ Post** on own Profile.
+  Cream speech-bubble pill. Home shelf: only when a bottle is tagged (`shelves.ts` filters
+  null bottle_id). Bell kind "Writes a post". `activities_update_own` now covers drank /
+  added_to_collection / finished / wishlisted / tasted / posted; delete-own adds posted; the
+  guard trigger pins every column but details on all of them. **Any code that assumed
+  `row.bottleId` is a string must null-check now** (feed, post page, card already do).
+  **Not built, on purpose:** a "write a post" option in the Show it off bar; a Home-cabinet
+  entry. **Landmine for the push:** the QA account is not `account_type = human`, so its posts
+  never appear in Social's Everyone - verify on /post/<id>, /profile, or as a human account.
 - **Social cards reworked + a photo on an add / empty (2026-09-21, Claude; #151 DONE, #137 DONE,
   #152 Brian to test). On origin/MVP-v3 and prod as `fac6661` `2c1d001` `4bccf82` + doc commit.**
   What the eye lands on, in order: a PHOTO on any action (edge to edge, 4:5, `PhotoBody`), an ADD
@@ -28,7 +52,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
   origin/MVP-v3) so Grok's local `fe06429` stayed off prod; the local branch was then rebased so
   `fe06429` sits on top of them again and Grok's uncommitted frames were stashed / restored.
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `e690313` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** origin/MVP-v3 = `368785c` (Claude, 2026-09-21) + this doc commit, live on prod.
 - **Data repair in that same parallel session (2026-09-20, no code) - a cold agent should know
   the DB was hand-edited:** (1) 28 `tasting_details.rank` NULLs backfilled from pair wins - all
   helper-mode sessions from before `eb57f9d`, not a live bug; (2) six Right_Blind imports dated
@@ -1809,6 +1833,21 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-21 (afternoon) - Claude (Social round two + the free-text post; #151 #137 #153 done, #152 #154 to test)
+- Brian drove it card by card: full width + gap + rivet; Home's pill in the header (+20%, text +15%)
+  with a colour per action; add / empty / wishlist / blind each with and without a photo (the
+  pour's row + picture under is the shared block); no fade / tags; photo posts never group;
+  wishlist + blind photo paths (policy widened twice: wishlisted, tasted); suggested_edit and
+  removed_from_collection hidden from the feed.
+- Then the new `posted` action end to end (schema approved and applied, composer, three entry
+  points, card, pill, shelf filter, bell kind, coach, telemetry). Pushes went out five times via
+  a throwaway worktree so Grok's local medal commit stayed off prod; local rebased each time.
+- Verified on localhost as the QA account with injected images (add / empty / wishlist / blind /
+  post cards, edit + remove, composer with tag + photo, More sheet pre-tag, Home loads). Prod
+  bundles confirmed after every push. Phone camera + real layout: #152, #154.
+- Next: board right to left - *In Progress* #150 (Grok's medals; art only, do not push) ->
+  Brian tests #154 #152 #144 #147 #145 #148 #149 -> *Coming Soon* #143.
 
 ### 2026-09-21 - Claude (Social cards: photo first; Show it off photo on add / empty; #151 #137 #152)
 - Brian: the cards focused on HOW a pour was taken, not THAT something happened; a photo should be
