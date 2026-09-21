@@ -14,6 +14,7 @@ import { useDragReorder, arrayMove } from "@/lib/useDragReorder";
 import { fetchUserRatingState } from "@/lib/ratings";
 import PourSheet, { type PourSubmission } from "@/components/PourSheet";
 import { recordPour } from "@/lib/pours";
+import { setPostPhoto } from "@/lib/postPhoto";
 import { loadTastingDraft, saveTastingDraft, flushTastingDraft, clearTastingDraft } from "@/lib/tastingDraft";
 
 type Step = "home" | "pourPick" | "source" | "count" | "mode" | "pick" | "label" | "handoff" | "helperSetup" | "handback" | "rank" | "done";
@@ -100,6 +101,17 @@ export default function DrinkClient({
   const [result, setResult] = useState<RankItem[] | null>(null);
   // The theatre runs once per saved tasting, before the plain list; tapping skips it.
   const [revealing, setRevealing] = useState(false);
+  // A photo of the lineup on the tasting's post, offered after the reveal (Brian, 2026-09-21).
+  const [tastingPhoto, setTastingPhoto] = useState<"none" | "sending" | "done">("none");
+  const tastingPhotoRef = useRef<HTMLInputElement | null>(null);
+  const addTastingPhoto = async (file: File | null) => {
+    if (!file || !savedActivityId || !publicUserId) return;
+    setTastingPhoto("sending");
+    const res = await setPostPhoto({ activityId: savedActivityId, userId: publicUserId, photo: file, surface: "/taste" });
+    if (res.error) { setTastingPhoto("none"); toast.error("Photo didn't upload"); return; }
+    setTastingPhoto("done");
+    toast.success("On your post");
+  };
   const [pourTarget, setPourTarget] = useState<CatalogBottle | null>(null);
   const [showPourSheet, setShowPourSheet] = useState(false);
   const [isPouring, setIsPouring] = useState(false);
@@ -519,7 +531,7 @@ export default function DrinkClient({
     pendingSessionRef.current = null;
     setPicks([]); setGlassAssignment([]); setRankOrder([]); setResult(null); setQuery("");
     setRandom(false); setRandomCount(MIN_PICKS); setSwaps([]); setSwapping(false); setSavedActivityId(null);
-    setGlassNotes({}); setNotesOpen(null); setRevealing(false);
+    setGlassNotes({}); setNotesOpen(null); setRevealing(false); setTastingPhoto("none");
     setPourTarget(null); setShowPourSheet(false); setStep("home");
     if (seedBottleId) router.replace("/taste");
   };
@@ -1042,6 +1054,19 @@ export default function DrinkClient({
                   <p key={i}>Glass {sw.letter} was going to be {sw.from.name}; swapped for {sw.to.name} — &ldquo;{sw.reason}&rdquo;.</p>
                 ))}
               </div>
+            )}
+            {savedActivityId && (
+              <>
+                <input ref={tastingPhotoRef} type="file" accept="image/*" className="hidden" onChange={(e) => { addTastingPhoto(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+                <button
+                  type="button"
+                  disabled={tastingPhoto !== "none"}
+                  onClick={() => { logClick("reveal_photo_opened", { userId: publicUserId, surface: "/taste", targetId: savedActivityId }); tastingPhotoRef.current?.click(); }}
+                  className="w-full rounded-lg py-2.5 text-sm font-semibold pc-brass text-engrave disabled:opacity-70 mb-3"
+                >
+                  {tastingPhoto === "done" ? "Photo added ✓" : tastingPhoto === "sending" ? "Sending…" : "Add a photo of the lineup"}
+                </button>
+              </>
             )}
             {savedActivityId && (
               <button

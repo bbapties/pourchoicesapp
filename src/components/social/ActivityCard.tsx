@@ -81,7 +81,8 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
   // A pour, and an add, keep their own row and hang the photo UNDER it (Brian, 2026-09-21 - the
   // same block of info with and without a picture); the rest lead with the photo.
   const photo = !rolled ? item.details?.photo_url ?? null : null;
-  const rowThenPhoto = item.action === "drank" || item.action === "added_to_collection" || item.action === "finished" || item.action === "wishlisted";
+  // Every action keeps its own body and hangs the photo UNDER it (Brian, 2026-09-21).
+  const rowThenPhoto = true;
   const body = photo && !rowThenPhoto ? (
     <PhotoBody item={item} photo={photo} detail={detail} onOpenBottle={openBottle} />
   ) : (() => {
@@ -390,6 +391,7 @@ export function PhotoViewer() {
 }
 
 function BlindBody({ item, detail }: { item: FeedItem; detail: boolean }) {
+  const photo = item.details?.photo_url ?? null;
   const [podium, setPodium] = useState<PodiumGlass[] | null | undefined>(undefined);
   const count = item.details?.count ?? null;
 
@@ -455,6 +457,12 @@ function BlindBody({ item, detail }: { item: FeedItem; detail: boolean }) {
           See the full ranking
           <Chevron />
         </div>
+      )}
+      {photo && (
+        <button type="button" onClick={(e) => openPhoto(e, photo, item)} className="block w-full -mx-3.5 -mb-3.5 mt-0.5" style={{ width: "calc(100% + 28px)" }} aria-label="See the photo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo} alt="" className={`w-full object-cover border-t border-black/50 ${detail ? "max-h-[70vh]" : "aspect-[4/5] max-h-[460px]"}`} />
+        </button>
       )}
     </div>
   );

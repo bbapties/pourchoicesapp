@@ -35,7 +35,7 @@ export type PourType = "neat" | "rocks" | "mixed" | "blind";
  * Filtered at every SOCIAL read (this feed and Home's Social shelf). Per-bottle history and admin
  * screens still show them, which is where they belong. Adding another action is one line.
  */
-export const FEED_HIDDEN_ACTIONS: ActivityAction[] = ["verified", "added_to_db"];
+export const FEED_HIDDEN_ACTIONS: ActivityAction[] = ["verified", "added_to_db", "suggested_edit", "removed_from_collection"];
 
 /** PostgREST `not.in` list, e.g. `(verified)`. */
 export const FEED_HIDDEN_FILTER = `(${FEED_HIDDEN_ACTIONS.join(",")})`;
