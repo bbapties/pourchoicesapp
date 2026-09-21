@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Bell, BellOff } from "lucide-react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 type AdminUser = {
@@ -16,7 +17,20 @@ type AdminUser = {
   sessionCount: number;
   /** null = notifications not enabled at all; a number = enabled, with this many registered devices. */
   pushDevices: number | null;
+  /** newest page_view (admin_last_seen) - "is this person even opening the app" (Brian, 2026-09-21) */
+  lastSeen: string | null;
+  pageViews: number;
 };
+
+/** "2m ago" / "3h ago" / "5d ago", with the exact stamp in the title. */
+function ago(iso: string): string {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 86400 * 30) return `${Math.floor(s / 86400)}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
 
 export default function UsersTab({ currentPublicUserId }: { currentPublicUserId: string }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -33,7 +47,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
     // admin no read on other users' push_subscriptions rows, so counting them here would report
     // every other user as 0 devices (B-59). The route returns only users with notify_push = true,
     // which is exactly the distinction the bell draws -- absent means "not enabled".
-    const [usersRes, bottlesRes, sessionsRes, pushRes] = await Promise.all([
+    const [usersRes, bottlesRes, sessionsRes, pushRes, seenRes] = await Promise.all([
       supabase.from("users").select("id, username, email, role, created_at, avatar_url"),
       // #7: one row per variant since the per-variant re-key, and tasting-only rows (times_had 0,
       // nothing owned) are bookkeeping, not a bottle in My Bar. Count distinct bottles a person
@@ -43,6 +57,7 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
       fetch("/api/admin/push-recipients")
         .then((r) => (r.ok ? r.json() : { recipients: [] }))
         .catch(() => ({ recipients: [] })),
+      supabase.rpc("admin_last_seen"), // newest page_view per person; RLS makes it admin-only
     ]);
 
     if (usersRes.error) {
@@ -64,6 +79,11 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
       pushDevices.set(r.id, r.devices)
     );
 
+    const lastSeen = new Map<string, { at: string; n: number }>();
+    ((seenRes.data as { user_id: string; last_seen: string; page_views: number }[] | null) || []).forEach((r) =>
+      lastSeen.set(r.user_id, { at: r.last_seen, n: Number(r.page_views) })
+    );
+
     const sessionCounts = new Map<string, number>();
     (sessionsRes.data || []).forEach((r) => {
       sessionCounts.set(r.user_id, (sessionCounts.get(r.user_id) || 0) + 1);
@@ -79,9 +99,12 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
       bottleCount: bottleCounts.get(u.id) || 0,
       sessionCount: sessionCounts.get(u.id) || 0,
       pushDevices: pushDevices.has(u.id) ? pushDevices.get(u.id)! : null,
+      lastSeen: lastSeen.get(u.id)?.at ?? null,
+      pageViews: lastSeen.get(u.id)?.n ?? 0,
     }));
 
-    merged.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    // most recently seen first - the list doubles as "who is opening the app"
+    merged.sort((a, b) => (b.lastSeen ?? "").localeCompare(a.lastSeen ?? "") || (a.created_at < b.created_at ? 1 : -1));
     setUsers(merged);
     setLoading(false);
   };
@@ -161,7 +184,10 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
             <li key={u.id} className="px-3 py-3 flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-cream truncate">{u.username}</span>
+                  {/* the name jumps to their page (Brian, 2026-09-21) */}
+                  <Link href={`/u/${encodeURIComponent(u.username)}`} className="font-semibold text-sm text-cream truncate underline underline-offset-2 decoration-brass-line hover:decoration-brass-hi">
+                    {u.username}
+                  </Link>
                   {u.role === "admin" && (
                     <span className="text-[10px] uppercase tracking-wide pc-brass bg-brass text-engrave px-1.5 py-0.5 rounded">
                       admin
@@ -205,6 +231,15 @@ export default function UsersTab({ currentPublicUserId }: { currentPublicUserId:
                 <div className="text-xs text-cream-faint mt-1">
                   {u.bottleCount} bottles · {u.sessionCount} sessions · joined{" "}
                   {new Date(u.created_at).toLocaleDateString()}
+                </div>
+                <div className="text-xs mt-0.5">
+                  {u.lastSeen ? (
+                    <span className="text-cream-mute" title={new Date(u.lastSeen).toLocaleString()}>
+                      Last seen {ago(u.lastSeen)} · {new Date(u.lastSeen).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · {u.pageViews} views
+                    </span>
+                  ) : (
+                    <span className="text-cream-faint">Never opened the app</span>
+                  )}
                 </div>
               </div>
               {u.avatar_url && (

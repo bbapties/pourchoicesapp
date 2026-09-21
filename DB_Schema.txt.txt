@@ -337,6 +337,7 @@ CREATE TABLE public.wishlists (
 -- Functions
 --   actor_muted_by_post_owner(p_activity_id uuid, p_actor_id uuid)  SECURITY DEFINER
 --   admin_import_blind_tasting(p_user_id uuid, p_tasted_on date, p_variant_ids uuid[], p_name text)  SECURITY DEFINER
+--   admin_last_seen()
 --   admin_verify_bottle(p_bottle uuid)  SECURITY DEFINER
 --   award_badges(p_user uuid)  SECURITY DEFINER
 --   award_badges_all()  SECURITY DEFINER
