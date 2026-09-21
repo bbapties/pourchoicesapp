@@ -1,5 +1,28 @@
 import { supabase } from "@/lib/supabase";
 import { logActivity } from "@/lib/activities";
+import { offerShowOff } from "@/lib/postPhoto";
+
+/**
+ * Log the add / empty and then offer a photo for the post (Brian, 2026-09-21). An add of a bottle
+ * YOU submitted and that nobody has verified yet already has your picture on it - that one is
+ * free: it goes straight onto the post and there is no nudge.
+ */
+async function logShelfMove(opts: { userId: string; bottleId: string; variantId: string | null; action: "added_to_collection" | "finished" }) {
+  let details: Record<string, unknown> | null = null;
+  let bottleName: string | null = null;
+  const { data: b } = await supabase
+    .from("bottles")
+    .select("name, verified, created_by, frontimage_url")
+    .eq("id", opts.bottleId)
+    .maybeSingle();
+  if (b) {
+    bottleName = b.name ?? null;
+    const own = !b.verified && b.created_by === opts.userId && !!b.frontimage_url;
+    if (opts.action === "added_to_collection" && own) details = { photo_url: b.frontimage_url };
+  }
+  const res = await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: opts.action, variantId: opts.variantId, details });
+  if (res.id && !details) offerShowOff({ activityId: res.id, action: opts.action, bottleId: opts.bottleId, bottleName });
+}
 
 export type UserBottleRow = {
   currently_owned: boolean;
@@ -85,7 +108,7 @@ export async function addOrRestockUserBottle(opts: {
       .update({ currently_owned: true, updated_at: now, times_had: timesHad, owned_count: ownedCount })
       .eq("id", row.id);
     if (error) return { error: error.message };
-    await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "added_to_collection", variantId });
+    await logShelfMove({ userId: opts.userId, bottleId: opts.bottleId, action: "added_to_collection", variantId });
     return { timesHad, variantId };
   };
 
@@ -116,7 +139,7 @@ export async function addOrRestockUserBottle(opts: {
     if ((error as { code?: string }).code === "23505") return restock();
     return { error: error.message };
   }
-  await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "added_to_collection", variantId });
+  await logShelfMove({ userId: opts.userId, bottleId: opts.bottleId, action: "added_to_collection", variantId });
   return { timesHad: 1, variantId };
 }
 
@@ -224,6 +247,6 @@ export async function markVariantEmpty(opts: {
     })
     .eq("id", row.id);
   if (error) return { error: error.message };
-  await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "finished", variantId });
+  await logShelfMove({ userId: opts.userId, bottleId: opts.bottleId, action: "finished", variantId: variantId ?? null });
   return { ownedCount, emptiedCount };
 }

@@ -72,6 +72,17 @@ export default function SocialClient() {
   const router = useRouter();
   const { publicUserId } = useCurrentUser();
   const [rows, setRows] = useState<FeedItem[]>([]);
+  // A photo added to / removed from a post (the Show it off nudge, Edit on the post) redraws
+  // that card in place instead of waiting for the next fetch.
+  useEffect(() => {
+    const on = (ev: Event) => {
+      const { activityId, details } = (ev as CustomEvent<{ activityId: string; details: FeedItem["details"] }>).detail;
+      const patch = (it: FeedItem): FeedItem => (it.id === activityId ? { ...it, details } : it.group ? { ...it, group: it.group.map(patch) } : it);
+      setRows((prev) => prev.map(patch));
+    };
+    window.addEventListener("pc:post-updated", on);
+    return () => window.removeEventListener("pc:post-updated", on);
+  }, []);
   // #111: Following | Everyone. The scope is remembered on the user; the graph (who I follow,
   // who I muted) is read once per load and shapes both scopes - muted people never show.
   const [scope, setScope] = useState<FeedScope | null>(null);

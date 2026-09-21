@@ -14,6 +14,7 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { logClick } from "@/lib/events";
 import { formatFeedTime } from "@/lib/activities";
 import { addOrRestockUserBottle, resolveDefaultVariantId } from "@/lib/userBottles";
+import { setPostPhoto } from "@/lib/postPhoto";
 import { notify } from "@/lib/notify";
 import { addToWishlist } from "@/lib/wishlist";
 import {
@@ -48,6 +49,18 @@ export default function PostClient({ activityId }: { activityId: string }) {
   const [joinBottle, setJoinBottle] = useState<{ details: BottleDetails; rows: OwnershipRow[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const photoRef = useRef<HTMLInputElement | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  // Edit the photo on your own post; `null` removes it.
+  const changePhoto = async (file: File | null) => {
+    if (!publicUserId || !item || photoBusy) return;
+    setPhotoBusy(true);
+    const res = await setPostPhoto({ activityId: item.id, userId: publicUserId, photo: file, surface: "/post" });
+    setPhotoBusy(false);
+    if (res.error) { toast.error(file ? "Photo didn't upload" : "Couldn't remove it"); return; }
+    setItem((prev) => (prev ? { ...prev, details: res.details as FeedItem["details"] } : prev));
+  };
 
   const load = useCallback(async () => {
     const { item, error } = await fetchPost(activityId, publicUserId ?? null);
@@ -212,6 +225,20 @@ export default function PostClient({ activityId }: { activityId: string }) {
               <p className="px-4 -mt-1 mb-2 text-xs text-cream-mute">
                 #{rank.rank} of @{item.username}&apos;s {rank.of}
               </p>
+            )}
+
+            {/* Edit your own post (Brian, 2026-09-21): the photo can be added, changed or removed
+                after the fact. Same three actions RLS lets you edit; a blind's card is permanent. */}
+            {publicUserId && publicUserId === item.userId && item.action !== "tasted" && (
+              <div className="px-4 pt-1 pb-2 flex items-center gap-3 text-xs">
+                <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={(e) => { changePhoto(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+                <button type="button" onClick={() => photoRef.current?.click()} disabled={photoBusy} className="text-brass-hi font-semibold disabled:opacity-60">
+                  {photoBusy ? "Sending…" : item.details?.photo_url ? "Change photo" : "Add a photo"}
+                </button>
+                {item.details?.photo_url && !photoBusy && (
+                  <button type="button" onClick={() => changePhoto(null)} className="text-cream-mute underline underline-offset-2">Remove photo</button>
+                )}
+              </div>
             )}
 
             {publicUserId && publicUserId !== item.userId && item.action !== "tasted" && (
