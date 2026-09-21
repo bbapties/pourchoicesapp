@@ -64,7 +64,7 @@ export async function enrichRows(rows: ActivityRow[], viewerId: string | null): 
   const had = new Set<string>();
   const owned = new Map<string, number>();
   const stars = new Map<string, number>(); // "<user>:<bottle>" -> the poster's rating
-  const needStars = rows.filter((r) => (r.action === "added_to_collection" || r.action === "finished") && r.details?.stars == null);
+  const needStars = rows.filter((r) => (r.action === "added_to_collection" || r.action === "finished" || r.action === "wishlisted") && r.details?.stars == null);
   if (ids.length) {
     const [{ data: re }, { data: co }, { data: ub }, { data: dr }, { data: ur }] = await Promise.all([
       supabase.from("post_reactions").select("activity_id, user_id").in("activity_id", ids),
@@ -114,9 +114,13 @@ export function collapseRuns(items: FeedItem[]): FeedItem[] {
   const out: FeedItem[] = [];
   for (const it of items) {
     const prev = out[out.length - 1];
+    // A post with the person's own photo is never folded into a run, in either direction - the
+    // photo is the post (Brian, 2026-09-21). Wishlists fold exactly like adds.
+    const hasPhoto = (x: FeedItem) => !!x.details?.photo_url;
     if (
       prev &&
       COLLAPSE_ACTIONS.has(it.action) &&
+      !hasPhoto(it) && !hasPhoto(prev) &&
       prev.action === it.action &&
       prev.userId === it.userId &&
       Math.abs(new Date(prev.createdAt).getTime() - new Date(it.createdAt).getTime()) < COLLAPSE_WINDOW_MS

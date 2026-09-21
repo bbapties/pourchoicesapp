@@ -15,7 +15,7 @@ const BUCKET = "bottle-images";
 
 export type ShowOffDetail = {
   activityId: string;
-  action: "added_to_collection" | "finished";
+  action: "added_to_collection" | "finished" | "wishlisted";
   bottleId: string;
   bottleName?: string | null;
 };

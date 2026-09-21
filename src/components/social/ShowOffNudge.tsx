@@ -35,7 +35,7 @@ export default function ShowOffNudge() {
 
   if (!offer) return null;
 
-  const did = offer.action === "finished" ? "Emptied" : "Added to your bar";
+  const did = offer.action === "finished" ? "Emptied" : offer.action === "wishlisted" ? "On your wishlist" : "Added to your bar";
 
   const dismiss = () => {
     logClick("showoff_dismissed", { userId: publicUserId, targetId: offer.activityId, metadata: { action: offer.action } });

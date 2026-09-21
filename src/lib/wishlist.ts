@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { logActivity } from "@/lib/activities";
+import { offerShowOff } from "@/lib/postPhoto";
 
 /** Variant ids the user has wishlisted (BOTTLE_ACTIONS.md B.5). */
 export async function fetchWishlistVariantIds(userId: string): Promise<Set<string>> {
@@ -20,7 +21,12 @@ export async function addToWishlist(
 ): Promise<{ error?: string }> {
   const { error } = await supabase.from("wishlists").insert({ user_id: userId, bottle_id: bottleId, variant_id: variantId });
   if (error && (error as { code?: string }).code !== "23505") return { error: error.message };
-  await logActivity({ userId, bottleId, action: "wishlisted", variantId });
+  const res = await logActivity({ userId, bottleId, action: "wishlisted", variantId });
+  // A wishlist is treated exactly like an add (Brian, 2026-09-21): offer a photo for the post.
+  if (res.id) {
+    const { data: b } = await supabase.from("bottles").select("name").eq("id", bottleId).maybeSingle();
+    offerShowOff({ activityId: res.id, action: "wishlisted", bottleId, bottleName: b?.name ?? null });
+  }
   return {};
 }
 

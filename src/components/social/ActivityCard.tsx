@@ -81,7 +81,7 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
   // A pour, and an add, keep their own row and hang the photo UNDER it (Brian, 2026-09-21 - the
   // same block of info with and without a picture); the rest lead with the photo.
   const photo = !rolled ? item.details?.photo_url ?? null : null;
-  const rowThenPhoto = item.action === "drank" || item.action === "added_to_collection" || item.action === "finished";
+  const rowThenPhoto = item.action === "drank" || item.action === "added_to_collection" || item.action === "finished" || item.action === "wishlisted";
   const body = photo && !rowThenPhoto ? (
     <PhotoBody item={item} photo={photo} detail={detail} onOpenBottle={openBottle} />
   ) : (() => {
@@ -91,11 +91,11 @@ export default function ActivityCard({ item, viewerId, onCheer, onOpenBottle, on
       case "tasted":
         return <BlindBody item={item} detail={detail} />;
       case "finished":
-        return photo ? <PourBody item={item} detail={detail} onOpenBottle={openBottle} /> : <ShelfBody rows={[item]} empty onOpenBottle={openBottle} />;
+        return photo ? <PourBody item={item} detail={detail} onOpenBottle={openBottle} /> : <ShelfBody rows={[item]} onOpenBottle={openBottle} />;
       case "added_to_collection":
         return photo ? <PourBody item={item} detail={detail} onOpenBottle={openBottle} /> : <ShelfBody rows={group} onOpenBottle={openBottle} />;
       case "wishlisted":
-        return <ShelfBody rows={group} onOpenBottle={openBottle} />;
+        return photo ? <PourBody item={item} detail={detail} onOpenBottle={openBottle} /> : <ShelfBody rows={group} onOpenBottle={openBottle} />;
       default:
         return <ShelfBody rows={[item]} onOpenBottle={openBottle} />;
     }
@@ -247,10 +247,10 @@ function PhotoBody({ item, photo, detail, onOpenBottle }: { item: FeedItem; phot
 
 /**
  * Tier 2 / 3 - added to a bar, or emptied. The pack shot BIG, standing on a lit brick shelf; up
- * to four across for a rolled-up add. An empty is the same shelf with the bottle faded and an
- * Empty tag - and the stars, if they rated it on the way out.
+ * to four across for a rolled-up add or wishlist. An empty is the same shelf (Brian: no fading,
+ * no Empty tag - the header already says it) with the stars, if they rated it on the way out.
  */
-function ShelfBody({ rows, empty = false, onOpenBottle }: { rows: FeedItem[]; empty?: boolean; onOpenBottle: OpenBottle }) {
+function ShelfBody({ rows, onOpenBottle }: { rows: FeedItem[]; onOpenBottle: OpenBottle }) {
   const shown = rows.slice(0, 4);
   const one = shown.length === 1;
   const first = shown[0];
@@ -271,10 +271,10 @@ function ShelfBody({ rows, empty = false, onOpenBottle }: { rows: FeedItem[]; em
                     src={r.bottleImageUrl}
                     alt=""
                     style={{ maxHeight: h }}
-                    className={`max-w-full object-contain drop-shadow-[0_6px_6px_rgba(0,0,0,.6)] ${empty ? "opacity-55 saturate-50" : ""}`}
+                    className="max-w-full object-contain drop-shadow-[0_6px_6px_rgba(0,0,0,.6)]"
                   />
                 ) : (
-                  <div style={{ height: h * 0.9, width: h * 0.28 }} className={`rounded-sm bg-panel-3 ${empty ? "opacity-55" : ""}`} />
+                  <div style={{ height: h * 0.9, width: h * 0.28 }} className="rounded-sm bg-panel-3" />
                 )}
               </div>
             </BottleTap>
@@ -282,7 +282,6 @@ function ShelfBody({ rows, empty = false, onOpenBottle }: { rows: FeedItem[]; em
         </div>
         {/* the deck they stand on */}
         <div className="h-3 pc-wood shadow-[0_-3px_6px_rgba(0,0,0,.6)]" />
-        {empty && <span className="absolute right-2.5 bottom-5"><Chip>Empty</Chip></span>}
       </div>
       <div className="px-3.5 pt-2.5">
         {one ? (
