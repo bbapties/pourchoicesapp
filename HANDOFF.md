@@ -9,7 +9,15 @@ What is open and in what order now lives on **[the board](https://github.com/use
 ## Right now
 
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** `bed4031` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Tip:** `e690313` + this doc commit. All on origin/MVP-v3 and live on prod.
+- **Three commits from a parallel session on 2026-09-20 (Brian's other window), after the last
+  END SESSION - none had a baton entry until now:** `ac07dc1` Admin > Review gets a two-tap
+  **Junk** row (purge_bottle RPC; refuses once anyone has tasted / poured / emptied / rated it;
+  logs `bottle_junked`); `6c35e99` Admin > Blinds inserts a typed new bottle on **Save**, not the
+  moment it is typed (that eager insert was where most junk bottles came from; two new picks with
+  the same name block Save); `e690313` `useDragReorder` follows the drag from window-level pointer
+  listeners - a reorder drag now walks any distance (a moved DOM node loses pointer capture per
+  spec, so every drag used to stop after one slot). Same hook drives the ranking screen and Blinds.
 - **Last session (2026-09-19 -> 20, Claude): the cloud bot went live; four small fixes; the
   bot did four bottles on its own.** `be6b5cb` `b29a621` `de737f7` (#133, CLOSED - the block below
   has the shape), `c06d450` no self-push (the actor's own devices are excluded even under another
@@ -1766,6 +1774,10 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-20 (parallel session, reconstructed from git log at the 09-21 END SESSION)
+- `ac07dc1` Review: Junk row. `6c35e99` Blinds: new bottles inserted on Save. `e690313` drag
+  reorder carries the row anywhere. No board cards were touched by that session; nothing filed.
 
 ### 2026-09-19 -> 20 - Claude (the cloud bot live over HTTPS; photo viewer; swipe back; push fixes)
 - #133: gate (`bot_gate.mjs`: urgent / idle / seed / none), `bot_runs`, seed mode (60 bourbons),
