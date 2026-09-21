@@ -6,7 +6,7 @@
 CREATE TABLE public.activities (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL,
-  bottle_id uuid NOT NULL,
+  bottle_id uuid,
   variant_id uuid,
   action text NOT NULL,
   pour_type text,
