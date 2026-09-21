@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { logEvent } from "@/lib/events";
-import type { MedalTier } from "@/components/badges/Medal";
+import type { MedalTier } from "@/lib/badgeArt";
 
 /**
  * Badges (#21 epic; #138-#141). The database is the engine: `award_badges(user)` recomputes a

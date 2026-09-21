@@ -2,43 +2,142 @@
 
 import { useId } from "react";
 import { GLYPH_KEYS } from "@/components/badges/BadgeSprite";
+import {
+  TIER_NAME,
+  frameFor,
+  hasPhotoreal,
+  type MedalFrame,
+  type MedalTier,
+} from "@/lib/badgeArt";
+
+export type { MedalTier, MedalFrame };
+export { TIER_NAME };
 
 /**
- * The badge coin (#140, design canvas round 9 - "that's good enough", Brian 2026-09-18):
- * a matte black face, a wide brushed ring in the tier's metal with an inner step, four stars
- * in an arc across the top (the sub-tiers: lit metal when earned, dark recesses otherwise), and
- * the glyph as a 3D object standing off the face (one SVG lighting filter, #pc-pop3d). Diamond
- * has no metal ring - a pave of 68 stones in two rows. Locked is the same coin in dull metal
- * with no sweep, sparkle or aura.
- *
- * Every gradient is built per instance (useId) with its stops reading the :root ramps from
- * globals.css. A var() on a stop resolves against the stop's own ancestry, so a shared gradient
- * in a sprite could never take the tier colour - that is why the defs are inline here.
+ * The badge coin. Photoreal path (#150): object behind a holed ring plate, 0–4
+ * stars drawn on top. SVG path (#140) is the fallback until a badge has a cutout.
  *
  * Sizes that hold: 38 (ladder), 66 (toast / feed card), 100 (shelf), 124 (sheet).
- * Needs <BadgeSprite /> mounted once on the page.
+ * SVG fallback still needs <BadgeSprite /> mounted once on the page.
  */
-export type MedalTier = 0 | 1 | 2 | 3 | 4 | 5;
-export const TIER_NAME: Record<MedalTier, string> = { 0: "Locked", 1: "Bronze", 2: "Silver", 3: "Gold", 4: "Platinum", 5: "Diamond" };
-const TIER_KEY: Record<MedalTier, string> = { 0: "locked", 1: "bronze", 2: "silver", 3: "gold", 4: "platinum", 5: "diamond" };
+
+/** SVG-only metal ramps. Wood has no old ramp so it borrows bronze. */
+const SVG_METAL: Record<MedalTier, string> = {
+  0: "locked",
+  1: "bronze",
+  2: "bronze",
+  3: "silver",
+  4: "gold",
+  5: "diamond",
+};
 
 type Props = {
   tier: MedalTier;
   glyph: string;
-  /** stars lit, 0-4 (sub_tier) */
+  /** stars lit, 0-4 (sub_tier). Growing and centered; no empty seats. */
   stars?: number;
   /** the Hound family: the category initial stamped on the bottle's label */
   initial?: string | null;
   size?: number;
   className?: string;
   title?: string;
+  badgeId?: string;
+  oneOff?: boolean;
 };
 
 const POLAR = (r: number, deg: number) => [70 + r * Math.cos((deg * Math.PI) / 180), 70 + r * Math.sin((deg * Math.PI) / 180)] as const;
 
-export default function Medal({ tier, glyph, stars = 0, initial, size = 100, className, title }: Props) {
+const STAR_FILL: Record<MedalFrame, string> = {
+  locked: "var(--medal-locked-hi)",
+  wood: "var(--medal-wood-hi)",
+  bronze: "var(--medal-bronze-hi)",
+  silver: "var(--medal-silver-hi)",
+  gold: "var(--medal-gold-hi)",
+  diamond: "var(--medal-diamond-hi)",
+  limited: "var(--medal-limited-hi)",
+};
+
+function starAngles(n: number): number[] {
+  const c = Math.max(0, Math.min(4, n | 0));
+  if (c === 0) return [];
+  if (c === 1) return [-90];
+  const gap = 16;
+  const span = gap * (c - 1);
+  const start = -90 - span / 2;
+  return Array.from({ length: c }, (_, i) => start + i * gap);
+}
+
+function StarOverlay({ count, size, frame }: { count: number; size: number; frame: MedalFrame }) {
+  const angles = starAngles(count);
+  if (!angles.length) return null;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size * 0.385;
+  const s = size * 0.078;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 pointer-events-none" aria-hidden="true">
+      {angles.map((deg, i) => {
+        const x = cx + r * Math.cos((deg * Math.PI) / 180) - s / 2;
+        const y = cy + r * Math.sin((deg * Math.PI) / 180) - s / 2;
+        return (
+          <svg key={i} x={x} y={y} width={s} height={s} viewBox="0 0 10 10">
+            <path d="M5 .4 L6.35 3.55 L9.75 3.85 L7.15 6.1 L7.95 9.45 L5 7.7 L2.05 9.45 L2.85 6.1 L.25 3.85 L3.65 3.55Z" fill={STAR_FILL[frame]} />
+          </svg>
+        );
+      })}
+    </svg>
+  );
+}
+
+export default function Medal({ tier, glyph, stars = 0, initial, size = 100, className, title, badgeId, oneOff }: Props) {
+  const frame = frameFor(tier, !!oneOff, badgeId ?? "");
+  if (badgeId && hasPhotoreal(badgeId)) {
+    return (
+      <div
+        className={className}
+        style={{ position: "relative", width: size, height: size, display: "block" }}
+        role="img"
+        aria-label={title}
+      >
+        <img
+          src={`/badges/objects/${badgeId}.webp`}
+          alt=""
+          width={size}
+          height={size}
+          draggable={false}
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "block",
+            filter: frame === "locked" ? "brightness(0.42) saturate(0.3)" : undefined,
+          }}
+        />
+        <img
+          src={`/badges/frames/${frame}.webp`}
+          alt=""
+          width={size}
+          height={size}
+          draggable={false}
+          style={{ position: "absolute", inset: 0, display: "block" }}
+        />
+        <StarOverlay count={stars} size={size} frame={frame} />
+        {initial && (
+          <span
+            className="absolute font-display font-semibold text-cream pointer-events-none"
+            style={{ left: "50%", top: "58%", transform: "translate(-50%, -50%)", fontSize: size * 0.14 }}
+          >
+            {initial.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+      </div>
+    );
+  }
+  return <SvgMedal tier={tier} glyph={glyph} stars={stars} initial={initial} size={size} className={className} title={title} />;
+}
+
+function SvgMedal({ tier, glyph, stars = 0, initial, size = 100, className, title }: Omit<Props, "badgeId" | "oneOff">) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
-  const k = TIER_KEY[tier];
+  const k = SVG_METAL[tier];
   const v = (part: "hi" | "" | "lo" | "ink") => `var(--medal-${k}${part ? "-" + part : ""})`;
   const g = GLYPH_KEYS.has(glyph) ? glyph : "g-pour";
   const locked = tier === 0;
@@ -111,7 +210,6 @@ export default function Medal({ tier, glyph, stars = 0, initial, size = 100, cla
         </>
       )}
 
-      {/* the matte black face */}
       <circle cx="70" cy="70" r="56" fill="#000" />
       <circle cx="70" cy="70" r="55.2" fill={`url(#${face})`} />
       <circle cx="70" cy="70" r="55.2" fill="none" stroke="#000" strokeWidth="2" opacity=".9" />
@@ -126,17 +224,13 @@ export default function Medal({ tier, glyph, stars = 0, initial, size = 100, cla
         </>
       )}
 
-      {/* four stars in an arc across the top: the sub-tiers */}
-      {[-33, -11, 11, 33].map((deg, i) => {
-        const [x, y] = POLAR(44, -90 + deg);
-        return i < stars ? (
+      {starAngles(stars).map((deg, i) => {
+        const [x, y] = POLAR(44, deg);
+        return (
           <use key={i} href="#pc-star5" x={x - 5} y={y - 5} width="10" height="10" fill={`url(#${rel})`} filter="url(#pc-pop3d)" />
-        ) : (
-          <use key={i} href="#pc-star5" x={x - 5} y={y - 5} width="10" height="10" fill="#1d1d1e" stroke="#000" strokeWidth=".4" />
         );
       })}
 
-      {/* the glyph, standing off the face */}
       <g filter={locked ? undefined : "url(#pc-pop3d)"} opacity={locked ? 0.4 : 1}>
         <use href={`#${g}`} x="34" y="35" width="72" height="72" />
         {g === "g-hound" && initial && (

@@ -110,7 +110,7 @@ function Divider({ children }: { children: React.ReactNode }) {
 function Cell({ item, onOpen, dim, children }: { item: ShelfItem; onOpen: (i: ShelfItem) => void; dim?: boolean; children?: React.ReactNode }) {
   return (
     <button type="button" onClick={() => onOpen(item)} className="flex flex-col items-center gap-1 text-center" aria-label={`${item.def.name}, ${item.tier ? TIER_NAME[item.tier] : "not started"}`}>
-      <Medal tier={item.tier} glyph={item.def.glyph} stars={item.subTier} initial={item.def.category} size={100} />
+      <Medal tier={item.tier} glyph={item.def.glyph} stars={item.subTier} initial={item.def.category} size={100} badgeId={item.def.id} oneOff={item.def.oneOff} />
       <div className={`font-display font-semibold text-[12px] leading-tight ${dim ? "text-cream-faint" : "text-cream"}`}>{item.def.name}</div>
       {children}
     </button>
@@ -139,7 +139,7 @@ function BadgeSheet({ item, onClose }: { item: ShelfItem | null; onClose: () => 
           <>
             <SheetHeader>
               <div className="flex items-center gap-3.5">
-                <Medal tier={item.tier} glyph={d.glyph} stars={item.subTier} initial={d.category} size={124} />
+                <Medal tier={item.tier} glyph={d.glyph} stars={item.subTier} initial={d.category} size={124} badgeId={d.id} oneOff={d.oneOff} />
                 <div className="min-w-0">
                   <SheetTitle className="font-display text-xl text-cream">{d.name}</SheetTitle>
                   <SheetDescription className="text-cream-mute text-[13px]">
@@ -154,7 +154,7 @@ function BadgeSheet({ item, onClose }: { item: ShelfItem | null; onClose: () => 
                 const isNext = item.next?.tier === t.tier;
                 return (
                   <li key={t.tier} className="flex items-center gap-2.5 py-1.5 border-t border-black/35 text-[13px]">
-                    <Medal tier={(got ? t.tier : 0) as MedalTier} glyph={d.glyph} initial={d.category} size={38} />
+                    <Medal tier={(got ? t.tier : 0) as MedalTier} glyph={d.glyph} initial={d.category} size={38} badgeId={d.id} oneOff={d.oneOff} />
                     <span className="w-[74px] font-display font-semibold text-cream">{d.oneOff ? "Earned" : TIER_NAME[t.tier as MedalTier]}</span>
                     <span className="w-[70px] text-cream-mute tabular-nums">{d.oneOff ? "" : t.threshold}</span>
                     <span className={`ml-auto text-xs ${isNext ? "text-brass-hi" : "text-cream-faint"}`}>

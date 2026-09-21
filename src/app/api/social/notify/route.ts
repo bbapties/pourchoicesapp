@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { adminClient, pushConfigured, sendPushTo } from "@/lib/push-server";
+import { TIER_NAME, type MedalTier } from "@/lib/badgeArt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -213,7 +214,7 @@ export async function POST(request: Request) {
       .eq("badge_id", body.badgeId)
       .maybeSingle();
     if (!ub || !ub.tier) return NextResponse.json({ sent: 0 });
-    const tierName = ["", "Bronze", "Silver", "Gold", "Platinum", "Diamond"][ub.tier] ?? "";
+    const tierName = ub.tier ? TIER_NAME[ub.tier as MedalTier] : "";
     const badgeName = (Array.isArray(ub.badges) ? ub.badges[0] : ub.badges)?.name ?? "a badge";
     const { data: followers } = await admin
       .from("user_relationships")

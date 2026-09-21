@@ -63,19 +63,19 @@
 }
 
 /* ============================================================================
-   BADGE MEDALS (#140, settled on the design canvas 2026-09-18, round 9). The one place a colour
-   outside the room is allowed: these are the METALS, not the furniture. Read by
-   src/components/badges/Medal.tsx as SVG gradient stops (var() on a stop resolves against :root,
-   which is why they live here and not on the element). hi = polished highlight, mid = body,
-   lo = shadow, ink = the dark line. Retune here, never in the component.
+   BADGE MEDALS. Star overlay fills (#150) and SVG-fallback ramps (#140). The one place a
+   colour outside the room is allowed: these are the metals / wood, not the furniture.
+   hi = polished highlight, mid = body, lo = shadow, ink = the dark line.
    ============================================================================ */
 :root {
+  --medal-wood-hi:#e2c08a;     --medal-wood:#a56a32;     --medal-wood-lo:#5c3514;     --medal-wood-ink:#2a1608;
   --medal-bronze-hi:#f0b27a;   --medal-bronze:#b9743c;   --medal-bronze-lo:#6e3f1a;   --medal-bronze-ink:#3a2009;
   --medal-silver-hi:#f8f8f6;   --medal-silver:#c8c9c7;   --medal-silver-lo:#8e9294;   --medal-silver-ink:#3a3d3f;
   --medal-gold-hi:#f5d98d;     --medal-gold:#cda24a;     --medal-gold-lo:#8b6522;     --medal-gold-ink:#4a340c;
-  --medal-platinum-hi:#ffffff; --medal-platinum:#e6eaed; --medal-platinum-lo:#a6b0b8; --medal-platinum-ink:#48545c;
+  --medal-limited-hi:#f3efe8;  --medal-limited:#d4c4a4;  --medal-limited-lo:#1a1a1a; --medal-limited-ink:#0a0a0a;
   --medal-diamond-hi:#ffffff;  --medal-diamond:#eef7ff;  --medal-diamond-lo:#a9cbe3;  --medal-diamond-ink:#3d6f93;
   --medal-locked-hi:#3d3630;   --medal-locked:#2a2521;   --medal-locked-lo:#171412;   --medal-locked-ink:#0d0b0a;
+  --medal-platinum-hi:#ffffff; --medal-platinum:#e6eaed; --medal-platinum-lo:#a6b0b8; --medal-platinum-ink:#48545c;
   --medal-face-hi:#2b2b2c; --medal-face:#161617; --medal-face-lo:#060606;
   --medal-amber-hi:#f6c15a; --medal-amber:#c77d16; --medal-amber-lo:#6f3f05;
   --medal-pave-base:#cfd6da; --medal-pave-edge:#8d9599; --medal-pave-seat:#5f6a70;

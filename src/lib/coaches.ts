@@ -541,7 +541,7 @@ export const COACH_CATALOG: CoachItem[] = [
     // #139: badges. Not core - the main loop did not change; this is the reward layer on top.
     id: "profile.badges",
     title: "Badges",
-    body: "Every feature has a badge with five tiers - Bronze to Diamond. Earned from what you have already done; the greyed ones show what the app can do.",
+    body: "Every feature has a badge with five tiers - Wood to Diamond. Earned from what you have already done; the greyed ones show what the app can do.",
     route: "/profile",
     core: false,
     announce: true,
