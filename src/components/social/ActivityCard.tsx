@@ -308,7 +308,7 @@ function PourBody({ item, detail, onOpenBottle }: { item: FeedItem; detail: bool
   const photo = item.details?.photo_url ?? null;
   const note = item.details?.note ?? null;
   const stars = item.details?.stars ?? item.posterStars ?? null;
-  const how = item.action === "finished" ? "Empty" : howOf(item);
+  const how = howOf(item); // the header already says emptied / added / wants - no tag for those
   return (
     <div className={photo ? "" : "pb-3"}>
       <div className="flex items-center gap-3 px-3.5">
