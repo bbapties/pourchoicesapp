@@ -108,9 +108,9 @@ SELECT created_at, user_id, target_id, metadata FROM events
 | Reveal queue | `src/lib/badgeReveal.ts` | `fetchPendingReveals` (released ∧ tier > revealed_tier, oldest first), `markRevealed` → RPC `reveal_badges` (own rows only) + `badge_revealed` event |
 | The reveal | `src/components/badges/BadgeReveal.tsx` | mounted once in AppShell. Fires on sign-in, when the tab comes back to the front, and on `pc:badge-check` (dispatched by `runAwards` the instant something goes up, so a live earn reveals right away if released). Never on `/` or `/taste`. |
 
-**Choreography:** the room darkens (bottle-off-the-shelf overlay), the medal (260px) in focus, a leather tray below with the buttons. Plate of `revealed_tier` (grey and EMPTY when 0 - `mystery`, so the object is not given away — "New badge earned"; the old metal on an
+**Choreography:** the room darkens (bottle-off-the-shelf overlay), the medal (286px) in focus, "NEW BADGE EARNED" big and brass above it, a leather tray below with the buttons. Plate of `revealed_tier` (grey and EMPTY when 0 - `mystery`, so the object is not given away — "New badge earned"; the old metal on an
 upgrade — "Badge upgraded") holds 3s, shakes 1.6s (`pc-shake-long`), bursts (confetti +
-`pc-pop`) into the earned medal with name, how-to-earn, **More details** / **Close**. Tap the plate
+`pc-pop`) into the earned medal with name, how-to-earn, **More details** / **Close** (the medal itself is also More details once it has burst). Tap the plate
 to skip ahead. More than one queued: "1 of X", **Next**, and **Reveal all X** (always the person's
 choice; no animation, a scrollable list with Details per row and one Close). `prefers-reduced-motion`
 → no shake, no confetti. **Close marks everything still queued as seen** (a nag is worse than a

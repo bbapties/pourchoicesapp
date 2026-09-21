@@ -26,7 +26,7 @@ import { logClick } from "@/lib/events";
  */
 
 const HOLD_MS = 3000; // the plate sits in your hand a few seconds before it shakes (Brian)
-const MEDAL = 260; // 30% up from the first cut (Brian, 2026-09-21)
+const MEDAL = 286; // 200 -> 260 -> 286 (Brian, 2026-09-21)
 const SHAKE_MS = 1600; // pc-shake-long
 const BLOCKED_ROUTES = ["/", "/taste"];
 
@@ -135,10 +135,12 @@ export default function BadgeReveal() {
         <>
           {/* the medal, in focus, in the upper half of the room */}
           <div className="absolute inset-x-0 top-0 flex flex-col items-center justify-center pointer-events-none" style={{ height: "62%", paddingTop: 24 }}>
-            <p className="text-xs uppercase tracking-[.2em] text-cream mb-6 min-h-4 drop-shadow">
+            {/* the headline is the point of the screen (Brian): big, bold, brass */}
+            <p className="font-display font-black text-[28px] leading-none uppercase tracking-[.08em] text-brass-hi mb-6 min-h-7 drop-shadow-[0_2px_6px_rgba(0,0,0,.8)]">
               {phase === "burst" ? label(item) : item.upgrade ? "Badge upgraded" : "New badge earned"}
             </p>
-            <button type="button" onClick={() => phase !== "burst" && setPhase("burst")} className="relative pointer-events-auto" aria-label={phase === "burst" ? item.def.name : "Reveal"}>
+            {/* before the burst a tap skips ahead; after it, the medal itself goes to the details */}
+            <button type="button" onClick={() => (phase === "burst" ? details(item) : setPhase("burst"))} className="relative pointer-events-auto" aria-label={phase === "burst" ? `${item.def.name} - more details` : "Reveal"}>
               {phase !== "burst" ? (
                 <div className={phase === "shake" ? "pc-shake-long" : ""}>
                   <Medal tier={item.revealedTier} glyph={item.def.glyph} initial={item.def.category} size={MEDAL} badgeId={item.def.id} oneOff={item.def.oneOff} mystery={!item.upgrade} />
