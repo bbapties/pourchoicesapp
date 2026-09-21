@@ -23,7 +23,7 @@ const HOW: Record<string, string> = {
   early_adopter: "Be here before the app hits the stores. Every account created before the App Store / Play Store launch has it.",
   installed: "Put Pour Choices on your home screen and open it from there once.",
   tastemaker: "Add a bottle to the catalog that an admin then verifies as a real product.",
-  founders_reserve: "Granted to the original Testers who put up with all the early builds and help us build what we have today!",
+  founders_reserve: "This badge is granted to the Original Testers who put up with all the early builds and helped us build what we have today!",
 };
 
 export function howToEarn(def: BadgeDef): string {
