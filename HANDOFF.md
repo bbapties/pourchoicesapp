@@ -8,6 +8,39 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **FOUNDER'S RESERVE IS LIVE + THE BADGE REVEAL SHIPPED (2026-09-21 night, Claude) - origin/MVP-v3
+  `a9630e4`, live, Brian tested the reveal on prod four times and signed it.** Read
+  **[docs/BADGE_RELEASE.md](docs/BADGE_RELEASE.md)** before touching badges - it is the runbook.
+  - **The FR object** (`abda25c`): gold eagle + Glencairn etched "Pour / Choices", built from
+    Brian's cut-out parts by `scripts/founders_reserve_medal.mjs` (every layout number is a
+    constant there; re-run it, never hand-edit the WebP). `Medal` draws a badge's object OVER the
+    plate when `OBJECT_IDS` (`src/lib/badgeArt.ts`) has it; glyph fallback. `mystery` prop = plate
+    only (the reveal's unknown state). BADGE_ART.md "Right now" is current.
+  - **Release is a DB switch, not code** (`aeaae82`, migration `sql/badge-releases-migration.sql`
+    applied to prod): `badge_releases (badge_id, user_id NULL = everyone)`,
+    `user_badges.revealed_tier`, `released_badges(user)`, `reveal_badges(ids)` (caller's own rows
+    via `users.auth_id`), and **`user_level()` now counts released badges only** (Brian said yes).
+    **`RELEASED_BADGES` in code is GONE - do not bring it back.** Written from psql only.
+  - **The reveal** (`src/components/badges/BadgeReveal.tsx`, mounted once in AppShell): fires on
+    sign-in / tab back in front / `pc:badge-check` (dispatched by `runAwards`) for anything
+    released ∧ `tier > revealed_tier`. Dark overlay like the bottle take-down, 286px medal, "NEW
+    BADGE EARNED" big and brass, empty grey plate (or the old metal + "Badge upgraded"), 3s hold,
+    1.6s shake, confetti + pop; tray with Close / More details (→ `/profile?badge=<id>` opens the
+    sheet; the medal tap does the same once burst). Several: "1 of X", Next, Reveal all (list).
+    Close marks the rest seen. Never on `/` or `/taste`. Reduced motion honoured. Events
+    `badge_revealed` + reveal clicks (TELEMETRY.md). Coach `badges.reveal`.
+  - **Data state:** FR granted (`badge_grants`) to all five HUMAN accounts and released to
+    **EVERYONE**, so PourChoicesOG / CanalBrewery-2 / TequilaSeb / MasterMUF get the reveal on
+    their next open. Test / data accounts skipped. Brian manages FR by hand for now; **#160**
+    (Coming Soon) is the "first 25 people, hard cap" logic. QA account has FR revealed.
+  - **Admin > Users** (`a9630e4`): username links to `/u/<name>`; "Last seen <ago> · <stamp> ·
+    N views" from `admin_last_seen()` (`sql/admin-last-seen.sql`, SECURITY INVOKER so
+    `events_select_admin` gates it); list sorts by last seen. **Not screenshot-verified** (QA is
+    not admin) - #161 in Brian to test.
+  - **Upgrade path of the reveal is built but never exercised** (old-metal plate → new). It runs
+    the first time a ladder badge is released to someone who already saw a lower tier.
+  - **Next badge:** one at a time. Brian supplies parts / mockup → stack with the same script
+    pattern → `OBJECT_IDS` → push → release to Brian alone → everyone (BADGE_RELEASE.md steps).
 - **SOCIAL ROUND TWO SHIPPED (2026-09-21 afternoon, Claude) - origin/MVP-v3 `368785c`, live.
   #151 #137 #153 DONE; #152 and #154 in Brian to test (numbered steps).** In order: full-width
   cards, 2x gap, a fourth rivet where there is no earmark (`57887ba`); the who-what pill from
@@ -74,7 +107,7 @@ What is open and in what order now lives on **[the board](https://github.com/use
   Reserve re-shown on the SIGNED Limited plate (first composite was rejected), then one at a time
   from the FR bottle, same camera - never batch the catalog.
 - **Branch:** `MVP-v3` (= production). Pushing here deploys www.pourchoicesapp.com.
-- **Tip:** origin/MVP-v3 = `e48bf28` (Claude, 2026-09-21 evening, photoreal plates + Coming soon) + this doc commit, live on prod.
+- **Tip:** origin/MVP-v3 = `a9630e4` (Claude, 2026-09-21 night, FR object + reveal + admin last seen) + this doc commit, live on prod.
 - **Data repair in that same parallel session (2026-09-20, no code) - a cold agent should know
   the DB was hand-edited:** (1) 28 `tasting_details.rank` NULLs backfilled from pair wins - all
   helper-mode sessions from before `eb57f9d`, not a live bug; (2) six Right_Blind imports dated
@@ -1859,6 +1892,23 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-21 (night) - Claude (Founder's Reserve object, the badge reveal, release switch, admin Last seen)
+- `abda25c` FR object from Brian's parts (eagle behind, glass in front, two-line etching just above
+  the whiskey; chest feathers fill the hole in the eagle part). Medal `OBJECT_IDS` / `hasObject`.
+- `aeaae82` badge_releases + revealed_tier + reveal_badges + user_level released-only (SQL applied
+  to prod, rollback alongside); BadgeReveal overlay; BadgeShelf / UserPage read the DB switch;
+  `/profile?badge=` opens the sheet. `9176b66` `e9ca4e6` reveal reworked to Brian's notes: dark
+  overlay + tray, 286px, bold brass headline, 3s hold, empty mystery plate, medal tap = details.
+  `48fd5fc` `e15bdf2` FR copy. `a9630e4` Admin Users links + Last seen (`admin_last_seen()`).
+- Verified as the QA account on localhost: single reveal → details → sheet; no re-fire; two-badge
+  queue (1 of 2, Next, Reveal all list, Close pins both); events landing; prod build. Brian ran the
+  reveal on prod four times (reset via `revealed_tier = 0`) and signed it.
+- Data: FR granted to the five human accounts, released to EVERYONE. #160 filed (first 25, cap).
+  #161 Brian to test (Admin Users). Docs: docs/BADGE_RELEASE.md (new runbook), BADGE_ART, AGENTS
+  doc map, TELEMETRY, schema dump.
+- Next: board right to left - *In Progress* #150 next object (Brian picks the badge, supplies
+  parts) -> Brian tests #161 #159 #154 #152 #144 #147 #145 #148 #149 -> *Coming Soon* #160 / #143.
 
 ### 2026-09-21 (afternoon) - Claude (Social round two + the free-text post; #151 #137 #153 done, #152 #154 to test)
 - Brian drove it card by card: full width + gap + rivet; Home's pill in the header (+20%, text +15%)
