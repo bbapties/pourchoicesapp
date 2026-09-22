@@ -22,6 +22,10 @@ What is open and in what order now lives on **[the board](https://github.com/use
   - **Known, not fixed:** `next_seed.mjs` matches the first three words, so it offers Maker's Mark
     although "Maker's Mark Bourbon Whisky" exists; the builder's duplicate guard stops the insert,
     so a seed tick can end `skipped` instead of seeding. Tighten the matcher (brand + expression).
+  - **Brian to test tonight:** #123 #125 #126 #127 passed -> Done (push taps proven: post, Admin >
+    Feedback open AND cold, bot add -> case file). **#132 and #135 deliberately left untested** - he
+    stopped there; the lane still has #132 #135 #136 #144 #145 #147 #148 #149 #152 #154 #159 #161.
+    #164 filed (fuzzy search: apostrophes / typos / rank exact first - from testing #127).
   - Cards filed with Brian tonight: **#162** (full write-up on a pour: nose / palate / finish /
     overall with stars - requires a pour), **#49** expanded (Share button + branded card via the
     native share sheet; X linking is a later card), **#163** (tell the host a bottle was skipped in
@@ -1921,8 +1925,10 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
   `f2c4cb0` (wording + deep link), `7a6e791` (warm navigation into an already-open Admin).
   Third tap landed on the case file. #125 DONE. Also flushed a stale Grain_of_Truth add push
   (Sazerac Straight Rye).
-- Next: Brian to test lane still has #126 #127 #132 #135 #136 #144 #145 #147 #148 #149 #152
-  #154 #159 #161. Then the board right to left.
+- Then #126 (three test pushes, all landed) and #127 passed -> Done; #164 filed from #127.
+  Brian stopped testing at #132 / #135 (left in the lane, untested, on purpose).
+- **Next single step for the incoming agent:** read the board right to left. In Progress is empty;
+  Next Items per Brian, then Top Priority. Nothing is half-built; nothing is unpushed.
 
 ### 2026-09-21 (night) - Claude (Founder's Reserve object, the badge reveal, release switch, admin Last seen)
 - `abda25c` FR object from Brian's parts (eagle behind, glass in front, two-line etching just above
