@@ -60,6 +60,8 @@ export default function ReviewTab({ publicUserId, initialBottle }: { publicUserI
   const [search, setSearch] = useState("");
   // A push ("<bottle> was cleaned up") deep-links straight into that bottle's case file.
   const [openId, setOpenId] = useState<string | null>(initialBottle ?? null);
+  // Same push tapped while this tab is already mounted: the new bottle id arrives as a prop change.
+  useEffect(() => { if (initialBottle) setOpenId(initialBottle); }, [initialBottle]);
 
   const load = useCallback(async () => {
     setLoading(true);
