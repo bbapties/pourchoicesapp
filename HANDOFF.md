@@ -8,6 +8,24 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **BOT-ADD PUSH PROVEN END TO END + TWO FIXES (2026-09-21 late night, Claude) - origin/MVP-v3
+  `7a6e791`, live, #125 DONE (Brian tapped through to the bottle).** A forced seed run inserted
+  **Four Roses Kentucky Straight Bourbon Whiskey** (`b4b20e2c`, unverified, UPC 040063400409,
+  transparent brand pack shot, 315mm estimated) - waiting in Admin > Review. Found on the way:
+  - **The Claude bot account was `account_type = test`, so every SEED-mode add pushed nobody**
+    (`notify_admin_adds.mjs` and the notify route key on `data`). Reclassified `Claude Code Agent`
+    to `data` (one row; feeds all key on `human` vs not, nothing social changed). Do not flip it back.
+  - `f2c4cb0`: add push reads "<bottle> was added / by @who - tap to review it" and deep-links
+    `/admin?tab=review&bottle=<id>` (was bare `/admin`), in both builders.
+  - `7a6e791`: a push tapped while Admin is ALREADY open arrives as `router.push` to a mounted
+    `AdminClient` / `ReviewTab`; `useState(initial*)` ignored the new props. Both follow them now.
+  - **Known, not fixed:** `next_seed.mjs` matches the first three words, so it offers Maker's Mark
+    although "Maker's Mark Bourbon Whisky" exists; the builder's duplicate guard stops the insert,
+    so a seed tick can end `skipped` instead of seeding. Tighten the matcher (brand + expression).
+  - Cards filed with Brian tonight: **#162** (full write-up on a pour: nose / palate / finish /
+    overall with stars - requires a pour), **#49** expanded (Share button + branded card via the
+    native share sheet; X linking is a later card), **#163** (tell the host a bottle was skipped in
+    a blind and why). #123 passed -> Done.
 - **FOUNDER'S RESERVE IS LIVE + THE BADGE REVEAL SHIPPED (2026-09-21 night, Claude) - origin/MVP-v3
   `a9630e4`, live, Brian tested the reveal on prod four times and signed it.** Read
   **[docs/BADGE_RELEASE.md](docs/BADGE_RELEASE.md)** before touching badges - it is the runbook.
@@ -1892,6 +1910,19 @@ and barcode) and D3 (push, which needs VAPID keys in Vercel env from Brian).
 ---
 
 ## Log (newest first)
+
+### 2026-09-21 (late night) - Claude (#125 proven; bot-add push fixes; #162 #163 filed, #49 expanded)
+- Discussion session with Brian: the "formal review" pour (-> #162, must be a pour) and posting to
+  X (-> native share sheet first, #49 expanded; X account linking later once share events say
+  where people go). #123 passed -> Done; #163 filed from it (host is never told a bottle was skipped).
+- Forced a seed run for #125: `next_seed.mjs` offered Maker's Mark (already in DB under another
+  name - matcher too loose, see Right now); seeded Four Roses KSBW instead. Push was silent:
+  bot account was `test`, not `data` -> reclassified. Then two more fixes from Brian's taps:
+  `f2c4cb0` (wording + deep link), `7a6e791` (warm navigation into an already-open Admin).
+  Third tap landed on the case file. #125 DONE. Also flushed a stale Grain_of_Truth add push
+  (Sazerac Straight Rye).
+- Next: Brian to test lane still has #126 #127 #132 #135 #136 #144 #145 #147 #148 #149 #152
+  #154 #159 #161. Then the board right to left.
 
 ### 2026-09-21 (night) - Claude (Founder's Reserve object, the badge reveal, release switch, admin Last seen)
 - `abda25c` FR object from Brian's parts (eagle behind, glass in front, two-line etching just above
