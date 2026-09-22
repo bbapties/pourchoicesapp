@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     if (!body.activityId) return NextResponse.json({ error: "activityId required" }, { status: 400 });
     const { data: act } = await admin
       .from("activities")
-      .select("id, user_id, action, pour_type, bottles ( name )")
+      .select("id, user_id, bottle_id, action, pour_type, bottles ( name )")
       .eq("id", body.activityId)
       .maybeSingle();
     if (!act) return NextResponse.json({ sent: 0 });
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
     if (!body.activityId) return NextResponse.json({ error: "activityId required" }, { status: 400 });
     const { data: act } = await admin
       .from("activities")
-      .select("id, user_id, action, pour_type, bottles ( name )")
+      .select("id, user_id, bottle_id, action, pour_type, bottles ( name )")
       .eq("id", body.activityId)
       .eq("user_id", caller.id)
       .maybeSingle();
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
       if (caller.account_type !== "data") return NextResponse.json({ sent: 0 });
       const { data: admins } = await admin.from("users").select("id").eq("role", "admin");
       recipients = (admins || []).map((a: { id: string }) => a.id).filter((id) => id !== caller.id);
-      msg = { title: `${me} added ${bottle} to the database`, body: "Open Admin to review it", url: "/admin" };
+      msg = { title: `${bottle} was added`, body: `by ${me} - tap to review it`, url: `/admin?tab=review&bottle=${act.bottle_id}` };
     } else {
       if (!NOTIFY_ACTIONS.has(act.action)) return NextResponse.json({ sent: 0 });
       const { data: followers } = await admin

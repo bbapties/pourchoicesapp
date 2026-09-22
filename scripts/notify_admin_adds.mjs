@@ -37,7 +37,7 @@ webpush.setVapidDetails(env.VAPID_SUBJECT || "mailto:admin@pourchoicesapp.com", 
 // 1. Un-notified adds by data accounts.
 const { data: adds, error } = await db
   .from("activities")
-  .select("id, user_id, created_at, details, users!activities_user_id_fkey!inner ( username, account_type ), bottles ( name )")
+  .select("id, user_id, bottle_id, created_at, details, users!activities_user_id_fkey!inner ( username, account_type ), bottles ( name )")
   .eq("action", "added_to_db")
   .is("variant_id", null)
   .eq("users.account_type", "data")
@@ -55,7 +55,9 @@ for (const a of pending) {
   const who = Array.isArray(a.users) ? a.users[0] : a.users;
   const bottle = (Array.isArray(a.bottles) ? a.bottles[0] : a.bottles)?.name ?? "a bottle";
   const recipients = adminIds.filter((id) => id !== a.user_id);
-  const msg = { title: `@${who.username} added ${bottle} to the database`, body: "Open Admin to review it", url: "/admin" };
+  // Brian (2026-09-21): the bottle is the headline, the adder is the detail, and the tap lands on
+  // THAT bottle's case file in Admin > Review (same deep link as the clean-up push), not /admin.
+  const msg = { title: `${bottle} was added`, body: `by @${who.username} - tap to review it`, url: `/admin?tab=review&bottle=${a.bottle_id}` };
   console.log(`${dryRun ? "[dry] " : ""}${msg.title} -> ${recipients.length} admin(s)`);
   if (dryRun) continue;
 
