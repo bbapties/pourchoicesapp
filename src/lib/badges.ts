@@ -100,6 +100,18 @@ export async function fetchLevel(userId: string): Promise<Level | null> {
   return { points: Number(row.points ?? 0), title: row.title ?? "Regular", nextTitle: row.next_title ?? null, nextPoints: row.next_points ?? null };
 }
 
+export type LevelBand = { title: string; minPoints: number };
+
+let levelBandsCache: LevelBand[] | null = null;
+
+/** The six level bands, low to high. Cached for the session - they change only when Brian retunes them. */
+export async function fetchLevelBands(): Promise<LevelBand[]> {
+  if (levelBandsCache) return levelBandsCache;
+  const { data } = await supabase.from("level_bands").select("title, min_points").order("sort");
+  levelBandsCache = (data || []).map((r: any) => ({ title: r.title, minPoints: r.min_points }));
+  return levelBandsCache;
+}
+
 export type Awarded = { badgeId: string; tier: MedalTier; earnedAt: string | null; progress: number; wentUp: boolean };
 
 /**

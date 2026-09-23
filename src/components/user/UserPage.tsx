@@ -24,6 +24,7 @@ import { notify } from "@/lib/notify";
 import type { ShelfBottle, ShelfDef } from "@/lib/shelves";
 import PastTastings from "@/components/PastTastings";
 import BadgeShelf from "@/components/badges/BadgeShelf";
+import LevelSheet from "@/components/badges/LevelSheet";
 import { fetchLevel, levelLine, type Level } from "@/lib/badges";
 import {
   fetchTop3,
@@ -52,6 +53,7 @@ export default function UserPage({ own = false, username }: Props) {
   const [user, setUser] = useState<PublicUser | null | undefined>(undefined);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [level, setLevel] = useState<Level | null>(null); // #139: the member level plate
+  const [levelSheetOpen, setLevelSheetOpen] = useState(false);
   const [top3, setTop3] = useState<TopBottle[] | null>(null);
   const [shelves, setShelves] = useState<{ bar: ShelfDef; wishlist: ShelfDef; suggested: ShelfDef } | null>(null);
   const [counts, setCounts] = useState<Record<string, number | null>>({});
@@ -287,11 +289,17 @@ export default function UserPage({ own = false, username }: Props) {
           sql/member-level-engagement-migration.sql. It can go down; badges never do. */}
       {level && (
         <div className="flex justify-center pt-2.5" data-coach="profile.level">
-          <span className="pc-brass rounded px-3 py-[3px] font-display font-semibold text-[13px] tracking-[.06em] uppercase" title={levelLine(level)}>
+          <button
+            type="button"
+            onClick={() => setLevelSheetOpen(true)}
+            className="pc-brass rounded px-3 py-[3px] font-display font-semibold text-[13px] tracking-[.06em] uppercase"
+            title={levelLine(level)}
+          >
             {level.title} · {level.points} pts
-          </span>
+          </button>
         </div>
       )}
+      <LevelSheet level={level} open={levelSheetOpen} onClose={() => setLevelSheetOpen(false)} />
 
       {/* Their bar */}
       {shelves && (
