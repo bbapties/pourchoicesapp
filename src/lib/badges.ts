@@ -29,6 +29,9 @@ export type BadgeDef = {
   category: string | null;
   sort: number;
   tiers: { tier: number; threshold: number }[];
+  /** Which shape of src/lib/badgeArt.ts's `ladder_steps` this badge climbs (2026-09-22).
+   * 1 = today's 5 metal tiers (every badge, until Brian redoes one across all 22 steps). */
+  ladderVersion: number;
 };
 
 export type UserBadge = {
@@ -60,7 +63,7 @@ let catalogCache: BadgeDef[] | null = null;
 export async function fetchBadgeCatalog(force = false): Promise<BadgeDef[]> {
   if (catalogCache && !force) return catalogCache;
   const [{ data: badges }, { data: tiers }] = await Promise.all([
-    supabase.from("badges").select("id, family, name, glyph, feature, hint, one_off, category, sort").eq("active", true).order("sort").order("id"),
+    supabase.from("badges").select("id, family, name, glyph, feature, hint, one_off, category, sort, ladder_version").eq("active", true).order("sort").order("id"),
     supabase.from("badge_tiers").select("badge_id, tier, threshold").order("tier"),
   ]);
   const byBadge = new Map<string, { tier: number; threshold: number }[]>();
@@ -71,6 +74,7 @@ export async function fetchBadgeCatalog(force = false): Promise<BadgeDef[]> {
   catalogCache = (badges || []).map((b: any) => ({
     id: b.id, family: b.family, name: b.name, glyph: b.glyph, feature: b.feature ?? null, hint: b.hint ?? null,
     oneOff: !!b.one_off, category: b.category ?? null, sort: b.sort ?? 0, tiers: byBadge.get(b.id) ?? [],
+    ladderVersion: b.ladder_version ?? 1,
   }));
   return catalogCache;
 }
