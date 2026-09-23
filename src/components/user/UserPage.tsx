@@ -25,7 +25,6 @@ import type { ShelfBottle, ShelfDef } from "@/lib/shelves";
 import PastTastings from "@/components/PastTastings";
 import BadgeShelf from "@/components/badges/BadgeShelf";
 import { fetchLevel, levelLine, type Level } from "@/lib/badges";
-import { fetchReleased } from "@/lib/badgeRelease";
 import {
   fetchTop3,
   fetchUserById,
@@ -53,7 +52,6 @@ export default function UserPage({ own = false, username }: Props) {
   const [user, setUser] = useState<PublicUser | null | undefined>(undefined);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [level, setLevel] = useState<Level | null>(null); // #139: the member level plate
-  const [anyReleased, setAnyReleased] = useState(false); // is any badge live for THIS person
   const [top3, setTop3] = useState<TopBottle[] | null>(null);
   const [shelves, setShelves] = useState<{ bar: ShelfDef; wishlist: ShelfDef; suggested: ShelfDef } | null>(null);
   const [counts, setCounts] = useState<Record<string, number | null>>({});
@@ -113,7 +111,6 @@ export default function UserPage({ own = false, username }: Props) {
     });
     fetchUserStats(user.id).then((s) => live && setStats(s));
     fetchLevel(user.id).then((l) => live && setLevel(l));
-    fetchReleased(user.id).then((r) => live && setAnyReleased(r.size > 0));
     fetchTop3(user.id).then((t) => live && setTop3(t));
     if (publicUserId && !own) fetchRelationship(publicUserId, user.id).then((r) => live && setRel(r));
     fetchUserFeed({ userId: user.id, offset: 0, limit: ACTIVITY_PAGE, viewerId: publicUserId ?? null }).then((r) => {
@@ -285,9 +282,10 @@ export default function UserPage({ own = false, username }: Props) {
       </div>
 
       {/* #139: the member level - Profile-only for now (Brian, 2026-09-18; #142 takes it wider).
-          Hidden while nothing is released to this person (2026-09-21); user_level() counts
-          released badges only, so the plate never contradicts a shelf that is all "Coming soon". */}
-      {level && anyReleased && (
+          Activity-based, not badge-based (2026-09-22): user_level() is a rolling 6-month
+          engagement rate, independent of how many badges exist or are released - see
+          sql/member-level-engagement-migration.sql. It can go down; badges never do. */}
+      {level && (
         <div className="flex justify-center pt-2.5" data-coach="profile.level">
           <span className="pc-brass rounded px-3 py-[3px] font-display font-semibold text-[13px] tracking-[.06em] uppercase" title={levelLine(level)}>
             {level.title} · {level.points} pts
@@ -368,7 +366,7 @@ export default function UserPage({ own = false, username }: Props) {
       {/* #139: the badge shelf */}
       {user && (
         <>
-          <SectionHead title="Badges" hint={anyReleased && level?.nextTitle && level.nextPoints != null ? `${level.nextPoints - level.points} pts to ${level.nextTitle}` : undefined} />
+          <SectionHead title="Badges" />
           <div data-coach="profile.badges">
             <BadgeShelf userId={user.id} viewerId={publicUserId ?? null} own={own} surface={surface} reloadKey={reloadKey} />
           </div>
