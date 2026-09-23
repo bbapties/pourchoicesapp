@@ -150,8 +150,16 @@ async function celebrate(userId: string, up: Awarded[]) {
   for (const a of up) await logBadgeEarned(userId, a.badgeId, a.tier);
 }
 
-/** Tier points to the next level title, for the plate under the username. */
+/** `points` is rate*100 internally (so level_bands.min_points stays a plain integer) - never
+ * shown as-is. Every display reads it back as the weekly rate a user actually recognizes. */
+export function weeklyRate(points: number): string {
+  return (points / 100).toFixed(1);
+}
+
+/** Title + weekly rate + distance to the next band, for the plate under the username. */
 export function levelLine(l: Level | null): string {
   if (!l) return "";
-  return l.nextTitle && l.nextPoints != null ? `${l.title} · ${l.points} pts · ${l.nextPoints - l.points} to ${l.nextTitle}` : `${l.title} · ${l.points} pts`;
+  return l.nextTitle && l.nextPoints != null
+    ? `${l.title} · ${weeklyRate(l.points)}/wk · ${weeklyRate(l.nextPoints - l.points)} to ${l.nextTitle}`
+    : `${l.title} · ${weeklyRate(l.points)}/wk`;
 }

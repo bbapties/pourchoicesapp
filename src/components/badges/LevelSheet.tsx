@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { fetchLevelBands, type Level, type LevelBand } from "@/lib/badges";
+import { fetchLevelBands, weeklyRate, type Level, type LevelBand } from "@/lib/badges";
 
 /**
  * "What does this mean?" for the member level pill (#139 follow-up, 2026-09-22). Level is a
@@ -16,7 +16,7 @@ export default function LevelSheet({ level, open, onClose }: { level: Level | nu
     if (open && !bands) fetchLevelBands().then(setBands);
   }, [open, bands]);
 
-  const weekly = level ? (level.points / 100).toFixed(1) : "0.0";
+  const weekly = level ? weeklyRate(level.points) : "0.0";
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -29,7 +29,7 @@ export default function LevelSheet({ level, open, onClose }: { level: Level | nu
           </SheetDescription>
           <p className="text-cream-mute text-[13px] mt-1">
             {level?.nextTitle && level.nextPoints != null
-              ? `${Math.max(0, level.nextPoints - level.points)} pts to ${level.nextTitle}.`
+              ? `${weeklyRate(Math.max(0, level.nextPoints - level.points))}/wk more gets you to ${level.nextTitle}.`
               : "The top band - nothing above this yet."}
             {" "}Go quiet for a while and this can drop; it is not a badge.
           </p>
@@ -41,7 +41,7 @@ export default function LevelSheet({ level, open, onClose }: { level: Level | nu
               return (
                 <li key={b.title} className={`flex items-center gap-2.5 py-1.5 border-t border-black/35 text-[13px] ${isCurrent ? "text-brass-hi" : "text-cream-mute"}`}>
                   <span className={`font-display font-semibold ${isCurrent ? "text-brass-hi" : "text-cream"}`}>{b.title}</span>
-                  <span className="ml-auto tabular-nums">{(b.minPoints / 100).toFixed(1)}+/wk</span>
+                  <span className="ml-auto tabular-nums">{weeklyRate(b.minPoints)}+/wk</span>
                   {isCurrent && <span className="text-brass-hi">●</span>}
                 </li>
               );

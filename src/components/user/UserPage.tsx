@@ -25,7 +25,7 @@ import type { ShelfBottle, ShelfDef } from "@/lib/shelves";
 import PastTastings from "@/components/PastTastings";
 import BadgeShelf from "@/components/badges/BadgeShelf";
 import LevelSheet from "@/components/badges/LevelSheet";
-import { fetchLevel, levelLine, type Level } from "@/lib/badges";
+import { fetchLevel, levelLine, weeklyRate, type Level } from "@/lib/badges";
 import {
   fetchTop3,
   fetchUserById,
@@ -295,7 +295,7 @@ export default function UserPage({ own = false, username }: Props) {
             className="pc-brass rounded px-3 py-[3px] font-display font-semibold text-[13px] tracking-[.06em] uppercase"
             title={levelLine(level)}
           >
-            {level.title} · {level.points} pts
+            {level.title} · {weeklyRate(level.points)}/wk
           </button>
         </div>
       )}
