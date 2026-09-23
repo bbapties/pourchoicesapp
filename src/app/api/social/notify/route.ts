@@ -214,6 +214,9 @@ export async function POST(request: Request) {
       .eq("badge_id", body.badgeId)
       .maybeSingle();
     if (!ub || !ub.tier) return NextResponse.json({ sent: 0 });
+    // TIER_NAME only covers ladder_version 1 (tier 1-5); a ladder_version-2 badge (e.g.
+    // regular_pour, tier up to 22) silently loses the tier name here, not the whole push - fine
+    // while BADGE_MOMENTS_ENABLED stays false. Fix alongside whenever that flips on.
     const tierName = ub.tier ? TIER_NAME[ub.tier as MedalTier] : "";
     const badgeName = (Array.isArray(ub.badges) ? ub.badges[0] : ub.badges)?.name ?? "a badge";
     const { data: followers } = await admin

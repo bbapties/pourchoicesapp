@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { X } from "lucide-react";
-import Medal, { TIER_NAME } from "@/components/badges/Medal";
+import Medal from "@/components/badges/Medal";
 import BadgeSprite from "@/components/badges/BadgeSprite";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { fetchPendingReveals, markRevealed, type RevealItem } from "@/lib/badgeReveal";
 import { howToEarn } from "@/lib/badgeCopy";
 import { logClick } from "@/lib/events";
+import { fetchLadderSteps, tierFrame, tierStars, tierLabel, type LadderStep } from "@/lib/badgeArt";
 
 /**
  * The badge reveal (Brian, 2026-09-21). Next time the app is in front with a session - an organic
@@ -42,6 +43,8 @@ export default function BadgeReveal() {
   const busy = useRef(false);
   const blocked = BLOCKED_ROUTES.includes(pathname);
   const reduced = useMemo(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
+  const [steps, setSteps] = useState<Map<string, LadderStep> | null>(null);
+  useEffect(() => { fetchLadderSteps().then(setSteps); }, []);
 
   const check = useCallback(async () => {
     if (!publicUserId || busy.current) return;
@@ -108,7 +111,7 @@ export default function BadgeReveal() {
     router.push(`/profile?badge=${encodeURIComponent(it.def.id)}`);
   };
 
-  const label = (it: RevealItem) => (it.def.oneOff ? "One-off" : TIER_NAME[it.tier]);
+  const label = (it: RevealItem) => (it.def.oneOff ? "One-off" : tierLabel(steps, it.def.ladderVersion, it.tier));
 
   const tray = "absolute inset-x-0 bottom-0 pc-leather rounded-t-2xl px-4 pt-4 pb-[calc(16px+env(safe-area-inset-bottom))]";
 
@@ -129,7 +132,7 @@ export default function BadgeReveal() {
 
       {phase === "list" ? (
         <div className={`${tray} max-h-[80dvh] flex flex-col`}>
-          <RevealList items={queue.slice(i)} onDetails={details} onDone={() => finish(queue.slice(i), "reveal_all")} label={label} />
+          <RevealList items={queue.slice(i)} onDetails={details} onDone={() => finish(queue.slice(i), "reveal_all")} label={label} steps={steps} />
         </div>
       ) : (
         <>
@@ -143,11 +146,11 @@ export default function BadgeReveal() {
             <button type="button" onClick={() => (phase === "burst" ? details(item) : setPhase("burst"))} className="relative pointer-events-auto" aria-label={phase === "burst" ? `${item.def.name} - more details` : "Reveal"}>
               {phase !== "burst" ? (
                 <div className={phase === "shake" ? "pc-shake-long" : ""}>
-                  <Medal tier={item.revealedTier} glyph={item.def.glyph} initial={item.def.category} size={MEDAL} badgeId={item.def.id} oneOff={item.def.oneOff} mystery={!item.upgrade} />
+                  <Medal tier={item.revealedTier} glyph={item.def.glyph} frame={tierFrame(steps, item.def.ladderVersion, item.revealedTier, item.def.oneOff, item.def.id)} initial={item.def.category} size={MEDAL} badgeId={item.def.id} oneOff={item.def.oneOff} mystery={!item.upgrade} />
                 </div>
               ) : (
                 <div className={reduced ? "" : "pc-pop"}>
-                  <Medal tier={item.tier} glyph={item.def.glyph} stars={item.subTier} initial={item.def.category} size={MEDAL} badgeId={item.def.id} oneOff={item.def.oneOff} title={item.def.name} />
+                  <Medal tier={item.tier} glyph={item.def.glyph} stars={tierStars(steps, item.def.ladderVersion, item.tier, item.def.oneOff)} frame={tierFrame(steps, item.def.ladderVersion, item.tier, item.def.oneOff, item.def.id)} initial={item.def.category} size={MEDAL} badgeId={item.def.id} oneOff={item.def.oneOff} title={item.def.name} />
                 </div>
               )}
             </button>
@@ -198,13 +201,13 @@ export default function BadgeReveal() {
 }
 
 /** Reveal all: every medal at once, scrollable, one Close. */
-function RevealList({ items, onDetails, onDone, label }: { items: RevealItem[]; onDetails: (it: RevealItem) => void; onDone: () => void; label: (it: RevealItem) => string }) {
+function RevealList({ items, onDetails, onDone, label, steps }: { items: RevealItem[]; onDetails: (it: RevealItem) => void; onDone: () => void; label: (it: RevealItem) => string; steps: Map<string, LadderStep> | null }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <ul className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pb-3">
         {items.map((it) => (
           <li key={it.def.id} className="pc-inset rounded-xl px-3 py-2.5 flex items-center gap-3">
-            <Medal tier={it.tier} glyph={it.def.glyph} stars={it.subTier} initial={it.def.category} size={66} badgeId={it.def.id} oneOff={it.def.oneOff} />
+            <Medal tier={it.tier} glyph={it.def.glyph} stars={tierStars(steps, it.def.ladderVersion, it.tier, it.def.oneOff)} frame={tierFrame(steps, it.def.ladderVersion, it.tier, it.def.oneOff, it.def.id)} initial={it.def.category} size={66} badgeId={it.def.id} oneOff={it.def.oneOff} />
             <div className="min-w-0 flex-1 text-left">
               <div className="font-display font-semibold text-cream leading-tight">{it.def.name}</div>
               <div className="text-[11px] uppercase tracking-[.06em] text-cream-faint">{it.upgrade ? `Upgraded to ${label(it)}` : label(it)}</div>

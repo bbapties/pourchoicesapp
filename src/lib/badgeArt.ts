@@ -86,3 +86,27 @@ export function stepLabel(info: LadderStep): string {
   const name = info.frame === "limited" ? "Limited Edition" : info.frame.charAt(0).toUpperCase() + info.frame.slice(1);
   return info.stars > 0 ? `${name} · ${info.stars} star${info.stars === 1 ? "" : "s"}` : name;
 }
+
+/**
+ * The one place BadgeShelf/BadgeReveal ask "what does this tier look like": version 1 (every
+ * badge until it is converted) goes through the original `frameFor`/`TIER_NAME`, untouched;
+ * version 2 goes through `ladder_steps`. `steps` is `fetchLadderSteps()`'s map, or null before it
+ * has loaded - version-2 badges render locked until it has, same as any other async catalog read.
+ */
+export function tierFrame(steps: Map<string, LadderStep> | null, ladderVersion: number, tier: number, oneOff: boolean, badgeId: string): MedalFrame {
+  if (tier === 0) return "locked";
+  if (oneOff) return frameFor(1, true, badgeId);
+  if (ladderVersion === 2) return steps ? stepInfo(steps, ladderVersion, tier).frame : "locked";
+  return frameFor(Math.min(tier, 5) as MedalTier, false, badgeId);
+}
+
+export function tierStars(steps: Map<string, LadderStep> | null, ladderVersion: number, tier: number, oneOff: boolean): number {
+  if (oneOff || ladderVersion !== 2 || !steps) return 0;
+  return stepInfo(steps, ladderVersion, tier).stars;
+}
+
+export function tierLabel(steps: Map<string, LadderStep> | null, ladderVersion: number, tier: number): string {
+  if (tier === 0) return "Locked";
+  if (ladderVersion === 2) return steps ? stepLabel(stepInfo(steps, ladderVersion, tier)) : "Locked";
+  return TIER_NAME[Math.min(tier, 5) as MedalTier] ?? "";
+}

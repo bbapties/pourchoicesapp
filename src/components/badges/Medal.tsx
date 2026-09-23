@@ -47,6 +47,9 @@ type Props = {
   oneOff?: boolean;
   /** the plate alone - no object, no glyph. The reveal's "something is under here" state. */
   mystery?: boolean;
+  /** Pre-resolved frame for a ladder_version-2 badge (src/lib/badgeArt.ts `tierFrame`) - skips
+   * `frameFor`'s tier<=5 assumption. Omit for a version-1 badge; behavior is unchanged. */
+  frame?: MedalFrame;
 };
 
 const POLAR = (r: number, deg: number) => [70 + r * Math.cos((deg * Math.PI) / 180), 70 + r * Math.sin((deg * Math.PI) / 180)] as const;
@@ -131,13 +134,13 @@ function GlyphOverlay({ glyph, frame, size, initial }: { glyph: string; frame: M
   );
 }
 
-export default function Medal({ tier, glyph, stars = 0, initial, size = 100, className, title, badgeId, oneOff, mystery }: Props) {
-  const frame = frameFor(tier, !!oneOff, badgeId ?? "");
+export default function Medal({ tier, glyph, stars = 0, initial, size = 100, className, title, badgeId, oneOff, mystery, frame: frameOverride }: Props) {
+  const frame = frameOverride ?? frameFor(tier, !!oneOff, badgeId ?? "");
   const [plateFailed, setPlateFailed] = useState(false);
   const [objectFailed, setObjectFailed] = useState(false);
   const object = !!badgeId && hasObject(badgeId) && !objectFailed;
   if (plateFailed) {
-    return <SvgMedal tier={tier} glyph={glyph} stars={stars} initial={initial} size={size} className={className} title={title} />;
+    return <SvgMedal tier={tier} glyph={glyph} stars={stars} initial={initial} size={size} className={className} title={title} frame={frame} />;
   }
   return (
     <div
@@ -174,9 +177,10 @@ export default function Medal({ tier, glyph, stars = 0, initial, size = 100, cla
   );
 }
 
-function SvgMedal({ tier, glyph, stars = 0, initial, size = 100, className, title }: Omit<Props, "badgeId" | "oneOff">) {
+function SvgMedal({ tier, glyph, stars = 0, initial, size = 100, className, title, frame }: Omit<Props, "badgeId" | "oneOff">) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
-  const k = SVG_METAL[tier];
+  // A ladder_version-2 tier (>5) has no SVG_METAL entry - the resolved frame stands in for it.
+  const k = frame ?? SVG_METAL[tier];
   const v = (part: "hi" | "" | "lo" | "ink") => `var(--medal-${k}${part ? "-" + part : ""})`;
   const g = GLYPH_KEYS.has(glyph) ? glyph : "g-pour";
   const locked = tier === 0;

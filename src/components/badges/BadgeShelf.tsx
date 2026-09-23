@@ -8,6 +8,7 @@ import { fetchShelf, runAwards, type ShelfItem } from "@/lib/badges";
 import { logClick } from "@/lib/events";
 import { howToEarn } from "@/lib/badgeCopy";
 import { fetchReleased } from "@/lib/badgeRelease";
+import { fetchLadderSteps, tierFrame, tierStars, tierLabel, type LadderStep } from "@/lib/badgeArt";
 
 /**
  * The badge shelf on a user page (#139). Earned first (highest tier first) with the distance to
@@ -25,6 +26,10 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
   const [items, setItems] = useState<ShelfItem[] | null>(null);
   const [released, setReleased] = useState<Set<string>>(() => new Set());
   const [open, setOpen] = useState<ShelfItem | null>(null);
+  // ladder_version-2 badges (currently just regular_pour) need this to know what a tier looks
+  // like; version-1 badges never touch it. Fetched once, cached in badgeArt.ts.
+  const [steps, setSteps] = useState<Map<string, LadderStep> | null>(null);
+  useEffect(() => { fetchLadderSteps().then(setSteps); }, []);
   // `/profile?badge=<id>` opens that badge's sheet - the reveal's "More details" lands here.
   // Read once from the URL (no useSearchParams: that needs a Suspense boundary at build time).
   const [wantBadge, setWantBadge] = useState<string | null>(null);
@@ -82,9 +87,9 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
       {earned.length > 0 && (
         <Grid>
           {earned.map((it) => (
-            <Cell key={it.def.id} item={it} onOpen={openSheet}>
-              <div className="text-[10.5px] text-cream-faint tracking-[.06em] uppercase">{it.def.oneOff ? "One-off" : TIER_NAME[it.tier]}</div>
-              {it.next && <Progress item={it} />}
+            <Cell key={it.def.id} item={it} onOpen={openSheet} steps={steps}>
+              <div className="text-[10.5px] text-cream-faint tracking-[.06em] uppercase">{it.def.oneOff ? "One-off" : tierLabel(steps, it.def.ladderVersion, it.tier)}</div>
+              {it.next && <Progress item={it} steps={steps} />}
             </Cell>
           ))}
         </Grid>
@@ -95,7 +100,7 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
           <Divider>In progress</Divider>
           <Grid>
             {started.map((it) => (
-              <Cell key={it.def.id} item={it} onOpen={openSheet}><Progress item={it} /></Cell>
+              <Cell key={it.def.id} item={it} onOpen={openSheet} steps={steps}><Progress item={it} steps={steps} /></Cell>
             ))}
           </Grid>
         </>
@@ -106,7 +111,7 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
           <Divider>Not started</Divider>
           <Grid>
             {locked.map((it) => (
-              <Cell key={it.def.id} item={it} onOpen={openSheet} dim>
+              <Cell key={it.def.id} item={it} onOpen={openSheet} steps={steps} dim>
                 <div className="text-[10.5px] text-cream-faint">{it.def.hint ?? ""}</div>
               </Cell>
             ))}
@@ -119,7 +124,7 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
           <Divider>Coming soon</Divider>
           <Grid>
             {soon.map((it) => (
-              <Cell key={it.def.id} item={{ ...it, tier: 0, subTier: 0 }} onOpen={openSheet} dim>
+              <Cell key={it.def.id} item={{ ...it, tier: 0, subTier: 0 }} onOpen={openSheet} steps={steps} dim>
                 <div className="text-[10.5px] text-brass-hi tracking-[.06em] uppercase">Coming soon</div>
               </Cell>
             ))}
@@ -127,7 +132,7 @@ export default function BadgeShelf({ userId, viewerId, own, surface, reloadKey =
         </>
       )}
 
-      <BadgeSheet item={open} released={!!open && isReleased(open.def.id)} onClose={() => setOpen(null)} />
+      <BadgeSheet item={open} released={!!open && isReleased(open.def.id)} onClose={() => setOpen(null)} steps={steps} />
     </>
   );
 }
@@ -146,17 +151,27 @@ function Divider({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Cell({ item, onOpen, dim, children }: { item: ShelfItem; onOpen: (i: ShelfItem) => void; dim?: boolean; children?: React.ReactNode }) {
+function Cell({ item, onOpen, steps, dim, children }: { item: ShelfItem; onOpen: (i: ShelfItem) => void; steps: Map<string, LadderStep> | null; dim?: boolean; children?: React.ReactNode }) {
+  const label = item.tier ? tierLabel(steps, item.def.ladderVersion, item.tier) : "not started";
   return (
-    <button type="button" onClick={() => onOpen(item)} className="flex flex-col items-center gap-1 text-center" aria-label={`${item.def.name}, ${item.tier ? TIER_NAME[item.tier] : "not started"}`}>
-      <Medal tier={item.tier} glyph={item.def.glyph} stars={item.subTier} initial={item.def.category} size={100} badgeId={item.def.id} oneOff={item.def.oneOff} />
+    <button type="button" onClick={() => onOpen(item)} className="flex flex-col items-center gap-1 text-center" aria-label={`${item.def.name}, ${label}`}>
+      <Medal
+        tier={item.tier}
+        glyph={item.def.glyph}
+        stars={tierStars(steps, item.def.ladderVersion, item.tier, item.def.oneOff)}
+        frame={tierFrame(steps, item.def.ladderVersion, item.tier, item.def.oneOff, item.def.id)}
+        initial={item.def.category}
+        size={100}
+        badgeId={item.def.id}
+        oneOff={item.def.oneOff}
+      />
       <div className={`font-display font-semibold text-[12px] leading-tight ${dim ? "text-cream-faint" : "text-cream"}`}>{item.def.name}</div>
       {children}
     </button>
   );
 }
 
-function Progress({ item }: { item: ShelfItem }) {
+function Progress({ item, steps }: { item: ShelfItem; steps: Map<string, LadderStep> | null }) {
   if (!item.next) return null;
   const pct = Math.min(100, Math.round((item.progress / item.next.threshold) * 100));
   return (
@@ -164,7 +179,7 @@ function Progress({ item }: { item: ShelfItem }) {
       <div className="w-16 h-1 rounded bg-black/55 overflow-hidden shadow-[inset_0_1px_1px_rgba(0,0,0,.6)]">
         <i className="block h-full bg-gradient-to-r from-brass-lo to-brass-hi" style={{ width: `${pct}%` }} />
       </div>
-      <div className="text-[10.5px] text-cream-mute tabular-nums">{item.progress} / {item.next.threshold} to {TIER_NAME[item.next.tier as MedalTier]}</div>
+      <div className="text-[10.5px] text-cream-mute tabular-nums">{item.progress} / {item.next.threshold} to {tierLabel(steps, item.def.ladderVersion, item.next.tier)}</div>
     </>
   );
 }
@@ -172,7 +187,7 @@ function Progress({ item }: { item: ShelfItem }) {
 /** Sheet medal: 2.5x the 100px shelf coin, capped so it clears the ladder on a short phone. */
 const MEDAL_SHEET = 250;
 
-export function BadgeSheet({ item, released, onClose }: { item: ShelfItem | null; released: boolean; onClose: () => void }) {
+export function BadgeSheet({ item, released, onClose, steps }: { item: ShelfItem | null; released: boolean; onClose: () => void; steps?: Map<string, LadderStep> | null }) {
   const d = item?.def;
   return (
     <Sheet open={!!item} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -181,13 +196,23 @@ export function BadgeSheet({ item, released, onClose }: { item: ShelfItem | null
           <>
             <SheetHeader className="items-center text-center">
               {/* the medal is the point of the sheet - 2.5x the shelf coin (Brian, 2026-09-21) */}
-              <Medal tier={released ? item.tier : 0} glyph={d.glyph} stars={released ? item.subTier : 0} initial={d.category} size={MEDAL_SHEET} badgeId={d.id} oneOff={d.oneOff} className="mx-auto" />
+              <Medal
+                tier={released ? item.tier : 0}
+                glyph={d.glyph}
+                stars={released ? tierStars(steps ?? null, d.ladderVersion, item.tier, d.oneOff) : 0}
+                frame={released ? tierFrame(steps ?? null, d.ladderVersion, item.tier, d.oneOff, d.id) : "locked"}
+                initial={d.category}
+                size={MEDAL_SHEET}
+                badgeId={d.id}
+                oneOff={d.oneOff}
+                className="mx-auto"
+              />
               <SheetTitle className="font-display text-2xl text-cream mt-1">{d.name}</SheetTitle>
               <SheetDescription className="text-cream text-[14px] leading-snug max-w-[34ch] mx-auto">
                 {howToEarn(d)}
               </SheetDescription>
               <p className="text-cream-mute text-[13px] mt-1">
-                {released ? describe(item) : "Coming soon. What you do now still counts toward it."}
+                {released ? describe(item, steps ?? null) : "Coming soon. What you do now still counts toward it."}
               </p>
             </SheetHeader>
             {released && <ol className="mt-3.5 flex flex-col">
@@ -196,8 +221,17 @@ export function BadgeSheet({ item, released, onClose }: { item: ShelfItem | null
                 const isNext = item.next?.tier === t.tier;
                 return (
                   <li key={t.tier} className="flex items-center gap-2.5 py-1.5 border-t border-black/35 text-[13px]">
-                    <Medal tier={(got ? t.tier : 0) as MedalTier} glyph={d.glyph} initial={d.category} size={38} badgeId={d.id} oneOff={d.oneOff} />
-                    <span className="w-[74px] font-display font-semibold text-cream">{d.oneOff ? "Earned" : TIER_NAME[t.tier as MedalTier]}</span>
+                    <Medal
+                      tier={(got ? t.tier : 0) as MedalTier}
+                      glyph={d.glyph}
+                      stars={got ? tierStars(steps ?? null, d.ladderVersion, t.tier, d.oneOff) : 0}
+                      frame={got ? tierFrame(steps ?? null, d.ladderVersion, t.tier, d.oneOff, d.id) : "locked"}
+                      initial={d.category}
+                      size={38}
+                      badgeId={d.id}
+                      oneOff={d.oneOff}
+                    />
+                    <span className="w-[74px] font-display font-semibold text-cream">{d.oneOff ? "Earned" : tierLabel(steps ?? null, d.ladderVersion, t.tier)}</span>
                     <span className="w-[70px] text-cream-mute tabular-nums">{d.oneOff ? "" : t.threshold}</span>
                     <span className={`ml-auto text-xs ${isNext ? "text-brass-hi" : "text-cream-faint"}`}>
                       {got && item.tier === t.tier && item.earnedAt ? formatDay(item.earnedAt) : got ? "earned" : isNext ? `${Math.max(0, t.threshold - item.progress)} to go` : ""}
@@ -213,11 +247,12 @@ export function BadgeSheet({ item, released, onClose }: { item: ShelfItem | null
   );
 }
 
-function describe(it: ShelfItem): string {
+function describe(it: ShelfItem, steps: Map<string, LadderStep> | null): string {
   const d = it.def;
   if (d.oneOff) return it.tier ? `Earned${it.earnedAt ? ` ${formatDay(it.earnedAt)}` : ""}.` : "Not yet.";
-  if (!it.tier) return `${it.progress} so far${it.next ? ` - ${TIER_NAME[it.next.tier as MedalTier]} at ${it.next.threshold}` : ""}.`;
-  return `You are on ${TIER_NAME[it.tier]} - ${it.progress} so far${it.next ? `, ${TIER_NAME[it.next.tier as MedalTier]} at ${it.next.threshold}` : ", the top"}.`;
+  const nextLabel = it.next ? tierLabel(steps, d.ladderVersion, it.next.tier) : null;
+  if (!it.tier) return `${it.progress} so far${nextLabel ? ` - ${nextLabel} at ${it.next!.threshold}` : ""}.`;
+  return `You are on ${tierLabel(steps, d.ladderVersion, it.tier)} - ${it.progress} so far${nextLabel ? `, ${nextLabel} at ${it.next!.threshold}` : ", the top"}.`;
 }
 function formatDay(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
