@@ -8,6 +8,37 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **VERCEL "BOT" SCARE + THE CRON THAT NEVER RAN (2026-09-29, Claude) - origin/MVP-v3 `b13a4cb`,
+  live, verified on prod. #165 DONE; #166 (Brian: firewall switches + recheck usage) in Top Priority.**
+  - **The 75%-of-1M CDN Requests email (Sep 29) was NOT scrapers.** `/v2/usage` (CLI token, see
+    #166) shows ~940k requests on **Aug 31 - Sep 2 = our own `/ <-> /mybar` redirect loop** (fixed
+    `034b94f` `4210e1c`; ~4KB of auth cookies per request gave it away). Since Sep 3: 400-6,500
+    requests a day, which matches 20-260 `page_view`s from 2-5 real users. No firewall rules, no
+    anomalies. `/api/generate`, `/api/demo`, `/api/blog` were never ours (checked all of git
+    history and both Vercel projects). Brian's research suggested UA blocks + a 15-30/min per-IP
+    rate limit: **declined on purpose.** Middleware can't reduce CDN Requests (Vercel counts the
+    request first), a UA block would kill the cron, and per-IP limits would hit real users (Next
+    prefetch, shared IPs).
+  - `316f6af`: **`API_ROUTES` allowlist in `middleware.ts`.** Any other `/api/*` path gets a bare
+    404 before Supabase is built. **Adding an API route now means adding its line there**, or it
+    404s in prod. `public/robots.txt` (login screen only), excluded from the matcher.
+  - `b13a4cb`: **the #138 nightly badge backstop had never run.** Middleware 401'd the cron for
+    having no session. `MACHINE_ROUTES` lets `/api/badges/award-all` through (the route checks
+    `Bearer $CRON_SECRET` itself). **`CRON_SECRET` did not exist on `pourchoicesapp`. It is now set
+    (Production, random, never printed).** Prod: no or wrong secret -> 403, real secret ->
+    `{"users":10}`. First scheduled run is 09:00 UTC 09-30.
+  - **Reconstructed (the 2026-09-22 badge session had no END SESSION):** `da73a9b` member level =
+    rolling 6-month weekly activity rate (`user_level()`, `level_bands`, 90-9-1-shaped bands;
+    `sql/member-level-engagement-migration.sql` applied); `ff85327` `3a9a019` the level pill opens
+    `LevelSheet` and shows the weekly rate, never raw points; `03b8f99` `ladder_steps` +
+    `badges.ladder_version` for the **22-step Wood->Limited ladder**; `fe1cf7c` **Regular Pour is
+    the first badge on it** (lifetime pours 1..3000, `sql/regular-pour-22step-migration.sql`,
+    tier CHECKs widened to <=22). Its 3D object is **not built**. Untracked WIP for it sits in the
+    tree (`scripts/regular_pour_medal.mjs`, `public/badges/masters/parts/regular_pour-*.png`,
+    `regular_pour-1024.webp`, `objects_wip/`, `plates_png/`, `public/badges/review/`). Left
+    untouched: ask Brian before committing or deleting any of it.
+  - **Next single step:** read the board right to left as usual. Nothing from this session is
+    waiting on an agent. Brian owns #166.
 - **BOT-ADD PUSH PROVEN END TO END + TWO FIXES (2026-09-21 late night, Claude) - origin/MVP-v3
   `7a6e791`, live, #125 DONE (Brian tapped through to the bottle).** A forced seed run inserted
   **Four Roses Kentucky Straight Bourbon Whiskey** (`b4b20e2c`, unverified, UPC 040063400409,
@@ -763,6 +794,9 @@ no-op. Purge (#67) and merge (#68) both end in `replay_elo_history()`, and that 
 this holds. **Re-check it before wiring anything else to a replay.**
 
 ### Landmines
+- **A new `/api/*` route 404s in prod until it is in `API_ROUTES` (`src/middleware.ts`).** A route
+  that authenticates a machine rather than a signed-in person also goes in `MACHINE_ROUTES`, and
+  must check its own secret (2026-09-29).
 - **The agent sandbox is isolated outside the repo.** Writes **inside `C:\pourchoices-frontend`**
   reach the real disk; writes **outside it do not** - an agent-installed binary or PATH change is
   invisible to Brian's terminal, and `Test-Path` still says `True` from the agent's side. If Brian
