@@ -123,8 +123,10 @@ export const config = {
   // the login page the browser sees no installable app at all. Same for the service worker.
   // Image extensions were already excluded, which is why the icons worked and the manifest did not.
   // `/api` is deliberately NOT excluded any more (#5) -- see the 401 branch above.
+  // `/Grandma Pooh's Family Tree` is a separate static site proxied in by vercel.json (rewrites);
+  // it has no session and must not be bounced to `/`. Both the raw and %-encoded forms are listed.
   matcher:
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|robots.txt|_error|error|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|robots.txt|_error|error|Grandma(?:%20|\\s)Pooh(?:\'|%27)s(?:%20|\\s)Family(?:%20|\\s)Tree|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest).*)',
   // No `runtime: 'nodejs'` -- deliberately. It was added in a Nov-2025 "test" commit with no
   // reason recorded, and it made every matched request (every page, RSC navigation, /api call
   // and 404) a Fluid Node invocation that loaded supabase-js. This file only uses @supabase/ssr,
