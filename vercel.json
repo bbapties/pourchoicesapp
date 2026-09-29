@@ -2,6 +2,16 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
+  "rewrites": [
+    {
+      "source": "/Grandma(%20| )Pooh('|%27)s(%20| )Family(%20| )Tree/",
+      "destination": "https://grandma-pooh-family-tree.vercel.app/Grandma%20Pooh's%20Family%20Tree/"
+    },
+    {
+      "source": "/Grandma(%20| )Pooh('|%27)s(%20| )Family(%20| )Tree/:path*",
+      "destination": "https://grandma-pooh-family-tree.vercel.app/Grandma%20Pooh's%20Family%20Tree/:path*"
+    }
+  ],
   "crons": [
     { "path": "/api/badges/award-all", "schedule": "0 9 * * *" }
   ]
