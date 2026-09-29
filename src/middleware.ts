@@ -81,8 +81,13 @@ export async function middleware(request: NextRequest) {
   // caller is fetch(), not a browser navigation. Every existing route still checks for itself
   // (defence in depth); this is the floor, not the ceiling. No cookie purge on this path: a
   // background call must not be able to sign the person out of the page they are looking at.
+  // Routes that authenticate a MACHINE, not a person, and check it themselves. The nightly Vercel
+  // cron sends `Authorization: Bearer $CRON_SECRET` and no session; gating it on a user meant it
+  // got this 401 every night and never ran (#165). The route refuses anything without the secret.
+  const MACHINE_ROUTES = new Set(['/api/badges/award-all'])
+
   if (pathname.startsWith('/api/')) {
-    if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+    if (!user && !MACHINE_ROUTES.has(pathname)) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
     return response
   }
 
