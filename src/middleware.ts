@@ -11,8 +11,24 @@ import type { NextRequest } from 'next/server'
 const SCANNER =
   /(\.php|\.asp|\.aspx|\.jsp|\.cgi|\.env|\.git|\.svn|\.htaccess|\.DS_Store|\.sql|\.bak|\.zip)($|[?/])|^\/(wp-|wordpress|xmlrpc|phpmyadmin|pma|cgi-bin|vendor\/|\.well-known\/(?!assetlinks|apple-app-site))/i
 
+/**
+ * The API routes that exist (src/app/api/**\/route.ts). Anything else under /api is a probe
+ * (/api/generate, /api/demo, /api/blog ... were never ours) and gets a bare 404 before Supabase is
+ * built, instead of a getUser() round-trip and a 401. ADD A LINE HERE WHEN YOU ADD A ROUTE, or the
+ * new route will 404 in prod.
+ */
+const API_ROUTES = new Set([
+  '/api/admin/delete-user',
+  '/api/admin/push-recipients',
+  '/api/admin/reset-avatar',
+  '/api/admin/send-push',
+  '/api/badges/award-all',
+  '/api/social/notify',
+])
+
 export async function middleware(request: NextRequest) {
-  if (SCANNER.test(request.nextUrl.pathname)) {
+  const path = request.nextUrl.pathname
+  if (SCANNER.test(path) || (path.startsWith('/api/') && !API_ROUTES.has(path.replace(/\/$/, '')))) {
     return new NextResponse(null, { status: 404 })
   }
 
@@ -103,7 +119,7 @@ export const config = {
   // Image extensions were already excluded, which is why the icons worked and the manifest did not.
   // `/api` is deliberately NOT excluded any more (#5) -- see the 401 branch above.
   matcher:
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|_error|error|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|robots.txt|_error|error|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webp|.*\\.ico|.*\\.webmanifest).*)',
   // No `runtime: 'nodejs'` -- deliberately. It was added in a Nov-2025 "test" commit with no
   // reason recorded, and it made every matched request (every page, RSC navigation, /api call
   // and 404) a Fluid Node invocation that loaded supabase-js. This file only uses @supabase/ssr,

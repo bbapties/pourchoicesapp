@@ -1,0 +1,4 @@
+# Everything past the login screen needs an account; there is nothing here for a crawler.
+User-agent: *
+Allow: /$
+Disallow: /
