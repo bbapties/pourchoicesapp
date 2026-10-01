@@ -2,17 +2,22 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "rewrites": [
+  "redirects": [
     {
       "source": "/Grandma(%20| )Pooh('|%27)s(%20| )Family(%20| )Tree/",
-      "destination": "https://grandma-pooh-family-tree.vercel.app/Grandma%20Pooh's%20Family%20Tree/"
+      "destination": "https://www.gramapooh.com/",
+      "permanent": false
     },
     {
       "source": "/Grandma(%20| )Pooh('|%27)s(%20| )Family(%20| )Tree/:path*",
-      "destination": "https://grandma-pooh-family-tree.vercel.app/Grandma%20Pooh's%20Family%20Tree/:path*"
+      "destination": "https://www.gramapooh.com/",
+      "permanent": false
     }
   ],
   "crons": [
-    { "path": "/api/badges/award-all", "schedule": "0 9 * * *" }
+    {
+      "path": "/api/badges/award-all",
+      "schedule": "0 9 * * *"
+    }
   ]
 }

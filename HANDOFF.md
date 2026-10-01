@@ -8,6 +8,12 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **Family tree address now REDIRECTS (2026-10-01, Claude).** The family tree moved to its own site
+  and domain behind a family-only login (**www.gramapooh.com**, Vercel project `gramapoohs-family-tree`,
+  repo `bbapties/gramapoohs-family-tree`), so `vercel.json`'s old proxy `rewrites` for
+  `/Grandma Pooh's Family Tree/...` are now `redirects` (307) to www.gramapooh.com. The middleware
+  matcher still skips the path. Nothing in the app changes.
+
 - **VERCEL "BOT" SCARE + THE CRON THAT NEVER RAN (2026-09-29, Claude) - origin/MVP-v3 `b13a4cb`,
   live, verified on prod. #165 DONE; #166 (Brian: firewall switches + recheck usage) in Top Priority.**
   - **The 75%-of-1M CDN Requests email (Sep 29) was NOT scrapers.** `/v2/usage` (CLI token, see
