@@ -5,12 +5,12 @@
   "redirects": [
     {
       "source": "/Grandma(%20| )Pooh('|%27)s(%20| )Family(%20| )Tree/",
-      "destination": "https://gramapoohs-family-tree.vercel.app/",
+      "destination": "https://www.gramapooh.com/",
       "permanent": false
     },
     {
       "source": "/Grandma(%20| )Pooh('|%27)s(%20| )Family(%20| )Tree/:path*",
-      "destination": "https://gramapoohs-family-tree.vercel.app/",
+      "destination": "https://www.gramapooh.com/",
       "permanent": false
     }
   ],
