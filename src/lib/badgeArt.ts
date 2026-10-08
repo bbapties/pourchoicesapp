@@ -46,7 +46,7 @@ const LIMITED_IDS = new Set(["founders_reserve"]);
  * the object sits in front, not behind). Built by scripts/founders_reserve_medal.mjs and its
  * successors; one id per shipped object, never the whole catalog at once (docs/BADGE_ART.md).
  */
-const OBJECT_IDS = new Set(["founders_reserve", "neat_freak"]);
+const OBJECT_IDS = new Set(["founders_reserve", "neat_freak", "mix_master"]);
 export const hasObject = (badgeId: string) => OBJECT_IDS.has(badgeId);
 
 export function frameFor(tier: MedalTier, oneOff: boolean, badgeId: string): MedalFrame {
