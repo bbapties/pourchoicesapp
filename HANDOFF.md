@@ -8,6 +8,13 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **PHOTO PICKERS ASK CAMERA OR LIBRARY (2026-10-08, Claude) - `2d16770` on MVP-v3.** New
+  `src/components/usePhotoPicker.tsx`: on touch devices `open()` shows Take photo / Choose from
+  library (bare `accept="image/*"` went straight to the gallery on Android); desktop goes straight to
+  the file picker. Used by PourSheet, PostComposer, ShowOffNudge, DrinkClient lineup photo,
+  PostClient, BottleDetailView image edit, AvatarCropSheet (front camera). ProvisionalSheet already
+  had its own two buttons; FeedbackSheet stays library-only (screenshots). #180 Brian to test.
+
 - **MIXED SIGNALS BADGE LIVE (2026-10-08, Claude) - PR #179 into MVP-v3. Migration applied, released to everyone.**
   - `mixed_signals`, family `mixed`, ladder_version 2: every `drank` pour with `pour_type = 'mixed'`
     (blind pours don't count). Same 22 tiers as Neat Freak / Regular Pour (1..3000).
