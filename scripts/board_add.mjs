@@ -5,14 +5,16 @@
  *   node scripts/board_add.mjs <issue#> "<Status>" ["<Size>"] ["<Area>"]
  *   node scripts/board_add.mjs 135 "Brian to test" XS "My Bar"
  *
- * Option names are the board's exact labels (docs/BOARD.md). Uses the gh CLI in .tools/gh.
+ * Option names are the board's exact labels (docs/BOARD.md). Uses the gh CLI in .tools/gh
+ * (or $GH_BIN).
  * Field and option ids are looked up every run so a renamed option never breaks it; a wrong
  * name prints the valid ones and exits 1.
  */
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
-const GH = path.join(process.cwd(), ".tools", "gh", "bin", "gh.exe");
+// Brian's machine keeps gh in .tools; the "Board" GitHub Action (cloud agents) sets GH_BIN=gh.
+const GH = process.env.GH_BIN || path.join(process.cwd(), ".tools", "gh", "bin", "gh.exe");
 const OWNER = "bbapties";
 const REPO = "pourchoicesapp";
 const PROJECT_NUMBER = 1;

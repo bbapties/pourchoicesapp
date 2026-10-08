@@ -1,0 +1,43 @@
+# Moves a card on the board (https://github.com/users/bbapties/projects/1) for agents that
+# can't reach it directly. Cloud Claude sessions only get repo-scoped GitHub access, and the
+# board is a user-level project, so they trigger this instead of running scripts/board_add.mjs.
+#
+# Needs repo secret BOARD_TOKEN: a classic personal access token from bbapties with the
+# `project` and `repo` scopes (the built-in GITHUB_TOKEN can't see user projects).
+name: Board
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number
+        required: true
+      status:
+        description: Status lane, exactly as on the board (e.g. "Brian to test")
+        required: true
+      size:
+        description: Size (optional)
+        required: false
+        default: ""
+      area:
+        description: Area (optional)
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set the card
+        env:
+          GH_TOKEN: ${{ secrets.BOARD_TOKEN }}
+          GH_BIN: gh
+          ISSUE: ${{ inputs.issue }}
+          STATUS: ${{ inputs.status }}
+          SIZE: ${{ inputs.size }}
+          AREA: ${{ inputs.area }}
+        run: node scripts/board_add.mjs "$ISSUE" "$STATUS" "$SIZE" "$AREA"
