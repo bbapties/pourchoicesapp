@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import Medal from "@/components/badges/Medal";
 import BadgeSprite from "@/components/badges/BadgeSprite";
 import { useCurrentUser } from "@/lib/useCurrentUser";
-import { fetchPendingReveals, markRevealed, type RevealItem } from "@/lib/badgeReveal";
+import { fetchPendingReveals, markRevealed, revealKind, type RevealItem } from "@/lib/badgeReveal";
 import { howToEarn } from "@/lib/badgeCopy";
 import { logClick } from "@/lib/events";
 import { fetchLadderSteps, tierFrame, tierStars, tierLabel, type LadderStep } from "@/lib/badgeArt";
@@ -14,17 +14,45 @@ import { fetchLadderSteps, tierFrame, tierStars, tierLabel, type LadderStep } fr
 /**
  * The badge reveal (Brian, 2026-09-21). Next time the app is in front with a session - an organic
  * open, a notification tap, a tab coming back - anything released and not yet revealed plays:
- * the screen behind darkens like picking a bottle off the Home shelf, a plate sits in focus ("New
- * badge earned" on the grey locked plate; "Badge upgraded" on the old metal), holds, shakes,
- * bursts, and the earned medal drops in; a leather tray below carries the name, the copy and the
- * buttons - Close, or More details (the badge sheet on Profile). More than one: "1 of X", Next,
+ * the screen behind darkens like picking a bottle off the Home shelf, a plate sits in focus (the grey
+ * locked plate for a new badge, the old metal on an upgrade), holds, shakes, bursts, and the earned
+ * medal drops in; a leather tray below carries what happened, the copy and the buttons - Close, or More details (the badge sheet on Profile). More than one: "1 of X", Next,
  * and Reveal all (no animation, a scrollable list in the tray).
  * Mounted ONCE, in AppShell. `pc:badge-check` (runAwards) re-asks the moment something is earned.
  *
  * Seen-state is `user_badges.revealed_tier` in the DB (badgeReveal.ts) - never the device.
  * Close on 1 of 3 marks all three seen: a nag is worse than a missed reveal, the shelf has them.
  * Never over a tasting, and never on the auth page. Reduced motion: no shake, no burst.
+ *
+ * Three moments, three sets of words (Brian, 2026-10-08; `revealKind`): a new badge, a star
+ * toward the current level, a move up to a new level. Before the burst the headline names the
+ * moment and the tray says which badge; after it the headline is the badge's name and the tray
+ * says what changed, what the badge is for and what the next rung takes. No line says the same
+ * thing twice.
  */
+
+/** Before the burst: the headline names the moment... */
+function momentHeadline(kind: ReturnType<typeof revealKind>): string {
+  if (kind.kind === "new") return "New badge";
+  if (kind.kind === "level") return "Level up";
+  return kind.stars > 1 ? "Stars earned" : "Star earned";
+}
+
+/** ...and the tray says which badge, without repeating it. */
+function momentLine(kind: ReturnType<typeof revealKind>, name: string): string {
+  if (kind.kind === "new") return "One you haven't earned before. Tap Reveal to see it.";
+  if (kind.kind === "level") return `Your ${name} badge has a new look. Tap Reveal to see it.`;
+  return `On your ${name} badge. Tap Reveal to see it.`;
+}
+
+/** After the burst: the tray title says what changed. */
+function resultTitle(kind: ReturnType<typeof revealKind>, frameName: string): string {
+  if (kind.kind === "new") return "New badge unlocked";
+  if (kind.kind === "level") return `Moved up to ${frameName}`;
+  return kind.stars > 1 ? `You earned ${kind.stars} stars` : "You earned a star";
+}
+
+const FRAME_NAME: Record<string, string> = { locked: "Locked", wood: "Wood", bronze: "Bronze", silver: "Silver", gold: "Gold", diamond: "Diamond", limited: "Limited Edition" };
 
 const HOLD_MS = 3000; // the plate sits in your hand a few seconds before it shakes (Brian)
 const MEDAL = 286; // 200 -> 260 -> 286 (Brian, 2026-09-21)
@@ -112,6 +140,11 @@ export default function BadgeReveal() {
   };
 
   const label = (it: RevealItem) => (it.def.oneOff ? "One-off" : tierLabel(steps, it.def.ladderVersion, it.tier));
+  const kind = revealKind(item, steps);
+  const frameName = FRAME_NAME[tierFrame(steps, item.def.ladderVersion, item.tier, item.def.oneOff, item.def.id)];
+  const nextLine = item.def.oneOff ? null
+    : item.next ? `Next: ${tierLabel(steps, item.def.ladderVersion, item.next.tier)} at ${item.next.threshold} - ${Math.max(0, item.next.threshold - item.progress)} to go.`
+    : "That's the top of the ladder.";
 
   const tray = "absolute inset-x-0 bottom-0 pc-leather rounded-t-2xl px-4 pt-4 pb-[calc(16px+env(safe-area-inset-bottom))]";
 
@@ -139,8 +172,8 @@ export default function BadgeReveal() {
           {/* the medal, in focus, in the upper half of the room */}
           <div className="absolute inset-x-0 top-0 flex flex-col items-center justify-center pointer-events-none" style={{ height: "62%", paddingTop: 24 }}>
             {/* the headline is the point of the screen (Brian): big, bold, brass */}
-            <p className="font-display font-black text-[28px] leading-none uppercase tracking-[.08em] text-brass-hi mb-6 min-h-7 drop-shadow-[0_2px_6px_rgba(0,0,0,.8)]">
-              {phase === "burst" ? label(item) : item.upgrade ? "Badge upgraded" : "New badge earned"}
+            <p className="font-display font-black text-[28px] leading-none uppercase tracking-[.08em] text-brass-hi text-center px-4 mb-6 min-h-7 drop-shadow-[0_2px_6px_rgba(0,0,0,.8)]">
+              {phase === "burst" ? item.def.name : momentHeadline(kind)}
             </p>
             {/* before the burst a tap skips ahead; after it, the medal itself goes to the details */}
             <button type="button" onClick={() => (phase === "burst" ? details(item) : setPhase("burst"))} className="relative pointer-events-auto" aria-label={phase === "burst" ? `${item.def.name} - more details` : "Reveal"}>
@@ -161,8 +194,10 @@ export default function BadgeReveal() {
           <div className={tray}>
             {phase === "burst" ? (
               <div className="pc-pop">
-                <h2 className="font-display text-2xl font-bold text-cream text-center">{item.def.name}</h2>
-                <p className="text-cream text-[14px] leading-snug max-w-[34ch] mx-auto text-center mt-1.5">{howToEarn(item.def)}</p>
+                <h2 className="font-display text-2xl font-bold text-cream text-center">{resultTitle(kind, frameName)}</h2>
+                <p className="text-[11px] uppercase tracking-[.12em] text-cream-faint text-center mt-1">{item.def.oneOff ? "One-off" : `Now ${label(item)}`}</p>
+                <p className="text-cream text-[14px] leading-snug max-w-[34ch] mx-auto text-center mt-2.5">{howToEarn(item.def)}</p>
+                {nextLine && <p className="text-brass-hi text-[13px] text-center mt-2 tabular-nums">{nextLine}</p>}
                 <div className="grid grid-cols-2 gap-2 mt-4">
                   {left > 1 ? (
                     <button type="button" onClick={next} className="col-span-2 py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm">Next</button>
@@ -180,8 +215,7 @@ export default function BadgeReveal() {
               </div>
             ) : (
               <div>
-                <h2 className="font-display text-2xl font-bold text-cream-mute text-center">{item.upgrade ? "Badge upgraded" : "New badge earned"}</h2>
-                <p className="text-cream-mute text-[14px] text-center mt-1.5">{item.upgrade ? "Your badge just moved up a tier." : "You earned something."}</p>
+                <p className="text-cream text-[15px] leading-snug max-w-[30ch] mx-auto text-center">{momentLine(kind, item.def.name)}</p>
                 <div className="grid grid-cols-2 gap-2 mt-4">
                   <button type="button" onClick={() => setPhase("burst")} className="col-span-2 py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm">Reveal</button>
                   {left > 1 && (
@@ -210,7 +244,7 @@ function RevealList({ items, onDetails, onDone, label, steps }: { items: RevealI
             <Medal tier={it.tier} glyph={it.def.glyph} stars={tierStars(steps, it.def.ladderVersion, it.tier, it.def.oneOff)} frame={tierFrame(steps, it.def.ladderVersion, it.tier, it.def.oneOff, it.def.id)} initial={it.def.category} size={66} badgeId={it.def.id} oneOff={it.def.oneOff} />
             <div className="min-w-0 flex-1 text-left">
               <div className="font-display font-semibold text-cream leading-tight">{it.def.name}</div>
-              <div className="text-[11px] uppercase tracking-[.06em] text-cream-faint">{it.upgrade ? `Upgraded to ${label(it)}` : label(it)}</div>
+              <div className="text-[11px] uppercase tracking-[.06em] text-cream-faint">{momentHeadline(revealKind(it, steps))} · {label(it)}</div>
             </div>
             <button type="button" onClick={() => onDetails(it)} className="text-[12px] text-brass-hi underline underline-offset-4 shrink-0">Details</button>
           </li>
