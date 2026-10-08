@@ -19,7 +19,7 @@ from PIL import Image
 
 SRC = "public/badges/masters/parts/rocks-tumbler.png"
 S = 1024
-GLASS_H = 0.60      # glass height as a fraction of the disc
+GLASS_H = 0.66      # glass height as a fraction of the disc
 GLASS_CY = 0.52     # vertical centre of the glass on the disc (same as neat_freak)
 args = sys.argv[1:]
 preview_dir = args[args.index("--preview-dir") + 1] if "--preview-dir" in args else "public/badges/review/rocks"
