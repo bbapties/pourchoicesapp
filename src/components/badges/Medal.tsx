@@ -74,9 +74,28 @@ function starAngles(n: number): number[] {
   return Array.from({ length: c }, (_, i) => start + i * gap);
 }
 
+/** Plates with baked stars (scripts/badge_stars.py -> public/badges/stars/<frame>-<n>.webp):
+ * branded on wood, epoxy-filled on the metals, diamond dust on diamond. Limited / Locked keep the
+ * flat SVG stars below (the ladder never lights stars on them). */
+const BAKED_STARS = new Set<MedalFrame>(["wood", "bronze", "silver", "gold", "diamond"]);
+
 function StarOverlay({ count, size, frame }: { count: number; size: number; frame: MedalFrame }) {
+  const [bakedFailed, setBakedFailed] = useState(false);
   const angles = starAngles(count);
   if (!angles.length) return null;
+  if (BAKED_STARS.has(frame) && !bakedFailed) {
+    return (
+      <img
+        src={`/badges/stars/${frame}-${angles.length}.webp`}
+        alt=""
+        width={size}
+        height={size}
+        draggable={false}
+        onError={() => setBakedFailed(true)}
+        style={{ position: "absolute", inset: 0, display: "block", pointerEvents: "none" }}
+      />
+    );
+  }
   const cx = size / 2;
   const cy = size / 2;
   const r = size * 0.385;

@@ -8,6 +8,21 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **NEAT FREAK BADGE LIVE + NEW STARS ON EVERY BADGE (2026-10-08, Claude) - PR #177 into MVP-v3.**
+  - **Neat Freak** (`neat_freak`, family `neat`, ladder_version 2): every `drank` pour with
+    `pour_type = 'neat'` (blind pours don't count). Counts are Regular Pour's exactly, 1..3000 -
+    Brian's call ("5 years steady as the baseline"). `sql/neat-freak-migration.sql` (applied to
+    prod; adds the `WHEN 'neat'` branch to `badge_timeline()` and backfills), rollback alongside.
+    **Released to everyone** (Brian: anyone with neat pours catches up on next login = the reveal).
+  - Object = Brian's backlit Glencairn (`masters/parts/neat-glencairn.png`) cut out by
+    `scripts/neat_freak_medal.py` (silhouette from the glass edge; empty bowl partly see-through).
+    Brian signed the size: glass 66% of the disc, rim just under the stars.
+  - **Stars are now baked art** (`scripts/badge_stars.py` -> `public/badges/stars/<frame>-<n>.webp`),
+    drawn by `Medal`'s `StarOverlay` for wood/bronze/silver/gold/diamond; Limited/Locked keep the flat
+    SVG stars. Brian's spec: wood = branded black, top of each star on the hoop's inner rim; bronze +
+    silver = stamped, black epoxy; gold = stamped, amber epoxy; diamond = stamped, black diamond dust.
+    Metal stars sit midway between the ring's two grooves, 20% smaller than before. Retune in GEOM.
+
 - **Family tree address now REDIRECTS (2026-10-01, Claude).** The family tree moved to its own site
   and domain behind a family-only login (**www.gramapooh.com**, Vercel project `gramapoohs-family-tree`,
   repo `bbapties/gramapoohs-family-tree`), so `vercel.json`'s old proxy `rewrites` for
