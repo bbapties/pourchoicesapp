@@ -39,6 +39,12 @@ SELECT id, name, one_off FROM badges WHERE active ORDER BY sort;
 in `OBJECT_IDS` (`src/lib/badgeArt.ts`). Pushed to prod. The badge is still "Coming soon" for
 everyone at this point.
 
+**1b. Reveal copy** (Brian, 2026-10-08 - every badge, current and future, uses the same reveal
+format). In `src/lib/badgeCopy.ts`: a `HOW` sentence (what earns it - the tray's description) and a
+`UNIT` entry (`["neat pour", "neat pours"]`, what one step counts - the footer's "Next Milestone =
+Earn a star - 2 neat pours to go"). A badge with no `UNIT` still works but says just "2 to go".
+Hound badges share "bottles" automatically.
+
 **2. Release to Brian alone** (prod test — the reveal fires for him on his next open):
 
 ```sql
@@ -108,13 +114,28 @@ SELECT created_at, user_id, target_id, metadata FROM events
 | Reveal queue | `src/lib/badgeReveal.ts` | `fetchPendingReveals` (released ∧ tier > revealed_tier, oldest first), `markRevealed` → RPC `reveal_badges` (own rows only) + `badge_revealed` event |
 | The reveal | `src/components/badges/BadgeReveal.tsx` | mounted once in AppShell. Fires on sign-in, when the tab comes back to the front, and on `pc:badge-check` (dispatched by `runAwards` the instant something goes up, so a live earn reveals right away if released). Never on `/` or `/taste`. |
 
-**Choreography:** the room darkens (bottle-off-the-shelf overlay), the medal (286px) in focus, "NEW BADGE EARNED" big and brass above it, a leather tray below with the buttons. Plate of `revealed_tier` (grey and EMPTY when 0 - `mystery`, so the object is not given away — "New badge earned"; the old metal on an
-upgrade — "Badge upgraded") holds 3s, shakes 1.6s (`pc-shake-long`), bursts (confetti +
-`pc-pop`) into the earned medal with name, how-to-earn, **More details** / **Close** (the medal itself is also More details once it has burst). Tap the plate
-to skip ahead. More than one queued: "1 of X", **Next**, and **Reveal all X** (always the person's
-choice; no animation, a scrollable list with Details per row and one Close). `prefers-reduced-motion`
-→ no shake, no confetti. **Close marks everything still queued as seen** (a nag is worse than a
-missed reveal; the shelf has them).
+**Choreography:** the room darkens (bottle-off-the-shelf overlay), the medal (286px) in focus, the
+headline on a brass ribbon above it, a leather tray below with the buttons. Plate of `revealed_tier`
+(grey and EMPTY when 0 - `mystery`, so the object is not given away; the old metal on an upgrade)
+holds 3s, shakes 1.6s (`pc-shake-long`), bursts (confetti + `pc-pop`) into the earned medal. Tap the
+plate to skip ahead. More than one queued: "1 of X", **Next**, and **Reveal all X** (always the
+person's choice; no animation, a scrollable list with Details per row and one Close).
+`prefers-reduced-motion` → no shake, no confetti. **Close marks everything still queued as seen** (a
+nag is worse than a missed reveal; the shelf has them).
+
+**The three moments** (Brian, 2026-10-08; `revealKind` in `badgeReveal.ts`). New badge = first time
+on it (revealed_tier 0). Star = same plate, more stars. Level up = a new plate (Wood -> Bronze ...;
+every tier of a version-1 badge is one). The copy, applied to every badge the same way:
+
+| | Screen 1 ribbon | Screen 1 tray | Screen 2 ribbon | Tray title | Line under it | Footer |
+|---|---|---|---|---|---|---|
+| New | NEW BADGE | One you haven't earned before. Tap Reveal to see it. | badge name | New badge unlocked | - | Next Milestone = Earn a star - n units to go |
+| Star | STAR EARNED | On your X badge. Tap Reveal to see it. | badge name | You earned a star | "2nd star received" on Wood, "Bronze Level - 2nd star received" above | Next Milestone = Earn another star - n units to go (4th star: Level up your badge) |
+| Level | LEVEL UP | Your X badge has a new look. Tap Reveal to see it. | badge name | Leveled up to Bronze | - | Next Milestone = Earn another star (or Level up your badge) - n units to go |
+
+The how-to-earn sentence sits between the title and the footer on screen 2. Top rung: "You've
+reached the top of the ladder." One-offs: no line, no footer. Buttons: **Next** / **Close**, **More
+details** (the medal itself is also More details once it has burst).
 
 **Telemetry** (TELEMETRY.md): `badge_revealed` per badge `{tier, from, upgrade, mode:
 animated|reveal_all|dismissed, queued}`; clicks `badge_reveal_close`, `badge_reveal_all`,
