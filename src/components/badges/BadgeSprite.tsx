@@ -44,6 +44,17 @@ const SPRITE = `
       <path d="M13.2 8 C12.6 12 11 14.5 11 19" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>
       <text x="20" y="26.6" text-anchor="middle" font-family="Playfair Display,serif" font-weight="700" font-size="6" fill="#fff" opacity=".8">N</text>
     </symbol>
+    <symbol id="g-mixed" viewBox="0 0 40 40">
+      <path class="pc-g-glass" d="M8 10 H32 L30.5 33 C30.4 34.4 29.4 35 28 35 H12 C10.6 35 9.6 34.4 9.5 33 Z"/>
+      <path class="pc-g-liquid" d="M8.8 18 H31.2 L30.6 30 H9.4 Z"/>
+      <rect class="pc-g-line" x="13" y="16" width="10" height="10" rx="1.5" transform="rotate(-8 18 21)" style="opacity:.8"/>
+      <path class="pc-g-line" d="M8 10 H32 L30.5 33 C30.4 34.4 29.4 35 28 35 H12 C10.6 35 9.6 34.4 9.5 33 Z" style="stroke-width:1.1"/>
+      <path class="pc-g-line" d="M9.5 30.5 H30.5" style="stroke-width:.9"/>
+      <path class="pc-g-line" d="M23 15 L31 4" style="stroke-width:.9"/>
+      <circle class="pc-g-dot" cx="25.5" cy="12" r="2.6"/>
+      <circle class="pc-g-dot" cx="31.3" cy="3.6" r="1"/>
+      <path d="M11 13 C10.8 18 10.6 24 11.2 29" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>
+    </symbol>
     <symbol id="g-rocks" viewBox="0 0 40 40">
       <path class="pc-g-glass" d="M9 8 H31 L29.6 33 C29.5 34.3 28.6 35 27.4 35 H12.6 C11.4 35 10.5 34.3 10.4 33 Z"/>
       <path class="pc-g-liquid" d="M10 19 H30 L29.2 30 H10.8 Z"/>
@@ -75,7 +86,7 @@ const SPRITE = `
 
 /** Every glyph key the catalog can name (badges.glyph). Unknown keys fall back to g-pour. */
 export const GLYPH_KEYS = new Set([
-  "g-pour", "g-neat", "g-rocks", "g-streak", "g-blind", "g-flight", "g-helper", "g-collect", "g-dead", "g-travel", "g-barcode",
+  "g-pour", "g-neat", "g-rocks", "g-mixed", "g-streak", "g-blind", "g-flight", "g-helper", "g-collect", "g-dead", "g-travel", "g-barcode",
   "g-wish", "g-cheers", "g-comment", "g-crowd", "g-contrib", "g-hound", "g-early", "g-installed", "g-taste", "g-founder",
 ]);
 

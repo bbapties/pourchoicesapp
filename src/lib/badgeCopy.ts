@@ -9,6 +9,7 @@ const HOW: Record<string, string> = {
   regular_pour: "Log a pour from any bottle - neat, rocks, however you take it. Every pour you log counts, so the same bottle can carry you up the ladder.",
   neat_freak: "Log a pour with the serving set to Neat - no ice, no mixer. Every neat pour counts, so the same bottle can carry you up the ladder. Blind tastings count toward Blindfold instead.",
   rock_star: "Log a pour with the serving set to Rocks - over ice, big cube or small. Every rocks pour counts, so the same bottle can carry you up the ladder. Blind tastings count toward Blindfold instead.",
+  mixed_signals: "Log a pour with the serving set to Mixed - an old fashioned, a highball, any cocktail. Every mixed pour counts, so the same bottle can carry you up the ladder. Blind tastings count toward Blindfold instead.",
   night_owl: "Pour on back-to-back days. The badge tracks your longest run of consecutive days with at least one pour logged (days turn over at midnight, Central).",
   blindfold: "Finish a blind tasting: pour, hide the labels, rank the glasses, reveal. Every completed blind counts, solo or with a helper.",
   big_flight: "Blind more glasses in one sitting. The rung is the most bottles you have ever ranked in a single blind tasting - three in one flight for Wood, ten for Diamond.",
