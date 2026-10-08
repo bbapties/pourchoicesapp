@@ -35,3 +35,32 @@ export function howToEarn(def: BadgeDef): string {
   }
   return HOW[def.id] ?? (def.hint ? def.hint.charAt(0).toUpperCase() + def.hint.slice(1) + "." : "");
 }
+
+/**
+ * What one step of a badge counts, for "n pours to go" on the reveal (Brian, 2026-10-08).
+ * [singular, plural]. A badge missing here just says "n to go".
+ */
+const UNIT: Record<string, [string, string]> = {
+  regular_pour: ["pour", "pours"],
+  neat_freak: ["neat pour", "neat pours"],
+  rock_star: ["rocks pour", "rocks pours"],
+  mixed_signals: ["mixed pour", "mixed pours"],
+  night_owl: ["day", "days"],
+  blindfold: ["blind tasting", "blind tastings"],
+  helper: ["helper blind", "helper blinds"],
+  collector: ["bottle", "bottles"],
+  dead_soldiers: ["empty bottle", "empty bottles"],
+  well_travelled: ["spirit type", "spirit types"],
+  barcode_bandit: ["scan", "scans"],
+  someday: ["wishlisted bottle", "wishlisted bottles"],
+  cheers: ["cheer", "cheers"],
+  barstool: ["comment", "comments"],
+  crowd: ["follower", "followers"],
+  contributor: ["contribution", "contributions"],
+};
+
+/** "2 neat pours to go" / "1 bottle to go" / "3 to go". */
+export function toGo(def: BadgeDef, n: number): string {
+  const u = def.family === "hound" ? ["bottle", "bottles"] : UNIT[def.id];
+  return u ? `${n} ${n === 1 ? u[0] : u[1]} to go` : `${n} to go`;
+}

@@ -7,7 +7,7 @@ import Medal from "@/components/badges/Medal";
 import BadgeSprite from "@/components/badges/BadgeSprite";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { fetchPendingReveals, markRevealed, revealKind, type RevealItem } from "@/lib/badgeReveal";
-import { howToEarn } from "@/lib/badgeCopy";
+import { howToEarn, toGo } from "@/lib/badgeCopy";
 import { logClick } from "@/lib/events";
 import { fetchLadderSteps, tierFrame, tierStars, tierLabel, type LadderStep } from "@/lib/badgeArt";
 
@@ -28,7 +28,7 @@ import { fetchLadderSteps, tierFrame, tierStars, tierLabel, type LadderStep } fr
  * toward the current level, a move up to a new level. Before the burst the headline names the
  * moment and the tray says which badge; after it the headline is the badge's name and the tray
  * says what changed, what the badge is for and what the next rung takes. No line says the same
- * thing twice.
+ * thing twice. The headline sits on a brass ribbon so it reads over the darkened room.
  */
 
 /** Before the burst: the headline names the moment... */
@@ -50,6 +50,16 @@ function resultTitle(kind: ReturnType<typeof revealKind>, frameName: string): st
   if (kind.kind === "new") return "New badge unlocked";
   if (kind.kind === "level") return `Moved up to ${frameName}`;
   return kind.stars > 1 ? `You earned ${kind.stars} stars` : "You earned a star";
+}
+
+const ORDINAL = ["", "1st", "2nd", "3rd", "4th"];
+
+/** Under the tray title on a star or a level-up: "2nd star received" on Wood, "Bronze Level - 2nd
+ * star received" above it, just "Gold Level" on a plate with no stars (version-1 badges). */
+function rankLine(frame: string, frameName: string, stars: number): string {
+  if (!stars) return `${frameName} Level`;
+  const got = `${ORDINAL[stars] ?? `${stars}th`} star received`;
+  return frame === "wood" ? got.charAt(0).toUpperCase() + got.slice(1) : `${frameName} Level - ${got}`;
 }
 
 const FRAME_NAME: Record<string, string> = { locked: "Locked", wood: "Wood", bronze: "Bronze", silver: "Silver", gold: "Gold", diamond: "Diamond", limited: "Limited Edition" };
@@ -141,10 +151,15 @@ export default function BadgeReveal() {
 
   const label = (it: RevealItem) => (it.def.oneOff ? "One-off" : tierLabel(steps, it.def.ladderVersion, it.tier));
   const kind = revealKind(item, steps);
-  const frameName = FRAME_NAME[tierFrame(steps, item.def.ladderVersion, item.tier, item.def.oneOff, item.def.id)];
+  const frame = tierFrame(steps, item.def.ladderVersion, item.tier, item.def.oneOff, item.def.id);
+  const frameName = FRAME_NAME[frame];
+  const stars = tierStars(steps, item.def.ladderVersion, item.tier, item.def.oneOff);
+  // the footer names the next milestone: a star on the same plate, or the next plate (Brian, 2026-10-08)
+  const nextFrame = item.next ? tierFrame(steps, item.def.ladderVersion, item.next.tier, item.def.oneOff, item.def.id) : null;
+  const goal = nextFrame && nextFrame !== frame ? "Level up your badge" : kind.kind === "new" ? "Earn a star" : "Earn another star";
   const nextLine = item.def.oneOff ? null
-    : item.next ? `Next: ${tierLabel(steps, item.def.ladderVersion, item.next.tier)} at ${item.next.threshold} - ${Math.max(0, item.next.threshold - item.progress)} to go.`
-    : "That's the top of the ladder.";
+    : item.next ? `Next Milestone = ${goal} - ${toGo(item.def, Math.max(0, item.next.threshold - item.progress))}`
+    : "You've reached the top of the ladder.";
 
   const tray = "absolute inset-x-0 bottom-0 pc-leather rounded-t-2xl px-4 pt-4 pb-[calc(16px+env(safe-area-inset-bottom))]";
 
@@ -172,9 +187,11 @@ export default function BadgeReveal() {
           {/* the medal, in focus, in the upper half of the room */}
           <div className="absolute inset-x-0 top-0 flex flex-col items-center justify-center pointer-events-none" style={{ height: "62%", paddingTop: 24 }}>
             {/* the headline is the point of the screen (Brian): big, bold, brass */}
-            <p className="font-display font-black text-[28px] leading-none uppercase tracking-[.08em] text-brass-hi text-center px-4 mb-6 min-h-7 drop-shadow-[0_2px_6px_rgba(0,0,0,.8)]">
-              {phase === "burst" ? item.def.name : momentHeadline(kind)}
-            </p>
+            <div className="pc-ribbon-wrap mb-6 mx-4 max-w-full">
+              <p className="pc-ribbon font-display font-black text-[26px] leading-tight uppercase tracking-[.08em] text-center px-10 py-2">
+                {phase === "burst" ? item.def.name : momentHeadline(kind)}
+              </p>
+            </div>
             {/* before the burst a tap skips ahead; after it, the medal itself goes to the details */}
             <button type="button" onClick={() => (phase === "burst" ? details(item) : setPhase("burst"))} className="relative pointer-events-auto" aria-label={phase === "burst" ? `${item.def.name} - more details` : "Reveal"}>
               {phase !== "burst" ? (
@@ -195,9 +212,9 @@ export default function BadgeReveal() {
             {phase === "burst" ? (
               <div className="pc-pop">
                 <h2 className="font-display text-2xl font-bold text-cream text-center">{resultTitle(kind, frameName)}</h2>
-                <p className="text-[11px] uppercase tracking-[.12em] text-cream-faint text-center mt-1">{item.def.oneOff ? "One-off" : `Now ${label(item)}`}</p>
+                {kind.kind !== "new" && !item.def.oneOff && <p className="text-[13px] text-cream-mute text-center mt-1">{rankLine(frame, frameName, stars)}</p>}
                 <p className="text-cream text-[14px] leading-snug max-w-[34ch] mx-auto text-center mt-2.5">{howToEarn(item.def)}</p>
-                {nextLine && <p className="text-brass-hi text-[13px] text-center mt-2 tabular-nums">{nextLine}</p>}
+                {nextLine && <p className="text-brass-hi text-[13px] text-center text-balance mt-2 tabular-nums">{nextLine}</p>}
                 <div className="grid grid-cols-2 gap-2 mt-4">
                   {left > 1 ? (
                     <button type="button" onClick={next} className="col-span-2 py-3 rounded-lg pc-brass bg-brass text-engrave font-semibold text-sm">Next</button>

@@ -222,6 +222,16 @@
   box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 -1px 0 rgba(0,0,0,.45) inset, 0 2px 4px rgba(0,0,0,.6);
 }
 .pc-brass:active { filter: brightness(.92); }
+/* a brass ribbon with forked ends - the badge reveal's headline sits on one so it never sinks into
+   the darkened room behind it (Brian, 2026-10-08). The wrapper carries the shadow because
+   clip-path would cut a box-shadow off. */
+.pc-ribbon-wrap { filter: drop-shadow(0 3px 6px rgba(0,0,0,.75)); }
+.pc-ribbon {
+  background: linear-gradient(180deg, #d6b565 0%, #bd9436 55%, #9c7524 100%);
+  color: var(--color-engrave);
+  text-shadow: 0 1px 0 rgba(255,240,200,.30);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 50%, 100% 100%, 0 100%, 16px 50%);
+}
 /* brass lettering — page titles */
 .pc-brass-text {
   background: linear-gradient(180deg, #e2c46f, #c09a3a 60%, #a37c28);
