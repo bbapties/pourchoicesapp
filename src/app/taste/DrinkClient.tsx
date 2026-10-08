@@ -16,6 +16,7 @@ import PourSheet, { type PourSubmission } from "@/components/PourSheet";
 import { recordPour } from "@/lib/pours";
 import { setPostPhoto } from "@/lib/postPhoto";
 import { loadTastingDraft, saveTastingDraft, flushTastingDraft, clearTastingDraft } from "@/lib/tastingDraft";
+import { usePhotoPicker } from "@/components/usePhotoPicker";
 
 type Step = "home" | "pourPick" | "source" | "count" | "mode" | "pick" | "label" | "handoff" | "helperSetup" | "handback" | "rank" | "done";
 type Mode = "self" | "helper";
@@ -103,7 +104,6 @@ export default function DrinkClient({
   const [revealing, setRevealing] = useState(false);
   // A photo of the lineup on the tasting's post, offered after the reveal (Brian, 2026-09-21).
   const [tastingPhoto, setTastingPhoto] = useState<"none" | "sending" | "done">("none");
-  const tastingPhotoRef = useRef<HTMLInputElement | null>(null);
   const addTastingPhoto = async (file: File | null) => {
     if (!file || !savedActivityId || !publicUserId) return;
     setTastingPhoto("sending");
@@ -112,6 +112,7 @@ export default function DrinkClient({
     setTastingPhoto("done");
     toast.success("On your post");
   };
+  const tastingPhotoPicker = usePhotoPicker({ onPick: addTastingPhoto, title: "Photo of the lineup" });
   const [pourTarget, setPourTarget] = useState<CatalogBottle | null>(null);
   const [showPourSheet, setShowPourSheet] = useState(false);
   const [isPouring, setIsPouring] = useState(false);
@@ -1057,11 +1058,11 @@ export default function DrinkClient({
             )}
             {savedActivityId && (
               <>
-                <input ref={tastingPhotoRef} type="file" accept="image/*" className="hidden" onChange={(e) => { addTastingPhoto(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+                {tastingPhotoPicker.picker}
                 <button
                   type="button"
                   disabled={tastingPhoto !== "none"}
-                  onClick={() => { logClick("reveal_photo_opened", { userId: publicUserId, surface: "/taste", targetId: savedActivityId }); tastingPhotoRef.current?.click(); }}
+                  onClick={() => { logClick("reveal_photo_opened", { userId: publicUserId, surface: "/taste", targetId: savedActivityId }); tastingPhotoPicker.open(); }}
                   className="w-full rounded-lg py-2.5 text-sm font-semibold pc-brass text-engrave disabled:opacity-70 mb-3"
                 >
                   {tastingPhoto === "done" ? "Photo added ✓" : tastingPhoto === "sending" ? "Sending…" : "Add a photo of the lineup"}

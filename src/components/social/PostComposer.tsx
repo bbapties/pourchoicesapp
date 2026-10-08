@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import BottlePlaceholderImage from "@/components/BottlePlaceholderImage";
@@ -8,6 +8,7 @@ import { useCurrentUser } from "@/lib/useCurrentUser";
 import { useDictation } from "@/lib/useDictation";
 import { createPost, searchTaggableBottles, type TaggableBottle } from "@/lib/posts";
 import { logClick } from "@/lib/events";
+import { usePhotoPicker } from "@/components/usePhotoPicker";
 
 // Write a post (Brian, 2026-09-21). One sheet, mounted ONCE in AppShell like PhotoViewer and the
 // Show it off bar, opened from anywhere with the `pc:compose` event (optionally pre-tagged with a
@@ -34,7 +35,7 @@ export default function PostComposer() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const photoPicker = usePhotoPicker({ onPick: setPhoto });
 
   useEffect(() => {
     const on = (ev: Event) => {
@@ -180,12 +181,12 @@ export default function PostComposer() {
           {/* Photo */}
           <section>
             <Label optional>Photo</Label>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; if (f) setPhoto(f); e.target.value = ""; }} />
+            {photoPicker.picker}
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 disabled={saving}
-                onClick={() => fileRef.current?.click()}
+                onClick={photoPicker.open}
                 className="w-[88px] h-[88px] rounded-lg border border-dashed border-edge bg-panel overflow-hidden flex flex-col items-center justify-center gap-1 text-[11px] text-cream-mute"
                 aria-label={photo ? "Retake photo" : "Add a photo"}
               >
@@ -197,7 +198,7 @@ export default function PostComposer() {
               <div className="text-xs text-cream-mute">
                 {photo ? (
                   <>
-                    <button type="button" className="underline underline-offset-2" onClick={() => fileRef.current?.click()}>Retake</button>
+                    <button type="button" className="underline underline-offset-2" onClick={photoPicker.open}>Retake</button>
                     {" · "}
                     <button type="button" className="underline underline-offset-2" onClick={() => setPhoto(null)}>Remove</button>
                   </>

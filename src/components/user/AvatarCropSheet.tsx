@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { supabase } from "@/lib/supabase";
 import { logClick } from "@/lib/events";
+import { usePhotoPicker } from "@/components/usePhotoPicker";
 
 // Avatar upload with a circle crop (#112, step 7 of #105). Pick from camera or gallery, drag to
 // position, slide to zoom, save. The crop is a square whose inscribed circle is what every
@@ -25,7 +26,6 @@ export default function AvatarCropSheet({ open, onOpenChange, userId, onSaved }:
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 }); // image centre offset from viewport centre, px
   const [busy, setBusy] = useState(false);
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
 
   // The preview <img> reads the same blob URL the decoder used, so the URL must live until the
@@ -49,6 +49,7 @@ export default function AvatarCropSheet({ open, onOpenChange, userId, onSaved }:
     el.onerror = () => { toast.error("Couldn't read that image - try a JPG or PNG"); dropUrl(); };
     el.src = url;
   };
+  const photoPicker = usePhotoPicker({ onPick: pick, facing: "user", title: "Profile photo" });
 
   // Base scale fills the viewport with the shorter side, so zoom 1 = "cover".
   const base = img ? VIEW / Math.min(img.naturalWidth, img.naturalHeight) : 1;
@@ -120,7 +121,7 @@ export default function AvatarCropSheet({ open, onOpenChange, userId, onSaved }:
           <SheetDescription className="text-cream opacity-70 text-left">Drag to position, slide to zoom. It shows as a circle everywhere.</SheetDescription>
         </SheetHeader>
 
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+        {photoPicker.picker}
 
         <div className="px-4 pb-6 flex flex-col items-center gap-4">
           {img ? (
@@ -145,13 +146,13 @@ export default function AvatarCropSheet({ open, onOpenChange, userId, onSaved }:
               </div>
               <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={(e) => { setZoom(Number(e.target.value)); setPos((p) => clamp(p)); }} className="w-[260px]" aria-label="Zoom" />
               <div className="flex gap-2.5 w-full">
-                <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="flex-1 h-11 rounded-lg border border-edge bg-panel text-sm font-semibold text-cream">Choose another</button>
+                <button type="button" onClick={photoPicker.open} disabled={busy} className="flex-1 h-11 rounded-lg border border-edge bg-panel text-sm font-semibold text-cream">Choose another</button>
                 <button type="button" onClick={save} disabled={busy} className="flex-1 h-11 rounded-lg text-sm font-semibold text-cream disabled:opacity-50" style={{ backgroundColor: "#bd9436" }}>{busy ? "Saving…" : "Save"}</button>
               </div>
             </>
           ) : (
             <>
-              <button type="button" onClick={() => fileRef.current?.click()} className="w-full h-12 rounded-lg text-sm font-semibold text-cream" style={{ backgroundColor: "#bd9436" }}>
+              <button type="button" onClick={photoPicker.open} className="w-full h-12 rounded-lg text-sm font-semibold text-cream" style={{ backgroundColor: "#bd9436" }}>
                 Choose a photo
               </button>
               <button type="button" onClick={remove} disabled={busy} className="text-sm text-cream-mute underline underline-offset-2">Remove current photo</button>

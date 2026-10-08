@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { setPostPhoto, type ShowOffDetail } from "@/lib/postPhoto";
 import { logClick } from "@/lib/events";
+import { usePhotoPicker } from "@/components/usePhotoPicker";
 
 /**
  * "Show it off" (Brian, 2026-09-21). An add or an empty is one tap, from five places; the photo
@@ -19,7 +20,6 @@ export default function ShowOffNudge() {
   const { publicUserId } = useCurrentUser();
   const [offer, setOffer] = useState<ShowOffDetail | null>(null);
   const [busy, setBusy] = useState(false);
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -33,6 +33,8 @@ export default function ShowOffNudge() {
     return () => { window.removeEventListener("pc:showoff", on); if (timer.current) clearTimeout(timer.current); };
   }, []);
 
+  const photoPicker = usePhotoPicker({ onPick: (f) => onFile(f), title: "Show it off" });
+
   if (!offer) return null;
 
   const did = offer.action === "finished" ? "Emptied" : offer.action === "wishlisted" ? "On your wishlist" : "Added to your bar";
@@ -45,11 +47,11 @@ export default function ShowOffNudge() {
   const pick = () => {
     if (timer.current) clearTimeout(timer.current); // they're in the picker; don't pull the bar away
     logClick("showoff_opened", { userId: publicUserId, targetId: offer.activityId, metadata: { action: offer.action } });
-    fileRef.current?.click();
+    photoPicker.open();
   };
 
-  const onFile = async (file: File | null) => {
-    if (!file || !publicUserId) return;
+  const onFile = async (file: File) => {
+    if (!offer || !publicUserId) return;
     setBusy(true);
     const res = await setPostPhoto({ activityId: offer.activityId, userId: publicUserId, photo: file, surface: "showoff" });
     setBusy(false);
@@ -68,13 +70,7 @@ export default function ShowOffNudge() {
       role="status"
       data-coach="social.showoff"
     >
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => { onFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
-      />
+      {photoPicker.picker}
       <div className="min-w-0 flex-1">
         <div className="text-[13px] font-semibold text-cream truncate">{did}{offer.bottleName ? ` · ${offer.bottleName}` : ""}</div>
         <div className="text-xs text-cream-mute">Show it off with a photo?</div>

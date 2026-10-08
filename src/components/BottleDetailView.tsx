@@ -37,6 +37,7 @@ import {
   logActivity,
 } from "@/lib/activities";
 import { logClick } from "@/lib/events";
+import { usePhotoPicker } from "@/components/usePhotoPicker";
 
 /** One user_bottles row for this SKU, as the list surfaces already carry it (B-31). */
 export type OwnershipRow = {
@@ -154,7 +155,7 @@ export default function BottleDetailView({
   const [showRatePrompt, setShowRatePrompt] = useState(false);
   const [ratingSaving, setRatingSaving] = useState(false);
   const swipeX = useRef<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imagePicker = usePhotoPicker({ onPick: (f) => handleImageFile(imageSide, f), title: "Bottle photo" });
 
   // 7.9: carousel = variants + a virtual "+ Add a version" slide at the end (logged in, not editing).
   // Never treat an empty list as the add-slide — Search/My Bar/Social omit the default
@@ -869,7 +870,7 @@ export default function BottleDetailView({
           <div className="w-[116px] flex-shrink-0">
             <button
               onClick={() => {
-                if (isEditing) fileInputRef.current?.click();
+                if (isEditing) imagePicker.open();
                 else if (showImage) setShowZoom(true);
               }}
               className="relative w-full h-44 flex items-center justify-center bg-panel-2 border border-edge rounded overflow-hidden"
@@ -896,13 +897,7 @@ export default function BottleDetailView({
               )}
             </button>
             {isEditing && (
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleImageFile(imageSide, e.target.files?.[0])}
-              />
+              imagePicker.picker
             )}
 
             {/* Front/Back toggle beneath the image */}

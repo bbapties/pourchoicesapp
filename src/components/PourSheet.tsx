@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { type PourType } from "@/lib/activities";
 import { useDictation } from "@/lib/useDictation";
 import StarRatingSlider from "./StarRatingSlider";
+import { usePhotoPicker } from "@/components/usePhotoPicker";
 
 // Have a drink (#108). One sheet: how you had it, an optional gut rating, an optional note
 // (typed or dictated), one optional photo, then Pour. Blind tasting is still an exit from
@@ -57,7 +58,7 @@ export default function PourSheet({
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const photoPicker = usePhotoPicker({ onPick: setPhoto });
 
   const dictation = useDictation(
     (chunk) => setNote((prev) => (prev ? `${prev.replace(/\s*$/, "")} ${chunk}` : chunk)),
@@ -189,22 +190,12 @@ export default function PourSheet({
           {/* Photo - one per pour */}
           <section>
             <Label optional>Photo</Label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0] ?? null;
-                if (f) setPhoto(f);
-                e.target.value = "";
-              }}
-            />
+            {photoPicker.picker}
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 disabled={isSaving}
-                onClick={() => fileRef.current?.click()}
+                onClick={photoPicker.open}
                 className="w-[88px] h-[88px] rounded-lg border border-dashed border-edge bg-panel overflow-hidden flex flex-col items-center justify-center gap-1 text-[11px] text-cream-mute"
                 aria-label={photo ? "Retake photo" : "Add a photo"}
               >
@@ -222,7 +213,7 @@ export default function PourSheet({
                 {photo ? (
                   <>
                     One photo per pour.{" "}
-                    <button type="button" className="underline underline-offset-2" onClick={() => fileRef.current?.click()}>
+                    <button type="button" className="underline underline-offset-2" onClick={photoPicker.open}>
                       Retake
                     </button>
                     {" · "}

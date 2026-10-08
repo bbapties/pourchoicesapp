@@ -28,6 +28,7 @@ import {
   type Comment,
   type FeedItem,
 } from "@/lib/social";
+import { usePhotoPicker } from "@/components/usePhotoPicker";
 
 // The post detail (#109). The card in detail mode, the poster's personal rank for this bottle,
 // Add to my bar / Wishlist for the viewer, who cheered, and the comment thread - flat with one
@@ -49,7 +50,7 @@ export default function PostClient({ activityId }: { activityId: string }) {
   const [joinBottle, setJoinBottle] = useState<{ details: BottleDetails; rows: OwnershipRow[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const photoRef = useRef<HTMLInputElement | null>(null);
+  const photoPicker = usePhotoPicker({ onPick: (f) => changePhoto(f) });
   const [photoBusy, setPhotoBusy] = useState(false);
 
   // Edit the photo on your own post; `null` removes it.
@@ -231,8 +232,8 @@ export default function PostClient({ activityId }: { activityId: string }) {
                 after the fact, on any of your own posts (a blind included - only its photo, the ranking is permanent). */}
             {publicUserId && publicUserId === item.userId && (
               <div className="px-4 pt-1 pb-2 flex items-center gap-3 text-xs">
-                <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={(e) => { changePhoto(e.target.files?.[0] ?? null); e.target.value = ""; }} />
-                <button type="button" onClick={() => photoRef.current?.click()} disabled={photoBusy} className="text-brass-hi font-semibold disabled:opacity-60">
+                {photoPicker.picker}
+                <button type="button" onClick={photoPicker.open} disabled={photoBusy} className="text-brass-hi font-semibold disabled:opacity-60">
                   {photoBusy ? "Sending…" : item.details?.photo_url ? "Change photo" : "Add a photo"}
                 </button>
                 {item.details?.photo_url && !photoBusy && (
