@@ -8,6 +8,17 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **BADGE REVEAL REWORK LIVE (2026-10-08, Claude) - three moments, one format for every badge.**
+  - `revealKind` (`src/lib/badgeReveal.ts`): **new badge** (revealed_tier 0) / **star** (same plate,
+    more stars) / **level up** (new plate). `BadgeReveal.tsx` words each one differently; the
+    headline sits on a brass ribbon (`.pc-ribbon` in globals.css). Screen 2's ribbon is the badge
+    name; the tray says what happened, the how-to-earn sentence, and "Next Milestone = Earn a star /
+    Earn another star / Level up your badge - n <unit> to go". Full copy table: docs/BADGE_RELEASE.md
+    "The three moments". Brian signed it from previews (/mnt/project-files/badges/reveal-v3/).
+  - **Every new badge needs a `UNIT` entry in `src/lib/badgeCopy.ts`** (plus its `HOW` sentence) or
+    the footer says just "n to go". Release doc step 1b.
+  - Next in this thread: Brian's rework of the Profile badge trays, then the tap-a-badge sheet.
+
 - **PHOTO PICKERS ASK CAMERA OR LIBRARY (2026-10-08, Claude) - `2d16770` on MVP-v3.** New
   `src/components/usePhotoPicker.tsx`: on touch devices `open()` shows Take photo / Choose from
   library (bare `accept="image/*"` went straight to the gallery on Android); desktop goes straight to
