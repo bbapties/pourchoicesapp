@@ -34,6 +34,16 @@ const SPRITE = `
       <path class="pc-g-line" d="M12 34.5 H28 L27 32.5 H13 Z" style="stroke-width:.9"/>
       <path d="M13.2 8 C12.6 12 11 14.5 11 19" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>
     </symbol>
+    <symbol id="g-neat" viewBox="0 0 40 40">
+      <path class="pc-g-fill" d="M12 34.5 H28 L27 32.5 H13 Z"/>
+      <path class="pc-g-glass" d="M14.5 4 H25.5 C26 11 31 14 31 20.5 C31 26.5 26.5 29.5 23 30.5 V32.5 H17 V30.5 C13.5 29.5 9 26.5 9 20.5 C9 14 14 11 14.5 4 Z"/>
+      <path class="pc-g-liquid" d="M9.6 19.5 C9.6 26 14 29 17.2 29.9 H22.8 C26 29 30.4 26 30.4 19.5 C27 21 13 21 9.6 19.5 Z"/>
+      <ellipse cx="20" cy="19.7" rx="10.3" ry="1.6" fill="#fff" opacity=".28"/>
+      <path class="pc-g-line" d="M14.5 4 H25.5 C26 11 31 14 31 20.5 C31 26.5 26.5 29.5 23 30.5 V32.5 H17 V30.5 C13.5 29.5 9 26.5 9 20.5 C9 14 14 11 14.5 4 Z" style="stroke-width:1.1"/>
+      <path class="pc-g-line" d="M12 34.5 H28 L27 32.5 H13 Z" style="stroke-width:.9"/>
+      <path d="M13.2 8 C12.6 12 11 14.5 11 19" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>
+      <text x="20" y="26.6" text-anchor="middle" font-family="Playfair Display,serif" font-weight="700" font-size="6" fill="#fff" opacity=".8">N</text>
+    </symbol>
     <symbol id="g-streak" viewBox="0 0 40 40"><path class="pc-g-fill" d="M20 5c1.6 5 7 6.5 7 14a7 7 0 0 1-14 0c0-2.6 1-4.6 2.4-6 .6 2.2 1.6 3.6 3 4.2C18.3 13 19 9 20 5Z"/><path class="pc-g-line" d="M20 5c1.6 5 7 6.5 7 14a7 7 0 0 1-14 0c0-2.6 1-4.6 2.4-6 .6 2.2 1.6 3.6 3 4.2C18.3 13 19 9 20 5Z"/><path class="pc-g-line" d="M20 14c1 2.4 3 3.4 3 6.2a3 3 0 0 1-6 0c0-1.2.5-2.2 1.2-2.9.4 1 .9 1.6 1.5 1.9.1-1.8.2-3.5.3-5.2Z" style="opacity:.8"/><path class="pc-g-line" d="M9 33h22M11 30v3M15 30v3M19 30v3M23 30v3M27 30v3"/><circle class="pc-g-dot" cx="11" cy="28" r="1.1"/><circle class="pc-g-dot" cx="15" cy="28" r="1.1"/><circle class="pc-g-dot" cx="19" cy="28" r="1.1"/></symbol>
     <symbol id="g-blind" viewBox="0 0 40 40"><path class="pc-g-fill" d="M4 16c6-6 26-6 32 0v7c-6 6-26 6-32 0Z"/><path class="pc-g-line" d="M4 16c6-6 26-6 32 0v7c-6 6-26 6-32 0Z"/><path class="pc-g-line" d="M36 17l3-3M36 22l3 2.5" style="opacity:.9"/><path class="pc-g-line" d="M9 19.5c3-1 5-1 8 0M23 19.5c3-1 5-1 8 0" style="opacity:.6"/><path class="pc-g-line" d="M13 28c2 2 12 2 14 0" style="opacity:.8"/></symbol>
     <symbol id="g-flight" viewBox="0 0 40 40"><path class="pc-g-fill" d="M5 9h7l-.9 8.5a2.6 2.6 0 0 1-5.2 0Z"/><path class="pc-g-fill" d="M16.5 9h7l-.9 8.5a2.6 2.6 0 0 1-5.2 0Z"/><path class="pc-g-fill" d="M28 9h7l-.9 8.5a2.6 2.6 0 0 1-5.2 0Z"/><path class="pc-g-line" d="M5 9h7l-.9 8.5a2.6 2.6 0 0 1-5.2 0ZM16.5 9h7l-.9 8.5a2.6 2.6 0 0 1-5.2 0ZM28 9h7l-.9 8.5a2.6 2.6 0 0 1-5.2 0Z"/><path class="pc-g-line" d="M8.5 21v4M20 21v4M31.5 21v4"/><path class="pc-g-line" d="M3 27h34v3H3Z"/><path class="pc-g-line" d="M7 30v3M33 30v3" style="opacity:.7"/><text x="8.5" y="15.5" text-anchor="middle" font-family="Playfair Display,serif" font-weight="700" font-size="6">A</text><text x="20" y="15.5" text-anchor="middle" font-family="Playfair Display,serif" font-weight="700" font-size="6">B</text><text x="31.5" y="15.5" text-anchor="middle" font-family="Playfair Display,serif" font-weight="700" font-size="6">C</text></symbol>
@@ -56,7 +66,7 @@ const SPRITE = `
 
 /** Every glyph key the catalog can name (badges.glyph). Unknown keys fall back to g-pour. */
 export const GLYPH_KEYS = new Set([
-  "g-pour", "g-streak", "g-blind", "g-flight", "g-helper", "g-collect", "g-dead", "g-travel", "g-barcode",
+  "g-pour", "g-neat", "g-streak", "g-blind", "g-flight", "g-helper", "g-collect", "g-dead", "g-travel", "g-barcode",
   "g-wish", "g-cheers", "g-comment", "g-crowd", "g-contrib", "g-hound", "g-early", "g-installed", "g-taste", "g-founder",
 ]);
 
