@@ -8,8 +8,11 @@
 -- Additive and invisible on its own: nothing shows until a badge_releases row exists
 -- (docs/BADGE_RELEASE.md). It sits under "Coming soon" on the shelf until then.
 --
--- Apply AFTER sql/neat-freak-migration.sql. badge_timeline() below is that file's definition
--- (prod as of 2026-10-08 plus WHEN 'neat') with one more branch, WHEN 'rocks'.
+-- badge_timeline() below is sql/neat-freak-migration.sql's definition with its WHEN 'neat' branch
+-- widened to one shared branch for all three servings (WHEN 'neat', 'rocks', 'mixed', counting
+-- pour_type = b.family), identical to the Mixed pour badge's migration. Apply after
+-- sql/neat-freak-migration.sql (its own copy has only WHEN 'neat'); Rock Star and Mixed can then
+-- apply in either order without dropping each other's branch.
 --
 -- Rollback: sql/rock-star-rollback.sql
 BEGIN;
@@ -63,15 +66,10 @@ BEGIN
     SELECT coalesce(array_agg(created_at ORDER BY created_at), '{}') INTO tl
     FROM public.activities WHERE user_id = p_user AND action = 'drank';
 
-  WHEN 'neat' THEN
-    -- every pour logged with the serving set to Neat (blind pours are 'blind', not counted)
+  WHEN 'neat', 'rocks', 'mixed' THEN
+    -- every pour logged with that serving (family = pour_type); blind pours are 'blind', not counted
     SELECT coalesce(array_agg(created_at ORDER BY created_at), '{}') INTO tl
-    FROM public.activities WHERE user_id = p_user AND action = 'drank' AND pour_type = 'neat';
-
-  WHEN 'rocks' THEN
-    -- every pour logged with the serving set to Rocks (blind pours are 'blind', not counted)
-    SELECT coalesce(array_agg(created_at ORDER BY created_at), '{}') INTO tl
-    FROM public.activities WHERE user_id = p_user AND action = 'drank' AND pour_type = 'rocks';
+    FROM public.activities WHERE user_id = p_user AND action = 'drank' AND pour_type = b.family;
 
   WHEN 'streak' THEN
     -- tl[L] = the day the FIRST run of L consecutive pour-days was completed (America/Chicago days)
