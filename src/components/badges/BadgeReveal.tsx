@@ -48,13 +48,13 @@ function momentLine(kind: ReturnType<typeof revealKind>, name: string): string {
 /** After the burst: the tray title says what changed. */
 function resultTitle(kind: ReturnType<typeof revealKind>, frameName: string): string {
   if (kind.kind === "new") return "New badge unlocked";
-  if (kind.kind === "level") return `Moved up to ${frameName}`;
+  if (kind.kind === "level") return `Leveled up to ${frameName}`;
   return kind.stars > 1 ? `You earned ${kind.stars} stars` : "You earned a star";
 }
 
 const ORDINAL = ["", "1st", "2nd", "3rd", "4th"];
 
-/** Under the tray title on a star or a level-up: "2nd star received" on Wood, "Bronze Level - 2nd
+/** Under the tray title on a star (only - a level-up's title says it all): "2nd star received" on Wood, "Bronze Level - 2nd
  * star received" above it, just "Gold Level" on a plate with no stars (version-1 badges). */
 function rankLine(frame: string, frameName: string, stars: number): string {
   if (!stars) return `${frameName} Level`;
@@ -212,7 +212,7 @@ export default function BadgeReveal() {
             {phase === "burst" ? (
               <div className="pc-pop">
                 <h2 className="font-display text-2xl font-bold text-cream text-center">{resultTitle(kind, frameName)}</h2>
-                {kind.kind !== "new" && !item.def.oneOff && <p className="text-[13px] text-cream-mute text-center mt-1">{rankLine(frame, frameName, stars)}</p>}
+                {kind.kind === "star" && !item.def.oneOff && <p className="text-[13px] text-cream-mute text-center mt-1">{rankLine(frame, frameName, stars)}</p>}
                 <p className="text-cream text-[14px] leading-snug max-w-[34ch] mx-auto text-center mt-2.5">{howToEarn(item.def)}</p>
                 {nextLine && <p className="text-brass-hi text-[13px] text-center text-balance mt-2 tabular-nums">{nextLine}</p>}
                 <div className="grid grid-cols-2 gap-2 mt-4">
