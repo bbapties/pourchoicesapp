@@ -8,6 +8,12 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
+- **REGULAR POUR RETIRED (2026-10-08, Claude).** Brian: the three serving badges (Neat Freak / Rock
+  Star / Mixed Signals) cover every pour, so the generic one goes. `badges.active = false` on prod
+  (`sql/retire-regular-pour-migration.sql`, rollback alongside). Soft retire: rows, tiers and art kept;
+  it was never released, so no one saw it and no level points moved. Next badges proposed: Blindfold,
+  Barcode Bandit, Dead Soldiers (waiting on Brian's pick).
+
 - **BADGE REVEAL REWORK LIVE (2026-10-08, Claude) - three moments, one format for every badge.**
   - `revealKind` (`src/lib/badgeReveal.ts`): **new badge** (revealed_tier 0) / **star** (same plate,
     more stars) / **level up** (new plate). `BadgeReveal.tsx` words each one differently; the
