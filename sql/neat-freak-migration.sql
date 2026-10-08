@@ -4,8 +4,8 @@
 -- Blindfold / Big Flight / Helper cover those.
 --
 -- Ladder rule from regular-pour-22step-migration.sql: the top rung should land ~5 years out for
--- a steady user of this activity. A neat pour is a subset of all pours, so this is Regular Pour's
--- curve at about half scale: 1500 neat pours is ~100 bottles neat, years of steady sipping.
+-- a steady user of this activity. Brian (2026-10-08) took that baseline for a steady NEAT drinker,
+-- so the counts are Regular Pour's exactly (1 .. 3000).
 --
 -- Additive and invisible on its own: the engine starts crediting it on the next award run, but
 -- nothing shows until a badge_releases row exists (docs/BADGE_RELEASE.md). It sits under
@@ -26,27 +26,27 @@ ON CONFLICT (id) DO UPDATE SET family = EXCLUDED.family, name = EXCLUDED.name, g
 DELETE FROM public.badge_tiers WHERE badge_id = 'neat_freak';
 INSERT INTO public.badge_tiers (badge_id, tier, threshold) VALUES
   ('neat_freak', 1, 1),
-  ('neat_freak', 2, 2),
-  ('neat_freak', 3, 3),
-  ('neat_freak', 4, 5),
-  ('neat_freak', 5, 8),
-  ('neat_freak', 6, 12),
-  ('neat_freak', 7, 20),
-  ('neat_freak', 8, 30),
-  ('neat_freak', 9, 42),
-  ('neat_freak', 10, 58),
-  ('neat_freak', 11, 75),
-  ('neat_freak', 12, 100),
-  ('neat_freak', 13, 130),
-  ('neat_freak', 14, 170),
-  ('neat_freak', 15, 220),
-  ('neat_freak', 16, 280),
-  ('neat_freak', 17, 350),
-  ('neat_freak', 18, 450),
-  ('neat_freak', 19, 575),
-  ('neat_freak', 20, 750),
-  ('neat_freak', 21, 1000),
-  ('neat_freak', 22, 1500);
+  ('neat_freak', 2, 3),
+  ('neat_freak', 3, 6),
+  ('neat_freak', 4, 10),
+  ('neat_freak', 5, 15),
+  ('neat_freak', 6, 25),
+  ('neat_freak', 7, 40),
+  ('neat_freak', 8, 60),
+  ('neat_freak', 9, 85),
+  ('neat_freak', 10, 115),
+  ('neat_freak', 11, 150),
+  ('neat_freak', 12, 200),
+  ('neat_freak', 13, 260),
+  ('neat_freak', 14, 340),
+  ('neat_freak', 15, 440),
+  ('neat_freak', 16, 560),
+  ('neat_freak', 17, 700),
+  ('neat_freak', 18, 900),
+  ('neat_freak', 19, 1150),
+  ('neat_freak', 20, 1500),
+  ('neat_freak', 21, 2000),
+  ('neat_freak', 22, 3000);
 
 CREATE OR REPLACE FUNCTION public.badge_timeline(p_user uuid, p_badge text)
  RETURNS timestamp with time zone[]

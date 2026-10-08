@@ -20,7 +20,7 @@ from PIL import Image, ImageFilter, ImageDraw
 
 SRC = "public/badges/masters/parts/neat-glencairn.png"
 S = 1024
-GLASS_H = 0.56      # glass height as a fraction of the disc
+GLASS_H = 0.66      # glass height as a fraction of the disc
 GLASS_CY = 0.52     # vertical centre of the glass on the disc
 CLEAR_FROM = 0.48   # empty bowl: fraction of light let through at full white (0 = solid)
 LIQUID_Y = 790      # source row of the whiskey surface; below it everything is solid
