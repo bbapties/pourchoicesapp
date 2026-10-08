@@ -8,14 +8,14 @@ What is open and in what order now lives on **[the board](https://github.com/use
 
 ## Right now
 
-- **MIX MASTER BADGE (2026-10-08, Claude) - draft PR, NOT applied / NOT released yet.**
-  - `mix_master`, family `mixed`, ladder_version 2: every `drank` pour with `pour_type = 'mixed'`
+- **MIXED SIGNALS BADGE LIVE (2026-10-08, Claude) - PR #179 into MVP-v3. Migration applied, released to everyone.**
+  - `mixed_signals`, family `mixed`, ladder_version 2: every `drank` pour with `pour_type = 'mixed'`
     (blind pours don't count). Same 22 tiers as Neat Freak / Regular Pour (1..3000).
-    `sql/mix-master-migration.sql` makes `badge_timeline()`'s neat branch one shared
+    `sql/mixed-signals-migration.sql` makes `badge_timeline()`'s neat branch one shared
     `WHEN 'neat', 'rocks', 'mixed'` branch (`pour_type = b.family`) so the neat, rocks and mixed
     migrations can't drop each other's serving. Rollback alongside.
   - Object = Brian's old fashioned (`masters/parts/mixed-old-fashioned.png`, already transparent),
-    placed by `scripts/mix_master_medal.py`: glass body 56% of the disc, pick clear of the stars.
+    placed by `scripts/mixed_signals_medal.py`: glass body 56% of the disc, pick clear of the stars.
 
 - **NEAT FREAK BADGE LIVE + NEW STARS ON EVERY BADGE (2026-10-08, Claude) - PR #177 into MVP-v3.**
   - **Neat Freak** (`neat_freak`, family `neat`, ladder_version 2): every `drank` pour with

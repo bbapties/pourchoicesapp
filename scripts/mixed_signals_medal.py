@@ -1,4 +1,4 @@
-"""Mix Master object (docs/BADGE_ART.md): Brian's old fashioned (rocks glass, big cube, cherry and
+"""Mixed Signals object (docs/BADGE_ART.md): Brian's old fashioned (rocks glass, big cube, cherry and
 orange peel on a gold pick), public/badges/masters/parts/mixed-old-fashioned.png. The source is
 already cut out (transparent PNG), so this only scales and places it - one transparent overlay that
 Medal draws over the plate, like neat_freak.
@@ -8,10 +8,10 @@ glass body is scaled so its corners sit just inside the inner ring, and the garn
 the top right is kept clear of the stars at 12 o'clock.
 
 Outputs:
-  public/badges/objects/mix_master.webp          512, transparent (the app file)
-  public/badges/masters/mix_master-1024.webp     the same at 1024
+  public/badges/objects/mixed_signals.webp          512, transparent (the app file)
+  public/badges/masters/mixed_signals-1024.webp     the same at 1024
   <preview-dir>/mix-<frame>-<n>-<size>.png        object + baked stars on plates at 512 / 100 / 38
-Usage: python3 scripts/mix_master_medal.py [--preview-dir <dir>]
+Usage: python3 scripts/mixed_signals_medal.py [--preview-dir <dir>]
 """
 import os
 import sys
@@ -36,9 +36,9 @@ body_cx = (src.width / 2 - x0) * k
 top = S * GLASS_CY - S * GLASS_H / 2 - (GLASS_TOP - y0) * k
 canvas = Image.new("RGBA", (S, S), (0, 0, 0, 0))
 canvas.alpha_composite(obj, (round(S / 2 - body_cx), round(top)))
-canvas.save("public/badges/masters/mix_master-1024.webp", lossless=False, quality=92)
+canvas.save("public/badges/masters/mixed_signals-1024.webp", lossless=False, quality=92)
 small = canvas.resize((512, 512), Image.LANCZOS)
-small.save("public/badges/objects/mix_master.webp", lossless=False, quality=90)
+small.save("public/badges/objects/mixed_signals.webp", lossless=False, quality=90)
 
 os.makedirs(preview_dir, exist_ok=True)
 for frame in ["wood", "bronze", "silver", "gold", "diamond", "limited", "locked"]:

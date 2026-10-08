@@ -1,4 +1,4 @@
--- Mix Master (Brian, 2026-10-08): the third badge on the 22-step Wood->Limited ladder
+-- Mixed Signals (Brian, 2026-10-08): the third badge on the 22-step Wood->Limited ladder
 -- (ladder_version 2), built exactly like Neat Freak. Counts every pour you log with the serving set
 -- to Mixed / cocktail (activities.action = 'drank' AND pour_type = 'mixed'). Blind pours ('blind')
 -- do not count; Blindfold / Big Flight / Helper cover those.
@@ -14,39 +14,39 @@
 -- uses the same branch, so the two migrations can be applied in either order without one
 -- dropping the other's serving.
 --
--- Rollback: sql/mix-master-rollback.sql
+-- Rollback: sql/mixed-signals-rollback.sql
 BEGIN;
 
 INSERT INTO public.badges (id, family, name, glyph, feature, hint, one_off, sort, ladder_version) VALUES
-  ('mix_master', 'mixed', 'Mix Master', 'g-mixed', 'Have a drink', 'log a mixed pour', false, 17, 2)
+  ('mixed_signals', 'mixed', 'Mixed Signals', 'g-mixed', 'Have a drink', 'log a mixed pour', false, 17, 2)
 ON CONFLICT (id) DO UPDATE SET family = EXCLUDED.family, name = EXCLUDED.name, glyph = EXCLUDED.glyph,
   feature = EXCLUDED.feature, hint = EXCLUDED.hint, one_off = EXCLUDED.one_off, sort = EXCLUDED.sort,
   ladder_version = EXCLUDED.ladder_version;
 
-DELETE FROM public.badge_tiers WHERE badge_id = 'mix_master';
+DELETE FROM public.badge_tiers WHERE badge_id = 'mixed_signals';
 INSERT INTO public.badge_tiers (badge_id, tier, threshold) VALUES
-  ('mix_master', 1, 1),
-  ('mix_master', 2, 3),
-  ('mix_master', 3, 6),
-  ('mix_master', 4, 10),
-  ('mix_master', 5, 15),
-  ('mix_master', 6, 25),
-  ('mix_master', 7, 40),
-  ('mix_master', 8, 60),
-  ('mix_master', 9, 85),
-  ('mix_master', 10, 115),
-  ('mix_master', 11, 150),
-  ('mix_master', 12, 200),
-  ('mix_master', 13, 260),
-  ('mix_master', 14, 340),
-  ('mix_master', 15, 440),
-  ('mix_master', 16, 560),
-  ('mix_master', 17, 700),
-  ('mix_master', 18, 900),
-  ('mix_master', 19, 1150),
-  ('mix_master', 20, 1500),
-  ('mix_master', 21, 2000),
-  ('mix_master', 22, 3000);
+  ('mixed_signals', 1, 1),
+  ('mixed_signals', 2, 3),
+  ('mixed_signals', 3, 6),
+  ('mixed_signals', 4, 10),
+  ('mixed_signals', 5, 15),
+  ('mixed_signals', 6, 25),
+  ('mixed_signals', 7, 40),
+  ('mixed_signals', 8, 60),
+  ('mixed_signals', 9, 85),
+  ('mixed_signals', 10, 115),
+  ('mixed_signals', 11, 150),
+  ('mixed_signals', 12, 200),
+  ('mixed_signals', 13, 260),
+  ('mixed_signals', 14, 340),
+  ('mixed_signals', 15, 440),
+  ('mixed_signals', 16, 560),
+  ('mixed_signals', 17, 700),
+  ('mixed_signals', 18, 900),
+  ('mixed_signals', 19, 1150),
+  ('mixed_signals', 20, 1500),
+  ('mixed_signals', 21, 2000),
+  ('mixed_signals', 22, 3000);
 
 CREATE OR REPLACE FUNCTION public.badge_timeline(p_user uuid, p_badge text)
  RETURNS timestamp with time zone[]
@@ -68,7 +68,7 @@ BEGIN
 
   WHEN 'neat', 'rocks', 'mixed' THEN
     -- every pour logged with this serving (family = pour_type: Neat Freak, the rocks badge,
-    -- Mix Master). Blind pours are stored as 'blind', so they never count here.
+    -- Mixed Signals). Blind pours are stored as 'blind', so they never count here.
     SELECT coalesce(array_agg(created_at ORDER BY created_at), '{}') INTO tl
     FROM public.activities WHERE user_id = p_user AND action = 'drank' AND pour_type = b.family;
 
