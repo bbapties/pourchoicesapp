@@ -12,7 +12,7 @@ import { fetchFeedPage, splitGroup, toggleCheer, type FeedItem } from "@/lib/soc
 import { notify } from "@/lib/notify";
 import PeopleSheet from "@/components/user/PeopleSheet";
 import { fetchFeedDefault, fetchMyGraph, saveFeedDefault, type FeedScope } from "@/lib/relationships";
-import BottleDetailView from "@/components/BottleDetailView";
+import BottleDetailView, { type OwnershipRow } from "@/components/BottleDetailView";
 import { type BottleDetails } from "@/lib/types";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { isVariantVisibleToViewer } from "@/lib/variants";
@@ -100,6 +100,7 @@ export default function SocialClient() {
     currentlyOwned: false,
   });
   const [selectedRow, setSelectedRow] = useState<UserBottleRow | null>(null);
+  const [ownershipRows, setOwnershipRows] = useState<OwnershipRow[] | undefined>(undefined);
 
   const load = useCallback(async (reset: boolean, opts?: { scope?: FeedScope; graph?: { following: string[]; muted: string[] } }) => {
     const sc = opts?.scope ?? scope;
@@ -198,18 +199,25 @@ export default function SocialClient() {
     }
 
     let row: UserBottleRow | null = null;
+    let nextRows: OwnershipRow[] | undefined = undefined;
     if (uid) {
       // A (user, bottle) can now have multiple variant rows; prefer the ownership
       // row (owned, then finished/was-owned) over tasting-only rows.
       const { data: ubRows } = await supabase
         .from("user_bottles")
-        .select("currently_owned, variant_id, times_had, created_at, updated_at")
+        .select("currently_owned, variant_id, times_had, owned_count, created_at, updated_at")
         .eq("user_id", uid)
-        .eq("bottle_id", bottleId)
-        .order("currently_owned", { ascending: false })
-        .order("times_had", { ascending: false })
-        .limit(1);
-      const ub = ubRows?.[0];
+        .eq("bottle_id", bottleId);
+      const list = ((ubRows || []) as { currently_owned: boolean; variant_id: string | null; times_had: number | null; owned_count: number | null; created_at: string; updated_at: string }[])
+        .slice()
+        .sort((a, b) => Number(b.currently_owned) - Number(a.currently_owned) || (b.times_had ?? 0) - (a.times_had ?? 0));
+      nextRows = list.length ? list.map((r) => ({
+        variant_id: r.variant_id ?? null,
+        currently_owned: !!r.currently_owned,
+        times_had: r.times_had ?? 0,
+        owned_count: r.owned_count ?? (r.currently_owned ? 1 : 0),
+      })) : undefined;
+      const ub = list[0];
       if (ub) {
         row = {
           currently_owned: ub.currently_owned,
@@ -221,6 +229,7 @@ export default function SocialClient() {
       }
     }
 
+    setOwnershipRows(nextRows);
     setSelectedRow(row);
     setSelectedOwned({
       inCollection: !!row && (row.currently_owned || (row.times_had ?? 0) >= 1),
@@ -394,6 +403,7 @@ export default function SocialClient() {
           onClose={() => setSelectedBottle(null)}
           inCollection={selectedOwned.inCollection}
           currentlyOwned={selectedOwned.currentlyOwned}
+          ownershipRows={ownershipRows}
           initialVariantId={selectedRow?.variant_id ?? null}
           publicUserId={publicUserId ?? undefined}
           onAddToBar={handleAddToBar}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ShelfBottle } from "@/lib/shelves";
 import WhoWhatPill from "@/components/social/WhoWhatPill";
+import UserAvatar from "@/components/UserAvatar";
 
 /**
  * One bottle standing on a shelf (#87, part of #82).
@@ -183,6 +184,22 @@ export default function BottleOnShelf({
           action={bottle.post.action}
           onUser={() => onPickUser?.(bottle)}
         />
+      ) : null}
+
+      {/* All-friends only. A single friend's shelf does not set owner, so the bubble stays off. */}
+      {bottle.owner ? (
+        <span
+          className="pc-owner-bubble"
+          role="link"
+          aria-label={`@${bottle.owner.username}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onPickUser?.(bottle);
+          }}
+        >
+          <UserAvatar username={bottle.owner.username} avatarUrl={bottle.owner.avatarUrl} size={22} />
+        </span>
       ) : null}
     </button>
   );

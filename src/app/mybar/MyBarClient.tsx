@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { logEvent, logClick } from "@/lib/events";
 import BottleCardMedium from "@/components/BottleCardMedium";
 import PastTastings from "@/components/PastTastings";
-import BottleDetailView from "@/components/BottleDetailView";
+import BottleDetailView, { type OwnershipRow } from "@/components/BottleDetailView";
 import BarcodeScannerSheet from "@/components/BarcodeScannerSheet";
 import ProvisionalSheet from "@/components/ProvisionalSheet";
 import { lookupBottleByBarcode } from "@/lib/barcode";
@@ -156,6 +156,10 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   // Ownership for the open detail. Set from the active tab for collection cards,
   // and fetched for a scanned bottle that may not be in the collection.
   const [selectedOwned, setSelectedOwned] = useState<{ inCollection: boolean; currentlyOwned: boolean }>({ inCollection: false, currentlyOwned: false });
+  // Per-variant rows for the open sheet. Without these the corner badge falls back to 1
+  // whenever the card says you own more (#169), and the Wishlist tab pretends the bottle
+  // is not owned (#182).
+  const [ownershipRows, setOwnershipRows] = useState<OwnershipRow[] | undefined>(undefined);
   // B-31: open the detail pinned to the version the user tapped (My Bar cards are per-variant).
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
@@ -171,7 +175,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
   const applySearchAndFilter = useCallback((raw: any[], kind: TabOption) => {
     const isOwned = kind === 'owned';
     const variantKeyed = kind === 'tasted' || kind === 'wishlist';
-    const label = kind === 'wishlist' ? 'Wishlisted' : undefined;
+    const label = kind === 'wishlist' ? 'Wishlisted' : kind === 'empty' ? 'Finished' : undefined;
     let cards = raw.map(d => mapToCardData(d, isOwned, variantKeyed, label, myScores, bottleScores, sortBy === 'global', pours));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -226,7 +230,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     return cards; // null = server Elo order
   }, [activeRaw, activeTab, applySearchAndFilter, sortBy]);
 
-  const handleCardClick = (cardId: string) => {
+  const handleCardClick = async (cardId: string) => {
     const variantKeyed = activeTab === 'tasted' || activeTab === 'wishlist';
     const raw = variantKeyed
       ? activeRaw.find(r => r.variant_id === cardId || r.bottle_id === cardId)
@@ -237,6 +241,28 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const releaseYears: string[] = Array.isArray(raw.attr_release_year) ? raw.attr_release_year : (raw.attr_release_year ? [String(raw.attr_release_year)] : []);
     const storePickNames: string[] = Array.isArray(raw.attr_store_pick_name) ? raw.attr_store_pick_name : (raw.attr_store_pick_name ? [raw.attr_store_pick_name] : []);
     const createdBys: string[] = Array.isArray(raw.attr_variant_created_by) ? raw.attr_variant_created_by : (raw.attr_variant_created_by ? [raw.attr_variant_created_by] : []);
+    // Real rows, not the tab the card happened to sit on. Wishlist used to force
+    // "not owned", and a missing row list made "you own 2" render as a badge of 1.
+    let rows: (OwnershipRow & { created_at?: string | null; updated_at?: string | null })[] = [];
+    if (publicUserId) {
+      const { data } = await supabase
+        .from("user_bottles")
+        .select("variant_id, currently_owned, times_had, owned_count, created_at, updated_at")
+        .eq("user_id", publicUserId)
+        .eq("bottle_id", raw.bottle_id);
+      rows = (data || []) as typeof rows;
+    }
+    const match = rows.find(r => r.variant_id && r.variant_id === raw.variant_id)
+      || rows.find(r => r.currently_owned || (r.owned_count ?? 0) > 0)
+      || rows[0];
+    const anyOwned = rows.some(r => r.currently_owned || (r.owned_count ?? 0) > 0);
+    const anyHistory = rows.some(r => (r.times_had ?? 0) >= 1);
+    setOwnershipRows(rows.length ? rows : undefined);
+    setSelectedOwned({
+      inCollection: activeTab === 'owned' || activeTab === 'empty' || anyOwned || anyHistory,
+      currentlyOwned: activeTab === 'owned' || anyOwned,
+    });
+    const ownedForActivity = activeTab === "owned" || anyOwned;
     setSelectedBottle({
       id: raw.bottle_id,
       name: raw.bottle_name,
@@ -248,18 +274,22 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       age: raw.attr_age,
       elo_global: eloOf(raw) ?? undefined,
       verified: raw.bottle_verified,
-      lastActivity: activeTab === "wishlist"
-        ? undefined
-        : activeTab === "tasted"
+      lastActivity: activeTab === "tasted"
         ? (raw.addedAt ? `Blind tasting · ${new Date(raw.addedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : undefined)
-        : formatLastActivity({
+        : formatLastActivity(match ? {
+            currently_owned: ownedForActivity && (match.currently_owned || (match.owned_count ?? 0) > 0 || activeTab === "owned"),
+            variant_id: match.variant_id ?? null,
+            times_had: match.times_had ?? raw.times_had ?? 0,
+            created_at: match.created_at ?? raw.created_at,
+            updated_at: match.updated_at ?? raw.updated_at,
+          } : {
             currently_owned: activeTab === "owned",
             variant_id: raw.variant_id ?? null,
-            times_had: raw.times_had ?? 1,
+            times_had: raw.times_had ?? (activeTab === "wishlist" ? 0 : 1),
             created_at: raw.created_at,
             updated_at: raw.updated_at,
           }),
-      timesHad: raw.times_had,
+      timesHad: match?.times_had ?? raw.times_had,
       frontImageUrl: raw.attr_frontimage_url,
       backImageUrl: raw.attr_backimage_url,
       variants: variantIds
@@ -278,7 +308,6 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       finish: raw.attr_finish,
       extras: raw.attr_extras,
     });
-    setSelectedOwned({ inCollection: activeTab === 'owned' || activeTab === 'empty', currentlyOwned: activeTab === 'owned' });
     setSelectedVariantId(raw.variant_id ?? null);
   };
 
@@ -294,19 +323,18 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     // Passed explicitly so a normal tap after a scan can't inherit the old code.
     setScanOpenedWith(fromScanCode);
 
-    let inCollection = false, currentlyOwned = false;
+    let rows: (OwnershipRow & { created_at?: string | null; updated_at?: string | null })[] = [];
     if (publicUserId) {
       const { data: ub } = await supabase
         .from("user_bottles")
-        .select("currently_owned, times_had")
+        .select("variant_id, currently_owned, times_had, owned_count, created_at, updated_at")
         .eq("user_id", publicUserId)
-        .eq("bottle_id", bottleId)
-        .order("currently_owned", { ascending: false })
-        .order("times_had", { ascending: false })
-        .limit(1);
-      const row = ub?.[0];
-      if (row) { inCollection = row.currently_owned || (row.times_had ?? 0) >= 1; currentlyOwned = !!row.currently_owned; }
+        .eq("bottle_id", bottleId);
+      rows = (ub || []) as typeof rows;
     }
+    const anyOwned = rows.some(r => r.currently_owned || (r.owned_count ?? 0) > 0);
+    const anyHistory = rows.some(r => (r.times_had ?? 0) >= 1);
+    setOwnershipRows(rows.length ? rows : undefined);
 
     const variantIds: string[] = data.attr_variant_ids || [];
     const batches: string[] = Array.isArray(data.attr_batch) ? data.attr_batch : [];
@@ -314,7 +342,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     const storePickNames: string[] = Array.isArray(data.attr_store_pick_name) ? data.attr_store_pick_name : [];
     const createdBys: string[] = Array.isArray(data.attr_variant_created_by) ? data.attr_variant_created_by : [];
 
-    setSelectedOwned({ inCollection, currentlyOwned });
+    setSelectedOwned({ inCollection: anyOwned || anyHistory, currentlyOwned: anyOwned });
     setSelectedVariantId(null); // scanned/deep-opened → default-first
     setSelectedBottle({
       id: data.bottle_id,
@@ -720,6 +748,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           onClose={() => { setSelectedBottle(null); setScanOpenedWith(null); }}
           inCollection={selectedOwned.inCollection}
           currentlyOwned={selectedOwned.currentlyOwned}
+          ownershipRows={ownershipRows}
           initialVariantId={selectedVariantId}
           scannedBarcode={scanOpenedWith}
           publicUserId={publicUserId}

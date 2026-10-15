@@ -20,7 +20,14 @@ import { FEED_HIDDEN_FILTER } from "@/lib/activities";
 /** Bottles fetched per batch as you walk along a shelf. The only lever on what Home costs to load. */
 export const SHELF_PAGE_SIZE = 12;
 
-export type ShelfId = "mybar" | "social" | "verified";
+export type ShelfId = "mybar" | "friendsbar" | "friendswish" | "social" | "verified";
+
+/** A person standing behind a bottle on a friend shelf. Shown only on the All view. */
+export type ShelfPerson = {
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+};
 
 /**
  * How the viewer stands with this bottle — rendered as the pool of light on the deck beneath it.
@@ -55,6 +62,8 @@ export type ShelfBottle = {
   heightMm: number | null;
   /** #113: on the Social shelf, the post that put this bottle here - who and what. */
   post?: ShelfPost;
+  /** Friend shelves, All only: whose bottle this is. A single friend does not set it. */
+  owner?: ShelfPerson;
 };
 
 export type ShelfPost = {
@@ -87,6 +96,10 @@ export type ShelfFetchOpts = {
   onlyUserIds?: string[] | null;
   /** #111: muted posters, never shown. */
   excludeUserIds?: string[] | null;
+  /** Friend shelves: whose bars or wishlists to stand up. Empty = an empty run. */
+  friendIds?: string[] | null;
+  /** When set, each bottle wears that person's picture. Pass this only for All. */
+  friendDirectory?: ShelfPerson[] | null;
 };
 
 export type ShelfDef = {
@@ -110,6 +123,8 @@ export type Seed = {
   variantId: string | null;
   /** Carried through buildPage untouched (#113). */
   post?: ShelfPost;
+  /** Carried through buildPage. Included in the key so two friends can own the same bottle. */
+  owner?: ShelfPerson;
 };
 
 type VariantImage = { variantId: string; imageUrl: string | null; shelfReady: boolean; heightMm: number | null };
@@ -120,12 +135,33 @@ type VariantImage = { variantId: string; imageUrl: string | null; shelfReady: bo
  * A store pick or a specific batch has its own bottle on the shelf; everything else stands in
  * with the SKU's default. Two queries at most, both `in (...)` over a single page.
  */
+function variantImageKey(variantId: string) {
+  return `v:${variantId}`;
+}
+function bottleImageKey(bottleId: string) {
+  return `b:${bottleId}`;
+}
+
+/**
+ * Named variants and default variants live under different keys.
+ *
+ * Friend shelves can stand the same whiskey twice (two friends, or two wishlist
+ * versions). Keying only by bottle id made the last variant win, so both cards
+ * drew one picture and could collapse to one React key.
+ */
 async function resolveImages(seeds: Seed[]): Promise<Map<string, VariantImage>> {
-  const byBottle = new Map<string, VariantImage>();
-  if (!seeds.length) return byBottle;
+  const images = new Map<string, VariantImage>();
+  if (!seeds.length) return images;
 
   const named = [...new Set(seeds.map((s) => s.variantId).filter(Boolean))] as string[];
   const needDefault = [...new Set(seeds.filter((s) => !s.variantId).map((s) => s.bottleId))];
+
+  const pack = (v: { id: string; frontimage_url: string | null; shelf_ready: boolean | null; bottle_height: number | null }): VariantImage => ({
+    variantId: v.id,
+    imageUrl: v.frontimage_url ?? null,
+    shelfReady: Boolean(v.shelf_ready),
+    heightMm: v.bottle_height == null ? null : Number(v.bottle_height),
+  });
 
   if (named.length) {
     const { data } = await supabase
@@ -133,12 +169,7 @@ async function resolveImages(seeds: Seed[]): Promise<Map<string, VariantImage>> 
       .select("id, bottles_id, frontimage_url, shelf_ready, bottle_height")
       .in("id", named);
     for (const v of data || []) {
-      byBottle.set(v.bottles_id as string, {
-        variantId: v.id as string,
-        imageUrl: (v.frontimage_url as string | null) ?? null,
-        shelfReady: Boolean(v.shelf_ready),
-        heightMm: v.bottle_height == null ? null : Number(v.bottle_height),
-      });
+      images.set(variantImageKey(v.id as string), pack(v as { id: string; frontimage_url: string | null; shelf_ready: boolean | null; bottle_height: number | null }));
     }
   }
 
@@ -149,18 +180,19 @@ async function resolveImages(seeds: Seed[]): Promise<Map<string, VariantImage>> 
       .in("bottles_id", needDefault)
       .eq("is_default", true);
     for (const v of data || []) {
-      // A named variant already won this SKU; don't let the default overwrite it.
-      if (byBottle.has(v.bottles_id as string)) continue;
-      byBottle.set(v.bottles_id as string, {
-        variantId: v.id as string,
-        imageUrl: (v.frontimage_url as string | null) ?? null,
-        shelfReady: Boolean(v.shelf_ready),
-        heightMm: v.bottle_height == null ? null : Number(v.bottle_height),
-      });
+      images.set(bottleImageKey(v.bottles_id as string), pack(v as { id: string; frontimage_url: string | null; shelf_ready: boolean | null; bottle_height: number | null }));
     }
   }
 
-  return byBottle;
+  return images;
+}
+
+function imageFor(images: Map<string, VariantImage>, seed: Seed): VariantImage | undefined {
+  if (seed.variantId) {
+    const named = images.get(variantImageKey(seed.variantId));
+    if (named) return named;
+  }
+  return images.get(bottleImageKey(seed.bottleId));
 }
 
 function imageState(v?: VariantImage): ImageState {
@@ -236,10 +268,10 @@ export async function buildPage(
   ]);
 
   const bottles: ShelfBottle[] = seeds.map((s) => {
-    const img = images.get(s.bottleId);
+    const img = imageFor(images, s);
     const nm = names.get(s.bottleId);
     return {
-      key: `${s.bottleId}:${img?.variantId ?? s.variantId ?? "default"}`,
+      key: `${s.owner ? s.owner.userId + ":" : ""}${s.bottleId}:${s.variantId ?? img?.variantId ?? "default"}`,
       bottleId: s.bottleId,
       variantId: img?.variantId ?? s.variantId ?? null,
       name: nm?.name ?? "Unknown bottle",
@@ -250,6 +282,7 @@ export async function buildPage(
       provisional: nm ? !nm.verified : false,
       heightMm: img?.heightMm ?? null,
       post: s.post,
+      owner: s.owner,
     };
   });
 
@@ -395,6 +428,116 @@ async function fetchVerified({ viewerId, cursor, limit = SHELF_PAGE_SIZE }: Shel
   return buildPage(seeds, nextCursor, viewerId, "verified");
 }
 
+/**
+ * A friend's bar or wishlist, newest add on the left.
+ *
+ * One card per (person, bottle). Two friends owning the same whiskey are two bottles when All
+ * is selected, and only then does the bottle carry `owner` so the picture bubble can say whose.
+ * A personal list is small, so the whole set is read and then sliced — an offset cursor would
+ * skip rows as people add bottles under the shelf.
+ */
+function friendSeeds(
+  rows: { user_id: string; bottle_id: string; variant_id: string | null; created_at: string }[],
+  directory: ShelfPerson[] | null | undefined,
+  collapseKey: (r: { user_id: string; bottle_id: string; variant_id: string | null }) => string,
+): Seed[] {
+  const dir = new Map((directory ?? []).map((p) => [p.userId, p]));
+  const showOwner = dir.size > 0;
+  const best = new Map<string, { bottleId: string; variantId: string | null; at: string; userId: string }>();
+  for (const r of rows) {
+    const key = collapseKey(r);
+    const prev = best.get(key);
+    if (!prev || r.created_at > prev.at) {
+      best.set(key, { bottleId: r.bottle_id, variantId: r.variant_id, at: r.created_at, userId: r.user_id });
+    }
+  }
+  return [...best.values()]
+    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
+    .map((s) => ({
+      bottleId: s.bottleId,
+      variantId: s.variantId,
+      owner: showOwner ? dir.get(s.userId) : undefined,
+    }));
+}
+
+function sliceFriendPage(seeds: Seed[], cursor: string | null, limit: number, viewerId: string | null): Promise<ShelfPage> {
+  const start = cursor ? Number(cursor) : 0;
+  const safe = Number.isFinite(start) && start > 0 ? start : 0;
+  const page = seeds.slice(safe, safe + limit);
+  const nextCursor = safe + limit < seeds.length ? String(safe + limit) : null;
+  return buildPage(page, nextCursor, viewerId, "none");
+}
+
+async function fetchFriendBar({ viewerId, cursor, limit = SHELF_PAGE_SIZE, friendIds, friendDirectory }: ShelfFetchOpts): Promise<ShelfPage> {
+  const ids = friendIds ?? [];
+  if (!ids.length) return { bottles: [], nextCursor: null };
+  const { data, error } = await supabase
+    .from("user_bottles")
+    .select("user_id, bottle_id, variant_id, created_at")
+    .in("user_id", ids)
+    .gt("owned_count", 0)
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (error) {
+    console.error("shelf friendsbar:", error.message);
+    return { bottles: [], nextCursor: null };
+  }
+  const seeds = friendSeeds(
+    (data || []) as { user_id: string; bottle_id: string; variant_id: string | null; created_at: string }[],
+    friendDirectory,
+    (r) => `${r.user_id}:${r.bottle_id}`,
+  );
+  return sliceFriendPage(seeds, cursor, limit, viewerId);
+}
+
+async function fetchFriendWishlist({ viewerId, cursor, limit = SHELF_PAGE_SIZE, friendIds, friendDirectory }: ShelfFetchOpts): Promise<ShelfPage> {
+  const ids = friendIds ?? [];
+  if (!ids.length) return { bottles: [], nextCursor: null };
+  const { data, error } = await supabase
+    .from("wishlists")
+    .select("user_id, bottle_id, variant_id, created_at")
+    .in("user_id", ids)
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (error) {
+    console.error("shelf friendswish:", error.message);
+    return { bottles: [], nextCursor: null };
+  }
+  const seeds = friendSeeds(
+    (data || []) as { user_id: string; bottle_id: string; variant_id: string | null; created_at: string }[],
+    friendDirectory,
+    (r) => `${r.user_id}:${r.variant_id ?? r.bottle_id}`,
+  );
+  return sliceFriendPage(seeds, cursor, limit, viewerId);
+}
+
+export async function countFriendOwned(userIds: string[]): Promise<number | null> {
+  if (!userIds.length) return 0;
+  const { data, error } = await supabase
+    .from("user_bottles")
+    .select("user_id, bottle_id")
+    .in("user_id", userIds)
+    .gt("owned_count", 0);
+  if (error) {
+    console.error("shelf count friendsbar:", error.message);
+    return null;
+  }
+  return new Set((data || []).map((r: { user_id: string; bottle_id: string }) => `${r.user_id}:${r.bottle_id}`)).size;
+}
+
+export async function countFriendWishlist(userIds: string[]): Promise<number | null> {
+  if (!userIds.length) return 0;
+  const { data, error } = await supabase
+    .from("wishlists")
+    .select("user_id, variant_id, bottle_id")
+    .in("user_id", userIds);
+  if (error) {
+    console.error("shelf count friendswish:", error.message);
+    return null;
+  }
+  return new Set((data || []).map((r: { user_id: string; variant_id: string | null; bottle_id: string }) => `${r.user_id}:${r.variant_id ?? r.bottle_id}`)).size;
+}
+
 /* ------------------------------------------------------------------- counts */
 
 /**
@@ -457,6 +600,9 @@ async function countVerified() {
 /**
  * The cabinet, top shelf first. Array order IS shelf order — fixed for v1 by Brian's decision;
  * #84 turns this into a per-user preference.
+ *
+ * Friend shelves sit under My Bar and above Social. Who is on them is chosen on the shelf
+ * itself (Home passes friendIds); these entries only know how to read that choice.
  */
 export const SHELVES: ShelfDef[] = [
   {
@@ -470,6 +616,28 @@ export const SHELVES: ShelfDef[] = [
     },
     fetchPage: fetchMyBar,
     fetchCount: countMyBar,
+  },
+  {
+    id: "friendsbar",
+    label: "My Friend's Bar",
+    href: "",
+    empty: {
+      title: "Nothing on this shelf.",
+      body: "Pick a friend.",
+    },
+    fetchPage: fetchFriendBar,
+    fetchCount: async () => null,
+  },
+  {
+    id: "friendswish",
+    label: "Friends' Wishlists",
+    href: "",
+    empty: {
+      title: "Nothing on this shelf.",
+      body: "Pick a friend.",
+    },
+    fetchPage: fetchFriendWishlist,
+    fetchCount: async () => null,
   },
   {
     id: "social",

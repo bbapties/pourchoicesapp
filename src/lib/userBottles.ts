@@ -186,9 +186,12 @@ export async function removeUserBottle(opts: {
   const hasTasting = row.tasted_at != null;
   if (hasTasting) {
     // Remove from the shelf but keep the row (Tasted survives). B-32: clear owned_count too.
+    // emptied_count is what keeps a bottle on the Empty tab. Clearing the shelf
+    // facts without it made "Remove from collection" look successful and then
+    // bring the bottle back on the next reload (#185).
     const { error } = await supabase
       .from("user_bottles")
-      .update({ currently_owned: false, times_had: 0, owned_count: 0, updated_at: new Date().toISOString() })
+      .update({ currently_owned: false, times_had: 0, owned_count: 0, emptied_count: 0, updated_at: new Date().toISOString() })
       .eq("id", row.id);
     if (error) return { error: error.message };
     await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "removed_from_collection", variantId });

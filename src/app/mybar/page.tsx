@@ -60,6 +60,7 @@ export default async function MyBarPage() {
     { data: sessions },
     { data: wishRows },
     { data: pourRows },
+    { data: finishedRows },
   ] = await Promise.all([
     supabase.from('user_bottles').select(userBottleSelect).eq('user_id', publicUser.id).gt('owned_count', 0),
     supabase.from('user_bottles').select(userBottleSelect).eq('user_id', publicUser.id).gt('emptied_count', 0),
@@ -70,7 +71,16 @@ export default async function MyBarPage() {
     // drink); blind tastings are NOT pours - they are the Blind tab. Keyed by bottle, so a pour of
     // any version counts toward "this whiskey".
     supabase.from('activities').select('bottle_id, created_at').eq('user_id', publicUser.id).eq('action', 'drank'),
+    // Empty cards say when the bottle was finished, which is the latest `finished`
+    // activity, not the day it was first added (#183).
+    supabase.from('activities').select('bottle_id, created_at').eq('user_id', publicUser.id).eq('action', 'finished'),
   ]);
+  const finishedAtByBottle = new Map<string, string>();
+  for (const r of (finishedRows || []) as { bottle_id: string | null; created_at: string }[]) {
+    if (!r.bottle_id) continue;
+    const prev = finishedAtByBottle.get(r.bottle_id);
+    if (!prev || r.created_at > prev) finishedAtByBottle.set(r.bottle_id, r.created_at);
+  }
   const pours: Record<string, { count: number; last: string }> = {};
   for (const r of (pourRows || []) as { bottle_id: string | null; created_at: string }[]) {
     if (!r.bottle_id) continue;
@@ -141,7 +151,7 @@ export default async function MyBarPage() {
       return {
         ...d,
         variant_id: ub?.variant_id ?? null,
-        addedAt: ub?.updated_at || ub?.created_at,
+        addedAt: finishedAtByBottle.get(d.bottle_id) || ub?.updated_at || ub?.created_at,
         created_at: ub?.created_at,
         updated_at: ub?.updated_at || ub?.created_at,
         times_had: ub?.times_had ?? 1,

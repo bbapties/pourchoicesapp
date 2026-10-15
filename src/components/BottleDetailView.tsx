@@ -1423,6 +1423,7 @@ export default function BottleDetailView({
           bottle={localBottle}
           open={showVariantSelect}
           onOpenChange={setShowVariantSelect}
+          preferVariantId={currentVariantId}
           onAdd={async (variantId) => {
             if (!onAddToBar) return;
             await onAddToBar(bottle.id, variantId);

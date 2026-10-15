@@ -26,6 +26,8 @@ export default function Shelf({
   onPlateOpen,
   onScanFromEmpty,
   lipRight,
+  notice,
+  hrefOverride,
   children,
 }: {
   shelf: ShelfDef;
@@ -39,8 +41,13 @@ export default function Shelf({
   onScanFromEmpty?: () => void;
   /** #111: a control engraved on the lip opposite the plate (the Social shelf's Following switch). */
   lipRight?: React.ReactNode;
+  /** Replaces the run with a message. Used by the friend shelves' empty and prompt states. */
+  notice?: { title: string; body: string; cta?: { label: string; href: string } } | null;
+  /** When set, the plate opens this instead of shelf.href. "" means the plate is only a label. */
+  hrefOverride?: string;
   children?: React.ReactNode;
 }) {
+  const plateHref = hrefOverride !== undefined ? hrefOverride : shelf.href;
   return (
     <section className="pc-shelf" aria-label={shelf.label} data-coach="home.shelf">
       <div className="pc-face pc-back" />
@@ -49,7 +56,17 @@ export default function Shelf({
       <div className="pc-face pc-top" />
       <div className="pc-face pc-deck" />
 
-      {isEmpty ? (
+      {notice ? (
+        <div className="pc-empty">
+          <strong>{notice.title}</strong>
+          {notice.body}
+          {notice.cta ? (
+            <div>
+              <Link href={notice.cta.href}>{notice.cta.label}</Link>
+            </div>
+          ) : null}
+        </div>
+      ) : isEmpty ? (
         <div className="pc-empty">
           <strong>{shelf.empty.title}</strong>
           {shelf.empty.body}
@@ -74,15 +91,15 @@ export default function Shelf({
       {lipRight ? <div className="pc-lip-right">{lipRight}</div> : null}
 
       {/* The plate names the shelf AND opens it: Home is a zoomed-out view of the other tabs. */}
-      {shelf.href ? (
+      {plateHref ? (
         <Link
-          href={shelf.href}
+          href={plateHref}
           className="pc-plate"
           data-coach="home.plate"
           aria-label={`Open ${shelf.label}`}
           onClick={onPlateOpen}
         >
-          {shelf.label}
+          <span className="pc-plate-label">{shelf.label}</span>
           {count !== null ? <span className="pc-plate-count">{count}</span> : null}
           <span className="pc-plate-go" aria-hidden="true">
             ›
@@ -91,7 +108,7 @@ export default function Shelf({
       ) : (
         // A user-page shelf (#110) has no tab behind it yet: the plate is a label, not a door.
         <span className="pc-plate" aria-label={shelf.label}>
-          {shelf.label}
+          <span className="pc-plate-label">{shelf.label}</span>
           {count !== null ? <span className="pc-plate-count">{count}</span> : null}
         </span>
       )}

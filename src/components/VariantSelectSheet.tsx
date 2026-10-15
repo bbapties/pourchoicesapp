@@ -29,6 +29,8 @@ interface VariantSelectSheetProps {
   mode?: "add-to-bar" | "contribute";
   /** Contribute mode, database-only: the variant was created but not added to the bar. */
   onContributed?: (variantId: string | null) => void;
+  /** The version on screen. Add to My Bar preselects it instead of "Version unknown" (#184). */
+  preferVariantId?: string | null;
 }
 
 /**
@@ -61,6 +63,7 @@ export default function VariantSelectSheet({
   onAdd,
   mode = "add-to-bar",
   onContributed,
+  preferVariantId = null,
 }: VariantSelectSheetProps) {
   const { publicUserId } = useCurrentUser();
   // B-74: store-pick `created_by` is a public.users.id, enforced by a foreign key. This used to
@@ -126,7 +129,12 @@ export default function VariantSelectSheet({
         .eq("created_by", publicUserId)
         .not("store_pick_name", "is", null),
     ]).then(([batchRes, storeRes]) => {
-      setBatchVariants(batchRes.data ?? []);
+      const variants = batchRes.data ?? [];
+      setBatchVariants(variants);
+      if (!isContribute && preferVariantId) {
+        const match = variants.find((v) => v.id === preferVariantId);
+        if (match) setBottleKind({ kind: "batch", variantId: match.id, data: match });
+      }
       const stores = [
         ...new Set(
           (storeRes.data ?? [])
@@ -138,7 +146,7 @@ export default function VariantSelectSheet({
       setIsFetching(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, bottle.id, publicUserId]);
+  }, [open, bottle.id, publicUserId, isContribute, preferVariantId]);
 
   const handleAdd = async () => {
     if (isAdding) return;

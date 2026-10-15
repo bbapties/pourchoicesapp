@@ -9,8 +9,8 @@ import ShelfRun from "@/components/home/ShelfRun";
 import PickedUpBottle from "@/components/home/PickedUpBottle";
 import { Toaster } from "@/components/ui/sonner";
 import { logClick, logEvent } from "@/lib/events";
-import { SHELVES, type ShelfBottle } from "@/lib/shelves";
-import { fetchFeedDefault, fetchMyGraph, saveFeedDefault, type FeedScope } from "@/lib/relationships";
+import { countFriendOwned, countFriendWishlist, SHELVES, type ShelfBottle, type ShelfPerson } from "@/lib/shelves";
+import { fetchFeedDefault, fetchFollowing, fetchMyGraph, saveFeedDefault, type FeedScope, type PersonRow } from "@/lib/relationships";
 
 /**
  * The Home screen — "The Cabinet" (#82).
@@ -28,6 +28,44 @@ type ShelfState = { count: number | null; loading: boolean };
 
 const INITIAL: ShelfState = { count: null, loading: true };
 
+const FRIEND_SHELVES = new Set(["friendsbar", "friendswish"]);
+
+type FriendNotice = { title: string; body: string; cta?: { label: string; href: string } };
+
+/** What the friend shelf says when it is not showing bottles. */
+function friendNotice(kind: "bar" | "wish", friends: PersonRow[], pick: string, count: number | null, loading: boolean): FriendNotice | null {
+  if (friends.length === 0) {
+    return kind === "bar"
+      ? {
+          title: "No friends yet.",
+          body: "Follow people, and their bar stands on this shelf.",
+          cta: { label: "Find people", href: "/social" },
+        }
+      : {
+          title: "No friends yet.",
+          body: "Follow people, and the bottles they want show up here.",
+          cta: { label: "Find people", href: "/social" },
+        };
+  }
+  if (pick === "prompt") {
+    return kind === "bar"
+      ? { title: "Whose bar?", body: "Open the list on this shelf and pick a friend, or choose All." }
+      : { title: "Whose wishlist?", body: "Open the list and pick a friend, or choose All to see every want." };
+  }
+  if (!loading && count === 0) {
+    if (pick === "all") {
+      return kind === "bar"
+        ? { title: "Every friend's bar is empty.", body: "A quiet cabinet. Someone should crack a seal." }
+        : { title: "No wishes on the shelf.", body: "Your friends are keeping their wants to themselves." };
+    }
+    const name = friends.find((f) => f.userId === pick)?.username ?? "Your friend";
+    return kind === "bar"
+      ? { title: `${name}'s bar is empty.`, body: "Either the good stuff is already in a glass, or the shelf was never stocked." }
+      : { title: `${name} isn't wishing.`, body: "An empty wishlist. They might already own everything they want." };
+  }
+  return null;
+}
+
 export default function HomeClient({ viewerId }: { viewerId: string }) {
   const router = useRouter();
   const [picked, setPicked] = useState<ShelfBottle | null>(null);
@@ -39,12 +77,21 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
   // Following | Everyone switch, remembered on the same users.feed_default.
   const [scope, setScope] = useState<FeedScope | null>(null);
   const [graph, setGraph] = useState<{ following: string[]; muted: string[] } | null>(null);
+  // null until the people you follow have loaded. One friend is selected for you; two or more
+  // wait on the list. Each shelf remembers its own choice.
+  const [friends, setFriends] = useState<PersonRow[] | null>(null);
+  const [barPick, setBarPick] = useState("prompt");
+  const [wishPick, setWishPick] = useState("prompt");
   useEffect(() => {
     let live = true;
-    Promise.all([fetchMyGraph(viewerId), fetchFeedDefault(viewerId)]).then(([g, sc]) => {
+    Promise.all([fetchMyGraph(viewerId), fetchFeedDefault(viewerId), fetchFollowing(viewerId)]).then(([g, sc, people]) => {
       if (!live) return;
       setGraph(g);
       setScope(sc);
+      setFriends(people);
+      const initial = people.length === 1 ? people[0].userId : "prompt";
+      setBarPick(initial);
+      setWishPick(initial);
     });
     return () => { live = false; };
   }, [viewerId]);
@@ -57,6 +104,8 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
 
   const [state, setState] = useState<Record<string, ShelfState>>({
     mybar: INITIAL,
+    friendsbar: INITIAL,
+    friendswish: INITIAL,
     social: INITIAL,
     verified: INITIAL,
   });
@@ -64,6 +113,7 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
   useEffect(() => {
     let live = true;
     SHELVES.forEach(async (shelf) => {
+      if (FRIEND_SHELVES.has(shelf.id)) return;
       const count = await shelf.fetchCount(viewerId);
       if (!live) return;
       setState((s) => ({ ...s, [shelf.id]: { count, loading: false } }));
@@ -72,6 +122,28 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
       live = false;
     };
   }, [viewerId, reloadKey]);
+
+  useEffect(() => {
+    if (!friends) return;
+    let live = true;
+    setState((s) => ({
+      ...s,
+      friendsbar: { count: null, loading: true },
+      friendswish: { count: null, loading: true },
+    }));
+    const load = async (id: "friendsbar" | "friendswish", pick: string) => {
+      if (friends.length === 0 || pick === "prompt") {
+        if (live) setState((s) => ({ ...s, [id]: { count: null, loading: false } }));
+        return;
+      }
+      const ids = pick === "all" ? friends.map((f) => f.userId) : [pick];
+      const count = id === "friendsbar" ? await countFriendOwned(ids) : await countFriendWishlist(ids);
+      if (live) setState((s) => ({ ...s, [id]: { count, loading: false } }));
+    };
+    void load("friendsbar", barPick);
+    void load("friendswish", wishPick);
+    return () => { live = false; };
+  }, [friends, barPick, wishPick, reloadKey]);
 
   // One view event carrying how long each shelf actually is. Worth having from day one: it is the
   // only way to tell later whether the shelf ORDER is right, and whether anyone ever reaches the
@@ -112,29 +184,62 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
       </header>
 
       {SHELVES.map((shelf) => {
-        const s = state[shelf.id];
+        const s = state[shelf.id] ?? INITIAL;
         // Empty only once we KNOW it is empty. Saying "your bar is empty" while the count is
         // still in flight tells a new user something false about their own collection.
         const social = shelf.id === "social";
+        const friendKind = shelf.id === "friendsbar" ? "bar" as const : shelf.id === "friendswish" ? "wish" as const : null;
+        const pick = shelf.id === "friendsbar" ? barPick : shelf.id === "friendswish" ? wishPick : "";
+        const notice = friendKind && friends ? friendNotice(friendKind, friends, pick, s.count, s.loading) : null;
+        const chosen = friendKind && friends && pick !== "prompt" && friends.length > 0
+          ? (pick === "all" ? friends : friends.filter((f) => f.userId === pick))
+          : [];
+        const directory: ShelfPerson[] | null = pick === "all"
+          ? chosen.map((f) => ({ userId: f.userId, username: f.username, avatarUrl: f.avatarUrl }))
+          : null;
+        const person = friendKind && pick !== "all" && pick !== "prompt" ? friends?.find((f) => f.userId === pick) : undefined;
         // In Following mode the plate count is the whole feed's, not the filtered run's, so it
         // comes off rather than lie; empty is decided by the run itself (an empty Following run
         // still shows the shelf, with the switch on it, so you can flip back).
-        const isEmpty = !s.loading && (s.count ?? 0) === 0 && !(social && scope === "following");
+        const isEmpty = !friendKind && !s.loading && (s.count ?? 0) === 0 && !(social && scope === "following");
         const socialOpts = social && scope === "following"
           ? { onlyUserIds: graph?.following ?? [], excludeUserIds: graph?.muted ?? [] }
           : social ? { excludeUserIds: graph?.muted ?? [] } : undefined;
+        const friendOpts = chosen.length
+          ? { friendIds: chosen.map((f) => f.userId), friendDirectory: directory }
+          : undefined;
         return (
           <Shelf
             key={shelf.id}
             shelf={shelf}
             count={social && scope === "following" ? null : s.count}
             isEmpty={isEmpty}
+            notice={notice}
+            hrefOverride={friendKind ? (person ? `/u/${encodeURIComponent(person.username)}` : "") : undefined}
             lipRight={social && scope ? (
               <button type="button" className="pc-feed-switch" data-scope={scope} onClick={flipScope} aria-label={`Showing ${scope}. Tap to switch.`} data-coach="home.feed_switch">
                 <span className={scope === "following" ? "" : "off"}>Following</span>
                 <span className="knob" aria-hidden="true" />
                 <span className={scope === "everyone" ? "" : "off"}>Everyone</span>
               </button>
+            ) : friendKind && friends && friends.length > 0 ? (
+              <select
+                className="pc-friend-select"
+                aria-label={friendKind === "bar" ? "Choose a friend's bar" : "Choose a friend's wishlist"}
+                value={pick === "prompt" ? "" : pick}
+                onChange={(e) => {
+                  const next = e.target.value || "prompt";
+                  if (friendKind === "bar") setBarPick(next);
+                  else setWishPick(next);
+                  logClick("home_friend_pick", { userId: viewerId, surface: "/home", metadata: { shelf: shelf.id, pick: next } });
+                }}
+              >
+                {pick === "prompt" ? <option value="">Choose a friend</option> : null}
+                <option value="all">All</option>
+                {friends.map((f) => (
+                  <option key={f.userId} value={f.userId}>{f.username}</option>
+                ))}
+              </select>
             ) : null}
             onPlateOpen={() =>
               logClick("home_plate", {
@@ -148,16 +253,17 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
                 metadata: { shelf: shelf.id } })
             }
           >
-            {s.loading || (social && (!scope || !graph)) ? null : (
+            {notice || s.loading || (social && (!scope || !graph)) ? null : (
               <ShelfRun
-                key={`${shelf.id}:${reloadKey}:${social ? scope : ""}`}
+                key={`${shelf.id}:${reloadKey}:${social ? scope : ""}:${pick}`}
                 shelf={shelf}
                 viewerId={viewerId}
-                fetchOpts={socialOpts}
+                fetchOpts={social ? socialOpts : friendOpts}
                 onPickUser={(b) => {
-                  if (!b.post) return;
-                  logClick("home_bottle_user", { userId: viewerId, surface: "/home", targetId: b.post.userId, metadata: { shelf: shelf.id } });
-                  router.push(`/u/${encodeURIComponent(b.post.username)}`);
+                  const who = b.owner ?? (b.post ? { userId: b.post.userId, username: b.post.username } : null);
+                  if (!who) return;
+                  logClick("home_bottle_user", { userId: viewerId, surface: "/home", targetId: who.userId, metadata: { shelf: shelf.id } });
+                  router.push(`/u/${encodeURIComponent(who.username)}`);
                 }}
                 onPick={(b) => {
                   // Ghost-vs-real on every pick-up: the share of what people actually touch that

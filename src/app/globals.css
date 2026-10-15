@@ -432,6 +432,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .pc-plate::before, .pc-plate::after { content: ""; width: 4px; height: 4px; border-radius: 50%; flex: none;
   background: radial-gradient(circle at 35% 35%, #fff3c4, var(--color-brass-lo) 70%); box-shadow: 0 0 0 .5px rgba(0,0,0,.5); }
 .pc-plate:active { filter: brightness(.92); }
+.pc-plate-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-plate-count, .pc-plate-go { flex: none; }
+/* The friend list sits on the same lip as the plate. Keep the name readable beside it. */
+.pc-shelf:has(.pc-friend-select) .pc-plate { max-width: calc(100% - min(42vw, 9.5rem) - 32px); }
 /* #111: the Social shelf's Following | Everyone switch, on the lip opposite the plate */
 .pc-lip-right { position: absolute; right: 12px; bottom: 4px; z-index: 6; height: 18px; display: flex; align-items: center; }
 .pc-feed-switch { display: flex; align-items: center; gap: 6px; height: 18px; padding: 0; border: 0; background: none;
@@ -442,6 +446,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .pc-feed-switch .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, var(--color-brass-hi), var(--color-brass-lo)); transition: left .15s; }
 .pc-feed-switch[data-scope="everyone"] .knob::after { left: 14px; }
+/* Friend shelves: the list of followers, on the lip opposite the plate. */
+.pc-friend-select {
+  max-width: min(42vw, 9.5rem); height: 18px; padding: 0 4px; border-radius: 3px;
+  font-size: 10px; font-weight: 700; letter-spacing: .02em;
+  color: var(--color-brass-hi); background: #14100c; border: 1px solid var(--color-brass-line);
+}
+/* Whose bottle, only when All is selected. Sits inside the lower corner of the glass. */
+.pc-owner-bubble { position: absolute; right: 0; bottom: 6px; z-index: 4; line-height: 0; cursor: pointer; }
 .pc-plate-count { opacity: .7; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 
 /* a bare shelf says what is true and nothing more */
