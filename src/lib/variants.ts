@@ -1,10 +1,13 @@
 import { supabase } from "@/lib/supabase";
 import { type BottleDetails, type BottleVariant } from "@/lib/types";
 
+// #181: `notes` is NOT in these. On verified variants it holds the curator's rationale (sources,
+// barcode, where the pack shot came from), so it is only selected when the caller asks for it --
+// an admin -- and never reaches a member's browser through this read.
 const FULL_SELECT =
-  "id, bottles_id, is_default, elo_global, nose, palate, finish, verified, frontimage_url, backimage_url, age, proof, batch, release_year, store_pick_name, notes, created_at";
+  "id, bottles_id, is_default, elo_global, nose, palate, finish, verified, frontimage_url, backimage_url, age, proof, batch, release_year, store_pick_name, created_at";
 const LEGACY_SELECT =
-  "id, bottles_id, verified, frontimage_url, backimage_url, age, proof, batch, release_year, store_pick_name, notes, created_at";
+  "id, bottles_id, verified, frontimage_url, backimage_url, age, proof, batch, release_year, store_pick_name, created_at";
 
 type VariantRow = {
   id: string;
@@ -63,23 +66,28 @@ function orderVariants(rows: VariantRow[]): VariantRow[] {
  * B-74: `created_by` is a public.users.id and a foreign key now enforces it, so this takes ONE id.
  * It used to accept the auth id and the public id and match either, because the column held a
  * mixture. Do not reintroduce that — an auth id can no longer be stored here.
+ *
+ * #181: pass `includeNotes` only for an admin (`useCurrentUser().isAdmin`); everyone else gets
+ * variants without the internal curation note.
  */
 export async function fetchVariantsForSku(
   bottleId: string,
-  ownerId?: string | null
+  ownerId?: string | null,
+  { includeNotes = false }: { includeNotes?: boolean } = {}
 ): Promise<BottleVariant[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scope = (q: any) =>
     ownerId
       ? q.or(`store_pick_name.is.null,created_by.eq.${ownerId}`)
       : q.is("store_pick_name", null);
+  const cols = (select: string) => (includeNotes ? `${select}, notes` : select);
 
   const full = await scope(
-    supabase.from("bottle_variants").select(FULL_SELECT).eq("bottles_id", bottleId)
+    supabase.from("bottle_variants").select(cols(FULL_SELECT)).eq("bottles_id", bottleId)
   );
 
   const result = full.error
-    ? await scope(supabase.from("bottle_variants").select(LEGACY_SELECT).eq("bottles_id", bottleId))
+    ? await scope(supabase.from("bottle_variants").select(cols(LEGACY_SELECT)).eq("bottles_id", bottleId))
     : full;
 
   if (result.error || !result.data) {
