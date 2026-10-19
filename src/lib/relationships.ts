@@ -144,3 +144,34 @@ export async function fetchFeedDefault(viewerId: string): Promise<FeedScope> {
 export async function saveFeedDefault(viewerId: string, scope: FeedScope): Promise<void> {
   await supabase.from("users").update({ feed_default: scope }).eq("id", viewerId);
 }
+
+// ---------------------------------------------------------------- home friend shelf picks
+
+// Each friend shelf on Home remembers whose bar / wishlist you last chose (user_shelf_picks,
+// owner-only RLS). A pick is "all" or a public.users.id. Both calls fail open: no table, no
+// row, or an error just means "nothing remembered".
+export type FriendShelfId = "friendsbar" | "friendswish";
+
+export async function fetchShelfPicks(viewerId: string): Promise<Partial<Record<FriendShelfId, string>>> {
+  try {
+    const { data, error } = await supabase.from("user_shelf_picks").select("shelf, pick").eq("user_id", viewerId);
+    if (error) return {};
+    const out: Partial<Record<FriendShelfId, string>> = {};
+    for (const row of (data || []) as { shelf: string; pick: string }[]) {
+      if (row.shelf === "friendsbar" || row.shelf === "friendswish") out[row.shelf] = row.pick;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export async function saveShelfPick(viewerId: string, shelf: FriendShelfId, pick: string): Promise<void> {
+  try {
+    await supabase
+      .from("user_shelf_picks")
+      .upsert({ user_id: viewerId, shelf, pick, updated_at: new Date().toISOString() }, { onConflict: "user_id,shelf" });
+  } catch {
+    // fail open - the shelf still works, it just forgets
+  }
+}

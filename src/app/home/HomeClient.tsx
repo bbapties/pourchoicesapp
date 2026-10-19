@@ -10,7 +10,7 @@ import PickedUpBottle from "@/components/home/PickedUpBottle";
 import { Toaster } from "@/components/ui/sonner";
 import { logClick, logEvent } from "@/lib/events";
 import { countFriendOwned, countFriendWishlist, SHELVES, type ShelfBottle, type ShelfPerson } from "@/lib/shelves";
-import { fetchFeedDefault, fetchFollowing, fetchMyGraph, saveFeedDefault, type FeedScope, type PersonRow } from "@/lib/relationships";
+import { fetchFeedDefault, fetchFollowing, fetchMyGraph, fetchShelfPicks, saveFeedDefault, saveShelfPick, type FeedScope, type FriendShelfId, type PersonRow } from "@/lib/relationships";
 
 /**
  * The Home screen — "The Cabinet" (#82).
@@ -77,21 +77,25 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
   // Following | Everyone switch, remembered on the same users.feed_default.
   const [scope, setScope] = useState<FeedScope | null>(null);
   const [graph, setGraph] = useState<{ following: string[]; muted: string[] } | null>(null);
-  // null until the people you follow have loaded. One friend is selected for you; two or more
-  // wait on the list. Each shelf remembers its own choice.
+  // null until the people you follow have loaded. Each shelf remembers its own choice in
+  // user_shelf_picks, so it survives a refresh, a log-out and a new device. A remembered pick
+  // that no longer holds (unfollowed, or nobody followed) falls back: one friend is selected
+  // for you; two or more wait on the list.
   const [friends, setFriends] = useState<PersonRow[] | null>(null);
   const [barPick, setBarPick] = useState("prompt");
   const [wishPick, setWishPick] = useState("prompt");
   useEffect(() => {
     let live = true;
-    Promise.all([fetchMyGraph(viewerId), fetchFeedDefault(viewerId), fetchFollowing(viewerId)]).then(([g, sc, people]) => {
+    Promise.all([fetchMyGraph(viewerId), fetchFeedDefault(viewerId), fetchFollowing(viewerId), fetchShelfPicks(viewerId)]).then(([g, sc, people, saved]) => {
       if (!live) return;
       setGraph(g);
       setScope(sc);
       setFriends(people);
-      const initial = people.length === 1 ? people[0].userId : "prompt";
-      setBarPick(initial);
-      setWishPick(initial);
+      const fallback = people.length === 1 ? people[0].userId : "prompt";
+      const resolve = (pick: string | undefined) =>
+        people.length > 0 && pick && (pick === "all" || people.some((p) => p.userId === pick)) ? pick : fallback;
+      setBarPick(resolve(saved.friendsbar));
+      setWishPick(resolve(saved.friendswish));
     });
     return () => { live = false; };
   }, [viewerId]);
@@ -231,6 +235,7 @@ export default function HomeClient({ viewerId }: { viewerId: string }) {
                   const next = e.target.value || "prompt";
                   if (friendKind === "bar") setBarPick(next);
                   else setWishPick(next);
+                  if (next !== "prompt") void saveShelfPick(viewerId, shelf.id as FriendShelfId, next);
                   logClick("home_friend_pick", { userId: viewerId, surface: "/home", metadata: { shelf: shelf.id, pick: next } });
                 }}
               >
