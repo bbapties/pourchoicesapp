@@ -234,6 +234,26 @@ export async function removeUserBottle(opts: {
 }
 
 /**
+ * #188: the Empty history (`emptied_count`) on the row `removeUserBottle` would act on, so the
+ * remove confirm can say the bottle stays in Empty. Same row resolution as the remove. Fail-open: 0.
+ */
+export async function fetchEmptiedCount(opts: {
+  userId: string;
+  bottleId: string;
+  variantId?: string | null;
+}): Promise<number> {
+  const variantId = opts.variantId ?? (await resolveDefaultVariantId(opts.bottleId));
+  let query = supabase
+    .from("user_bottles")
+    .select("emptied_count")
+    .eq("user_id", opts.userId)
+    .eq("bottle_id", opts.bottleId);
+  if (variantId) query = query.eq("variant_id", variantId);
+  const { data } = await query.limit(1);
+  return (data?.[0] as { emptied_count?: number | null } | undefined)?.emptied_count ?? 0;
+}
+
+/**
  * B-32: "finish one" — decrement the current-owned count by 1 and increment the emptied
  * (lifetime-finished) count. currently_owned is kept in sync (owned_count>0). One (user,
  * bottle, variant) row; a variant can end up In My Bar AND Empty at once. Logs `finished`.

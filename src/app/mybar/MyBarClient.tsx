@@ -414,7 +414,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
       setRawOwned(prev => prev.some(r => r.bottle_id === bottleId)
         ? prev.map(r => r.bottle_id === bottleId ? next : r)
         : [...prev, next]);
-      setRawEmpty(prev => prev.filter(r => r.bottle_id !== bottleId));
+      // #188: a restock never touches emptied_count, so the bottle stays on the Empty tab too.
     } else {
       const tastedRow = rawTasted.find(r => r.bottle_id === bottleId && r.variant_id === writtenVariant)
         || rawTasted.find(r => r.bottle_id === bottleId);
@@ -757,6 +757,7 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}
           onDeleteFromBar={handleDeleteFromBar}
+          removeIsShelfOnly={activeTab === 'owned'}
           onPourLogged={(bottleId) => setPours(prev => ({ ...prev, [bottleId]: { count: (prev[bottleId]?.count ?? 0) + 1, last: new Date().toISOString() } }))}
           onEditSaved={(updated) => {
             // Variant edits only update the variants array on the open detail view

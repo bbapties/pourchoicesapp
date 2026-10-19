@@ -411,6 +411,7 @@ export default function SocialClient() {
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}
           onDeleteFromBar={handleDeleteFromBar}
+          removeIsShelfOnly={selectedOwned.currentlyOwned}
           onActivityLogged={() => load(true)}
         />
       )}
