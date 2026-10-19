@@ -38,6 +38,7 @@ import {
 } from "@/lib/activities";
 import { logClick } from "@/lib/events";
 import { usePhotoPicker } from "@/components/usePhotoPicker";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 /** One user_bottles row for this SKU, as the list surfaces already carry it (B-31). */
 export type OwnershipRow = {
@@ -103,6 +104,8 @@ export default function BottleDetailView({
   autoOpenPour = false,
 }: BottleDetailViewProps) {
   const router = useRouter();
+  // #181: the variant note is curator rationale - only fetched and shown for admins.
+  const { isAdmin } = useCurrentUser();
   const [imageSide, setImageSide] = useState<'front' | 'back'>('front');
   const [variantIndex, setVariantIndex] = useState(0);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -354,7 +357,7 @@ export default function BottleDetailView({
         if (!cancelled) setWishlistedIds(ids);
       });
     }
-    fetchVariantsForSku(bottle.id, publicUserId).then((variants) => {
+    fetchVariantsForSku(bottle.id, publicUserId, { includeNotes: isAdmin }).then((variants) => {
       if (cancelled || !variants.length) return;
       setLocalBottle((prev) => ({ ...prev, variants }));
       // B-31: open pinned to the version the caller tapped (My Bar / Social), else default-first.
@@ -362,7 +365,7 @@ export default function BottleDetailView({
       setVariantIndex(pinIdx > 0 ? pinIdx : 0);
     });
     return () => { cancelled = true; };
-  }, [bottle.id, initialVariantId, publicUserId]);
+  }, [bottle.id, initialVariantId, publicUserId, isAdmin]);
 
   // 3.1: rating state for the CURRENT variant (guess / tasted? / personal Elo) — refetch on swipe.
   useEffect(() => {
@@ -414,7 +417,7 @@ export default function BottleDetailView({
 
   // Refetch the owner-scoped variant list after a contribution so the new version appears.
   const refetchVariants = () => {
-    fetchVariantsForSku(bottle.id, publicUserId).then((variants) => {
+    fetchVariantsForSku(bottle.id, publicUserId, { includeNotes: isAdmin }).then((variants) => {
       if (variants.length) setLocalBottle((prev) => ({ ...prev, variants }));
     });
   };
@@ -1057,8 +1060,8 @@ export default function BottleDetailView({
           </div>
         )}
 
-        {/* Variant note (if present) */}
-        {shown.notes && (
+        {/* Variant note (if present). #181: admin-only - it holds the curator's rationale. */}
+        {isAdmin && shown.notes && (
           <p className="text-sm text-cream-mute italic border-t border-edge pt-2 mb-3">{shown.notes}</p>
         )}
 
