@@ -149,17 +149,23 @@ export async function addOrRestockUserBottle(opts: {
  * to tasting-only (drops ownership, keeps Elo -> shows under My Bar "Tasted")
  * instead of hard-deleted, so a blind-tasting result is never lost. Otherwise the
  * row is deleted outright. Never touches other variants' rows.
+ *
+ * #188: `scope: "shelf"` is My Bar's "Remove from bar" on the In My Bar tab. It clears only the
+ * shelf facts and keeps the Empty history (`emptied_count`) - one row carries both, so removing it
+ * from the bar used to empty the Empty tab too. With no Empty history it behaves exactly like the
+ * default. The default (`"all"`) is unchanged: Search, Social and the Empty tab still clear both.
  */
 export async function removeUserBottle(opts: {
   userId: string;
   bottleId: string;
   variantId?: string | null;
+  scope?: "all" | "shelf";
 }): Promise<{ error?: string }> {
   const variantId = opts.variantId ?? (await resolveDefaultVariantId(opts.bottleId));
 
   let query = supabase
     .from("user_bottles")
-    .select("id, tasted_at")
+    .select("id, tasted_at, emptied_count")
     .eq("user_id", opts.userId)
     .eq("bottle_id", opts.bottleId);
   if (variantId) query = query.eq("variant_id", variantId);
@@ -183,6 +189,17 @@ export async function removeUserBottle(opts: {
    * button cannot reach. `tasted_at` is stamped by triggers on tasting_results and on a `drank`
    * activity (sql/b52-tasted-at-migration.sql) and is never cleared here.
    */
+  if (opts.scope === "shelf" && (row.emptied_count ?? 0) > 0) {
+    // #188: off the shelf, still on the Empty tab. times_had stays - they did have it.
+    const { error } = await supabase
+      .from("user_bottles")
+      .update({ currently_owned: false, owned_count: 0, updated_at: new Date().toISOString() })
+      .eq("id", row.id);
+    if (error) return { error: error.message };
+    await logActivity({ userId: opts.userId, bottleId: opts.bottleId, action: "removed_from_collection", variantId });
+    return {};
+  }
+
   const hasTasting = row.tasted_at != null;
   if (hasTasting) {
     // Remove from the shelf but keep the row (Tasted survives). B-32: clear owned_count too.

@@ -465,14 +465,16 @@ export default function MyBarClient({ ownedCollection: initialOwned, emptyCollec
     // row, so tasting-only rows keep their Elo.
     const ownedRow = rawOwned.find(r => r.bottle_id === bottleId) || rawEmpty.find(r => r.bottle_id === bottleId);
     const vId = variantId ?? ownedRow?.variant_id ?? null;
-    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: vId });
+    // #188: from the In My Bar tab this takes it off the shelf only; its Empty history stays.
+    const shelfOnly = activeTab === 'owned';
+    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: vId, scope: shelfOnly ? "shelf" : "all" });
     if (result.error) { toast.error(`Couldn't remove it: ${result.error}`); logEvent({ eventType: "error", userId: publicUserId, surface: "/mybar", metadata: { kind: "remove_bottle_failed", message: result.error } }); return; }
 
     setRawOwned(prev => prev.filter(r => r.bottle_id !== bottleId));
-    setRawEmpty(prev => prev.filter(r => r.bottle_id !== bottleId));
+    if (!shelfOnly) setRawEmpty(prev => prev.filter(r => r.bottle_id !== bottleId));
     setSelectedBottle(null);
     toast.success("Removed from collection");
-  }, [publicUserId, rawOwned, rawEmpty]);
+  }, [publicUserId, rawOwned, rawEmpty, activeTab]);
 
   // Filter dropdown handlers
   const filterActive = !!(filter.field && filter.value);
