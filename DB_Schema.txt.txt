@@ -2,6 +2,7 @@
 -- Table order and constraints may not be valid for execution.
 -- Regenerated from the live prod DB on 2026-09-23 via scripts/_psql.mjs against information_schema/pg_catalog.
 -- Column types are the information_schema rendering (e.g. USER-DEFINED shows the udt name).
+-- 2026-10-18: user_shelf_picks added by hand from sql/home-shelf-picks-migration.sql (not a regen).
 
 CREATE TABLE public.activities (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -308,6 +309,12 @@ CREATE TABLE public.user_relationships (
   notify_kinds ARRAY NOT NULL DEFAULT '{}'::text[],
   created_at timestamp with time zone NOT NULL DEFAULT now());
 
+CREATE TABLE public.user_shelf_picks (
+  user_id uuid NOT NULL,
+  shelf text NOT NULL,
+  pick text NOT NULL,
+  updated_at timestamp with time zone NOT NULL DEFAULT now());
+
 CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   username text NOT NULL,
@@ -481,6 +488,9 @@ CREATE TABLE public.wishlists (
 --   user_relationships: user_relationships_insert_own (INSERT)
 --   user_relationships: user_relationships_select (SELECT)
 --   user_relationships: user_relationships_update_own (UPDATE)
+--   user_shelf_picks: user_shelf_picks_insert_own (INSERT)
+--   user_shelf_picks: user_shelf_picks_select_own (SELECT)
+--   user_shelf_picks: user_shelf_picks_update_own (UPDATE)
 --   users: Users own their data (ALL)
 --   users: Allow anon insert via auth (INSERT)
 --   users: Users can insert their own profile (INSERT)
