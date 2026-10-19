@@ -22,7 +22,7 @@ import { fetchWishlistVariantIds, addToWishlist, removeFromWishlist } from "@/li
 import { reportBarcodeMismatch } from "@/lib/feedback";
 import { supabase } from "@/lib/supabase";
 import { fieldsForVariant, fetchVariantsForSku } from "@/lib/variants";
-import { resolveDefaultVariantId } from "@/lib/userBottles";
+import { resolveDefaultVariantId, fetchEmptiedCount } from "@/lib/userBottles";
 import { uploadBottleImage } from "@/lib/uploadBottleImage";
 import {
   submitEdits,
@@ -64,6 +64,9 @@ interface BottleDetailViewProps {
   onAddToBar?: (bottleId: string, variantId?: string | null) => Promise<void>;
   onToggleOwnership?: (bottleId: string, variantId?: string | null) => Promise<void>;
   onDeleteFromBar?: (bottleId: string, variantId?: string | null) => Promise<void>;
+  /** #188: whether onDeleteFromBar only takes it off the shelf (keeping its Empty history). The
+   *  confirm wording follows it. Absent → the shown version is currently owned (Search / Social). */
+  removeIsShelfOnly?: boolean;
   onEditSaved?: (updated: Partial<BottleDetails>) => void;
   onActivityLogged?: () => void;
   /** #128: a Have-a-drink pour was recorded for this bottle - the caller can bump its pour count. */
@@ -97,6 +100,7 @@ export default function BottleDetailView({
   onAddToBar,
   onToggleOwnership,
   onDeleteFromBar,
+  removeIsShelfOnly,
   onEditSaved,
   onActivityLogged,
   onPourLogged,
@@ -117,6 +121,8 @@ export default function BottleDetailView({
   const [ownershipOverrides, setOwnershipOverrides] = useState<Record<string, { currently_owned: boolean; times_had: number; owned_count: number }>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // #188: the remove will keep this version on the Empty tab - the confirm says so.
+  const [removeKeepsEmpty, setRemoveKeepsEmpty] = useState(false);
   // "Wrong bottle" report for a barcode hit. Report-only: the catalog is never
   // changed on one user's say-so, so this has no optimistic state to manage.
   const [showMismatch, setShowMismatch] = useState(false);
@@ -700,6 +706,17 @@ export default function BottleDetailView({
     toast("This is auto-calculated from your tasting history — do more blind tastings to adjust it.");
   };
 
+  const shelfOnlyRemove = removeIsShelfOnly ?? ownedLocally;
+  useEffect(() => {
+    setRemoveKeepsEmpty(false);
+    if (!showDeleteConfirm || !shelfOnlyRemove || !publicUserId) return;
+    let cancelled = false;
+    fetchEmptiedCount({ userId: publicUserId, bottleId: bottle.id, variantId: currentVariantId }).then((n) => {
+      if (!cancelled) setRemoveKeepsEmpty(n > 0);
+    });
+    return () => { cancelled = true; };
+  }, [showDeleteConfirm, shelfOnlyRemove, publicUserId, bottle.id, currentVariantId]);
+
   const handleDelete = async () => {
     if (isDeleting || !onDeleteFromBar) return;
     setIsDeleting(true);
@@ -1230,7 +1247,9 @@ export default function BottleDetailView({
         {inCollectionLocally && showDeleteConfirm && (
           <div className="mt-2 border border-red-800 rounded p-2 bg-red-950/40 text-xs">
             <p className="text-cream mb-2">
-              {hasTasted
+              {removeKeepsEmpty
+                ? "This takes it off your shelf. It stays in your Empty bottles, and any rating or tasting is kept."
+                : hasTasted
                 ? "This takes it off your shelf but keeps your rating — it'll move to your Tasted list. A completed blind tasting is never deleted."
                 : "This removes it from your bar. Only use if you added it by mistake."}
             </p>
@@ -1240,7 +1259,7 @@ export default function BottleDetailView({
                 disabled={isDeleting}
                 className="text-red-400 font-semibold hover:text-red-400 disabled:opacity-50"
               >
-                {isDeleting ? 'Removing...' : hasTasted ? 'Remove from bar' : 'Yes, delete'}
+                {isDeleting ? 'Removing...' : removeKeepsEmpty || hasTasted ? 'Remove from bar' : 'Yes, delete'}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}

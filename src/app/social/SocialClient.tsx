@@ -280,7 +280,9 @@ export default function SocialClient() {
 
   const handleDeleteFromBar = async (bottleId: string, variantId?: string | null) => {
     if (!publicUserId) return;
-    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: variantId ?? selectedRow?.variant_id ?? null });
+    // #188: an owned bottle comes off the shelf only - its Empty history stays. An Empty-only
+    // bottle (not on the shelf) still clears as before.
+    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: variantId ?? selectedRow?.variant_id ?? null, scope: selectedOwned.currentlyOwned ? "shelf" : "all" });
     if (result.error) { toast.error(`Couldn't remove it: ${result.error}`); logEvent({ eventType: "error", userId: publicUserId, surface: "/social", metadata: { kind: "remove_bottle_failed", message: result.error } }); return; }
     setSelectedRow(null);
     setSelectedOwned({ inCollection: false, currentlyOwned: false });
@@ -409,6 +411,7 @@ export default function SocialClient() {
           onAddToBar={handleAddToBar}
           onToggleOwnership={handleToggleOwnership}
           onDeleteFromBar={handleDeleteFromBar}
+          removeIsShelfOnly={selectedOwned.currentlyOwned}
           onActivityLogged={() => load(true)}
         />
       )}
