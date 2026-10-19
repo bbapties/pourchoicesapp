@@ -150,10 +150,11 @@ export async function addOrRestockUserBottle(opts: {
  * instead of hard-deleted, so a blind-tasting result is never lost. Otherwise the
  * row is deleted outright. Never touches other variants' rows.
  *
- * #188: `scope: "shelf"` is My Bar's "Remove from bar" on the In My Bar tab. It clears only the
- * shelf facts and keeps the Empty history (`emptied_count`) - one row carries both, so removing it
- * from the bar used to empty the Empty tab too. With no Empty history it behaves exactly like the
- * default. The default (`"all"`) is unchanged: Search, Social and the Empty tab still clear both.
+ * #188: `scope: "shelf"` is "Remove from bar" on a bottle that is on the shelf (My Bar's In My Bar
+ * tab, and Search / Social when it is currently owned). It clears only the shelf facts and keeps
+ * the Empty history (`emptied_count`) - one row carries both, so removing it from the bar used to
+ * empty the Empty tab too. With no Empty history it behaves exactly like the default. The default
+ * (`"all"`) is unchanged and still clears both: the Empty tab, and an Empty-only bottle elsewhere.
  */
 export async function removeUserBottle(opts: {
   userId: string;

@@ -894,7 +894,9 @@ export default function SearchClient({ totalBottleCount, totalVariantCount }: Se
     // Remove the VISIBLE variant's row (B-15), falling back to the ownership row.
     const ownedRow = (variantId ? userBottlesMap[bottleId]?.find(r => r.variant_id === variantId) : undefined)
       ?? userBottlesMap[bottleId]?.find(r => r.currently_owned || (r.times_had ?? 0) >= 1);
-    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: ownedRow?.variant_id ?? null });
+    // #188: an owned bottle comes off the shelf only - its Empty history stays. An Empty-only
+    // bottle (not on the shelf) still clears as before.
+    const result = await removeUserBottle({ userId: publicUserId, bottleId, variantId: ownedRow?.variant_id ?? null, scope: ownedRow?.currently_owned ? "shelf" : "all" });
     if (result.error) { toast.error(`Couldn't remove it: ${result.error}`); logEvent({ eventType: "error", userId: publicUserId, surface: "/search", metadata: { kind: "remove_bottle_failed", message: result.error } }); return; }
 
     // Drop only the ownership row for that variant; keep any tasting-only rows.
