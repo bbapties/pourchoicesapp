@@ -42,3 +42,6 @@ next-env.d.ts
 
 .vercel
 .tools/
+
+# medal-script review previews (docs/BADGE_ART.md: never ship)
+public/badges/review/
